@@ -1,7 +1,8 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import { BorderRadius, Colors } from '@/lib/designSystem';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Hourglass, Lock, User } from 'lucide-react-native';
+import { Hourglass, Lock, User } from 'lucide-react-native';
 import React from 'react';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
@@ -27,31 +28,7 @@ export default function PaymentPendingScreen() {
 
   return (
     <SafeAreaWrapper backgroundColor={Colors.backgroundLight}>
-      {/* Header */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          paddingHorizontal: 20,
-          paddingTop: 16,
-          paddingBottom: 16,
-        }}
-      >
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={{
-            width: 40,
-            height: 40,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginRight: 12,
-          }}
-          activeOpacity={0.7}
-        >
-          <ArrowLeft size={24} color={Colors.textPrimary} />
-        </TouchableOpacity>
-        <View style={{ flex: 1 }} />
-      </View>
+      <ScreenHeader title="" onBack={() => router.back()} backgroundColor={Colors.backgroundLight} />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -80,7 +57,7 @@ export default function PaymentPendingScreen() {
               borderColor: 'rgba(146, 64, 14, 0.12)',
             }}
           >
-            <Hourglass size={40} color="#92400E" />
+            <Hourglass size={40} color={Colors.warningForeground} />
           </View>
           <Text
             style={{

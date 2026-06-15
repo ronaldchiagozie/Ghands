@@ -1,6 +1,6 @@
 import React from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet, Pressable, Alert } from 'react-native';
-import { Colors, BorderRadius, Spacing } from '@/lib/designSystem';
+import {Colors, BorderRadius, Spacing, MIN_TOUCH_TARGET} from '@/lib/designSystem';
 import { MapPin, Navigation, X, ExternalLink } from 'lucide-react-native';
 import { haptics } from '@/hooks/useHaptics';
 import { formatDistance, formatTravelTime, openNavigation } from '@/utils/navigationUtils';
@@ -294,8 +294,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 16,
     right: 16,
-    width: 32,
-    height: 32,
+    width: MIN_TOUCH_TARGET,
+height: MIN_TOUCH_TARGET,
     alignItems: 'center',
     justifyContent: 'center',
   },

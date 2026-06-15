@@ -1,10 +1,12 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { navigateBack, NAV_FALLBACK } from '@/utils/navigation';
 import { ChevronRight, HelpCircle, MapPin, User } from 'lucide-react-native';
 import React from 'react';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Colors } from '@/lib/designSystem';
 
 const accountCards = [
   {
@@ -38,20 +40,7 @@ export default function AccountInformationScreen() {
 
   return (
     <SafeAreaWrapper backgroundColor="#F9FAFB">
-      {/* Header */}
-      <View className="flex-row items-center px-4 py-3 border-b border-gray-100" style={{ paddingTop: 20 }}>
-        <TouchableOpacity
-          onPress={() => navigateBack(router, NAV_FALLBACK.clientHome)}
-          activeOpacity={0.85}
-        >
-          <Ionicons name="arrow-back" size={24} color="#000000" />
-        </TouchableOpacity>
-        <Text className="text-xl font-bold text-black flex-1 text-center" style={{ fontFamily: 'Poppins-Bold' }}>
-          Account Information
-        </Text>
-        <View style={{ width: 24 }} />
-      </View>
-
+        <ScreenHeader title="Account Information" onBack={() => router.back()} backgroundColor={Colors.white} />
       <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
         <View className="px-4 pt-6">
           {accountCards.map((card) => {

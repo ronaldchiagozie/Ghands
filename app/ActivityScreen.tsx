@@ -2,7 +2,8 @@ import { EmptyState } from '@/components/EmptyState';
 import FilterTransactionsModal from '@/components/FilterTransactionsModal';
 import { TransactionCardSkeleton } from '@/components/LoadingSkeleton';
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
-import { BorderRadius, Colors, REFRESH_CONTROL } from '@/lib/designSystem';
+import { ScreenHeader } from '@/components/ScreenHeader';
+import { BorderRadius, Colors, MIN_TOUCH_TARGET, REFRESH_CONTROL } from '@/lib/designSystem';
 import { CLIENT_HOME_SCROLL_GUTTER } from '@/lib/tabletLayout';
 import {
   providerHomeActionButton,
@@ -13,9 +14,9 @@ import {
 import { walletService } from '@/services/api';
 import { openClientReceipt } from '@/utils/receiptNavigation';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { ArrowLeft, CheckCircle, Clock, Filter, Receipt, Search, XCircle } from 'lucide-react-native';
-import React, { useState, useCallback, useEffect } from 'react';
-import { RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { CheckCircle, Clock, Filter, Receipt, XCircle } from 'lucide-react-native';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import { FlatList, Platform, RefreshControl, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface Transaction {
   id: string;
@@ -28,6 +29,148 @@ interface Transaction {
   requestId?: string;
   reference?: string;
 }
+
+type TransactionRowProps = {
+  transaction: Transaction;
+  onViewDetails: (transaction: Transaction) => void;
+  onViewReceipt: (transaction: Transaction) => void;
+};
+
+const TransactionRow = React.memo(function TransactionRow({
+  transaction,
+  onViewDetails,
+  onViewReceipt,
+}: TransactionRowProps) {
+  return (
+    <View
+      style={{
+        ...providerHomeSurface,
+        padding: providerHomeSurfacePadding,
+        marginBottom: 12,
+      }}
+    >
+      <View style={{ flexDirection: 'row', marginBottom: 10 }}>
+        <View
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: BorderRadius.default,
+            backgroundColor: Colors.backgroundGray,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginRight: 12,
+          }}
+        >
+          {transaction.status === 'completed' ? (
+            <CheckCircle size={20} color={Colors.accent} />
+          ) : transaction.status === 'pending' ? (
+            <Clock size={20} color={Colors.warning} />
+          ) : (
+            <XCircle size={20} color={Colors.errorBright} />
+          )}
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text
+            style={{
+              fontSize: 13,
+              fontFamily: 'Poppins-Bold',
+              color: Colors.textPrimary,
+              marginBottom: 2,
+              lineHeight: 18,
+            }}
+            numberOfLines={1}
+          >
+            {transaction.serviceName}
+          </Text>
+          <Text
+            style={{
+              fontSize: 12,
+              fontFamily: 'Poppins-Medium',
+              color: Colors.textSecondaryDark,
+              marginBottom: 2,
+              lineHeight: 17,
+            }}
+            numberOfLines={2}
+          >
+            {transaction.serviceDescription}
+          </Text>
+          <Text
+            style={{
+              fontSize: 11,
+              fontFamily: 'Poppins-Regular',
+              color: Colors.textSecondaryDark,
+            }}
+          >
+            {transaction.date} · {transaction.time}
+          </Text>
+        </View>
+        <View style={{ alignItems: 'flex-end' }}>
+          <View
+            style={{
+              paddingHorizontal: 8,
+              paddingVertical: 4,
+              borderRadius: 12,
+              backgroundColor:
+                transaction.status === 'completed'
+                  ? Colors.successLight
+                  : transaction.status === 'pending'
+                  ? Colors.warningBadge
+                  : Colors.errorBadge,
+              marginBottom: 6,
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 11,
+                fontFamily: 'Poppins-SemiBold',
+                color:
+                  transaction.status === 'completed'
+                    ? Colors.successForeground
+                    : transaction.status === 'pending'
+                    ? Colors.warningForeground
+                    : Colors.errorForeground,
+                textTransform: 'capitalize',
+              }}
+            >
+              {transaction.status}
+            </Text>
+          </View>
+          <Text
+            style={{
+              fontSize: 15,
+              fontFamily: 'Poppins-Bold',
+              color: Colors.textPrimary,
+              letterSpacing: -0.3,
+            }}
+          >
+            ₦{transaction.amount.toLocaleString('en-US', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+          </Text>
+        </View>
+      </View>
+      {transaction.status === 'completed' ? (
+        <TouchableOpacity
+          onPress={() => onViewReceipt(transaction)}
+          style={{ ...providerHomeActionButton, width: '100%' }}
+          activeOpacity={0.85}
+        >
+          <Receipt size={15} color={Colors.textPrimary} style={{ marginRight: 5 }} />
+          <Text style={providerHomeActionLabel}>View Receipt</Text>
+        </TouchableOpacity>
+      ) : transaction.status === 'pending' ? (
+        <TouchableOpacity
+          onPress={() => onViewDetails(transaction)}
+          style={{ ...providerHomeActionButton, width: '100%' }}
+          activeOpacity={0.85}
+        >
+          <Text style={providerHomeActionLabel}>View details</Text>
+        </TouchableOpacity>
+      ) : null}
+    </View>
+  );
+});
 
 export default function ActivityScreen() {
   const router = useRouter();
@@ -199,59 +342,9 @@ export default function ActivityScreen() {
     });
   };
 
-  return (
-    <SafeAreaWrapper backgroundColor={Colors.backgroundLight}>
-      {/* Header */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          paddingHorizontal: 20,
-          paddingTop: 16,
-          paddingBottom: 12,
-        }}
-      >
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={{
-            width: 40,
-            height: 40,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginRight: 12,
-          }}
-          activeOpacity={0.7}
-        >
-          <ArrowLeft size={24} color={Colors.textPrimary} />
-        </TouchableOpacity>
-        <Text
-          style={{
-            fontSize: 20,
-            fontFamily: 'Poppins-Bold',
-            color: Colors.textPrimary,
-            flex: 1,
-          }}
-        >
-          Activity
-        </Text>
-      </View>
-
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={REFRESH_CONTROL.tintColor}
-            colors={REFRESH_CONTROL.colors as unknown as string[]}
-          />
-        }
-        contentContainerStyle={{
-          paddingHorizontal: CLIENT_HOME_SCROLL_GUTTER,
-          paddingBottom: 100,
-        }}
-      >
-        {/* Monthly Spending Summary Card */}
+  const listHeader = useMemo(
+    () => (
+      <>
         <View
           style={{
             ...providerHomeSurface,
@@ -295,7 +388,6 @@ export default function ActivityScreen() {
             Across {totalTransactions} transactions
           </Text>
 
-          {/* Status Breakdown */}
           <View
             style={{
               flexDirection: 'row',
@@ -331,7 +423,7 @@ export default function ActivityScreen() {
                 style={{
                   fontSize: 18,
                   fontFamily: 'Poppins-Bold',
-                  color: '#F59E0B',
+                  color: Colors.warning,
                   marginBottom: 4,
                 }}
               >
@@ -352,7 +444,7 @@ export default function ActivityScreen() {
                 style={{
                   fontSize: 18,
                   fontFamily: 'Poppins-Bold',
-                  color: '#EF4444',
+                  color: Colors.errorBright,
                   marginBottom: 4,
                 }}
               >
@@ -371,7 +463,6 @@ export default function ActivityScreen() {
           </View>
         </View>
 
-        {/* Search and Filter Bar */}
         <View
           style={{
             flexDirection: 'row',
@@ -392,10 +483,11 @@ export default function ActivityScreen() {
             }}
           >
             <TextInput
-              placeholder="Lagos, 100001"
-              placeholderTextColor={Colors.textSecondaryDark}
+              placeholder="Search transactions"
+              placeholderTextColor={Colors.placeholder}
               value={searchQuery}
               onChangeText={setSearchQuery}
+              accessibilityLabel="Search transactions"
               style={{
                 fontSize: 14,
                 fontFamily: 'Poppins-Regular',
@@ -404,33 +496,22 @@ export default function ActivityScreen() {
             />
           </View>
           <TouchableOpacity
-            style={{
-              width: 44,
-              height: 44,
-              ...providerHomeSurface,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-            activeOpacity={0.85}
-          >
-            <Search size={18} color={Colors.textPrimary} />
-          </TouchableOpacity>
-          <TouchableOpacity
             onPress={() => setShowFilterModal(true)}
             style={{
-              width: 44,
-              height: 44,
+              width: MIN_TOUCH_TARGET,
+              height: MIN_TOUCH_TARGET,
               ...providerHomeSurface,
               alignItems: 'center',
               justifyContent: 'center',
             }}
             activeOpacity={0.85}
+            accessibilityLabel="Filter transactions"
+            accessibilityHint="Opens filter options"
           >
             <Filter size={18} color={Colors.textPrimary} />
           </TouchableOpacity>
         </View>
 
-        {/* Transaction Status Tabs */}
         <View
           style={{
             flexDirection: 'row',
@@ -443,6 +524,9 @@ export default function ActivityScreen() {
             <TouchableOpacity
               key={tab}
               onPress={() => setSelectedTab(tab)}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: selectedTab === tab }}
+              accessibilityLabel={`${tab} transactions`}
               style={{
                 flex: 1,
                 paddingBottom: 12,
@@ -465,177 +549,87 @@ export default function ActivityScreen() {
             </TouchableOpacity>
           ))}
         </View>
+      </>
+    ),
+    [
+      completedCount,
+      failedCount,
+      pendingCount,
+      searchQuery,
+      selectedTab,
+      totalSpent,
+      totalTransactions,
+    ]
+  );
 
-        {/* Transaction List */}
-        <View style={{ gap: 12 }}>
-          {isLoading ? (
-            <>
-              <TransactionCardSkeleton />
-              <TransactionCardSkeleton />
-              <TransactionCardSkeleton />
-            </>
-          ) : filteredTransactions.length === 0 ? (
-            <EmptyState
-              icon={<Receipt size={40} color={Colors.textSecondaryDark} />}
-              title={`No ${selectedTab} transactions`}
-              description={searchQuery ? 'No transactions match your search' : `You don't have any ${selectedTab} transactions yet`}
-              style={{
-                flex: 0,
-                ...providerHomeSurface,
-                padding: providerHomeSurfacePadding + 18,
-              }}
-            />
-          ) : (
-            filteredTransactions.map((transaction) => (
-            <View
-              key={transaction.id}
-              style={{
-                ...providerHomeSurface,
-                padding: providerHomeSurfacePadding,
-              }}
-            >
-              <View
-                style={{
-                  flexDirection: 'row',
-                  marginBottom: 10,
-                }}
-              >
-                {/* Icon */}
-                <View
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: BorderRadius.default,
-                    backgroundColor: Colors.backgroundGray,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginRight: 12,
-                  }}
-                >
-                  {transaction.status === 'completed' ? (
-                    <CheckCircle size={20} color={Colors.accent} />
-                  ) : transaction.status === 'pending' ? (
-                    <Clock size={20} color="#F59E0B" />
-                  ) : (
-                    <XCircle size={20} color="#EF4444" />
-                  )}
-                </View>
+  const renderTransaction = useCallback(
+    ({ item }: { item: Transaction }) => (
+      <TransactionRow
+        transaction={item}
+        onViewDetails={handleViewDetails}
+        onViewReceipt={handleViewReceipt}
+      />
+    ),
+    [handleViewDetails, handleViewReceipt]
+  );
 
-                {/* Transaction Details */}
-                <View style={{ flex: 1 }}>
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      fontFamily: 'Poppins-Bold',
-                      color: Colors.textPrimary,
-                      marginBottom: 2,
-                      lineHeight: 18,
-                    }}
-                    numberOfLines={1}
-                  >
-                    {transaction.serviceName}
-                  </Text>
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      fontFamily: 'Poppins-Medium',
-                      color: Colors.textSecondaryDark,
-                      marginBottom: 2,
-                      lineHeight: 17,
-                    }}
-                    numberOfLines={2}
-                  >
-                    {transaction.serviceDescription}
-                  </Text>
-                  <Text
-                    style={{
-                      fontSize: 11,
-                      fontFamily: 'Poppins-Regular',
-                      color: Colors.textSecondaryDark,
-                    }}
-                  >
-                    {transaction.date} · {transaction.time}
-                  </Text>
-                </View>
+  const listEmpty = useMemo(() => {
+    if (isLoading) {
+      return (
+        <>
+          <TransactionCardSkeleton />
+          <TransactionCardSkeleton />
+          <TransactionCardSkeleton />
+        </>
+      );
+    }
+    return (
+      <EmptyState
+        icon={<Receipt size={40} color={Colors.textSecondaryDark} />}
+        title={`No ${selectedTab} transactions`}
+        description={
+          searchQuery
+            ? 'No transactions match your search'
+            : `You don't have any ${selectedTab} transactions yet`
+        }
+        style={{
+          flex: 0,
+          ...providerHomeSurface,
+          padding: providerHomeSurfacePadding + 18,
+        }}
+      />
+    );
+  }, [isLoading, searchQuery, selectedTab]);
 
-                {/* Status and Amount */}
-                <View style={{ alignItems: 'flex-end' }}>
-                  <View
-                    style={{
-                      paddingHorizontal: 8,
-                      paddingVertical: 4,
-                      borderRadius: 12,
-                      backgroundColor:
-                        transaction.status === 'completed'
-                          ? 'rgba(79, 103, 57, 0.14)'
-                          : transaction.status === 'pending'
-                          ? 'rgba(245, 158, 11, 0.18)'
-                          : 'rgba(239, 68, 68, 0.14)',
-                      marginBottom: 6,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 11,
-                        fontFamily: 'Poppins-SemiBold',
-                        color:
-                          transaction.status === 'completed'
-                            ? '#2A3B1F'
-                            : transaction.status === 'pending'
-                            ? '#92400E'
-                            : '#991B1B',
-                        textTransform: 'capitalize',
-                      }}
-                    >
-                      {transaction.status}
-                    </Text>
-                  </View>
-                  <Text
-                    style={{
-                      fontSize: 15,
-                      fontFamily: 'Poppins-Bold',
-                      color: Colors.textPrimary,
-                      letterSpacing: -0.3,
-                    }}
-                  >
-                    ₦{transaction.amount.toLocaleString('en-US', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </Text>
-                </View>
-              </View>
+  return (
+    <SafeAreaWrapper backgroundColor={Colors.backgroundLight}>
+        <ScreenHeader title="Activity" onBack={() => router.back()} backgroundColor={Colors.backgroundLight} />
+      <FlatList
+        data={isLoading ? [] : filteredTransactions}
+        keyExtractor={(item) => item.id}
+        renderItem={renderTransaction}
+        ListHeaderComponent={listHeader}
+        ListEmptyComponent={listEmpty}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={REFRESH_CONTROL.tintColor}
+            colors={REFRESH_CONTROL.colors as unknown as string[]}
+          />
+        }
+        contentContainerStyle={{
+          paddingHorizontal: CLIENT_HOME_SCROLL_GUTTER,
+          paddingBottom: 100,
+          flexGrow: 1,
+        }}
+        initialNumToRender={8}
+        maxToRenderPerBatch={8}
+        windowSize={7}
+        removeClippedSubviews={Platform.OS === 'android'}
+      />
 
-              {/* Action Buttons */}
-              {transaction.status === 'completed' ? (
-                <TouchableOpacity
-                  onPress={() => handleViewReceipt(transaction)}
-                  style={{
-                    ...providerHomeActionButton,
-                    width: '100%',
-                  }}
-                  activeOpacity={0.85}
-                >
-                  <Receipt size={15} color={Colors.textPrimary} style={{ marginRight: 5 }} />
-                  <Text style={providerHomeActionLabel}>View Receipt</Text>
-                </TouchableOpacity>
-              ) : transaction.status === 'pending' ? (
-                <TouchableOpacity
-                  onPress={() => handleViewDetails(transaction)}
-                  style={{
-                    ...providerHomeActionButton,
-                    width: '100%',
-                  }}
-                  activeOpacity={0.85}
-                >
-                  <Text style={providerHomeActionLabel}>View details</Text>
-                </TouchableOpacity>
-              ) : null}
-            </View>
-          ))
-          )}
-        </View>
-      </ScrollView>
 
       {/* Filter Modal */}
       <FilterTransactionsModal

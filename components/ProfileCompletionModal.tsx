@@ -1,6 +1,6 @@
 import { useToast } from '@/hooks/useToast';
 import { haptics } from '@/hooks/useHaptics';
-import { BorderRadius, Colors, Spacing } from '@/lib/designSystem';
+import { BorderRadius, Colors, Spacing, MIN_TOUCH_TARGET} from '@/lib/designSystem';
 import { apiClient } from '@/services/api';
 import { authService } from '@/services/authService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -262,8 +262,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   closeButton: {
-    width: 32,
-    height: 32,
+    width: MIN_TOUCH_TARGET,
+height: MIN_TOUCH_TARGET,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 16,

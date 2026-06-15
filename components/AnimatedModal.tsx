@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Modal, Pressable, StyleSheet, View } from 'react-native';
-import { BorderRadius, Colors, Spacing } from '@/lib/designSystem';
+import { BorderRadius, Colors, Spacing, useReducedMotion } from '@/lib/designSystem';
 
 interface AnimatedModalProps {
   visible: boolean;
@@ -30,10 +30,18 @@ export default function AnimatedModal({
   const slideAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const backdropAnim = useRef(new Animated.Value(0)).current;
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
+    if (reducedMotion) {
+      const target = visible ? 1 : 0;
+      slideAnim.setValue(target);
+      fadeAnim.setValue(target);
+      backdropAnim.setValue(target);
+      return;
+    }
+
     if (visible) {
-      // Animate in
       Animated.parallel([
         Animated.spring(slideAnim, {
           toValue: 1,
@@ -53,7 +61,6 @@ export default function AnimatedModal({
         }),
       ]).start();
     } else {
-      // Animate out
       Animated.parallel([
         Animated.timing(slideAnim, {
           toValue: 0,
@@ -72,7 +79,7 @@ export default function AnimatedModal({
         }),
       ]).start();
     }
-  }, [visible, slideAnim, fadeAnim, backdropAnim]);
+  }, [visible, slideAnim, fadeAnim, backdropAnim, reducedMotion]);
 
   const translateY = slideAnim.interpolate({
     inputRange: [0, 1],

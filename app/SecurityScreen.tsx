@@ -1,7 +1,8 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import { Colors, BorderRadius } from '@/lib/designSystem';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, ChevronRight, Check, Key, Lightbulb, Mail, Phone, Shield, Wallet } from 'lucide-react-native';
+import { ChevronRight, Check, Key, Lightbulb, Mail, Phone, Shield, Wallet } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { ScrollView, Switch, Text, TouchableOpacity, View } from 'react-native';
 
@@ -80,43 +81,7 @@ export default function SecurityScreen() {
   return (
     <SafeAreaWrapper backgroundColor={Colors.white}>
       <View style={{ flex: 1 }}>
-        {/* Header */}
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            paddingHorizontal: 20,
-            paddingTop: 16,
-            paddingBottom: 12,
-            backgroundColor: Colors.white,
-          }}
-        >
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={{
-              width: 40,
-              height: 40,
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginRight: 12,
-            }}
-            activeOpacity={0.7}
-          >
-            <ArrowLeft size={24} color={Colors.textPrimary} />
-          </TouchableOpacity>
-          <Text
-            style={{
-              fontSize: 20,
-              fontFamily: 'Poppins-Bold',
-              color: Colors.textPrimary,
-              flex: 1,
-            }}
-          >
-            Account Security
-          </Text>
-          <View style={{ width: 40 }} />
-        </View>
-
+        <ScreenHeader title="Account Security" onBack={() => router.back()} backgroundColor={Colors.white} />
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{
@@ -185,7 +150,7 @@ export default function SecurityScreen() {
                   <Switch
                     value={option.toggleValue}
                     onValueChange={option.onToggleChange}
-                    trackColor={{ false: '#E5E7EB', true: Colors.accent }}
+                    trackColor={{ false: Colors.border, true: Colors.accent }}
                     thumbColor={Colors.white}
                   />
                 ) : (

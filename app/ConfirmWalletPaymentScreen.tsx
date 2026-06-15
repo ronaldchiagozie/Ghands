@@ -1,5 +1,6 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import Toast from '@/components/Toast';
+import { WalletPinInput } from '@/components/WalletPinInput';
 import { haptics } from '@/hooks/useHaptics';
 import { useToast } from '@/hooks/useToast';
 import { BorderRadius, Colors } from '@/lib/designSystem';
@@ -13,17 +14,18 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
+  Dimensions,
   Keyboard,
-  KeyboardAvoidingView,
+  type KeyboardEvent,
   Modal,
   Platform,
   Pressable,
   ScrollView,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type PaymentStep = 'processing' | 'verifying' | 'completing' | 'success';
 
@@ -38,19 +40,20 @@ export default function ConfirmWalletPaymentScreen() {
     paymentType?: 'service' | 'logistics_fee';
   }>();
   const { toast, showError, showSuccess, hideToast } = useToast();
+  const insets = useSafeAreaInsets();
 
   const [balance, setBalance] = useState<number>(0);
   const [isLoadingBalance, setIsLoadingBalance] = useState(true);
   const [showPinModal, setShowPinModal] = useState(false);
   const [showProcessingModal, setShowProcessingModal] = useState(false);
   const [paymentStep, setPaymentStep] = useState<PaymentStep>('processing');
-  const [pin, setPin] = useState(['', '', '', '']);
+  const [pin, setPin] = useState('');
+  const [keyboardInset, setKeyboardInset] = useState(0);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState<{
     message: string;
     isInsufficientBalance: boolean;
   } | null>(null);
-  const pinInputRefs = useRef<TextInput[]>([]);
   const spinAnim = useRef(new Animated.Value(0)).current;
 
   const amount = params.amount ? parseFloat(params.amount) : 0;
@@ -80,28 +83,30 @@ export default function ConfirmWalletPaymentScreen() {
     }, [loadBalance])
   );
 
+  useEffect(() => {
+    if (!showPinModal) {
+      setKeyboardInset(0);
+      return;
+    }
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const onShow = (event: KeyboardEvent) => {
+      const windowHeight = Dimensions.get('window').height;
+      setKeyboardInset(Math.max(0, windowHeight - event.endCoordinates.screenY));
+    };
+    const onHide = () => setKeyboardInset(0);
+    const showSub = Keyboard.addListener(showEvent, onShow);
+    const hideSub = Keyboard.addListener(hideEvent, onHide);
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [showPinModal]);
+
   const handlePayNow = () => {
     setPaymentError(null);
+    setPin('');
     setShowPinModal(true);
-    setPin(['', '', '', '']);
-    setTimeout(() => pinInputRefs.current[0]?.focus(), 300);
-  };
-
-  const handlePinChange = (value: string, index: number) => {
-    const numericValue = value.replace(/[^0-9]/g, '');
-    if (numericValue.length <= 1) {
-      const newPin = [...pin];
-      newPin[index] = numericValue;
-      setPin(newPin);
-      if (numericValue && index < 3) pinInputRefs.current[index + 1]?.focus();
-      if (index === 3 && numericValue) handleProcessPayment(newPin.join(''));
-    }
-  };
-
-  const handlePinKeyPress = (key: string, index: number) => {
-    if (key === 'Backspace' && !pin[index] && index > 0) {
-      pinInputRefs.current[index - 1]?.focus();
-    }
   };
 
   const handleProcessPayment = async (pinValue: string) => {
@@ -152,7 +157,7 @@ export default function ConfirmWalletPaymentScreen() {
       console.error('Error processing payment:', error);
       setShowProcessingModal(false);
       setShowPinModal(false);
-      setPin(['', '', '', '']);
+      setPin('');
 
       const errorMessage = error?.message || error?.details?.data?.error || '';
       const isAlreadyPaid = /already paid|already been paid|service request already paid/i.test(errorMessage);
@@ -177,7 +182,7 @@ export default function ConfirmWalletPaymentScreen() {
         haptics.error();
         setIsProcessingPayment(false);
         setShowProcessingModal(false);
-        setPin(['', '', '', '']);
+        setPin('');
         setShowPinModal(true);
         const notSet = /pin not set|no pin|not been set|set up|create.*pin|must set/i.test(errorMessage);
         showError(
@@ -185,7 +190,6 @@ export default function ConfirmWalletPaymentScreen() {
             ? 'Wallet PIN required. Create one below, then come back to pay—or try again if you already have a PIN.'
             : 'That PIN is incorrect. Try again, or create a new PIN below.'
         );
-        setTimeout(() => pinInputRefs.current[0]?.focus(), 350);
         return;
       }
 
@@ -207,7 +211,7 @@ export default function ConfirmWalletPaymentScreen() {
   const handleCancelPin = () => {
     Keyboard.dismiss();
     setShowPinModal(false);
-    setPin(['', '', '', '']);
+    setPin('');
     setPaymentError(null);
   };
 
@@ -232,7 +236,7 @@ export default function ConfirmWalletPaymentScreen() {
   const goToCreateOrChangePin = () => {
     haptics.light();
     setShowPinModal(false);
-    setPin(['', '', '', '']);
+    setPin('');
     router.push({
       pathname: '/CreatePINScreen' as any,
       params: {
@@ -297,7 +301,7 @@ export default function ConfirmWalletPaymentScreen() {
             style={{
               backgroundColor: paymentError.isInsufficientBalance ? '#FEF2F2' : '#FFF4E6',
               borderLeftWidth: 4,
-              borderLeftColor: paymentError.isInsufficientBalance ? Colors.error : '#F59E0B',
+              borderLeftColor: paymentError.isInsufficientBalance ? Colors.error : Colors.warning,
               borderRadius: BorderRadius.md,
               padding: 16,
               marginTop: 16,
@@ -492,7 +496,7 @@ export default function ConfirmWalletPaymentScreen() {
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 }}>
           <View style={{ backgroundColor: Colors.white, borderRadius: BorderRadius.default, padding: 32, alignItems: 'center', minWidth: 300, borderWidth: 1, borderColor: Colors.border }}>
             {paymentStep === 'success' ? (
-              <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(79, 103, 57, 0.14)', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+              <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: Colors.successLight, alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
                 <CheckCircle size={48} color={Colors.accent} />
               </View>
             ) : (
@@ -506,155 +510,114 @@ export default function ConfirmWalletPaymentScreen() {
         </View>
       </Modal>
 
-      {/* PIN Modal — centered so keyboard does not cover inputs */}
+      {/* PIN Modal — bottom sheet with stable cells (no layout jump) */}
       <Modal
         visible={showPinModal}
         transparent
-        animationType="fade"
+        animationType="slide"
         onRequestClose={handleCancelPin}
         statusBarTranslucent
       >
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0}
-        >
-          <Pressable
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' }}>
+          <Pressable style={{ flex: 1 }} onPress={handleCancelPin} />
+          <View
             style={{
-              flex: 1,
-              backgroundColor: 'rgba(0,0,0,0.55)',
-              justifyContent: 'center',
-              paddingHorizontal: 24,
-              paddingVertical: 32,
+              backgroundColor: Colors.white,
+              borderTopLeftRadius: BorderRadius.xl,
+              borderTopRightRadius: BorderRadius.xl,
+              paddingTop: 24,
+              paddingHorizontal: 20,
+              paddingBottom: keyboardInset > 0 ? keyboardInset + 12 : Math.max(insets.bottom, 24),
+              borderWidth: 1,
+              borderColor: Colors.border,
             }}
-            onPress={handleCancelPin}
           >
-            <Pressable
-              onPress={(e) => e.stopPropagation()}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                <View
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 22,
+                    backgroundColor: Colors.successLight,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginRight: 12,
+                  }}
+                >
+                  <Lock size={22} color={Colors.accent} />
+                </View>
+                <Text style={{ fontSize: 18, fontFamily: 'Poppins-Bold', color: Colors.textPrimary, flex: 1 }}>
+                  Enter Wallet PIN
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={handleCancelPin}
+                style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center' }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <X size={20} color={Colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            <Text
               style={{
-                backgroundColor: Colors.white,
-                borderRadius: BorderRadius.default,
-                paddingTop: 24,
-                paddingBottom: 28,
-                paddingHorizontal: 20,
-                width: '100%',
-                maxWidth: 400,
-                alignSelf: 'center',
-                borderWidth: 1,
-                borderColor: Colors.border,
+                fontSize: 13,
+                fontFamily: 'Poppins-Regular',
+                color: Colors.textSecondaryDark,
+                marginBottom: 20,
+                textAlign: 'center',
+                lineHeight: 20,
               }}
             >
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                  <View
-                    style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: 22,
-                      backgroundColor: Colors.successLight,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginRight: 12,
-                    }}
-                  >
-                    <Lock size={22} color={Colors.accent} />
-                  </View>
-                  <Text style={{ fontSize: 18, fontFamily: 'Poppins-Bold', color: Colors.textPrimary, flex: 1 }}>
-                    Enter Wallet PIN
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  onPress={handleCancelPin}
-                  style={{ width: 32, height: 32, alignItems: 'center', justifyContent: 'center' }}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <X size={20} color={Colors.textPrimary} />
-                </TouchableOpacity>
-              </View>
+              Enter your 4-digit wallet PIN to authorize this payment.
+            </Text>
 
-              <Text
-                style={{
-                  fontSize: 13,
-                  fontFamily: 'Poppins-Regular',
-                  color: Colors.textSecondaryDark,
-                  marginBottom: 20,
-                  textAlign: 'center',
-                  lineHeight: 20,
-                }}
-              >
-                Enter your 4-digit wallet PIN to authorize this payment.
+            <View
+              style={{
+                backgroundColor: Colors.backgroundGray,
+                borderRadius: BorderRadius.default,
+                padding: 14,
+                marginBottom: 22,
+                alignItems: 'center',
+              }}
+            >
+              <Text style={{ fontSize: 12, fontFamily: 'Poppins-Regular', color: Colors.textSecondaryDark, marginBottom: 4 }}>
+                Payment Amount
               </Text>
+              <Text style={{ fontSize: 20, fontFamily: 'Poppins-Bold', color: Colors.textPrimary }}>
+                ₦{amount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </Text>
+            </View>
 
-              <View
-                style={{
-                  backgroundColor: Colors.backgroundGray,
-                  borderRadius: BorderRadius.default,
-                  padding: 14,
-                  marginBottom: 22,
-                  alignItems: 'center',
-                }}
-              >
-                <Text style={{ fontSize: 12, fontFamily: 'Poppins-Regular', color: Colors.textSecondaryDark, marginBottom: 4 }}>
-                  Payment Amount
-                </Text>
-                <Text style={{ fontSize: 20, fontFamily: 'Poppins-Bold', color: Colors.textPrimary }}>
-                  ₦{amount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <WalletPinInput
+              value={pin}
+              onChange={setPin}
+              onComplete={handleProcessPayment}
+              disabled={isProcessingPayment}
+              autoFocus={showPinModal}
+            />
+
+            <TouchableOpacity
+              onPress={goToCreateOrChangePin}
+              activeOpacity={0.7}
+              style={{ marginTop: 20, marginBottom: 8, alignSelf: 'center', paddingVertical: 6 }}
+            >
+              <Text style={{ fontSize: 14, fontFamily: 'Poppins-SemiBold', color: Colors.accent, textDecorationLine: 'underline' }}>
+                Forgot PIN? Create or change wallet PIN
+              </Text>
+            </TouchableOpacity>
+
+            {isProcessingPayment ? (
+              <View style={{ alignItems: 'center', marginTop: 12 }}>
+                <ActivityIndicator size="small" color={Colors.accent} />
+                <Text style={{ fontSize: 12, fontFamily: 'Poppins-Regular', color: Colors.textSecondaryDark, marginTop: 8 }}>
+                  Processing payment...
                 </Text>
               </View>
-
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 18, gap: 10 }}>
-                {[0, 1, 2, 3].map((index) => (
-                  <TextInput
-                    key={index}
-                    ref={(ref) => {
-                      if (ref) pinInputRefs.current[index] = ref;
-                    }}
-                    value={pin[index]}
-                    onChangeText={(v) => handlePinChange(v, index)}
-                    onKeyPress={({ nativeEvent }) => handlePinKeyPress(nativeEvent.key, index)}
-                    keyboardType="number-pad"
-                    maxLength={1}
-                    secureTextEntry
-                    style={{
-                      flex: 1,
-                      height: 56,
-                      borderWidth: 2,
-                      borderColor: pin[index] ? Colors.accent : Colors.border,
-                      borderRadius: BorderRadius.default,
-                      textAlign: 'center',
-                      fontSize: 24,
-                      fontFamily: 'Poppins-Bold',
-                      color: Colors.textPrimary,
-                      backgroundColor: Colors.white,
-                    }}
-                    textContentType="oneTimeCode"
-                    autoComplete={Platform.OS === 'android' ? 'sms-otp' : 'one-time-code'}
-                    importantForAutofill="no"
-                  />
-                ))}
-              </View>
-
-              <TouchableOpacity
-                onPress={goToCreateOrChangePin}
-                activeOpacity={0.7}
-                style={{ marginBottom: 8, alignSelf: 'center', paddingVertical: 6 }}
-              >
-                <Text style={{ fontSize: 14, fontFamily: 'Poppins-SemiBold', color: Colors.accent, textDecorationLine: 'underline' }}>
-                  Forgot PIN? Create or change wallet PIN
-                </Text>
-              </TouchableOpacity>
-
-              {isProcessingPayment ? (
-                <View style={{ alignItems: 'center', marginTop: 12 }}>
-                  <ActivityIndicator size="small" color={Colors.accent} />
-                  <Text style={{ fontSize: 12, fontFamily: 'Poppins-Regular', color: Colors.textSecondaryDark, marginTop: 8 }}>
-                    Processing payment...
-                  </Text>
-                </View>
-              ) : null}
-            </Pressable>
-          </Pressable>
-        </KeyboardAvoidingView>
+            ) : null}
+          </View>
+        </View>
       </Modal>
 
       <Toast message={toast.message} type={toast.type} visible={toast.visible} onClose={hideToast} />

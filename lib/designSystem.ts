@@ -9,6 +9,18 @@ export { SURFACE_STYLES } from './surfaceStyles';
 
 export const Colors = DESIGN_TOKENS.colors;
 
+/** Minimum tappable area per Apple HIG / Material (44×44pt). */
+export const MIN_TOUCH_TARGET = 44;
+
+/** Expands a smaller visual control to meet MIN_TOUCH_TARGET without changing layout. */
+export const TOUCH_HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 } as const;
+
+/**
+ * GHands ships light mode only — sage-on-warm-light is the brand contract.
+ * Dark tokens are not defined; `userInterfaceStyle` is locked to light in app.config.js.
+ */
+export const APP_COLOR_SCHEME = 'light' as const;
+
 /** Tablet “phone lane” constants and hooks (single import surface with theme). */
 export {
   TABLET_MIN_SHORT_EDGE,
@@ -153,6 +165,18 @@ export const ANIMATION_DURATION = {
   normal: 300,
   slow: 500,
 } as const;
+
+export { useReducedMotion } from '../hooks/useReducedMotion';
+export { JOB_STATUS_BADGE } from './statusBadges';
+export type { JobStatusBadgeKey } from './statusBadges';
+export {
+  MOTION_EASING,
+  motionDuration,
+  runParallel,
+  runSpring,
+  runTiming,
+  setAnimatedValue,
+} from './motion';
 
 /**
  * Helper function to get consistent spacing

@@ -4,7 +4,7 @@ import React, { useMemo, useState } from 'react';
 import { Image, Text, TouchableOpacity, View } from 'react-native';
 
 import { haptics } from '@/hooks/useHaptics';
-import { Colors, BorderRadius } from '@/lib/designSystem';
+import { Colors } from '@/lib/designSystem';
 import type { QuotationWithProvider, ServiceRequest } from '@/services/api';
 
 type TimelineHeaderData = {
@@ -20,6 +20,7 @@ type TimelineHeaderData = {
   acceptedQuotation?: any;
   // Visit logistics (inspection fee) UI
   showVisitPayButton?: boolean;
+  showDeclineVisitButton?: boolean;
   visitLogisticsCost?: number;
   onVisitPay?: () => void;
   onVisitDecline?: () => void;
@@ -61,7 +62,7 @@ const TimelineStatusCardComponent = ({
   onViewQuotations,
 }: TimelineStatusCardProps) => {
   const router = useRouter();
-  const [detailsExpanded, setDetailsExpanded] = useState(false);
+  const [detailsExpanded, setDetailsExpanded] = useState(() => Boolean(header.subtitle));
 
   const { isQuotationReceived, isQuotationPending } = useMemo(() => {
     const qList = Array.isArray(quotations) ? quotations : [];
@@ -86,8 +87,8 @@ const TimelineStatusCardComponent = ({
   }
 
   const provider = (header as any).provider;
-  const pillBg = (header as any).pillBg ?? (provider ? '#FEF9C3' : '#F3F4F6');
-  const pillText = (header as any).pillText ?? (provider ? '#92400E' : '#6B7280');
+  const pillBg = (header as any).pillBg ?? (provider ? Colors.statusPendingAltBg : Colors.backgroundGray);
+  const pillText = (header as any).pillText ?? (provider ? Colors.warningForeground : Colors.iconMuted);
   const statusPill =
     (header as any).statusPill ?? (provider ? 'Provider accepted' : 'Pending');
   const rawProviderName = String(provider?.name || '').trim();
@@ -159,7 +160,7 @@ const TimelineStatusCardComponent = ({
         borderRadius: 18,
         backgroundColor: '#FFFFFF',
         borderWidth: 1,
-        borderColor: '#E5E7EB',
+        borderColor: Colors.border,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0,
@@ -205,7 +206,7 @@ const TimelineStatusCardComponent = ({
               </View>
             </TouchableOpacity>
             <TouchableOpacity activeOpacity={0.85} onPress={handlePressChat}>
-              <Ionicons name="chatbubble-ellipses-outline" size={20} color="#6B7280" />
+              <Ionicons name="chatbubble-ellipses-outline" size={20} color={Colors.iconMuted} />
             </TouchableOpacity>
             <View
               style={{
@@ -236,7 +237,7 @@ const TimelineStatusCardComponent = ({
                 borderRadius: 24,
                 marginRight: 12,
                 overflow: 'hidden',
-                backgroundColor: '#E5E7EB',
+                backgroundColor: Colors.border,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
@@ -345,7 +346,7 @@ const TimelineStatusCardComponent = ({
                   style={{
                     fontSize: 11,
                     fontFamily: 'Poppins-SemiBold',
-                    color: '#6B7280',
+                    color: Colors.iconMuted,
                   }}
                 >
                   Details
@@ -353,7 +354,7 @@ const TimelineStatusCardComponent = ({
                 <Ionicons
                   name={detailsExpanded ? 'chevron-up' : 'chevron-down'}
                   size={14}
-                  color="#6B7280"
+                  color={Colors.iconMuted}
                 />
               </View>
             </TouchableOpacity>
@@ -375,7 +376,7 @@ const TimelineStatusCardComponent = ({
                 style={{
                   fontSize: 11,
                   fontFamily: 'Poppins-Regular',
-                  color: '#6B7280',
+                  color: Colors.iconMuted,
                   marginTop: 7,
                 }}
               >
@@ -411,7 +412,7 @@ const TimelineStatusCardComponent = ({
             </View>
           ) : null}
 
-          {(header as any).showVisitPayButton && hasVisitFee && (
+          {(header as any).showVisitPayButton && hasVisitFee ? (
             <View style={{ marginTop: 12 }}>
               <TouchableOpacity
                 activeOpacity={0.85}
@@ -440,72 +441,36 @@ const TimelineStatusCardComponent = ({
                   })}
                 </Text>
               </TouchableOpacity>
+            </View>
+          ) : null}
 
-              {(header as any).onVisitDecline ? (
-                <TouchableOpacity
-                  activeOpacity={0.85}
-                  onPress={() => (header as any).onVisitDecline?.()}
+          {(header as any).showDeclineVisitButton && (header as any).onVisitDecline ? (
+            <View style={{ marginTop: (header as any).showVisitPayButton && hasVisitFee ? 10 : 12 }}>
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => (header as any).onVisitDecline?.()}
+                style={{
+                  paddingVertical: 11,
+                  paddingHorizontal: 14,
+                  borderRadius: 12,
+                  alignSelf: 'stretch',
+                  backgroundColor: Colors.error,
+                }}
+              >
+                <Text
                   style={{
-                    marginTop: 10,
-                    paddingVertical: 8,
-                    alignSelf: 'center',
-                    paddingHorizontal: 14,
-                    borderRadius: 10,
-                    borderWidth: 1,
-                    borderColor: Colors.border,
-                    backgroundColor: Colors.white,
+                    fontSize: 13,
+                    lineHeight: 18,
+                    fontFamily: 'Poppins-SemiBold',
+                    color: Colors.white,
+                    textAlign: 'center',
                   }}
                 >
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      fontFamily: 'Poppins-SemiBold',
-                      color: Colors.textSecondaryDark,
-                      textAlign: 'center',
-                    }}
-                  >
-                    Decline visit
-                  </Text>
-                </TouchableOpacity>
-              ) : null}
+                  Decline visit
+                </Text>
+              </TouchableOpacity>
             </View>
-          )}
-
-          {(header as any).showVisitPayButton && !hasVisitFee && (
-            <View
-              style={{
-                marginTop: 12,
-                borderRadius: BorderRadius.default,
-                borderWidth: 1,
-                borderColor: 'rgba(79, 103, 57, 0.2)',
-                backgroundColor: '#F2F8EA',
-                paddingHorizontal: 12,
-                paddingVertical: 10,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 12,
-                  lineHeight: 18,
-                  fontFamily: 'Poppins-SemiBold',
-                  color: Colors.accent,
-                }}
-              >
-                Visit fee coming soon
-              </Text>
-              <Text
-                style={{
-                  marginTop: 4,
-                  fontSize: 11,
-                  lineHeight: 16,
-                  fontFamily: 'Poppins-Regular',
-                  color: Colors.textSecondaryDark,
-                }}
-              >
-                Your provider scheduled a visit. The inspection fee will appear here shortly — swipe down to refresh if you don&apos;t see it yet.
-              </Text>
-            </View>
-          )}
+          ) : null}
 
           {(header as any).showPayButton && (header as any).payAmount > 0 && (
             <TouchableOpacity

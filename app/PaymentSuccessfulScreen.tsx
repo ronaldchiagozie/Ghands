@@ -1,7 +1,8 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import { BorderRadius, Colors } from '@/lib/designSystem';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, ArrowRight, CheckCircle, Download, Lock, Share2, User } from 'lucide-react-native';
+import { ArrowRight, CheckCircle, Download, Lock, Share2, User } from 'lucide-react-native';
 import { exitPaymentToJob, navigateBack, NAV_FALLBACK } from '@/utils/navigation';
 import React, { useState, useEffect, useCallback } from 'react';
 import { ScrollView, Text, TouchableOpacity, View, Share, Alert, Image, ActivityIndicator } from 'react-native';
@@ -246,7 +247,7 @@ export default function PaymentSuccessfulScreen() {
               width: 72,
               height: 72,
               borderRadius: 36,
-              backgroundColor: '#F2F8EA',
+              backgroundColor: Colors.sageTint,
               alignItems: 'center',
               justifyContent: 'center',
               marginBottom: 18,
@@ -267,31 +268,7 @@ export default function PaymentSuccessfulScreen() {
 
   return (
     <SafeAreaWrapper backgroundColor={Colors.backgroundLight}>
-      {/* Header */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          paddingHorizontal: 20,
-          paddingTop: 16,
-          paddingBottom: 16,
-        }}
-      >
-        <TouchableOpacity
-          onPress={handleExit}
-          style={{
-            width: 40,
-            height: 40,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginRight: 12,
-          }}
-          activeOpacity={0.7}
-        >
-          <ArrowLeft size={24} color={Colors.textPrimary} />
-        </TouchableOpacity>
-        <View style={{ flex: 1 }} />
-      </View>
+      <ScreenHeader title="" onBack={handleExit} backgroundColor={Colors.backgroundLight} />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -360,7 +337,7 @@ export default function PaymentSuccessfulScreen() {
                 width: 64,
                 height: 64,
                 borderRadius: 32,
-                backgroundColor: '#F2F8EA',
+                backgroundColor: Colors.sageTint,
                 alignItems: 'center',
                 justifyContent: 'center',
                 marginBottom: 16,

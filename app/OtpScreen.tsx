@@ -186,7 +186,7 @@ export default function OtpScreen() {
                 style={{
                   fontFamily: 'Poppins-Bold',
                 }}
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={Colors.placeholder}
                 selectTextOnFocus
                 autoFocus={index === 0}
               />

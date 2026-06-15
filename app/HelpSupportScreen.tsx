@@ -1,9 +1,11 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { HelpCircle, User } from 'lucide-react-native';
 import React from 'react';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Colors } from '@/lib/designSystem';
 
 const helpOptions = [
   {
@@ -38,16 +40,7 @@ export default function HelpSupportScreen() {
 
   return (
     <SafeAreaWrapper>
-      {/* Header */}
-      <View className="flex-row items-center px-4 py-3 border-b border-gray-100" style={{ paddingTop: 20 }}>
-        <TouchableOpacity onPress={() => router.back()} activeOpacity={0.85}>
-          <Ionicons name="arrow-back" size={24} color="#000000" />
-        </TouchableOpacity>
-        <Text className="text-xl font-bold text-black flex-1 text-center" style={{ fontFamily: 'Poppins-Bold' }}>
-          Help & Support
-        </Text>
-        <View style={{ width: 24 }} />
-      </View>
+      <ScreenHeader title="Help & Support" onBack={() => router.back()} />
 
       {/* Content */}
       <ScrollView showsVerticalScrollIndicator={false} className="flex-1">

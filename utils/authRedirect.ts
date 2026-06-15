@@ -1,17 +1,19 @@
 import { isRoleSwitchInProgress } from '@/hooks/useRoleSwitching';
-import { redirectToAuthScreen } from '@/utils/authNavigationGuard';
+import { isInAuthTransition } from '@/utils/authNavigationGuard';
+import { expireAuthSession } from '@/utils/enforceAuthSession';
 
 /**
- * Auth failure (401 / expired JWT) → clear tokens and send user to their role login screen.
+ * Auth failure (401 / expired JWT) — clears session once; root layout listener performs navigation.
  */
 export async function handleAuthErrorRedirect(
-  router: { replace: (href: any) => void },
-  pathname?: string | null
+  _router?: { replace: (href: any) => void },
+  _pathname?: string | null
 ): Promise<void> {
   try {
     if (await isRoleSwitchInProgress()) return;
-    await redirectToAuthScreen(router, { pathname, clearSession: true });
+    if (isInAuthTransition()) return;
+    await expireAuthSession();
   } catch {
-    /* redirectToAuthScreen already falls back */
+    /* expireAuthSession is coalesced; navigation handled by session-expired listener */
   }
 }

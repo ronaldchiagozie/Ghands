@@ -4,6 +4,7 @@ import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { SURFACE_STYLES } from '@/lib/surfaceStyles';
 import { Colors } from '@/lib/designSystem';
+import { JOB_STATUS_BADGE } from '@/lib/statusBadges';
 
 export type JobActivityStatus = 'Completed' | 'In Progress' | 'Pending' | 'Rejected';
 
@@ -19,20 +20,20 @@ export type JobActivity = {
 
 const jobStatusTheme: Record<JobActivityStatus, { badgeBg: string; badgeText: string }> = {
   Completed: {
-    badgeBg: 'rgba(79, 103, 57, 0.14)',
-    badgeText: '#2A3B1F',
+    badgeBg: JOB_STATUS_BADGE.completed.bg,
+    badgeText: JOB_STATUS_BADGE.completed.text,
   },
   'In Progress': {
-    badgeBg: '#E4ECFF',
-    badgeText: '#2750B8'
+    badgeBg: JOB_STATUS_BADGE.inProgress.bg,
+    badgeText: JOB_STATUS_BADGE.inProgress.text,
   },
   Pending: {
-    badgeBg: '#FFF4E0',
-    badgeText: '#9E6B1F'
+    badgeBg: JOB_STATUS_BADGE.pending.bg,
+    badgeText: JOB_STATUS_BADGE.pending.text,
   },
   Rejected: {
-    badgeBg: '#FEE2E2',
-    badgeText: '#991B1B',
+    badgeBg: JOB_STATUS_BADGE.rejected.bg,
+    badgeText: JOB_STATUS_BADGE.rejected.text,
   },
 };
 
@@ -75,7 +76,7 @@ const JobActivityCardComponent = ({ activity }: JobActivityCardProps) => {
         <View className="flex-row items-center flex-1 pr-3">
           <View
             className="w-9 h-9 rounded-full items-center justify-center mr-3"
-            style={{ backgroundColor: 'rgba(79, 103, 57, 0.1)' }}
+            style={{ backgroundColor: Colors.successLight }}
           >
             <Ionicons name="construct" size={17} color={Colors.accent} />
           </View>

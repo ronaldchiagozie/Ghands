@@ -10,6 +10,40 @@ export const providerHomeSurface = {
 
 export const providerHomeSurfacePadding = 14;
 
+export const providerStackGapMd = 12;
+
+/** Unified job-details panel — flat border, no shadow (provider job updates tab). */
+export const providerJobDetailsPanel = {
+  backgroundColor: '#FFFFFF',
+  borderRadius: 12,
+  borderWidth: 1,
+  borderColor: '#E5E7EB',
+  marginBottom: 16,
+  overflow: 'hidden' as const,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 0 },
+  shadowOpacity: 0,
+  shadowRadius: 0,
+  elevation: 0,
+};
+
+export const providerPanelDivider = {
+  height: 1,
+  backgroundColor: '#E5E7EB',
+  width: '100%' as const,
+};
+
+export const providerHeaderActionButton = {
+  width: 44,
+  height: 44,
+  borderRadius: 12,
+  backgroundColor: '#F3F4F6',
+  borderWidth: 1,
+  borderColor: '#E5E7EB',
+  alignItems: 'center' as const,
+  justifyContent: 'center' as const,
+};
+
 /** List cards — border only, no shadow/elevation. */
 export const providerListCard = {
   ...providerHomeSurface,

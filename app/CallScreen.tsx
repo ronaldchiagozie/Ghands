@@ -93,8 +93,8 @@ export default function CallScreen() {
     callState === 'active'
       ? '#047857'
       : callState === 'ended' || callSetupError
-        ? '#DC2626'
-        : '#92400E';
+        ? Colors.error
+        : Colors.warningForeground;
   const statusBg =
     callState === 'active'
       ? '#ECFDF3'
@@ -327,7 +327,7 @@ export default function CallScreen() {
         </Text>
         <View
           style={{
-            backgroundColor: '#FEF9C3',
+            backgroundColor: Colors.statusPendingAltBg,
             paddingHorizontal: Spacing.sm + 2,
             paddingVertical: 4,
             borderRadius: 999,
@@ -338,7 +338,7 @@ export default function CallScreen() {
             style={{
               fontSize: 11,
               fontFamily: 'Poppins-SemiBold',
-              color: '#92400E',
+              color: Colors.warningForeground,
             }}
           >
             {jobDetails.status}
@@ -565,7 +565,7 @@ export default function CallScreen() {
               style={{
                 fontSize: 14,
                 fontFamily: 'Poppins-Regular',
-                color: callSetupError ? '#DC2626' : Colors.textSecondaryDark,
+                color: callSetupError ? Colors.error : Colors.textSecondaryDark,
                 marginTop: Spacing.md,
                 textAlign: 'center',
                 lineHeight: 20,
@@ -584,7 +584,7 @@ export default function CallScreen() {
               style={{
                 fontSize: 12,
                 fontFamily: 'Poppins-Regular',
-                color: voice.error ? '#DC2626' : '#6B7280',
+                color: voice.error ? Colors.error : Colors.iconMuted,
                 marginTop: Spacing.sm,
                 paddingHorizontal: Spacing.lg,
                 textAlign: 'center',
@@ -637,7 +637,7 @@ export default function CallScreen() {
                 width: 68,
                 height: 68,
                 borderRadius: 34,
-                backgroundColor: '#EF4444',
+                backgroundColor: Colors.errorBright,
                 alignItems: 'center',
                 justifyContent: 'center',
                 ...SHADOWS.md,
@@ -681,7 +681,7 @@ export default function CallScreen() {
                 width: 70,
                 height: 70,
                 borderRadius: 35,
-                backgroundColor: '#EF4444',
+                backgroundColor: Colors.errorBright,
                 alignItems: 'center',
                 justifyContent: 'center',
                 opacity: isCreatingCall ? 0.6 : 1,
@@ -757,7 +757,7 @@ export default function CallScreen() {
                 width: 70,
                 height: 70,
                 borderRadius: 35,
-                backgroundColor: '#EF4444',
+                backgroundColor: Colors.errorBright,
                 alignItems: 'center',
                 justifyContent: 'center',
                 ...SHADOWS.md,
@@ -773,7 +773,7 @@ export default function CallScreen() {
                 width: 60,
                 height: 60,
                 borderRadius: 30,
-                backgroundColor: isSpeakerOn ? '#F2F8EA' : Colors.white,
+                backgroundColor: isSpeakerOn ? Colors.sageTint : Colors.white,
                 borderWidth: 1,
                 borderColor: isSpeakerOn ? 'rgba(79, 103, 57, 0.16)' : 'rgba(17, 24, 39, 0.08)',
                 alignItems: 'center',

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Text, View } from 'react-native';
 import { DESIGN_TOKENS } from '../lib/assets';
+import { runTiming, useReducedMotion } from '../lib/designSystem';
 
 interface AnimatedIconProps {
   icon: 'location' | 'tracking' | 'booking';
@@ -23,10 +24,10 @@ export default function AnimatedIcon({
 }: AnimatedIconProps) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
-    if (animate) {
-      // Simple pulse animation
+    if (animate && !reducedMotion) {
       const pulseAnimation = () => {
         Animated.sequence([
           Animated.timing(scaleAnim, {
@@ -41,17 +42,18 @@ export default function AnimatedIcon({
           }),
         ]).start(() => pulseAnimation());
       };
-      
+
       pulseAnimation();
+    } else {
+      scaleAnim.setValue(1);
     }
-    
-    // Fade in animation
-    Animated.timing(opacityAnim, {
+
+    runTiming(reducedMotion, opacityAnim, {
       toValue: 1,
       duration: 500,
       useNativeDriver: true,
-    }).start();
-  }, [animate, scaleAnim, opacityAnim]);
+    });
+  }, [animate, scaleAnim, opacityAnim, reducedMotion]);
 
   return (
     <View style={{ alignItems: 'center', justifyContent: 'center' }}>

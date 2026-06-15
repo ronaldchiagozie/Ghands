@@ -1,7 +1,8 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
-import { BorderRadius, Colors, Spacing } from '@/lib/designSystem';
+import { ScreenHeader } from '@/components/ScreenHeader';
+import { BorderRadius, Colors, Spacing, MIN_TOUCH_TARGET} from '@/lib/designSystem';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Upload, X, AlertCircle } from 'lucide-react-native';
+import { Upload, X, AlertCircle } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
   ScrollView,
@@ -149,43 +150,7 @@ export default function ReportIssueScreen() {
   return (
     <SafeAreaWrapper backgroundColor={Colors.white}>
       <View style={{ flex: 1 }}>
-        {/* Header */}
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            paddingHorizontal: 20,
-            paddingTop: 12,
-            paddingBottom: 10,
-            borderBottomWidth: 1,
-            borderBottomColor: Colors.border,
-          }}
-        >
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={{
-              width: 32,
-              height: 32,
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginRight: 12,
-            }}
-            activeOpacity={0.7}
-          >
-            <ArrowLeft size={20} color={Colors.textPrimary} />
-          </TouchableOpacity>
-          <Text
-            style={{
-              fontSize: 16,
-              fontFamily: 'Poppins-Bold',
-              color: Colors.textPrimary,
-              flex: 1,
-            }}
-          >
-            Report Issue
-          </Text>
-        </View>
-
+        <ScreenHeader title="Report Issue" onBack={() => router.back()} backgroundColor={Colors.white} />
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{
@@ -392,7 +357,7 @@ export default function ReportIssueScreen() {
             value={description}
             onChangeText={setDescription}
             placeholder="Please provide details about the issue..."
-            placeholderTextColor={Colors.textTertiary}
+            placeholderTextColor={Colors.placeholder}
             multiline
             numberOfLines={6}
             style={{
@@ -503,8 +468,8 @@ export default function ReportIssueScreen() {
               <TouchableOpacity
                 onPress={() => handleRemoveFile(index)}
                 style={{
-                  width: 32,
-                  height: 32,
+                  width: MIN_TOUCH_TARGET,
+height: MIN_TOUCH_TARGET,
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}

@@ -1,6 +1,6 @@
 import AnimatedModal from '@/components/AnimatedModal';
 import { Button } from '@/components/ui/Button';
-import { BorderRadius, Colors, Spacing } from '@/lib/designSystem';
+import { BorderRadius, Colors, Spacing, MIN_TOUCH_TARGET} from '@/lib/designSystem';
 import { useUserLocation } from '@/hooks/useUserLocation';
 import { useToast } from '@/hooks/useToast';
 import { locationService, authService, LocationSearchResult, UpdateLocationPayload } from '@/services/api';
@@ -240,7 +240,7 @@ export default function LocationSearchModal({ visible, onClose, onLocationSelect
               <View style={styles.searchInputContainer}>
                 <TextInput
                   placeholder="Search for location..."
-                  placeholderTextColor={Colors.textSecondaryDark}
+                  placeholderTextColor={Colors.placeholder}
                   value={searchQuery}
                   onChangeText={setSearchQuery}
                   onSubmitEditing={handleSave}
@@ -357,8 +357,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   closeButton: {
-    width: 32,
-    height: 32,
+    width: MIN_TOUCH_TARGET,
+height: MIN_TOUCH_TARGET,
     alignItems: 'center',
     justifyContent: 'center',
   },

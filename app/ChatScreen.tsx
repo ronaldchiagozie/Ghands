@@ -1,5 +1,5 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
-import { BorderRadius, Colors, Spacing, SHADOWS } from '@/lib/designSystem';
+import { BorderRadius, Colors, Spacing, SHADOWS, MIN_TOUCH_TARGET} from '@/lib/designSystem';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { ArrowLeft, AlertCircle, FileText, Image as ImageIcon, Mic, Phone, Send, User, MoreVertical, Check, CheckCheck } from 'lucide-react-native';
 import React, { useEffect, useRef, useState, useCallback } from 'react';
@@ -7,7 +7,9 @@ import {
   FlatList,
   Alert,
   Image,
-  KeyboardAvoidingView,
+  Keyboard,
+  type KeyboardEvent,
+  Dimensions,
   Modal,
   Platform,
   Pressable,
@@ -18,6 +20,7 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { haptics } from '@/hooks/useHaptics';
 import { useToast } from '@/hooks/useToast';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -125,6 +128,7 @@ interface UIMessage {
  */
 export default function ChatScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { showError, showSuccess } = useToast();
   const params = useLocalSearchParams<{ 
     providerName?: string; 
@@ -155,6 +159,8 @@ export default function ChatScreen() {
   /** When route has no providerId (e.g. opened from notification), filled from request details */
   const [resolvedProviderId, setResolvedProviderId] = useState<number | null>(null);
   const [chatMenuOpen, setChatMenuOpen] = useState(false);
+  const [keyboardInset, setKeyboardInset] = useState(0);
+  const [footerHeight, setFooterHeight] = useState(76);
 
   // Refs
   const flatListRef = useRef<FlatList>(null);
@@ -886,13 +892,43 @@ export default function ChatScreen() {
     }
   }, [messages.length]);
 
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const onShow = (event: KeyboardEvent) => {
+      const windowHeight = Dimensions.get('window').height;
+      const insetFromBottom = Math.max(0, windowHeight - event.endCoordinates.screenY);
+      setKeyboardInset(insetFromBottom);
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 50);
+    };
+    const onHide = () => setKeyboardInset(0);
+
+    const showSub = Keyboard.addListener(showEvent, onShow);
+    const hideSub = Keyboard.addListener(hideEvent, onHide);
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
   /**
    * Render a single message
    */
-  const renderMessage = ({ item }: { item: UIMessage }) => {
-    // Determine alignment: messages from current user go to the right, received messages go to the left
+  const renderMessage = ({ item, index }: { item: UIMessage; index: number }) => {
     const isFromCurrentUser = item.isFromCurrentUser ?? false;
     const isFromProvider = item.sender === 'provider';
+
+    const prev = index > 0 ? messages[index - 1] : null;
+    const next = index < messages.length - 1 ? messages[index + 1] : null;
+    const isSameCluster = (a: UIMessage, b: UIMessage) =>
+      a.isFromCurrentUser === b.isFromCurrentUser && a.sender === b.sender;
+    const groupedWithPrev = prev ? isSameCluster(prev, item) : false;
+    const groupedWithNext = next ? isSameCluster(item, next) : false;
+    const showAvatar = !isFromCurrentUser && !groupedWithNext;
+    const showMeta = !groupedWithNext;
     
     const getStatusIcon = () => {
       if (!isFromCurrentUser || !item.status) return null;
@@ -900,7 +936,7 @@ export default function ChatScreen() {
         case 'sending':
           return <ActivityIndicator size="small" color={Colors.textSecondaryDark} style={{ marginLeft: 4 }} />;
         case 'failed':
-          return <AlertCircle size={12} color="#DC2626" style={{ marginLeft: 4 }} />;
+          return <AlertCircle size={12} color={Colors.error} style={{ marginLeft: 4 }} />;
         case 'sent':
           return <Check size={12} color={Colors.textSecondaryDark} style={{ marginLeft: 4 }} />;
         case 'delivered':
@@ -912,37 +948,39 @@ export default function ChatScreen() {
       }
     };
     
-    // Standard chat layout: my messages right, received messages left.
     return (
       <View
         style={{
           flexDirection: 'row',
           alignItems: 'flex-end',
-          marginBottom: 10,
+          marginBottom: groupedWithNext ? 2 : 8,
           paddingHorizontal: 16,
           justifyContent: isFromCurrentUser ? 'flex-end' : 'flex-start',
         }}
       >
-        {!isFromCurrentUser && (
-          <View
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: 14,
-              overflow: 'hidden',
-              marginRight: 8,
-              marginBottom: 18,
-              borderWidth: 1,
-              borderColor: '#E5E7EB',
-            }}
-          >
-            <Image
-              source={isFromProvider ? require('../assets/images/plumbericon2.png') : require('../assets/images/userimg.jpg')}
-              style={{ width: 28, height: 28, borderRadius: 14 }}
-              resizeMode="cover"
-            />
-          </View>
-        )}
+        {!isFromCurrentUser ? (
+          showAvatar ? (
+            <View
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: 14,
+                overflow: 'hidden',
+                marginRight: 8,
+                borderWidth: 1,
+                borderColor: Colors.border,
+              }}
+            >
+              <Image
+                source={isFromProvider ? require('../assets/images/plumbericon2.png') : require('../assets/images/userimg.jpg')}
+                style={{ width: 28, height: 28, borderRadius: 14 }}
+                resizeMode="cover"
+              />
+            </View>
+          ) : (
+            <View style={{ width: 28, marginRight: 8 }} />
+          )
+        ) : null}
 
         <TouchableOpacity
           style={{
@@ -956,17 +994,19 @@ export default function ChatScreen() {
           <View
             style={{
               backgroundColor: isFromCurrentUser ? Colors.accent : Colors.white,
-              borderRadius: 20,
-              borderBottomRightRadius: isFromCurrentUser ? 6 : 20,
-              borderBottomLeftRadius: isFromCurrentUser ? 20 : 6,
-              paddingHorizontal: 15,
-              paddingVertical: 10,
+              borderRadius: 18,
+              borderTopLeftRadius: isFromCurrentUser ? 18 : groupedWithPrev ? 12 : 18,
+              borderTopRightRadius: isFromCurrentUser ? (groupedWithPrev ? 12 : 18) : 18,
+              borderBottomLeftRadius: isFromCurrentUser ? 18 : groupedWithNext ? 12 : 5,
+              borderBottomRightRadius: isFromCurrentUser ? (groupedWithNext ? 12 : 5) : 18,
+              paddingHorizontal: 14,
+              paddingVertical: 7,
               borderWidth: isFromCurrentUser ? 0 : 1,
               borderColor: 'rgba(17, 24, 39, 0.045)',
-              shadowColor: '#111827',
-              shadowOffset: { width: 0, height: 3 },
-              shadowOpacity: isFromCurrentUser ? 0.06 : 0.04,
-              shadowRadius: 8,
+              shadowColor: Colors.surfaceDark,
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: isFromCurrentUser ? 0.05 : 0.03,
+              shadowRadius: 5,
               elevation: 0.76,
             }}
           >
@@ -975,26 +1015,28 @@ export default function ChatScreen() {
                 fontSize: 14.5,
                 fontFamily: 'Poppins-Regular',
                 color: isFromCurrentUser ? Colors.white : Colors.textPrimary,
-                lineHeight: 20,
+                lineHeight: 19,
               }}
             >
               {item.text}
             </Text>
           </View>
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              marginTop: 5,
-              paddingHorizontal: 4,
-              justifyContent: isFromCurrentUser ? 'flex-end' : 'flex-start',
-            }}
-          >
-            <Text style={{ fontSize: 10.5, fontFamily: 'Poppins-Regular', color: '#9AA19A' }}>
-              {item.time}
-            </Text>
-            {getStatusIcon()}
-          </View>
+          {showMeta ? (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                marginTop: 2,
+                paddingHorizontal: 2,
+                justifyContent: isFromCurrentUser ? 'flex-end' : 'flex-start',
+              }}
+            >
+              <Text style={{ fontSize: 10, fontFamily: 'Poppins-Regular', color: '#9AA19A' }}>
+                {item.time}
+              </Text>
+              {getStatusIcon()}
+            </View>
+          ) : null}
         </TouchableOpacity>
       </View>
     );
@@ -1017,12 +1059,8 @@ export default function ChatScreen() {
   }
 
   return (
-    <SafeAreaWrapper backgroundColor={Colors.white}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-      >
+    <SafeAreaWrapper backgroundColor={Colors.white} edges={['top']}>
+      <View style={{ flex: 1 }}>
         {/* Header */}
         <View
           style={{
@@ -1044,8 +1082,8 @@ export default function ChatScreen() {
             }} 
             activeOpacity={0.7}
             style={{
-              width: 38,
-              height: 38,
+              width: MIN_TOUCH_TARGET,
+height: MIN_TOUCH_TARGET,
               alignItems: 'center',
               justifyContent: 'center',
               borderRadius: 19,
@@ -1147,12 +1185,12 @@ export default function ChatScreen() {
               }} 
               activeOpacity={0.7}
               style={{
-                width: 38,
-                height: 38,
+                width: MIN_TOUCH_TARGET,
+height: MIN_TOUCH_TARGET,
                 alignItems: 'center',
                 justifyContent: 'center',
                 borderRadius: 19,
-                backgroundColor: '#F2F8EA',
+                backgroundColor: Colors.sageTint,
               }}
             >
               <Phone size={19} color={Colors.accent} />
@@ -1164,8 +1202,8 @@ export default function ChatScreen() {
             }} 
             activeOpacity={0.7}
               style={{
-                width: 38,
-                height: 38,
+                width: MIN_TOUCH_TARGET,
+height: MIN_TOUCH_TARGET,
                 alignItems: 'center',
                 justifyContent: 'center',
                 borderRadius: 19,
@@ -1191,12 +1229,12 @@ export default function ChatScreen() {
               gap: 8,
             }}
           >
-            <AlertCircle size={14} color="#92400E" />
+            <AlertCircle size={14} color={Colors.warningForeground} />
             <Text
               style={{
                 fontSize: 12,
                 fontFamily: 'Poppins-Medium',
-                color: '#92400E',
+                color: Colors.warningForeground,
                 flex: 1,
               }}
               numberOfLines={1}
@@ -1238,8 +1276,8 @@ export default function ChatScreen() {
           keyExtractor={(item) => item.id}
             contentContainerStyle={{ 
               flexGrow: 1,
-              paddingTop: 18,
-              paddingBottom: 26,
+              paddingTop: 10,
+              paddingBottom: footerHeight + 10,
             }}
           showsVerticalScrollIndicator={false}
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
@@ -1252,8 +1290,8 @@ export default function ChatScreen() {
                     backgroundColor: '#E9EEE0',
                     borderRadius: 999,
                     paddingHorizontal: 12,
-                    paddingVertical: 5,
-                    marginBottom: 14,
+                    paddingVertical: 4,
+                    marginBottom: 8,
                   }}
                 >
                   <Text style={{ fontSize: 11, fontFamily: 'Poppins-Medium', color: '#64705A' }}>
@@ -1306,6 +1344,20 @@ export default function ChatScreen() {
           />
         )}
 
+        <View
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: keyboardInset,
+          }}
+          onLayout={(event) => {
+            const nextHeight = event.nativeEvent.layout.height;
+            if (nextHeight > 0 && nextHeight !== footerHeight) {
+              setFooterHeight(nextHeight);
+            }
+          }}
+        >
         {/* Send Quotation Button - Only show for providers if quotation hasn't been sent yet */}
         {isProviderView && !hasQuotation && !isCheckingQuotation && (
           <View style={{ paddingHorizontal: Spacing.lg, paddingBottom: 8, backgroundColor: '#F7F8F5' }}>
@@ -1329,7 +1381,7 @@ export default function ChatScreen() {
                 flexDirection: 'row',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                shadowColor: '#111827',
+                shadowColor: Colors.surfaceDark,
                 shadowOffset: { width: 0, height: 4 },
                 shadowOpacity: 0.05,
                 shadowRadius: 12,
@@ -1343,7 +1395,7 @@ export default function ChatScreen() {
                     width: 34,
                     height: 34,
                     borderRadius: 17,
-                    backgroundColor: '#F2F8EA',
+                    backgroundColor: Colors.sageTint,
                     alignItems: 'center',
                     justifyContent: 'center',
                     marginRight: 10,
@@ -1383,8 +1435,8 @@ export default function ChatScreen() {
         <View
           style={{
             paddingHorizontal: 14,
-            paddingBottom: Platform.OS === 'ios' ? Spacing.xl : Spacing.lg,
-            paddingTop: 10,
+            paddingBottom: keyboardInset > 0 ? 6 : Math.max(insets.bottom, 8),
+            paddingTop: 8,
             borderTopWidth: 1,
             borderTopColor: '#EEF1E8',
             backgroundColor: Colors.white,
@@ -1434,7 +1486,7 @@ export default function ChatScreen() {
                 paddingHorizontal: 4,
                 maxHeight: 100,
               }}
-              placeholderTextColor={Colors.textSecondaryDark}
+              placeholderTextColor={Colors.placeholder}
               multiline
               maxLength={500}
               onSubmitEditing={handleSend}
@@ -1452,8 +1504,8 @@ export default function ChatScreen() {
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={{
-                    width: 38,
-                    height: 38,
+                    width: MIN_TOUCH_TARGET,
+height: MIN_TOUCH_TARGET,
                     borderRadius: 19,
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -1466,8 +1518,8 @@ export default function ChatScreen() {
             ) : isSending ? (
               <View
                 style={{
-                  width: 38,
-                  height: 38,
+                  width: MIN_TOUCH_TARGET,
+height: MIN_TOUCH_TARGET,
                   borderRadius: 19,
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -1484,8 +1536,8 @@ export default function ChatScreen() {
                   // Voice message action
                 }}
                 style={{
-                  width: 38,
-                  height: 38,
+                  width: MIN_TOUCH_TARGET,
+height: MIN_TOUCH_TARGET,
                   borderRadius: 19,
                   backgroundColor: '#E9EEE0',
                   alignItems: 'center',
@@ -1497,6 +1549,7 @@ export default function ChatScreen() {
               </TouchableOpacity>
             )}
           </View>
+        </View>
         </View>
 
         <Modal
@@ -1587,7 +1640,7 @@ export default function ChatScreen() {
             </Pressable>
           </Pressable>
         </Modal>
-      </KeyboardAvoidingView>
+      </View>
     </SafeAreaWrapper>
   );
 }

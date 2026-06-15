@@ -1,15 +1,16 @@
 import { useEffect, useRef } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 import { authService } from '@/services/authService';
-import { isAccessTokenExpired } from '@/utils/jwtExpiry';
 import { isPublicUnauthenticatedRoute } from '@/utils/authPublicRoutes';
 import { isRoleSwitchInProgress } from '@/hooks/useRoleSwitching';
-import { redirectToAuthScreen } from '@/utils/authNavigationGuard';
+import { isInAuthTransition } from '@/utils/authNavigationGuard';
+import { expireAuthSessionIfInvalid } from '@/utils/enforceAuthSession';
+import { notifySessionExpired } from '@/utils/sessionExpiredEvents';
 
 /** How often to re-check JWT expiry while the app is open */
-const SESSION_POLL_MS = 60_000;
+const SESSION_POLL_MS = 15_000;
 /** Delay only the first cold-start check so SecureStore can hydrate */
-const SESSION_BOOT_DELAY_MS = 1500;
+const SESSION_BOOT_DELAY_MS = 500;
 
 /**
  * - Missing token on a protected screen → redirect to login (by stored role).
@@ -25,20 +26,19 @@ export function useSessionTimeout(router: any, pathname?: string | null) {
     const enforceAuth = async () => {
       try {
         if (await isRoleSwitchInProgress()) return;
+        if (isInAuthTransition()) return;
 
         const path = pathnameRef.current;
-        if (isPublicUnauthenticatedRoute(path)) return;
+        if (path && isPublicUnauthenticatedRoute(path)) return;
 
         const token = await authService.getAuthToken();
 
         if (!token) {
-          await redirectToAuthScreen(router, { pathname: path, clearSession: false });
+          notifySessionExpired();
           return;
         }
 
-        if (!isAccessTokenExpired(token)) return;
-
-        await redirectToAuthScreen(router, { pathname: path, clearSession: true });
+        await expireAuthSessionIfInvalid();
       } catch {
         /* ignore */
       }

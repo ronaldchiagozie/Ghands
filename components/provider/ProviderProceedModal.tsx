@@ -1,4 +1,4 @@
-import { BorderRadius, Colors } from '@/lib/designSystem';
+import { BorderRadius, Colors, MIN_TOUCH_TARGET} from '@/lib/designSystem';
 import { ActivityIndicator, Modal, Pressable, Text, TouchableOpacity, View } from 'react-native';
 import { ArrowRight, FileText, MapPin, X } from 'lucide-react-native';
 import React from 'react';
@@ -38,7 +38,7 @@ function OptionRow({
       style={{
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: accent ? '#F2F8EA' : Colors.white,
+        backgroundColor: accent ? Colors.sageTint : Colors.white,
         borderWidth: 1,
         borderColor: accent ? 'rgba(79, 103, 57, 0.35)' : Colors.border,
         borderRadius: BorderRadius.default,
@@ -138,8 +138,8 @@ export default function ProviderProceedModal({
                 position: 'absolute',
                 top: 0,
                 right: 0,
-                width: 32,
-                height: 32,
+                width: MIN_TOUCH_TARGET,
+height: MIN_TOUCH_TARGET,
                 borderRadius: 16,
                 backgroundColor: Colors.backgroundGray,
                 alignItems: 'center',

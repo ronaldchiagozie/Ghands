@@ -1,6 +1,7 @@
 import React, { Component, ReactNode } from 'react';
 import { AuthError } from '../utils/errors';
-import { redirectToAuthScreen } from '../utils/authNavigationGuard';
+import { isInAuthTransition } from '../utils/authNavigationGuard';
+import { expireAuthSession } from '../utils/enforceAuthSession';
 import Toast from './Toast';
 
 interface Props {
@@ -48,7 +49,8 @@ export class AuthErrorBoundary extends Component<Props, State> {
   }
 
   handleAuthError = async (_error: AuthError) => {
-    await redirectToAuthScreen(this.props.router, { clearSession: true });
+    if (isInAuthTransition()) return;
+    await expireAuthSession();
   };
 
   render() {

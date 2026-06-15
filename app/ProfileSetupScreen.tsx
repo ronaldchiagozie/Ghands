@@ -1,4 +1,5 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { Colors } from '@/lib/designSystem';
 import { useUserLocation } from '@/hooks/useUserLocation';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
@@ -209,7 +210,7 @@ export default function ProfileSetupScreen() {
             >
               {isUploading ? (
                 <View className="items-center justify-center" style={{ width: screenWidth * 0.3, height: screenWidth * 0.3 }}>
-                  <ActivityIndicator size="large" color="#4F6739" />
+                  <ActivityIndicator size="large" color={Colors.accent} />
                 </View>
               ) : profileImage ? (
                 <Image 
@@ -226,7 +227,7 @@ export default function ProfileSetupScreen() {
                   resizeMode="cover"
                 />
               ) : (
-                <Camera size={32} color="#4F6739" />
+                <Camera size={32} color={Colors.accent} />
               )}
               <View className="absolute -bottom-1 -right-1 w-8 h-8 bg-black rounded-full items-center justify-center">
                 <Plus size={16} color="white" />
@@ -268,7 +269,7 @@ export default function ProfileSetupScreen() {
                 value={fullName}
                 onChangeText={setFullName}
                 className="text-black text-base"
-                placeholderTextColor="#666666"
+                placeholderTextColor={Colors.placeholder}
                 style={{ 
                   fontFamily: 'Poppins-Medium',
                   fontSize: screenWidth < 375 ? 14 : 16
@@ -321,7 +322,7 @@ export default function ProfileSetupScreen() {
               value={location}
               onChangeText={setLocation}
               className="text-black text-base"
-              placeholderTextColor="#666666"
+              placeholderTextColor={Colors.placeholder}
               style={{ 
                 fontFamily: 'Poppins-Medium',
                 fontSize: screenWidth < 375 ? 14 : 16
@@ -397,7 +398,7 @@ export default function ProfileSetupScreen() {
               multiline
               numberOfLines={4}
               className="bg-gray-100 rounded-xl px-4 py-3 text-black text-base"
-              placeholderTextColor="#666666"
+              placeholderTextColor={Colors.placeholder}
               style={{ 
                 fontFamily: 'Poppins-Medium',
                 textAlignVertical: 'top',

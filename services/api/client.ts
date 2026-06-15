@@ -1,8 +1,6 @@
 import { AuthError } from '../../utils/errors';
 import { authService as authServiceInstance } from '../authService';
-import { isInAuthTransition } from '../../utils/authNavigationGuard';
-import { notifySessionExpired } from '../../utils/sessionExpiredEvents';
-import { isAccessTokenExpired } from '../../utils/jwtExpiry';
+import { assertValidAuthToken, expireAuthSession } from '../../utils/enforceAuthSession';
 import { API_BASE_URL } from '../../lib/apiConfig';
 
 interface RequestConfig extends RequestInit {
@@ -37,16 +35,7 @@ class ApiClient {
   private setupDefaultInterceptors() {
     this.addRequestInterceptor(async (config) => {
       if (!config.skipAuth) {
-        const token = await authServiceInstance.getAuthToken();
-        if (!token) {
-          if (!isInAuthTransition()) notifySessionExpired();
-          throw new AuthError('Your session has expired. Please sign in again.');
-        }
-        if (isAccessTokenExpired(token)) {
-          await authServiceInstance.clearAuthTokens();
-          if (!isInAuthTransition()) notifySessionExpired();
-          throw new AuthError('Your session has expired. Please sign in again.');
-        }
+        const token = await assertValidAuthToken();
         const existingHeaders = config.headers || {};
         const headersObj: Record<string, string> = existingHeaders instanceof Headers
           ? Object.fromEntries(existingHeaders.entries())
@@ -161,8 +150,7 @@ class ApiClient {
           if (refreshed) {
             return this.retryRequest<T>(url, config, retries, retryDelay, true);
           }
-          await authServiceInstance.clearAuthTokens();
-          if (!isInAuthTransition()) notifySessionExpired();
+          await expireAuthSession();
           throw new AuthError('Your session has expired. Please sign in again.');
         }
 
@@ -235,8 +223,7 @@ class ApiClient {
             !config.skipAuth &&
             ((statusCode === 401 && retriedAfterRefresh) || statusCode === 403)
           ) {
-            await authServiceInstance.clearAuthTokens();
-            if (!isInAuthTransition()) notifySessionExpired();
+            await expireAuthSession();
             throw new AuthError('Your session has expired. Please sign in again.');
           }
           const isExpected500 = statusCode === 500;

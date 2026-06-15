@@ -1,7 +1,8 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import { Colors } from '@/lib/designSystem';
 import { useRouter } from 'expo-router';
-import { ArrowLeft } from 'lucide-react-native';
+
 import React from 'react';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
@@ -11,43 +12,7 @@ export default function AboutGHandsScreen() {
   return (
     <SafeAreaWrapper backgroundColor={Colors.white}>
       <View style={{ flex: 1 }}>
-        {/* Header */}
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            paddingHorizontal: 20,
-            paddingTop: 16,
-            paddingBottom: 12,
-            backgroundColor: Colors.white,
-          }}
-        >
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={{
-              width: 40,
-              height: 40,
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginRight: 12,
-            }}
-            activeOpacity={0.7}
-          >
-            <ArrowLeft size={24} color={Colors.textPrimary} />
-          </TouchableOpacity>
-          <Text
-            style={{
-              fontSize: 20,
-              fontFamily: 'Poppins-Bold',
-              color: Colors.textPrimary,
-              flex: 1,
-            }}
-          >
-            About G-Hands
-          </Text>
-          <View style={{ width: 40 }} />
-        </View>
-
+        <ScreenHeader title="About G-Hands" onBack={() => router.back()} backgroundColor={Colors.white} />
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{

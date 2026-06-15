@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Animated, Dimensions, Easing } from 'react-native';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 /** Long diagonal travel — highlight sweeps top-left → bottom-right */
@@ -49,13 +50,18 @@ function scheduleShimmerStop() {
 
 /** One shared shimmer wave — all skeleton blocks stay in sync. */
 export function useShimmerAnimation() {
+  const reducedMotion = useReducedMotion();
   const progressRef = useRef<Animated.Value | null>(null);
+  const staticProgress = useRef(new Animated.Value(0.5)).current;
+  const shimmerEnabled = !reducedMotion;
 
-  if (!progressRef.current) {
+  if (shimmerEnabled && !progressRef.current) {
     progressRef.current = ensureShimmerLoop();
   }
 
   useEffect(() => {
+    if (!shimmerEnabled) return;
+
     subscriberCount += 1;
     ensureShimmerLoop();
 
@@ -65,14 +71,16 @@ export function useShimmerAnimation() {
         scheduleShimmerStop();
       }
     };
-  }, []);
+  }, [shimmerEnabled]);
 
-  const translateX = progressRef.current!.interpolate({
+  const progress = shimmerEnabled ? progressRef.current! : staticProgress;
+
+  const translateX = progress.interpolate({
     inputRange: [0, 1],
     outputRange: [-SHIMMER_TRAVEL_X, SHIMMER_TRAVEL_X],
   });
 
-  const translateY = progressRef.current!.interpolate({
+  const translateY = progress.interpolate({
     inputRange: [0, 1],
     outputRange: [-SHIMMER_TRAVEL_Y, SHIMMER_TRAVEL_Y],
   });
@@ -82,6 +90,7 @@ export function useShimmerAnimation() {
     translateY,
     shimmerWidth: SHIMMER_TRAVEL_X * 0.32,
     shimmerRotate: SHIMMER_ROTATE,
+    shimmerEnabled,
   };
 }
 

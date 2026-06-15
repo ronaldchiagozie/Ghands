@@ -1,5 +1,9 @@
 import { JOB_TIMELINE } from '@/lib/jobTimelineTheme';
-import { getVisitDeclinedDescription } from '@/utils/visitStatus';
+import {
+  getVisitDeclinedDescription,
+  isVisitCompletedOrPaid,
+  isVisitPaid,
+} from '@/utils/visitStatus';
 
 export type NegotiationStepVisual = {
   description: string;
@@ -92,6 +96,8 @@ export function getInspectionNegotiationStep(input: {
   visitPaid: boolean;
   visitScheduleText: string;
   visitRequest?: Record<string, unknown> | null;
+  /** When true, a visit happened even if visitRequest was dropped from API (e.g. after quote). */
+  visitOccurred?: boolean;
 }): NegotiationStepVisual {
   const {
     audience,
@@ -102,20 +108,40 @@ export function getInspectionNegotiationStep(input: {
     visitPaid,
     visitScheduleText,
     visitRequest,
+    visitOccurred,
   } = input;
+
+  const visitHappened = visitOccurred ?? hasVisitRequested;
 
   if (!providerHasAccepted) {
     return pendingStep(audience === 'provider' ? 'Accept before taking action.' : 'Waiting for a provider.');
   }
 
-  if (quotationSent && !hasVisitRequested) {
-    return skippedStep(
-      audience === 'client' ? 'Chose quotation instead of visit.' : 'Direct quotation chosen.'
+  if (quotationSent && visitHappened) {
+    if (visitPaid || isVisitCompletedOrPaid(visitRequest)) {
+      const schedule =
+        visitScheduleText && !/^(\s*—\s*|tbd|pending)$/i.test(visitScheduleText.trim())
+          ? visitScheduleText.replace(/^for\s+/i, '')
+          : null;
+      return completedStep(
+        schedule
+          ? audience === 'client'
+            ? `Site visit completed (${schedule}).`
+            : `Site visit completed for ${schedule}.`
+          : audience === 'client'
+            ? 'Site visit completed.'
+            : 'Site visit completed.'
+      );
+    }
+    return completedStep(
+      audience === 'client' ? 'Site visit completed. Quotation received.' : 'Visit completed. Quotation sent.'
     );
   }
 
-  if (quotationSent && hasVisitRequested) {
-    return completedStep('Visit handled.');
+  if (quotationSent && !visitHappened) {
+    return skippedStep(
+      audience === 'client' ? 'Quotation sent without a site visit.' : 'Quotation sent without visit.'
+    );
   }
 
   if (visitDeclined && !quotationSent) {
@@ -130,12 +156,12 @@ export function getInspectionNegotiationStep(input: {
 
   if (visitDeclined && quotationSent) {
     return skippedStep(
-      audience === 'client' ? 'Visit skipped. Quotation in progress.' : 'Visit declined. Quotation sent.'
+      audience === 'client' ? 'Visit skipped. Quotation received.' : 'Visit declined. Quotation sent.'
     );
   }
 
-  if (hasVisitRequested) {
-    if (visitPaid) {
+  if (visitHappened || hasVisitRequested) {
+    if (visitPaid || isVisitPaid(visitRequest)) {
       return completedStep(`Visit confirmed for ${visitScheduleText}.`);
     }
     return activeStep(
@@ -145,7 +171,7 @@ export function getInspectionNegotiationStep(input: {
   }
 
   return activeStep(
-    audience === 'provider' ? 'Request a visit or quote directly.' : 'Waiting for inspection or quotation.',
+    audience === 'provider' ? 'Request a visit or send a quote directly.' : 'Waiting for inspection or quotation.',
     { showRequestVisit: audience === 'provider' }
   );
 }
@@ -158,6 +184,7 @@ export function getQuotationNegotiationStep(input: {
   visitDeclined: boolean;
   visitPaid: boolean;
   visitBlocksQuote: boolean;
+  visitOccurred?: boolean;
 }): NegotiationStepVisual {
   const {
     audience,
@@ -167,7 +194,10 @@ export function getQuotationNegotiationStep(input: {
     visitDeclined,
     visitPaid,
     visitBlocksQuote,
+    visitOccurred,
   } = input;
+
+  const visitHappened = visitOccurred ?? hasVisitRequested;
 
   if (!providerHasAccepted) {
     return pendingStep(audience === 'provider' ? 'Send quote after accepting.' : 'No quote yet.');
@@ -190,15 +220,15 @@ export function getQuotationNegotiationStep(input: {
     );
   }
 
-  if (hasVisitRequested && visitPaid) {
+  if (visitHappened && visitPaid) {
     return activeStep(
       audience === 'provider' ? 'Prepare the quote after visit.' : 'Provider is preparing the quote.'
     );
   }
 
-  if (!hasVisitRequested && !visitDeclined) {
+  if (!visitHappened && !visitDeclined) {
     return pendingStep(
-      audience === 'provider' ? 'Available if you send a quote directly.' : 'Waiting for quotation.'
+      audience === 'provider' ? 'Send a quote directly or after a visit.' : 'Waiting for quotation.'
     );
   }
 

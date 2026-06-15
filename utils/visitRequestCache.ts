@@ -10,6 +10,8 @@ export type CachedVisitRequest = {
   logisticsCost?: number;
   logisticsStatus?: string;
   requestedAt?: string;
+  declinedBy?: string;
+  declined?: boolean;
 };
 
 const parseMoneyValue = (value: unknown): number | undefined => {
@@ -59,6 +61,11 @@ export const saveCachedVisitRequest = async (
     logisticsCost: logisticsCost ?? existing.logisticsCost,
     logisticsStatus: ((visitRequest.logisticsStatus ?? visitRequest.logistics_status) as string | undefined) ?? existing.logisticsStatus,
     requestedAt: ((visitRequest.requestedAt ?? visitRequest.requested_at) as string | undefined) ?? existing.requestedAt,
+    declinedBy: ((visitRequest.declinedBy ?? visitRequest.declined_by) as string | undefined) ?? existing.declinedBy,
+    declined:
+      visitRequest.declined === true || visitRequest.cancelled === true
+        ? true
+        : existing.declined,
   };
 
   await AsyncStorage.setItem(VISIT_REQUEST_CACHE_KEY, JSON.stringify(cache));
@@ -113,6 +120,8 @@ export const mergeCachedVisitRequest = async <T extends { visitRequest?: any }>(
       requestedAt: hasCurrentCost
         ? currentVisit.requestedAt ?? cachedVisit.requestedAt
         : cachedVisit.requestedAt ?? currentVisit.requestedAt,
+      declinedBy: cachedVisit.declinedBy ?? currentVisit.declinedBy,
+      declined: cachedVisit.declined === true || currentVisit.declined === true,
     },
   };
 

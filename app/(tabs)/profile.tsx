@@ -123,7 +123,7 @@ const ProfileScreen = () => {
         title: 'Account & Preferences',
         subtitle: 'Personal info, notifications, and privacy',
         icon: User,
-        bg: '#F2F8EA',
+        bg: Colors.sageTint,
         color: Colors.accent,
       },
       {
@@ -151,7 +151,7 @@ const ProfileScreen = () => {
         subtitle: 'Help center, safety, and app information',
         icon: HelpCircle,
         bg: '#FFF7DF',
-        color: '#92400E',
+        color: Colors.warningForeground,
       },
     ],
     [balance, isWalletLoading]
@@ -641,7 +641,7 @@ const ProfileScreen = () => {
                   width: 44,
                   height: 44,
                   borderRadius: 16,
-                  backgroundColor: '#FEE2E2',
+                  backgroundColor: Colors.errorBorder,
                   alignItems: 'center',
                   justifyContent: 'center',
                   marginRight: 15,

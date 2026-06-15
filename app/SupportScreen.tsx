@@ -1,4 +1,6 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { ScreenHeader } from '@/components/ScreenHeader';
+import { Colors } from '@/lib/designSystem';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { ChevronDown, Mail, Phone, Search } from 'lucide-react-native';
@@ -105,16 +107,7 @@ export default function SupportScreen() {
         className="flex-1"
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
-        {/* Header */}
-        <View className="flex-row items-center px-4 py-3 border-b border-gray-100" style={{ paddingTop: 20 }}>
-          <TouchableOpacity onPress={() => router.back()} activeOpacity={0.85}>
-            <Ionicons name="arrow-back" size={24} color="#000000" />
-          </TouchableOpacity>
-          <Text className="text-xl font-bold text-black flex-1 text-center" style={{ fontFamily: 'Poppins-Bold' }}>
-            Support
-          </Text>
-          <View style={{ width: 24 }} />
-        </View>
+        <ScreenHeader title="Support" onBack={() => router.back()} />
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
           {/* Search Bar */}
@@ -125,7 +118,7 @@ export default function SupportScreen() {
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 className="flex-1 text-black text-base"
-                placeholderTextColor="#666"
+                placeholderTextColor={Colors.placeholder}
                 style={{ fontFamily: 'Poppins-Regular' }}
               />
               <TouchableOpacity className="bg-[#4F6739] rounded-lg p-2 ml-2">
@@ -197,7 +190,7 @@ export default function SupportScreen() {
                   value={formData.name}
                   onChangeText={(text) => setFormData({ ...formData, name: text })}
                   className="bg-gray-100 border-[1px] border-gray-200 rounded-md px-4 py-3 text-black"
-                  placeholderTextColor="#999"
+                  placeholderTextColor={Colors.placeholder}
                   style={{ fontFamily: 'Poppins-Regular' }}
                 />
               </View>
@@ -213,7 +206,7 @@ export default function SupportScreen() {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   className="bg-gray-100 border-[1px] border-gray-200 rounded-md px-4 py-3 text-black"
-                  placeholderTextColor="#999"
+                  placeholderTextColor={Colors.placeholder}
                   style={{ fontFamily: 'Poppins-Regular' }}
                 />
               </View>
@@ -229,7 +222,7 @@ export default function SupportScreen() {
                   multiline
                   numberOfLines={4}
                   className="bg-gray-100 rounded-xl px-4 py-3 text-black"
-                  placeholderTextColor="#999"
+                  placeholderTextColor={Colors.placeholder}
                   style={{ fontFamily: 'Poppins-Regular', minHeight: 100, textAlignVertical: 'top' }}
                 />
               </View>

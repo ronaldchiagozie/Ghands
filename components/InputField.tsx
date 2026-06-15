@@ -1,10 +1,14 @@
-import React, { ReactNode, useState, useEffect, forwardRef } from 'react';
+import React, { ReactNode, useState, useEffect, forwardRef, useId } from 'react';
 import { KeyboardTypeOptions, TextInput, TouchableOpacity, View, Text } from 'react-native';
 import { Eye, EyeOff } from 'lucide-react-native';
-import { Colors, Spacing, BorderRadius, INPUT_HEIGHTS } from '@/lib/designSystem';
+import { Colors, Spacing, BorderRadius, INPUT_HEIGHTS, TOUCH_HIT_SLOP } from '@/lib/designSystem';
 
 interface InputFieldProps {
   placeholder: string;
+  /** Visible label and default screen-reader name when accessibilityLabel is omitted. */
+  label?: string;
+  /** Overrides label/placeholder for VoiceOver and TalkBack. */
+  accessibilityLabel?: string;
   icon: ReactNode;
   secureTextEntry?: boolean;
   keyboardType?: KeyboardTypeOptions;
@@ -27,6 +31,8 @@ interface InputFieldProps {
 export const InputField = forwardRef<TextInput, InputFieldProps>((props, ref) => {
   const {
     placeholder,
+    label,
+    accessibilityLabel,
     icon,
     secureTextEntry = false,
     keyboardType = 'default',
@@ -48,6 +54,7 @@ export const InputField = forwardRef<TextInput, InputFieldProps>((props, ref) =>
   const [isFocused, setIsFocused] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
   const [passwordVisible, setPasswordVisible] = useState(false);
+  const labelNativeId = `input-field-label-${useId().replace(/:/g, '')}`;
 
   useEffect(() => {
     if (value.length > 0) {
@@ -64,9 +71,25 @@ export const InputField = forwardRef<TextInput, InputFieldProps>((props, ref) =>
 
   const iconSize = 36;
   const inputMinHeight = INPUT_HEIGHTS.small;
+  const fieldName = accessibilityLabel ?? label ?? placeholder;
 
   return (
     <View style={{ marginBottom: Spacing.md }}>
+      {label ? (
+        <Text
+          nativeID={labelNativeId}
+          accessibilityRole="text"
+          style={{
+            fontSize: 13,
+            fontFamily: 'Poppins-Medium',
+            color: Colors.textPrimary,
+            marginBottom: Spacing.xs,
+            paddingHorizontal: Spacing.sm,
+          }}
+        >
+          {label}
+        </Text>
+      ) : null}
       <View
         style={{
           backgroundColor: Colors.backgroundGray,
@@ -83,6 +106,8 @@ export const InputField = forwardRef<TextInput, InputFieldProps>((props, ref) =>
       >
       {showLeftIcon && (
         <View
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
           style={{
             width: iconSize,
             height: iconSize,
@@ -120,18 +145,23 @@ export const InputField = forwardRef<TextInput, InputFieldProps>((props, ref) =>
         returnKeyType={returnKeyType}
         onSubmitEditing={onSubmitEditing}
         autoFocus={autoFocus}
+        accessibilityLabel={label ? undefined : fieldName}
+        accessibilityLabelledBy={label ? labelNativeId : undefined}
+        accessibilityHint={showError && errorMessage ? errorMessage : undefined}
+        accessibilityState={{ disabled }}
         style={{
           flex: 1,
+          minWidth: 0,
           color: Colors.textPrimary,
           fontSize: 15,
           fontFamily: 'Poppins-Medium',
         }}
-        placeholderTextColor={Colors.textSecondaryDark}
+        placeholderTextColor={Colors.placeholder}
       />
       {isPasswordField && (
         <TouchableOpacity
           onPress={() => setPasswordVisible((visible) => !visible)}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          hitSlop={TOUCH_HIT_SLOP}
           style={{
             padding: 4,
             marginLeft: Spacing.sm,
@@ -148,6 +178,8 @@ export const InputField = forwardRef<TextInput, InputFieldProps>((props, ref) =>
       )}
       {showRightDecorIcon && (
         <View
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
           style={{
             width: iconSize,
             height: iconSize,
@@ -176,6 +208,8 @@ export const InputField = forwardRef<TextInput, InputFieldProps>((props, ref) =>
       >
         {showError && errorMessage && (
           <Text
+            accessibilityRole="alert"
+            accessibilityLiveRegion="polite"
             style={{
               flex: 1,
               fontSize: 12,

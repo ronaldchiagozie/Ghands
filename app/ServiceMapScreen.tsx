@@ -425,14 +425,14 @@ const ServiceMapScreen = () => {
       <View className="flex-1">
         {isLoadingProviders ? (
           <View className="flex-1 items-center justify-center bg-white">
-            <ActivityIndicator size="large" color="#4F6739" />
+            <ActivityIndicator size="large" color={Colors.accent} />
             <Text className="mt-4 text-gray-600" style={{ fontFamily: 'Poppins-Medium' }}>
               Finding nearby providers...
             </Text>
           </View>
         ) : !serviceLocationCoords ? (
           <View className="flex-1 items-center justify-center bg-white">
-            <ActivityIndicator size="large" color="#4F6739" />
+            <ActivityIndicator size="large" color={Colors.accent} />
             <Text className="mt-4 text-gray-600" style={{ fontFamily: 'Poppins-Medium' }}>
               Getting your location...
             </Text>
@@ -513,7 +513,7 @@ const ServiceMapScreen = () => {
                 style={{
                   fontSize: 15,
                   fontFamily: 'Poppins-Regular',
-                  color: '#4B5563',
+                  color: Colors.textMuted,
                   textAlign: 'center',
                   marginBottom: Spacing.xl,
                   lineHeight: 22,
@@ -647,7 +647,7 @@ const ServiceMapScreen = () => {
                 style={{
                   fontSize: 15,
                   fontFamily: 'Poppins-Regular',
-                  color: '#4B5563',
+                  color: Colors.textMuted,
                   textAlign: 'center',
                   marginBottom: Spacing.xl,
                   lineHeight: 22,

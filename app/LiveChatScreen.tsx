@@ -411,7 +411,7 @@ export default function LiveChatScreen() {
                 paddingVertical: Spacing.sm,
                 maxHeight: 100,
               }}
-              placeholderTextColor={Colors.textSecondaryDark}
+              placeholderTextColor={Colors.placeholder}
               multiline
               maxLength={500}
               onSubmitEditing={handleSend}

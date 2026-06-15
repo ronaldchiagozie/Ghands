@@ -12,6 +12,9 @@ export interface ButtonProps {
   fullWidth?: boolean;
   icon?: React.ReactNode;
   iconPosition?: 'left' | 'right';
+  /** Overrides the default accessibility label (title). */
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
   style?: ViewStyle;
   textStyle?: TextStyle;
 }
@@ -26,6 +29,8 @@ export const Button: React.FC<ButtonProps> = ({
   fullWidth = false,
   icon,
   iconPosition = 'left',
+  accessibilityLabel,
+  accessibilityHint,
   style,
   textStyle,
 }) => {
@@ -118,6 +123,10 @@ export const Button: React.FC<ButtonProps> = ({
       onPress={onPress}
       disabled={isDisabled}
       activeOpacity={OPACITY.pressed}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? title}
+      accessibilityHint={accessibilityHint}
+      accessibilityState={{ disabled: isDisabled, busy: loading }}
       style={[
         {
           height,
@@ -141,12 +150,14 @@ export const Button: React.FC<ButtonProps> = ({
             <Text style={{ marginRight: Spacing.sm }}>{icon}</Text>
           )}
           <Text
+            numberOfLines={1}
             style={[
               {
                 color: getTextColor(),
                 fontSize: getFontSize(),
                 fontFamily: 'Poppins-SemiBold',
                 textAlign: 'center',
+                flexShrink: 1,
               },
               textStyle,
             ]}

@@ -315,9 +315,9 @@ export default function SignupScreen() {
                       height: '100%',
                       backgroundColor:
                         passwordStrength.strength === 'weak'
-                          ? '#EF4444'
+                          ? Colors.errorBright
                           : passwordStrength.strength === 'medium'
-                          ? '#F59E0B'
+                          ? Colors.warning
                           : '#10B981',
                     }}
                   />
@@ -329,9 +329,9 @@ export default function SignupScreen() {
                     fontFamily: 'Poppins-Medium',
                     color:
                       passwordStrength.strength === 'weak'
-                        ? '#EF4444'
+                        ? Colors.errorBright
                         : passwordStrength.strength === 'medium'
-                        ? '#F59E0B'
+                        ? Colors.warning
                         : '#10B981',
                   }}
                 >
@@ -381,7 +381,7 @@ export default function SignupScreen() {
               <Text
                 style={{
                   fontFamily: 'Poppins-Bold',
-                  color: '#4F6739',
+                  color: Colors.accent,
                 }}
               >
                 Login
@@ -398,18 +398,18 @@ export default function SignupScreen() {
             marginBottom: 32,
           }}
         >
-          <View style={{ flex: 1, height: 1, backgroundColor: '#E5E7EB' }} />
+          <View style={{ flex: 1, height: 1, backgroundColor: Colors.border }} />
           <Text
             style={{
               marginHorizontal: 16,
               fontSize: 16,
               fontFamily: 'Poppins-Medium',
-              color: '#6B7280',
+              color: Colors.iconMuted,
             }}
           >
             or
           </Text>
-          <View style={{ flex: 1, height: 1, backgroundColor: '#E5E7EB' }} />
+          <View style={{ flex: 1, height: 1, backgroundColor: Colors.border }} />
         </View>
 
         {/* Social Buttons */}

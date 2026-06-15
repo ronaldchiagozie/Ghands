@@ -1,5 +1,6 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import Toast from '@/components/Toast';
+import { Colors, MIN_TOUCH_TARGET } from '@/lib/designSystem';
 import { haptics } from '@/hooks/useHaptics';
 import { useToast } from '@/hooks/useToast';
 import { serviceRequestService, authService } from '@/services/api';
@@ -493,16 +494,17 @@ export default function DateTimeScreen() {
                   <TouchableOpacity
                     onPress={handlePreviousMonth}
                     disabled={!canGoPreviousMonth}
-                    className="h-8 w-8 items-center justify-center rounded-full bg-gray-100"
+                    style={{ width: MIN_TOUCH_TARGET, height: MIN_TOUCH_TARGET, alignItems: 'center', justifyContent: 'center', borderRadius: 999, backgroundColor: Colors.backgroundGray, opacity: canGoPreviousMonth ? 1 : 0.35 }}
                     activeOpacity={canGoPreviousMonth ? 0.7 : 1}
-                    style={{ opacity: canGoPreviousMonth ? 1 : 0.35 }}
+                    accessibilityLabel="Previous month"
                   >
                     <ChevronLeft size={16} color={canGoPreviousMonth ? '#111827' : '#9CA3AF'} />
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={handleNextMonth}
-                    className="h-8 w-8 items-center justify-center rounded-full bg-gray-100"
+                    style={{ width: MIN_TOUCH_TARGET, height: MIN_TOUCH_TARGET, alignItems: 'center', justifyContent: 'center', borderRadius: 999, backgroundColor: Colors.backgroundGray }}
                     activeOpacity={0.7}
+                    accessibilityLabel="Next month"
                   >
                     <ChevronRight size={16} color="#111827" />
                   </TouchableOpacity>

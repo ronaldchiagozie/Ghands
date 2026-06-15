@@ -1,10 +1,11 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import Toast from '@/components/Toast';
 import { useToast } from '@/hooks/useToast';
 import { Colors } from '@/lib/designSystem';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Camera, Plus, X } from 'lucide-react-native';
+import { Camera, Plus, X } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Dimensions, Image, Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
@@ -293,19 +294,7 @@ export default function AddPhotosScreen() {
   return (
     <SafeAreaWrapper backgroundColor={Colors.backgroundLight}>
       <Animated.View style={[animatedStyles, { flex: 1 }]}>
-        <View className="px-4 pt-4 pb-2">
-          <View className="flex-row items-center mb-4">
-            <TouchableOpacity
-              onPress={handleBack}
-              className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-white"
-            >
-              <ArrowLeft size={20} color="#111827" />
-            </TouchableOpacity>
-            <Text className="text-xl text-black" style={{ fontFamily: 'Poppins-Bold' }}>
-              Add photos
-            </Text>
-          </View>
-        </View>
+        <ScreenHeader title="Add photos" onBack={handleBack} backgroundColor={Colors.backgroundLight} />
 
         <ScrollView
           className="flex-1 px-4"

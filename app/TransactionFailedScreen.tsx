@@ -1,7 +1,8 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import { BorderRadius, Colors, Spacing, SHADOWS } from '@/lib/designSystem';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, User, XCircle } from 'lucide-react-native';
+import { User, XCircle } from 'lucide-react-native';
 import React from 'react';
 import { ScrollView, Text, TouchableOpacity, View, Image } from 'react-native';
 import { Button } from '@/components/ui/Button';
@@ -46,45 +47,7 @@ export default function TransactionFailedScreen() {
         contentContainerStyle={{ paddingBottom: Spacing.xxl }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            paddingHorizontal: Spacing.lg,
-            paddingTop: Spacing.md + 4,
-            paddingBottom: Spacing.md,
-          }}
-        >
-          <TouchableOpacity
-            onPress={() => {
-              haptics.light();
-              router.back();
-            }}
-            style={{
-              width: 40,
-              height: 40,
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginRight: Spacing.md,
-            }}
-            activeOpacity={0.7}
-          >
-            <ArrowLeft size={24} color={Colors.textPrimary} />
-          </TouchableOpacity>
-          <Text
-            style={{
-              fontSize: 18,
-              fontFamily: 'Poppins-Bold',
-              color: Colors.textPrimary,
-              flex: 1,
-            }}
-          >
-            Transaction Failed
-          </Text>
-          <View style={{ width: 40 }} />
-        </View>
-
+        <ScreenHeader title="Transaction Failed" onBack={() => router.back()} backgroundColor={Colors.white} />
         {/* Main Transaction Card */}
         <View
           style={{
@@ -383,14 +346,14 @@ export default function TransactionFailedScreen() {
                     width: 24,
                     height: 24,
                     borderRadius: 12,
-                    backgroundColor: '#FEE2E2',
+                    backgroundColor: Colors.errorBorder,
                     alignItems: 'center',
                     justifyContent: 'center',
                     marginRight: Spacing.sm,
                     marginTop: 2,
                   }}
                 >
-                  <XCircle size={14} color="#EF4444" />
+                  <XCircle size={14} color={Colors.errorBright} />
                 </View>
                 <Text
                   style={{

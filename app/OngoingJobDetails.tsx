@@ -1,14 +1,19 @@
 
-import AnimatedStatusChip from '@/components/AnimatedStatusChip';
-import { JobDetailsContentSkeleton } from '@/components/LoadingSkeleton';
-import TimelineStatusCard from '@/components/TimelineStatusCard';
+import { ClientJobUpdatesPanel } from '@/components/client/ClientJobUpdatesPanel';
+import {
+  DestructiveButton,
+  InlineActionsRow,
+  SageOutlineChip,
+  SagePrimaryButton,
+} from '@/components/client/JobTimelineActions';
+import { type JobProgressStep } from '@/components/JobProgressTimeline';
+import { JobDetailsContentSkeleton, JobDetailsQuotationsTabSkeleton } from '@/components/LoadingSkeleton';
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { haptics } from '@/hooks/useHaptics';
 import { useCurrentUserProfile } from '@/hooks/useProfile';
 import { useToast } from '@/hooks/useToast';
 import { Colors } from '@/lib/designSystem';
-import { JOB_TIMELINE, timelineChipText } from '@/lib/jobTimelineTheme';
-import { surfaceElevation } from '@/lib/surfaceStyles';
+import { JOB_TIMELINE } from '@/lib/jobTimelineTheme';
 import { CLIENT_HOME_SCROLL_GUTTER } from '@/lib/tabletLayout';
 import { analytics } from '@/services/analytics';
 import { QuotationWithProvider, ServiceRequest, serviceRequestService, walletService } from '@/services/api';
@@ -19,9 +24,15 @@ import { handleAuthErrorRedirect } from '@/utils/authRedirect';
 import { isConnectivityOrNetworkError } from '@/utils/isNetworkFailure';
 import { getSpecificErrorMessage } from '@/utils/errorMessages';
 import { isDuplicateActionError } from '@/utils/idempotentSubmit';
-import { formatProviderProximitySubtitle } from '@/utils/navigationUtils';
-import { mergeCachedVisitRequest } from '@/utils/visitRequestCache';
-import { getVisitDeclinedDescription, getVisitLogisticsStatus, isVisitDeclined } from '@/utils/visitStatus';
+import { mergeCachedVisitRequest, saveCachedVisitRequest } from '@/utils/visitRequestCache';
+import {
+  getVisitDeclinedDescription,
+  getVisitLogisticsStatus,
+  healJobStatusAfterVisitDecline,
+  isVisitDeclined,
+  patchVisitDeclined,
+  resolveVisitOccurred,
+} from '@/utils/visitStatus';
 import {
   getInspectionNegotiationStep,
   getQuotationNegotiationStep,
@@ -29,7 +40,7 @@ import {
 import { navigateBack, navigateBackFromBookingJob, NAV_FALLBACK } from '@/utils/navigation';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { CheckCircle, CheckCircle2, Circle, Clock, FileText, MapPinned, Wrench } from 'lucide-react-native';
+import { CheckCircle2, Clock, FileText, MapPinned, Wrench } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -197,8 +208,10 @@ export default function OngoingJobDetails() {
   const [paymentTransaction, setPaymentTransaction] = useState<any | null>(null); 
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingQuotations, setIsLoadingQuotations] = useState(false);
+  const [isQuotationActionLoading, setIsQuotationActionLoading] = useState(false);
   const [hasAttemptedLoad, setHasAttemptedLoad] = useState(false);
   const completeJobLockRef = useRef(false);
+  const declineVisitActionRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     if (params.requestId) {
@@ -212,7 +225,6 @@ export default function OngoingJobDetails() {
     params.tab === 'quotations' ? 'Quotations' : 'Updates'
   );
   const [currentQuoteIndex, setCurrentQuoteIndex] = useState(0);
-  const [expandedQuoteProviderId, setExpandedQuoteProviderId] = useState<string | number | null>(null);
   const quoteCardAnim = useRef(new Animated.Value(1)).current;
   const [isSelectingProvider, setIsSelectingProvider] = useState(false);
   const [selectionCountdown, setSelectionCountdown] = useState<number | null>(null);
@@ -221,6 +233,7 @@ export default function OngoingJobDetails() {
   const cameFromPaymentSuccess = params.paymentStatus === 'success';
   const cameFromBooking = params.fromBooking === '1';
   const insets = useSafeAreaInsets();
+  const [contentAreaHeight, setContentAreaHeight] = useState(0);
 
   useEffect(() => {
     if (params.tab === 'quotations') {
@@ -264,10 +277,10 @@ export default function OngoingJobDetails() {
     const totalProvidersSentTo = request.nearbyProviders?.length || acceptedProviders.length || 0;
     timeline.push({
       id: 'step-1',
-      title: 'Request sent',
-      description: totalProvidersSentTo > 0 
+      title: 'Request received',
+      description: totalProvidersSentTo > 0
         ? `${totalProvidersSentTo} nearby ${totalProvidersSentTo === 1 ? 'provider' : 'providers'} notified.`
-        : 'Nearby providers have been notified.',
+        : 'Review the job.',
       status: formatTimeAgo(request.createdAt || request.updatedAt),
       accent: JOB_TIMELINE.completeSoft,
       dotColor: JOB_TIMELINE.sage,
@@ -405,8 +418,27 @@ export default function OngoingJobDetails() {
       visitRequest.logisticsStatus ||
       visitRequest.logisticsCost != null
     ));
+    const visitOccurred = resolveVisitOccurred({
+      visitRequest,
+      requestStatus: request.status,
+      quotations: qList,
+    });
     const visitPaid = visitRequest?.logisticsStatus === 'paid';
-    const visitBlocksQuote = hasVisitRequested && !visitPaid && !visitDeclined;
+    const visitBlocksQuote = visitOccurred && !visitPaid && !visitDeclined && !hasQuotationSent;
+    const parseVisitFee = (value: unknown): number | undefined => {
+      if (value == null || value === '') return undefined;
+      if (typeof value === 'number') return Number.isFinite(value) ? value : undefined;
+      if (typeof value === 'string') {
+        const parsed = Number(value.replace(/[₦,\s]/g, ''));
+        return Number.isFinite(parsed) ? parsed : undefined;
+      }
+      return undefined;
+    };
+    const visitLogisticsCost =
+      parseVisitFee(visitRequest?.logisticsCost) ??
+      parseVisitFee((visitRequest as any)?.logistics_cost) ??
+      parseVisitFee((request as any)?.logisticsCost);
+    const hasPayableVisitFee = typeof visitLogisticsCost === 'number' && visitLogisticsCost > 0;
 
     const inspectionVisual = getInspectionNegotiationStep({
       audience: 'client',
@@ -417,6 +449,7 @@ export default function OngoingJobDetails() {
       visitPaid,
       visitScheduleText,
       visitRequest,
+      visitOccurred,
     });
     timeline.push({
       id: 'step-3',
@@ -424,12 +457,13 @@ export default function OngoingJobDetails() {
       icon: MapPinned,
       ...inspectionVisual,
       description:
-        !hasQuotationSent && hasVisitRequested && !visitDeclined && !visitPaid && visitFeeText
+        !hasQuotationSent && visitOccurred && !visitDeclined && !visitPaid && visitFeeText
           ? `${inspectionVisual.description.replace(/\.$/, '')}. Fee: ${visitFeeText}.`
           : inspectionVisual.description,
-      showPayLogistics: false,
-      showRejectVisit: false,
-      logisticsCost: visitRequest?.logisticsCost,
+      showPayLogistics:
+        visitOccurred && !visitPaid && !visitDeclined && hasPayableVisitFee && !hasQuotationSent,
+      showRejectVisit: visitOccurred && !visitPaid && !visitDeclined && !hasQuotationSent,
+      logisticsCost: visitLogisticsCost,
     });
 
     // Step 3b: Quotation
@@ -456,6 +490,7 @@ export default function OngoingJobDetails() {
           visitDeclined,
           visitPaid,
           visitBlocksQuote,
+          visitOccurred,
         });
         timeline.push({
           id: 'step-3b',
@@ -488,16 +523,24 @@ export default function OngoingJobDetails() {
     const acceptedQuotation = qList.find((q: any) => q?.status === 'accepted');
     
     if (quotationAccepted) {
+      const paidAndConfirmed =
+        ((request.status as any) || '').toString().toLowerCase() === 'scheduled' ||
+        request.status === 'in_progress' ||
+        request.status === 'reviewing' ||
+        request.status === 'completed' ||
+        !!paymentTransaction;
       timeline.push({
         id: 'step-4',
         title: 'Quote accepted',
-        description: 'Complete payment to start.',
-        status: formatTimeAgo((acceptedQuotation as any)?.acceptedAt || acceptedQuotation?.sentAt || request.updatedAt || ''),
+        description: paidAndConfirmed ? 'Paid and confirmed.' : 'Complete payment to start.',
+        status: paidAndConfirmed
+          ? formatTimeAgo((acceptedQuotation as any)?.acceptedAt || acceptedQuotation?.sentAt || request.updatedAt || '')
+          : 'Waiting',
         accent: JOB_TIMELINE.completeSoft,
         dotColor: JOB_TIMELINE.sage,
-        isActive: false,
-        isCompleted: true,
-        icon: CheckCircle,
+        isActive: !paidAndConfirmed,
+        isCompleted: paidAndConfirmed,
+        icon: paidAndConfirmed ? CheckCircle2 : Clock,
       });
     } else if (hasQuotationSent) {
       // Quotation sent but not accepted yet - YELLOW (waiting for client to accept)
@@ -527,71 +570,44 @@ export default function OngoingJobDetails() {
       });
     }
 
-    // Step 5: Job in Progress
-    // - scheduled → YELLOW (waiting for provider to click Start)
-    // - in_progress → GREEN (provider has started, job active – client can mark complete)
-    // - reviewing → YELLOW (provider finished, client must verify and mark complete)
-    // - completed → GREEN (job done)
-    
-    if (request.status === 'in_progress') {
-      // Provider has started – GREEN so it clearly differs from "waiting for provider"
+    const statusNorm = ((request.status as any) || '').toString().toLowerCase();
+    const workOrderConfirmed =
+      statusNorm === 'scheduled' ||
+      request.status === 'in_progress' ||
+      request.status === 'reviewing' ||
+      request.status === 'completed' ||
+      (quotationAccepted && !!paymentTransaction);
+
+    // Step 5: Work order
+    if (workOrderConfirmed) {
       timeline.push({
         id: 'step-5',
-        title: 'Work started',
-        description: 'Provider is working.',
-        status: 'Active',
-        accent: JOB_TIMELINE.completeSoft,
-        dotColor: JOB_TIMELINE.sage,
-        isActive: true,
-        isCompleted: false,
-        icon: Wrench,
-      });
-    } else if (request.status === 'reviewing') {
-      // Provider marked complete – YELLOW: client must verify and release payment
-      timeline.push({
-        id: 'step-5',
-        title: 'Ready to review',
-        description: 'Check the work before releasing payment.',
-        status: 'Review',
-        accent: JOB_TIMELINE.activeSoft,
-        dotColor: JOB_TIMELINE.activeDot,
-        isActive: true,
-        isCompleted: false,
-        icon: Wrench,
-      });
-    } else if (request.status === 'completed') {
-      timeline.push({
-        id: 'step-5',
-        title: 'Work completed',
-        description: 'Payment released.',
-        status: 'Done',
+        title: 'Work order',
+        description: 'Job started.',
+        status: formatTimeAgo(request.updatedAt || paymentTransaction?.createdAt || ''),
         accent: JOB_TIMELINE.completeSoft,
         dotColor: JOB_TIMELINE.sage,
         isActive: false,
         isCompleted: true,
-        icon: Wrench,
+        icon: CheckCircle2,
       });
-    } else if (((request.status as any) || '').toString().toLowerCase() === 'scheduled' || (quotationAccepted && paymentTransaction)) {
-      // Payment completed – waiting for provider to click Start → keep step grey until provider starts job
+    } else if (quotationAccepted) {
       timeline.push({
         id: 'step-5',
-        title: 'Work scheduled',
-        description: 'Waiting for provider to start.',
+        title: 'Work order',
+        description: 'Complete payment to confirm.',
         status: 'Waiting',
-        accent: JOB_TIMELINE.pendingSoft,
-        dotColor: JOB_TIMELINE.pendingDot,
-        isActive: false,
+        accent: JOB_TIMELINE.activeSoft,
+        dotColor: JOB_TIMELINE.activeDot,
+        isActive: true,
         isCompleted: false,
-        icon: Wrench,
+        icon: Clock,
       });
     } else {
-      // Not ready yet - grey (pending) - payments handled from the Quotations tab
       timeline.push({
         id: 'step-5',
-        title: 'Work scheduled',
-        description: quotationAccepted
-          ? 'Complete payment to start.'
-          : 'Accept a quote first.',
+        title: 'Work order',
+        description: 'Accept a quote first.',
         status: 'Pending',
         accent: JOB_TIMELINE.pendingSoft,
         dotColor: JOB_TIMELINE.pendingDot,
@@ -601,10 +617,61 @@ export default function OngoingJobDetails() {
       });
     }
 
-    // Step 6: Complete
-    if (request.status === 'completed') {
+    // Step 6: Work started
+    if (request.status === 'in_progress') {
       timeline.push({
         id: 'step-6',
+        title: 'Work started',
+        description: 'Provider is working.',
+        status: 'Active',
+        accent: JOB_TIMELINE.activeSoft,
+        dotColor: JOB_TIMELINE.activeDot,
+        isActive: true,
+        isCompleted: false,
+        icon: Wrench,
+      });
+    } else if (request.status === 'reviewing' || request.status === 'completed') {
+      timeline.push({
+        id: 'step-6',
+        title: 'Work started',
+        description: 'Work finished.',
+        status: formatTimeAgo(request.updatedAt || ''),
+        accent: JOB_TIMELINE.completeSoft,
+        dotColor: JOB_TIMELINE.sage,
+        isActive: false,
+        isCompleted: true,
+        icon: Wrench,
+      });
+    } else if (statusNorm === 'scheduled') {
+      timeline.push({
+        id: 'step-6',
+        title: 'Work started',
+        description: 'Waiting for provider to start.',
+        status: 'Waiting',
+        accent: JOB_TIMELINE.activeSoft,
+        dotColor: JOB_TIMELINE.activeDot,
+        isActive: true,
+        isCompleted: false,
+        icon: Wrench,
+      });
+    } else {
+      timeline.push({
+        id: 'step-6',
+        title: 'Work started',
+        description: 'Starts after work order is confirmed.',
+        status: 'Pending',
+        accent: JOB_TIMELINE.pendingSoft,
+        dotColor: JOB_TIMELINE.pendingDot,
+        isActive: false,
+        isCompleted: false,
+        icon: Wrench,
+      });
+    }
+
+    // Step 7: Complete
+    if (request.status === 'completed') {
+      timeline.push({
+        id: 'step-7',
         title: 'Complete',
         description: 'Job closed. You can leave a review.',
         status: formatTimeAgo(request.updatedAt || request.createdAt),
@@ -612,11 +679,11 @@ export default function OngoingJobDetails() {
         dotColor: JOB_TIMELINE.sage,
         isActive: false,
         isCompleted: true,
-        icon: CheckCircle,
+        icon: CheckCircle2,
       });
     } else if (request.status === 'reviewing') {
       timeline.push({
-        id: 'step-6',
+        id: 'step-7',
         title: 'Complete',
         description: 'Confirm when you are satisfied.',
         status: 'Review',
@@ -624,12 +691,11 @@ export default function OngoingJobDetails() {
         dotColor: JOB_TIMELINE.activeDot,
         isActive: true,
         isCompleted: false,
-        icon: CheckCircle,
+        icon: CheckCircle2,
       });
     } else {
-      // Not completed yet - grey (pending). Use CheckCircle so icon isn't empty-looking
       timeline.push({
-        id: 'step-6',
+        id: 'step-7',
         title: 'Complete',
         description: 'Final step after the work is done.',
         status: 'Pending',
@@ -637,7 +703,7 @@ export default function OngoingJobDetails() {
         dotColor: JOB_TIMELINE.pendingDot,
         isActive: false,
         isCompleted: false,
-        icon: CheckCircle,
+        icon: CheckCircle2,
       });
     }
 
@@ -677,7 +743,11 @@ export default function OngoingJobDetails() {
       const vr = (request as any)?.visitRequest;
       const visitStatus = getVisitLogisticsStatus(vr);
       const visitDeclined = isVisitDeclined(vr);
-      const hasVR = !!(vr && (vr.scheduledDate || vr.scheduledTime || vr.requestedAt || vr.logisticsStatus || vr.logisticsCost != null));
+      const hasVR = resolveVisitOccurred({
+        visitRequest: vr,
+        requestStatus: request.status,
+        quotations: qListH,
+      });
       const vPaid = vr?.logisticsStatus === 'paid';
       const parseVisitFee = (value: unknown): number | undefined => {
         if (value == null || value === '') return undefined;
@@ -732,13 +802,18 @@ export default function OngoingJobDetails() {
 
       return {
         title: 'Inspection in progress',
-        subtitle: 'Provider has accepted your request. Waiting for inspection and quotation.',
-        statusPill: 'Provider accepted',
+        subtitle: hasVR
+          ? hasPayableVisitFee
+            ? 'Visit scheduled. Pay the visit fee or decline if you prefer a quote without a site visit.'
+            : 'Visit requested. Waiting for visit details — you can decline if you prefer a quote only.'
+          : 'Waiting for inspection and quotation.',
+        statusPill: hasVR ? 'Visit pending' : 'Provider accepted',
         pillBg: JOB_TIMELINE.activeSoft,
         pillText: JOB_TIMELINE.activeChipText,
         timestamp: acceptedAt ? formatTimeAgo(acceptedAt) : null,
         provider: headerProvider,
-        showVisitPayButton: hasVR && !vPaid && !visitDeclined,
+        showVisitPayButton: hasVR && !vPaid && !visitDeclined && !hasQuotationSent,
+        showDeclineVisitButton: hasVR && !vPaid && !visitDeclined && !hasQuotationSent,
         visitLogisticsCost: logisticsCost,
         onVisitPay: () => {
           if (params.requestId == null) return;
@@ -757,40 +832,51 @@ export default function OngoingJobDetails() {
             },
           } as any);
         },
-        onVisitDecline: async () => {
-          const rid = Number(params.requestId);
-          if (isNaN(rid)) return;
-          Alert.alert('Decline visit?', 'Provider can send a quotation directly without visiting.', [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Decline visit',
-              style: 'destructive',
-              onPress: async () => {
-                try {
-                  const declineResponse = await serviceRequestService.declineVisit(rid);
-                  if (__DEV__) {
-                    console.log('[OngoingJobDetails] decline visit completed', {
-                      requestId: rid,
-                      declineResponse,
-                    });
-                  }
-                  showSuccess('Visit declined.');
-                  await loadRequestData();
-                } catch (e: any) {
-                  if (e instanceof AuthError) {
-                    await handleAuthErrorRedirect(router);
-                    return;
-                  }
-                  showError(getSpecificErrorMessage(e, 'decline_visit') ?? e?.message);
-                }
-              },
-            },
-          ]);
+        onVisitDecline: () => {
+          declineVisitActionRef.current();
         },
       };
     }
     return { title: 'Waiting for providers', subtitle: 'Nearby providers are being notified. Updates will appear here.', statusPill: 'Pending', pillBg: JOB_TIMELINE.pendingSoft, pillText: JOB_TIMELINE.pendingChipText, timestamp: null, provider: null };
   }, [request, acceptedProviders, quotations, cameFromPaymentSuccess, paymentTransaction]);
+
+  const isPaymentConfirmed = useMemo(() => {
+    if (cameFromPaymentSuccess) return true;
+    if (!request) return false;
+    const qList = Array.isArray(quotations) ? quotations : [];
+    const acceptedQuotation = qList.find((q: any) => q?.status === 'accepted');
+    if (!acceptedQuotation) return false;
+    const statusLower = (request.status || '').toString().toLowerCase();
+    const isPaidByStatus =
+      statusLower === 'scheduled' ||
+      request.status === 'in_progress' ||
+      request.status === 'reviewing' ||
+      request.status === 'completed';
+    return isPaidByStatus || !!paymentTransaction;
+  }, [request, quotations, paymentTransaction, cameFromPaymentSuccess]);
+
+  const currentQuotation =
+    quotations.length > 0 && currentQuoteIndex < quotations.length
+      ? quotations[currentQuoteIndex]
+      : null;
+
+  const hasQuotationSent = useMemo(() => {
+    const qList = Array.isArray(quotations) ? quotations : [];
+    return qList.some(
+      (q: any) =>
+        q?.sentAt ||
+        q?.submittedAt ||
+        (q?.status && q?.status !== 'draft') ||
+        (q?.total != null && q?.total > 0)
+    );
+  }, [quotations]);
+
+  const quotationAccepted = useMemo(() => {
+    const qList = Array.isArray(quotations) ? quotations : [];
+    return qList.some((q: any) => q?.status === 'accepted');
+  }, [quotations]);
+
+  const showPaymentSyncHint = quotationAccepted && !isPaymentConfirmed;
 
   // Load quotations from API (6.3 endpoint)
   const loadQuotations = useCallback(async () => {
@@ -895,7 +981,7 @@ export default function OngoingJobDetails() {
           });
         }
       }
-      setRequest(hydratedRequestDetails);
+      setRequest(healJobStatusAfterVisitDecline(hydratedRequestDetails));
       if (usedListFallback && !silent) {
         showWarning(
           'We could not load the latest job details. Showing what we have — swipe down to refresh.'
@@ -1031,136 +1117,23 @@ export default function OngoingJobDetails() {
     }
   }, [request?.selectedAt, request?.selectedProvider, request?.status, request?.selectionTimeoutAt, startCountdownTimer]);
 
-  // Map accepted providers to provider cards format
-  // Use actual quotation data instead of random logic
+  // Proximity data for TimelineStatusCard provider row
   const mappedProviders = useMemo(() => {
     if (!acceptedProviders || acceptedProviders.length === 0) return [];
+    return acceptedProviders.map((item) => ({
+      providerId: item.provider.id,
+      distanceKm: item.distanceKm,
+      minutesAway: item.minutesAway,
+    }));
+  }, [acceptedProviders]);
 
-    const qListMap = Array.isArray(quotations) ? quotations : [];
-    return acceptedProviders.map((item) => {
-      const providerQuotation = qListMap.find((q: any) => q?.provider?.id === item.provider?.id);
-      const hasQuotationSent = !!providerQuotation && (providerQuotation.sentAt || (providerQuotation as any).submittedAt || (providerQuotation.status && (providerQuotation as any).status !== 'draft') || (providerQuotation.total != null && providerQuotation.total > 0));
-      const quotationAccepted = providerQuotation?.status === 'accepted';
-      
-      // Check selection status
-      const isSelected = request?.selectedProvider?.id === item.provider.id;
-      const isSelectionPending = isSelected && !request?.selectedProvider && request?.selectedAt;
-      const isSelectionAccepted = isSelected && request?.status === 'accepted';
-      const hasActiveSelection = request?.selectedAt && !request?.selectedProvider;
-      const isThisProviderSelected = hasActiveSelection && request?.selectedAt; // Check if this provider was selected
-      
-      // Determine status based on selection flow
-      let status = 'Provider accepted';
-      let statusColor: string = JOB_TIMELINE.activeSoft;
-      let statusTextColor: string = JOB_TIMELINE.activeChipText;
-      let quoteDetails = 'Provider has accepted your request. Waiting for inspection and quotation.';
-      let inspectionStatus = `Accepted ${formatTimeAgo(item.acceptance.acceptedAt)}`;
-      // Provider selection now happens in ServiceMapScreen during booking confirmation
-      // No need to select providers here - canSelect is always false
-      let canSelect = false;
-
-      // Priority 1: Selection accepted
-      if (isSelectionAccepted) {
-        status = 'Provider accepted selection';
-        statusColor = JOB_TIMELINE.completeSoft;
-        statusTextColor = JOB_TIMELINE.sageChipText;
-        quoteDetails = 'Provider has accepted your selection. They can now send quotation.';
-        inspectionStatus = `Selection accepted ${formatTimeAgo(request.updatedAt || request.selectedAt || '')}`;
-        canSelect = false;
-      }
-      // Priority 2: Selection pending with countdown
-      else if (isSelected && selectionCountdown !== null && selectionCountdown > 0) {
-        status = 'Selected - waiting for response';
-        statusColor = JOB_TIMELINE.infoSoft;
-        statusTextColor = JOB_TIMELINE.infoChipText;
-        quoteDetails = `Provider selected. Waiting for their response. ${formatCountdown(selectionCountdown)} remaining.`;
-        inspectionStatus = `Selected ${formatTimeAgo(request?.selectedAt || '')}`;
-        canSelect = false;
-      }
-      // Priority 3: Selection pending (no countdown)
-      else if (isSelected && request?.selectedAt) {
-        status = 'Selected - waiting for response';
-        statusColor = JOB_TIMELINE.infoSoft;
-        statusTextColor = JOB_TIMELINE.infoChipText;
-        quoteDetails = 'Provider selected. Waiting for their response (5 minutes).';
-        inspectionStatus = `Selected ${formatTimeAgo(request.selectedAt)}`;
-        canSelect = false;
-      }
-      // Priority 4: Quotation accepted
-      else if (quotationAccepted) {
-        status = 'Quote accepted';
-        statusColor = JOB_TIMELINE.completeSoft;
-        statusTextColor = JOB_TIMELINE.sageChipText;
-        quoteDetails = 'Quotation accepted. Provider will proceed with the job.';
-        inspectionStatus = `Quote accepted ${formatTimeAgo(request?.updatedAt || providerQuotation.sentAt || '')}`;
-        canSelect = false;
-      }
-      // Priority 5: Quotation sent
-      else if (hasQuotationSent) {
-        status = 'Quote submitted';
-        statusColor = JOB_TIMELINE.infoSoft;
-        statusTextColor = JOB_TIMELINE.infoChipText;
-        quoteDetails = providerQuotation.findingsAndWorkRequired || 'Professional service with high-quality materials. Includes parts and labor with warranty.';
-        inspectionStatus = `Quote submitted ${formatTimeAgo(providerQuotation.sentAt || '')}`;
-        canSelect = false;
-      }
-      // Priority 6: Another provider is selected
-      else if (hasActiveSelection && !isSelected) {
-        status = 'Provider accepted';
-        statusColor = JOB_TIMELINE.pendingSoft;
-        statusTextColor = JOB_TIMELINE.pendingChipText;
-        quoteDetails = 'Another provider has been selected. Waiting for their response.';
-        inspectionStatus = `Accepted ${formatTimeAgo(item.acceptance.acceptedAt)}`;
-        canSelect = false;
-      }
-
-      return {
-        id: `provider-${item.provider.id}`,
-        name: item.provider.name,
-        role: 'Provider',
-        image: require('../assets/images/plumbericon2.png'),
-        status,
-        statusColor,
-        statusTextColor,
-        badgeColor: '#CFFAFE',
-        quote: hasQuotationSent ? `$${providerQuotation.total?.toFixed(2) || '0.00'}` : null,
-        quoteDetails,
-        duration: hasQuotationSent ? '2-3 hours' : null,
-        inspectionStatus,
-        // More action‑oriented label so users know they can act on the quotation
-        cta: hasQuotationSent ? 'Review & respond' : null,
-        providerId: item.provider.id,
-        distanceKm: item.distanceKm,
-        minutesAway: item.minutesAway,
-        isSelected,
-        canSelect,
-      };
-    });
-  }, [acceptedProviders, quotations, request, selectionCountdown, formatCountdown]);
-
-  // Keep animation refs stable – only recreate when step COUNT changes (avoids glitch on poll/refresh)
-  const stepCount = timelineSteps.length;
-  const providerCount = mappedProviders.length;
-  const timelineAnimations = useMemo(
-    () => Array.from({ length: Math.max(stepCount, 1) }, () => new Animated.Value(0)),
-    [stepCount]
-  );
-  const lineAnimations = useMemo(
-    () => Array.from({ length: Math.max(stepCount - 1, 0) }, () => new Animated.Value(0)),
-    [stepCount]
-  );
-  const providerAnimations = useMemo(
-    () => Array.from({ length: Math.max(providerCount, 1) }, () => new Animated.Value(0)),
-    [providerCount]
-  );
-  const hasAnimatedTimelineRef = useRef(false);
   const lastRequestIdRef = useRef<string | null>(null);
+  const hasLoadedRef = useRef(false);
 
-  // Reset animation + loaded flags when viewing a different job
+  // Reset loaded flags when viewing a different job
   useEffect(() => {
     if (params.requestId !== lastRequestIdRef.current) {
       lastRequestIdRef.current = params.requestId ?? null;
-      hasAnimatedTimelineRef.current = false;
       hasLoadedRef.current = false;
     }
   }, [params.requestId]);
@@ -1171,7 +1144,6 @@ export default function OngoingJobDetails() {
   const loadRequestDataRef = useRef(loadRequestData);
   loadRequestDataRef.current = loadRequestData;
 
-  const hasLoadedRef = useRef(false);
   useFocusEffect(
     useCallback(() => {
       if (!params.requestId) return;
@@ -1201,18 +1173,73 @@ export default function OngoingJobDetails() {
   );
 
 
-  const handleAcceptQuotation = async (quotationId: number) => {
-    if (!params.requestId) return;
+  const performDeclineVisit = useCallback(async () => {
+    const rid = Number(params.requestId);
+    if (isNaN(rid)) return;
 
     try {
-      setIsLoading(true);
+      const declineResponse = await serviceRequestService.declineVisit(rid);
+      if (__DEV__) {
+        console.log('[OngoingJobDetails] decline visit completed', {
+          requestId: rid,
+          declineResponse,
+        });
+      }
+
+      const declinedVisit = patchVisitDeclined((request as any)?.visitRequest, 'client');
+      await saveCachedVisitRequest(rid, declinedVisit);
+      setRequest((prev) => {
+        if (!prev) return prev;
+        return healJobStatusAfterVisitDecline({
+          ...prev,
+          visitRequest: declinedVisit,
+        } as ServiceRequest);
+      });
+
+      haptics.success();
+      showSuccess('Visit declined. Your job is still active — the provider can send a quotation.');
+      await loadRequestData(true);
+    } catch (e: any) {
+      if (e instanceof AuthError) {
+        await handleAuthErrorRedirect(router);
+        return;
+      }
+      haptics.error();
+      showError(getSpecificErrorMessage(e, 'decline_visit') ?? e?.message ?? 'Failed to decline visit.');
+    }
+  }, [params.requestId, request, loadRequestData, router, showError, showSuccess]);
+
+  const confirmDeclineVisit = useCallback(() => {
+    haptics.light();
+    Alert.alert(
+      'Decline visit?',
+      'Only the site visit is cancelled — not your job. The provider can still send a quotation.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Decline visit',
+          style: 'destructive',
+          onPress: () => {
+            void performDeclineVisit();
+          },
+        },
+      ]
+    );
+  }, [performDeclineVisit]);
+
+  declineVisitActionRef.current = confirmDeclineVisit;
+
+  const handleAcceptQuotation = async (quotationId: number) => {
+    if (!params.requestId || isQuotationActionLoading) return;
+
+    try {
+      setIsQuotationActionLoading(true);
       const response = await serviceRequestService.acceptQuotation(quotationId);
 
       haptics.success();
       showSuccess(response.message || 'Quotation accepted. Tap Pay when you are ready.');
 
-      await loadRequestData();
-      await loadQuotations();
+      await loadRequestData(true);
       setActiveTab('Quotations');
         } catch (error: any) {
           if (error instanceof AuthError) {
@@ -1226,16 +1253,16 @@ export default function OngoingJobDetails() {
           const errorMessage = getSpecificErrorMessage(error, 'accept_quotation');
           showError(errorMessage);
     } finally {
-      setIsLoading(false);
+      setIsQuotationActionLoading(false);
     }
   };
 
 
   const handleRejectQuotation = async (quotationId: number) => {
-    if (!params.requestId) return;
+    if (!params.requestId || isQuotationActionLoading) return;
 
     try {
-      setIsLoading(true);
+      setIsQuotationActionLoading(true);
       const response = await serviceRequestService.rejectQuotation(quotationId);
 
       haptics.success();
@@ -1266,7 +1293,7 @@ export default function OngoingJobDetails() {
       const errorMessage = getSpecificErrorMessage(error, 'reject_quotation');
       showError(errorMessage);
     } finally {
-      setIsLoading(false);
+      setIsQuotationActionLoading(false);
     }
   };
 
@@ -1363,523 +1390,266 @@ export default function OngoingJobDetails() {
     }).start();
   }, [currentQuoteIndex, quoteCardAnim]);
 
-  useEffect(() => {
-    if (timelineSteps.length === 0) return;
-    // Only animate on first load – avoid re-animating on every poll/refresh (causes glitching)
-    if (hasAnimatedTimelineRef.current) return;
-    hasAnimatedTimelineRef.current = true;
+  const renderTimelineStepActions = useCallback(
+    (step: JobProgressStep) => {
+      const actions: React.ReactNode[] = [];
 
-    // Enhanced timeline animation with haptics - More dynamic and smooth
-    const timelineSequence = timelineAnimations.slice(0, timelineSteps.length).map((anim, index) =>
-      Animated.spring(anim, {
-        toValue: 1,
-        useNativeDriver: true,
-        tension: 70,
-        friction: 7,
-        delay: index * 100,
-      })
-    );
-    Animated.stagger(80, timelineSequence).start(() => {
-      // Light haptic when timeline finishes animating
-      haptics.light();
-      
-      // Add a subtle pulse animation for active/completed steps
-      timelineAnimations.slice(0, timelineSteps.length).forEach((anim, index) => {
-        const step = timelineSteps[index];
-        if (step && (step.isCompleted || step.isActive)) {
-          Animated.sequence([
-            Animated.spring(anim, {
-              toValue: 1.08,
-              useNativeDriver: true,
-              tension: 200,
-              friction: 3,
-            }),
-            Animated.spring(anim, {
-              toValue: 1,
-              useNativeDriver: true,
-              tension: 200,
-              friction: 3,
-            }),
-          ]).start();
-        }
-      });
-    });
+      if (
+        (step.id === 'step-3b' && step.isCompleted && hasQuotationSent && !quotationAccepted) ||
+        (step.id === 'step-4' && step.isActive && hasQuotationSent)
+      ) {
+        actions.push(
+          <SageOutlineChip key="review" label="Review quote" onPress={openQuotationsTab} />
+        );
+      }
 
-    // Animate progress lines after dots - More fluid animation
-    const lineSequence = lineAnimations.slice(0, Math.max(0, timelineSteps.length - 1)).map((anim, index) =>
-      Animated.timing(anim, {
-        toValue: 1,
-        duration: 500,
-        delay: (index + 1) * 100 + 150,
-        useNativeDriver: false,
-      })
-    );
-    Animated.stagger(80, lineSequence).start();
-
-    // Provider cards animation
-    const providerSequence = providerAnimations.slice(0, mappedProviders.length).map((anim, index) =>
-      Animated.spring(anim, {
-        toValue: 1,
-        useNativeDriver: true,
-        tension: 80,
-        friction: 8,
-        delay: 100 * index,
-      })
-    );
-    Animated.stagger(120, providerSequence).start();
-  }, [timelineSteps, timelineAnimations, lineAnimations, providerAnimations]);
-
-  const renderTimeline = () => {
-    if (timelineSteps.length === 0) return null;
-
-    return (
-      <View style={{ marginTop: 4, marginBottom: 28 }}>
-        {timelineSteps.map((step, index) => {
-          const isLast = index === timelineSteps.length - 1;
-          const animation = timelineAnimations[index];
-          const lineAnim = !isLast ? lineAnimations[index] : null;
-
-          const IconComponent = step.icon || Circle;
-
-          return (
-            <View key={step.id} className="flex-row" style={{ marginBottom: isLast ? 0 : 18 }}>
-              <View className="items-center" style={{ marginRight: 16, paddingTop: 4 }}>
-                <Animated.View
-                  style={{
-                    width: 34,
-                    height: 34,
-                    borderRadius: 17,
-                    backgroundColor:
-                      step.isCompleted || step.isActive || (step as any).isDeclined
-                        ? step.dotColor
-                        : JOB_TIMELINE.dotInactiveFill,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderWidth: step.isCompleted || step.isActive || (step as any).isDeclined ? 2.5 : 0,
-                    borderColor: '#FFFFFF',
-                    transform: [
-                      {
-                        scale: animation.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [0.82, 1],
-                        }),
-                      },
-                    ],
-                    opacity:
-                      step.isCompleted || step.isActive || (step as any).isDeclined
-                        ? animation
-                        : animation.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [0.5, 0.78],
-                          }),
-                    shadowColor:
-                      step.isCompleted || step.isActive || (step as any).isDeclined
-                        ? JOB_TIMELINE.dotShadow
-                        : 'transparent',
-                    shadowOffset: {
-                      width: 0,
-                      height: step.isCompleted || step.isActive || (step as any).isDeclined ? 3 : 0,
-                    },
-                    shadowOpacity: step.isCompleted || step.isActive || (step as any).isDeclined ? 0.18 : 0,
-                    shadowRadius: step.isCompleted || step.isActive || (step as any).isDeclined ? 5 : 0,
-                    elevation:
-                      step.isCompleted || step.isActive || (step as any).isDeclined
-                        ? surfaceElevation(3)
-                        : 0,
-                  }}
-                >
-                  <IconComponent
-                    size={step.isCompleted || step.isActive || (step as any).isDeclined ? 15 : 13}
-                    color={
-                      step.isCompleted || step.isActive || (step as any).isDeclined
-                        ? Colors.white
-                        : JOB_TIMELINE.pendingChipText
-                    }
-                  />
-                </Animated.View>
-                {!isLast && (
-                  <Animated.View
-                    style={{
-                      width: 2,
-                      flex: 1,
-                      backgroundColor: lineAnim
-                        ? lineAnim.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [
-                              JOB_TIMELINE.railIdle,
-                              step.isCompleted
-                                ? JOB_TIMELINE.sage
-                                : step.isActive
-                                  ? step.dotColor
-                                  : (step as any).isDeclined
-                                    ? JOB_TIMELINE.declinedDot
-                                    : JOB_TIMELINE.railMuted,
-                            ],
-                          })
-                        : JOB_TIMELINE.railMuted,
-                      marginTop: 6,
-                      borderRadius: 1,
-                      minHeight: 40,
-                      height: lineAnim
-                        ? lineAnim.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [0, 40],
-                          })
-                        : 40,
-                    }}
-                  />
-                )}
-              </View>
-              <Animated.View
-                style={{
-                  flex: 1,
-                  opacity: animation,
-                  transform: [
-                    {
-                      translateY: animation.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0, 0],
-                      }),
-                    },
-                  ],
-                  paddingTop: 0,
-                  paddingBottom: 2,
-                  paddingRight: 2,
-                }}
-              >
-                <View
-                  style={{
-                    borderRadius: 18,
-                    borderWidth: 1,
-                    borderColor: JOB_TIMELINE.rowBorder,
-                    backgroundColor: JOB_TIMELINE.rowBg,
-                    paddingVertical: 14,
-                    paddingHorizontal: 16,
-                  }}
-                >
-                <View style={{ marginBottom: 6 }}>
-                  <Text
-                    style={{
-                      fontSize: 15,
-                      fontFamily: 'Poppins-Bold',
-                      color:
-                        step.isCompleted || step.isActive || (step as any).isDeclined
-                          ? '#1A1F16'
-                          : JOB_TIMELINE.pendingChipText,
-                      marginBottom: 6,
-                      lineHeight: 21,
-                      letterSpacing: -0.35,
-                    }}
-                  >
-                    {step.title}
-                  </Text>
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      fontFamily: 'Poppins-Regular',
-                      color: 'rgba(71, 85, 75, 0.88)',
-                      lineHeight: 19,
-                    }}
-                  >
-                    {step.description}
-                  </Text>
-                </View>
-                <View style={{ marginTop: 4 }}>
-                  <AnimatedStatusChip
-                    status={step.status}
-                    statusColor={step.accent}
-                    textColor={timelineChipText(step)}
-                    size="small"
-                    animated
-                    pill
-                  />
-                </View>
-                {((step as any).showPayLogistics || (step as any).showRejectVisit || (step as any).showPayService) && (
-                  <View style={{ flexDirection: 'row', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-                    {(step as any).showPayService && (
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        onPress={() => {
-                          haptics.light();
-                          const quote = (step as any).acceptedQuotation;
-                          router.push({
-                            pathname: '/ConfirmWalletPaymentScreen' as any,
-                            params: {
-                              requestId: params.requestId,
-                              amount: String((step as any).payAmount ?? 0),
-                              quotationId: quote?.id?.toString(),
-                              providerName: quote?.provider?.name || 'Service Provider',
-                              serviceName: request?.jobTitle || 'Service Request',
-                              paymentType: 'service' as const,
-                            },
-                          } as any);
-                        }}
-                        style={{
-                          backgroundColor: Colors.accent,
-                          paddingVertical: 10,
-                          paddingHorizontal: 14,
-                          borderRadius: 12,
-                        }}
-                      >
-                        <Text style={{ fontSize: 12, fontFamily: 'Poppins-SemiBold', color: Colors.white }}>
-                          Pay service • ₦{((step as any).payAmount ?? 0).toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-                    {(step as any).showPayLogistics && (
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        onPress={() => {
-                          haptics.light();
-                          router.push({
-                            pathname: '/ConfirmWalletPaymentScreen' as any,
-                            params: {
-                              requestId: params.requestId,
-                              amount: String((step as any).logisticsCost ?? 0),
-                              paymentType: 'logistics_fee' as const,
-                              serviceName: request?.jobTitle || 'Inspection',
-                            },
-                          } as any);
-                        }}
-                        style={{
-                          backgroundColor: Colors.accent,
-                          paddingVertical: 10,
-                          paddingHorizontal: 14,
-                          borderRadius: 12,
-                        }}
-                      >
-                        <Text style={{ fontSize: 12, fontFamily: 'Poppins-SemiBold', color: Colors.white }}>
-                          Pay visit fee • ₦{Number((step as any).logisticsCost ?? 0).toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-                    {(step as any).showRejectVisit && (
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        onPress={() => {
-                          haptics.light();
-                          Alert.alert(
-                            'Decline visit?',
-                            'Provider will be notified. They can send a quotation directly without visiting.',
-                            [
-                              { text: 'Cancel', style: 'cancel' },
-                              {
-                                text: 'Decline visit',
-                                style: 'destructive',
-                                onPress: async () => {
-                                  const rid = Number(params.requestId);
-                                  if (isNaN(rid)) return;
-                                  try {
-                                    const declineResponse = await serviceRequestService.declineVisit(rid);
-                                    if (__DEV__) {
-                                      console.log('[OngoingJobDetails] inline decline visit completed', {
-                                        requestId: rid,
-                                        declineResponse,
-                                      });
-                                    }
-                                    haptics.success();
-                                    showSuccess('Visit declined. Provider can send quotation directly.');
-                                    loadRequestData();
-                                  } catch (err: any) {
-                                    if (err instanceof AuthError) {
-                                      await handleAuthErrorRedirect(router);
-                                      return;
-                                    }
-                                    haptics.error();
-                                    const msg = getSpecificErrorMessage(err, 'decline_visit') ?? err?.message ?? 'Failed to decline visit.';
-                                    showError(msg);
-                                  }
-                                },
-                              },
-                            ]
-                          );
-                        }}
-                        style={{
-                          backgroundColor: Colors.backgroundGray,
-                          paddingVertical: 10,
-                          paddingHorizontal: 14,
-                          borderRadius: 12,
-                          borderWidth: 1,
-                          borderColor: Colors.border,
-                        }}
-                      >
-                        <Text style={{ fontSize: 12, fontFamily: 'Poppins-SemiBold', color: Colors.textSecondaryDark }}>
-                          Decline visit
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                )}
-                </View>
-              </Animated.View>
-            </View>
-          );
-        })}
-      </View>
-    );
-  };
-
-  const renderProviderCard = (provider: typeof mappedProviders[number], index: number, compactBottom?: boolean) => {
-    const animation = providerAnimations[index];
-    const proximityLine = formatProviderProximitySubtitle(provider.distanceKm, provider.minutesAway);
-    const providerKey = provider.providerId ?? provider.id;
-    const quoteExpanded = expandedQuoteProviderId === providerKey;
-    return (
-      <Animated.View
-        key={provider.id}
-        style={{
-          opacity: 1,
-          transform: [
-            {
-              translateY: animation.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, 0],
-              }),
-            },
-          ],
-        }}
-        className={`${compactBottom ? 'mb-2' : 'mb-8'} rounded-2xl bg-white border border-gray-100`}
-      >
-        <View className="flex-row items-start px-3 pt-5 pb-2">
-          <TouchableOpacity
-            activeOpacity={0.7}
+      if (step.showPayService) {
+        actions.push(
+          <SagePrimaryButton
+            key="pay-service"
+            compact
+            label={`Pay Now (₦${(step.payAmount ?? 0).toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 0 })})`}
             onPress={() => {
               haptics.light();
+              const quote = step.acceptedQuotation as { id?: number; provider?: { name?: string } } | undefined;
               router.push({
-                pathname: '/ProviderDetailScreen',
+                pathname: '/ConfirmWalletPaymentScreen' as any,
                 params: {
-                  providerName: provider.name,
-                  providerId: provider.providerId?.toString() || provider.id,
+                  requestId: params.requestId,
+                  amount: String(step.payAmount ?? 0),
+                  quotationId: quote?.id?.toString(),
+                  providerName: quote?.provider?.name || 'Service Provider',
+                  serviceName: request?.jobTitle || 'Service Request',
+                  paymentType: 'service' as const,
                 },
               } as any);
             }}
-            style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
-          >
-            <Image
-              source={provider.image}
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: 24,
-                marginRight: 16,
-              }}
-              resizeMode="cover"
-            />
-            <View className="flex-1">
-              <Text className="text-base text-black mb-1" style={{ fontFamily: 'Poppins-Bold' }}>
-                {provider.name}
-              </Text>
-              {proximityLine != null && (
-                <Text className="text-xs text-gray-400 mt-1" style={{ fontFamily: 'Poppins-Regular' }}>
-                  {proximityLine}
-                </Text>
-              )}
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity
-            activeOpacity={0.85}
-            className="mr-2"
+          />
+        );
+      }
+
+      if (step.showPayLogistics) {
+        actions.push(
+          <SagePrimaryButton
+            key="pay-visit"
+            compact
+            label={`Pay visit fee • ₦${Number(step.logisticsCost ?? 0).toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
             onPress={() => {
               haptics.light();
               router.push({
-                pathname: '/ChatScreen',
+                pathname: '/ConfirmWalletPaymentScreen' as any,
                 params: {
-                  providerName: provider.name,
-                  providerId: provider.providerId?.toString() || provider.id,
                   requestId: params.requestId,
+                  amount: String(step.logisticsCost ?? 0),
+                  paymentType: 'logistics_fee' as const,
+                  serviceName: request?.jobTitle || 'Inspection',
                 },
-              });
+              } as any);
+            }}
+          />
+        );
+      }
+
+      if (step.showRejectVisit) {
+        actions.push(
+          <DestructiveButton
+            key="decline-visit"
+            compact
+            label="Decline visit"
+            onPress={() => {
+              confirmDeclineVisit();
+            }}
+          />
+        );
+      }
+
+      if (
+        (step.id === 'step-5' || step.id === 'step-4') &&
+        step.isActive &&
+        quotationAccepted &&
+        !isPaymentConfirmed
+      ) {
+        const acceptedQuote = quotations.find((q: any) => q?.status === 'accepted');
+        if (acceptedQuote) {
+          actions.push(
+            <SagePrimaryButton
+              key="pay-now"
+              compact
+              label={`Pay Now (₦${acceptedQuote.total.toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 0 })})`}
+              onPress={() => {
+                haptics.light();
+                router.push({
+                  pathname: '/ConfirmWalletPaymentScreen' as any,
+                  params: {
+                    requestId: params.requestId,
+                    amount: acceptedQuote.total.toString(),
+                    quotationId: acceptedQuote.id.toString(),
+                    providerName: acceptedQuote.provider.name,
+                    serviceName: request?.jobTitle || 'Service Request',
+                  },
+                } as any);
+              }}
+            />
+          );
+        }
+      }
+
+      if (actions.length === 0) return null;
+      return <InlineActionsRow>{actions}</InlineActionsRow>;
+    },
+    [
+      hasQuotationSent,
+      quotationAccepted,
+      isPaymentConfirmed,
+      confirmDeclineVisit,
+      openQuotationsTab,
+      params.requestId,
+      quotations,
+      request?.jobTitle,
+      router,
+      showError,
+      showSuccess,
+    ]
+  );
+
+  const renderQuotationFooter = () => {
+    if (!currentQuotation) return null;
+
+    const quoteStatus = currentQuotation.status;
+    const canAccept = quoteStatus !== 'rejected' && quoteStatus !== 'accepted';
+    const canReject = canAccept;
+    const isAccepted = quoteStatus === 'accepted';
+    const isRejected = quoteStatus === 'rejected';
+    const showPayNow = isAccepted && !isPaymentConfirmed;
+
+    return (
+      <View
+        style={{
+          paddingTop: 12,
+          paddingBottom: Math.max(insets.bottom, 12),
+          borderTopWidth: 1,
+          borderTopColor: Colors.border,
+          backgroundColor: Colors.white,
+          shadowColor: '#101828',
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.06,
+          shadowRadius: 10,
+          elevation: 6,
+        }}
+      >
+        {canAccept ? (
+          <TouchableOpacity
+            activeOpacity={0.85}
+            className="bg-black rounded-xl py-4 items-center justify-center mb-3"
+            disabled={isQuotationActionLoading || isLoadingQuotations}
+            style={{ opacity: isQuotationActionLoading || isLoadingQuotations ? 0.5 : 1 }}
+            onPress={async () => {
+              if (currentQuotation.id) {
+                haptics.light();
+                analytics.track('accept_quote', {
+                  job_id: params.requestId,
+                  quotation_id: currentQuotation.id,
+                  provider_id: currentQuotation.provider.id,
+                });
+                await handleAcceptQuotation(currentQuotation.id);
+              } else {
+                showError('Invalid quotation. Please try again.');
+              }
             }}
           >
-            <Ionicons name="chatbubble-ellipses-outline" size={22} color="#6B7280" />
-          </TouchableOpacity>
-          <AnimatedStatusChip
-            status={provider.status}
-            statusColor={provider.statusColor}
-            textColor={provider.statusTextColor}
-            size="small"
-            animated={true}
-          />
-        </View>
-
-        {provider.quote ? (
-          <View className="px-3 mt-3 mb-4">
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={() => {
-                haptics.selection();
-                setExpandedQuoteProviderId((current) => (current === providerKey ? null : providerKey));
-              }}
-              className="rounded-2xl bg-gray-50 px-4 py-4 border border-gray-100"
-            >
-              <View className="flex-row items-center justify-between">
-                <View className="flex-1 pr-3">
-                  <Text className="text-xs text-gray-500 mb-1" style={{ fontFamily: 'Poppins-Medium' }}>
-                    Quote submitted
-                  </Text>
-                  <Text className="text-sm text-gray-900" style={{ fontFamily: 'Poppins-SemiBold' }} numberOfLines={1}>
-                    Tap to {quoteExpanded ? 'hide' : 'review'} quote details
-                  </Text>
-                </View>
-                <View className="flex-row items-center">
-                <Text className="text-lg text-[#4F6739]" style={{ fontFamily: 'Poppins-Bold' }}>
-                  {provider.quote}
-                </Text>
-                  <Ionicons
-                    name={quoteExpanded ? 'chevron-up' : 'chevron-down'}
-                    size={18}
-                    color="#6B7280"
-                    style={{ marginLeft: 8 }}
-                  />
-                </View>
-              </View>
-
-              {quoteExpanded ? (
-                <View className="mt-4 pt-4 border-t border-gray-200">
-                  <Text className="text-sm text-gray-600 mb-3" style={{ fontFamily: 'Poppins-Regular' }}>
-                    {provider.quoteDetails}
-                  </Text>
-                  <Text className="text-sm text-gray-700 mb-3" style={{ fontFamily: 'Poppins-Medium' }}>
-                    Review cost and details, then accept or decline.
-                  </Text>
-                  <Text className="text-sm text-gray-900" style={{ fontFamily: 'Poppins-SemiBold' }}>
-                    Duration: <Text style={{ fontFamily: 'Poppins-Regular' }}>{provider.duration}</Text>
-                  </Text>
-                </View>
-              ) : null}
-            </TouchableOpacity>
-            <View className="flex-row items-center justify-between mt-3">
-              <Text className="text-xs text-gray-500" style={{ fontFamily: 'Poppins-Medium' }}>
-                {provider.inspectionStatus}
+            {isQuotationActionLoading ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : (
+              <Text className="text-white text-base" style={{ fontFamily: 'Poppins-SemiBold' }}>
+                Accept Quote
               </Text>
-              <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={() => {
-                  haptics.light();
-                  setActiveTab('Quotations');
-                  const quoteIndex = (Array.isArray(quotations) ? quotations : []).findIndex((q: any) => q?.provider?.id === provider.providerId);
-                  if (quoteIndex >= 0) {
-                    setCurrentQuoteIndex(quoteIndex);
-                  }
-                }}
-              >
-                <Text
-                  className="text-sm text-[#4F6739]"
-                  style={{ fontFamily: 'Poppins-SemiBold' }}
-                >
-                  {provider.cta}
-                </Text>
-              </TouchableOpacity>
+            )}
+          </TouchableOpacity>
+        ) : null}
+
+        {canReject ? (
+          <TouchableOpacity
+            activeOpacity={0.85}
+            className="bg-white rounded-xl py-4 items-center justify-center border-2 border-gray-200 mb-3"
+            disabled={isQuotationActionLoading || isLoadingQuotations}
+            style={{ opacity: isQuotationActionLoading || isLoadingQuotations ? 0.5 : 1 }}
+            onPress={async () => {
+              if (currentQuotation.id) {
+                haptics.light();
+                analytics.track('reject_quote', {
+                  job_id: params.requestId,
+                  quotation_id: currentQuotation.id,
+                  provider_id: currentQuotation.provider.id,
+                });
+                await handleRejectQuotation(currentQuotation.id);
+              } else {
+                showError('Invalid quotation. Please try again.');
+              }
+            }}
+          >
+            {isQuotationActionLoading ? (
+              <ActivityIndicator size="small" color={Colors.error} />
+            ) : (
+              <Text className="text-[#DC2626] text-base" style={{ fontFamily: 'Poppins-SemiBold' }}>
+                Reject Quote
+              </Text>
+            )}
+          </TouchableOpacity>
+        ) : null}
+
+        {isAccepted ? (
+          <View className="bg-[rgba(79, 103, 57, 0.14)] rounded-xl py-3 px-4 items-center justify-center mb-3">
+            <View className="flex-row items-center">
+              <Ionicons name="checkmark-circle" size={20} color="#16A34A" style={{ marginRight: 8 }} />
+              <Text className="text-[#16A34A] text-sm" style={{ fontFamily: 'Poppins-SemiBold' }}>
+                Quotation Accepted
+              </Text>
+            </View>
+            <Text className="text-[#16A34A] text-xs mt-1" style={{ fontFamily: 'Poppins-Regular' }}>
+              {showPayNow ? 'Complete payment to start the job' : 'Payment completed'}
+            </Text>
+          </View>
+        ) : null}
+
+        {showPayNow ? (
+          <TouchableOpacity
+            activeOpacity={0.85}
+            className="bg-[#4F6739] rounded-xl py-4 items-center justify-center"
+            onPress={() => {
+              if (currentQuotation.id) {
+                haptics.light();
+                router.push({
+                  pathname: '/ConfirmWalletPaymentScreen' as any,
+                  params: {
+                    requestId: params.requestId,
+                    amount: currentQuotation.total.toString(),
+                    quotationId: currentQuotation.id.toString(),
+                    providerName: currentQuotation.provider.name,
+                    serviceName: request?.jobTitle || 'Service Request',
+                  },
+                } as any);
+              } else {
+                showError('Invalid quotation. Please try again.');
+              }
+            }}
+          >
+            <Text className="text-white text-base" style={{ fontFamily: 'Poppins-SemiBold' }}>
+              Pay Now • ₦{new Intl.NumberFormat('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(currentQuotation.total)}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
+
+        {isRejected ? (
+          <View className="bg-[#FEE2E2] rounded-xl py-3 px-4 items-center justify-center">
+            <View className="flex-row items-center">
+              <Ionicons name="close-circle" size={20} color={Colors.error} style={{ marginRight: 8 }} />
+              <Text className="text-[#DC2626] text-sm" style={{ fontFamily: 'Poppins-SemiBold' }}>
+                Quotation Rejected
+              </Text>
             </View>
           </View>
-        ) : (
-          /* No quote yet: status is shown only in the timeline below; card shows only provider identity + pill */
-          null
-        )}
-
-        {/* Provider selection now happens in ServiceMapScreen during booking confirmation */}
-        {/* No need to show selection button here */}
-      </Animated.View>
+        ) : null}
+      </View>
     );
   };
 
@@ -1887,7 +1657,7 @@ export default function OngoingJobDetails() {
   return (
     <SafeAreaWrapper edges={['bottom']}>
       {cameFromBooking ? <Stack.Screen options={{ gestureEnabled: false }} /> : null}
-      <View className="flex-1" style={{ paddingHorizontal: CLIENT_HOME_SCROLL_GUTTER, paddingTop: insets.top + 20 }}>
+      <View style={{ flex: 1, paddingHorizontal: CLIENT_HOME_SCROLL_GUTTER, paddingTop: insets.top + 20 }}>
         <View className="flex-row items-center mb-6">
           <TouchableOpacity
             onPress={handleJobDetailsBack}
@@ -1933,7 +1703,7 @@ export default function OngoingJobDetails() {
                     height: 2,
                     width: '100%',
                     marginTop: 8,
-                    backgroundColor: isActive ? '#4F6739' : 'transparent',
+                    backgroundColor: isActive ? Colors.accent : 'transparent',
                     borderRadius: 1,
                   }}
                 />
@@ -1942,8 +1712,22 @@ export default function OngoingJobDetails() {
           })}
         </View>
 
-        {isLoading ? (
-          <JobDetailsContentSkeleton />
+        {isLoading && !request ? (
+          <View
+            style={{ flex: 1, marginTop: 8 }}
+            onLayout={(event) => {
+              const nextHeight = event.nativeEvent.layout.height;
+              if (nextHeight > 0 && nextHeight !== contentAreaHeight) {
+                setContentAreaHeight(nextHeight);
+              }
+            }}
+          >
+            {activeTab === 'Quotations' ? (
+              <JobDetailsQuotationsTabSkeleton areaHeight={contentAreaHeight} />
+            ) : (
+              <JobDetailsContentSkeleton areaHeight={contentAreaHeight} />
+            )}
+          </View>
         ) : !request && (hasAttemptedLoad || !params.requestId) ? (
           <View className="flex-1 items-center justify-center py-20 px-6" style={{ minHeight: 200 }}>
             <Ionicons name="alert-circle-outline" size={64} color="#9CA3AF" />
@@ -1962,7 +1746,7 @@ export default function OngoingJobDetails() {
               </TouchableOpacity>
             ) : null}
           </View>
-        ) : (
+        ) : activeTab === 'Updates' ? (
           <ScrollView
             style={{ flex: 1 }}
             showsVerticalScrollIndicator={false}
@@ -1975,55 +1759,27 @@ export default function OngoingJobDetails() {
                   await loadRequestData(true);
                   setRefreshing(false);
                 }}
-                tintColor="#4F6739"
+                tintColor={Colors.accent}
               />
             }
           >
-            {activeTab === 'Updates' ? (
-              <>
-                {/* Visit fee accept/decline moved into TimelineStatusCard header (cleaner layout) */}
+            {timelineHeader ? (
+              <ClientJobUpdatesPanel
+                header={timelineHeader as any}
+                steps={timelineSteps as JobProgressStep[]}
+                mappedProviders={mappedProviders}
+                requestId={params.requestId}
+                clientIdentity={clientIdentity}
+                showSyncHint={showPaymentSyncHint}
+                renderStepActions={renderTimelineStepActions}
+              />
+            ) : null}
 
-                {/* Provider cards: only when there are quotations to show (keeps Updates tab clean during inspection) */}
-                {(() => {
-                  const qList = Array.isArray(quotations) ? quotations : [];
-                  const hasQ = qList.some((q: any) => q?.sentAt || q?.submittedAt || (q?.status && q?.status !== 'draft') || (q?.total != null && q?.total > 0));
-                  if (mappedProviders.length > 0 && hasQ) {
-                    const isQuotationPending = (acceptedProviders?.length || 0) > 0 && !hasQ;
-                    return (
-                      <View>
-                        {mappedProviders.map((provider, index) => renderProviderCard(provider, index, isQuotationPending && index === mappedProviders.length - 1))}
-                      </View>
-                    );
-                  }
-                  // Pending + no quotations yet: status card + timeline already explain "waiting";
-                  // avoid duplicating the same empty-state message here.
-                  return null;
-                })()}
-
-                {/* Standard status card: current job status with provider info + blue status box */}
-                {timelineHeader && (
-                  <View style={{ marginBottom: 16 }}>
-                    <TimelineStatusCard
-                      header={timelineHeader as any}
-                      quotations={quotations}
-                      acceptedProviders={acceptedProviders}
-                      mappedProviders={mappedProviders as any}
-                      request={request}
-                      requestId={params.requestId}
-                      clientIdentity={clientIdentity}
-                      onViewQuotations={openQuotationsTab}
-                    />
-                  </View>
-                )}
-
-                {renderTimeline()}
-
-                {/* Mark as complete: GREEN when status is in_progress (provider started) or reviewing (provider marked complete, client confirms to release payment) */}
-                {(() => {
-                  const statusNorm = (request?.status || '').toString().toLowerCase().replace(/[\s_-]/g, '');
-                  const canMarkComplete = statusNorm === 'reviewing' && !isLoading;
-                  if (statusNorm === 'completed') return null;
-                  return (
+            {(() => {
+              const statusNorm = (request?.status || '').toString().toLowerCase().replace(/[\s_-]/g, '');
+              const canMarkComplete = statusNorm === 'reviewing' && !isLoading;
+              if (statusNorm === 'completed') return null;
+              return (
                 <TouchableOpacity
                   disabled={!canMarkComplete}
                   className={`rounded-xl py-4 items-center justify-center mb-8 ${canMarkComplete ? 'bg-[#4F6739]' : 'bg-gray-200'}`}
@@ -2041,11 +1797,27 @@ export default function OngoingJobDetails() {
                     </Text>
                   )}
                 </TouchableOpacity>
-                  );
-                })()}
-              </>
-            ) : (
-              <View className="flex-1">
+              );
+            })()}
+          </ScrollView>
+        ) : (
+          <View style={{ flex: 1 }}>
+            <ScrollView
+              style={{ flex: 1 }}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 16, paddingTop: 0 }}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={async () => {
+                    setRefreshing(true);
+                    await loadRequestData(true);
+                    setRefreshing(false);
+                  }}
+                  tintColor={Colors.accent}
+                />
+              }
+            >
                 {/* Quote status banner */}
                 <View
                   style={{
@@ -2065,7 +1837,7 @@ export default function OngoingJobDetails() {
                       width: 30,
                       height: 30,
                       borderRadius: 15,
-                      backgroundColor: '#F2F8EA',
+                      backgroundColor: Colors.sageTint,
                       alignItems: 'center',
                       justifyContent: 'center',
                       marginRight: 10,
@@ -2132,7 +1904,7 @@ export default function OngoingJobDetails() {
                                 {quotations[currentQuoteIndex].provider.name}
                             </Text>
                               {quotations[currentQuoteIndex].provider.verified && (
-                                <Ionicons name="checkmark-circle" size={16} color="#4F6739" style={{ marginLeft: 6 }} />
+                                <Ionicons name="checkmark-circle" size={16} color={Colors.accent} style={{ marginLeft: 6 }} />
                               )}
                             </View>
                               <Text className="text-xs text-gray-500 mt-1" style={{ fontFamily: 'Poppins-Regular' }}>
@@ -2261,137 +2033,6 @@ export default function OngoingJobDetails() {
                     </Animated.View>
                     )}
 
-                    {/* Action Buttons - Professional Balanced Layout */}
-                    <View className="mb-4">
-                      {/* Accept Button - Primary Action */}
-                    <TouchableOpacity
-                      activeOpacity={0.85}
-                        className="bg-black rounded-xl py-4 items-center justify-center mb-3"
-                        disabled={isLoading || isLoadingQuotations || quotations[currentQuoteIndex]?.status === 'rejected' || quotations[currentQuoteIndex]?.status === 'accepted'}
-                        style={{
-                          opacity: (isLoading || isLoadingQuotations || quotations[currentQuoteIndex]?.status === 'rejected' || quotations[currentQuoteIndex]?.status === 'accepted') ? 0.5 : 1,
-                        }}
-                      onPress={async () => {
-                          const currentQuote = quotations[currentQuoteIndex];
-                          if (currentQuote && currentQuote.id) {
-                            haptics.light();
-                          analytics.track('accept_quote', {
-                            job_id: params.requestId,
-                              quotation_id: currentQuote.id,
-                              provider_id: currentQuote.provider.id
-                          });
-                            await handleAcceptQuotation(currentQuote.id);
-                          } else {
-                            showError('Invalid quotation. Please try again.');
-                        }
-                      }}
-                    >
-                        {isLoading ? (
-                          <ActivityIndicator size="small" color="white" />
-                        ) : (
-                      <Text className="text-white text-base" style={{ fontFamily: 'Poppins-SemiBold' }}>
-                        Accept Quote
-                      </Text>
-                        )}
-                    </TouchableOpacity>
-
-                      {/* Reject Button - Secondary Action */}
-                      {quotations[currentQuoteIndex]?.status === 'pending' && (
-                        <TouchableOpacity
-                          activeOpacity={0.85}
-                          className="bg-white rounded-xl py-4 items-center justify-center border-2 border-gray-200"
-                          disabled={isLoading || isLoadingQuotations}
-                          style={{
-                            opacity: (isLoading || isLoadingQuotations) ? 0.5 : 1,
-                          }}
-                          onPress={async () => {
-                            const currentQuote = quotations[currentQuoteIndex];
-                            if (currentQuote && currentQuote.id) {
-                              haptics.light();
-                              analytics.track('reject_quote', {
-                                job_id: params.requestId,
-                                quotation_id: currentQuote.id,
-                                provider_id: currentQuote.provider.id
-                              });
-                              await handleRejectQuotation(currentQuote.id);
-                            } else {
-                              showError('Invalid quotation. Please try again.');
-                            }
-                          }}
-                        >
-                          {isLoading ? (
-                            <ActivityIndicator size="small" color="#DC2626" />
-                          ) : (
-                            <Text className="text-[#DC2626] text-base" style={{ fontFamily: 'Poppins-SemiBold' }}>
-                              Reject Quote
-                            </Text>
-                          )}
-                        </TouchableOpacity>
-                      )}
-
-                      {/* Status Badge - Show if quotation is accepted */}
-                      {quotations[currentQuoteIndex]?.status === 'accepted' && (
-                        <>
-                          <View className="bg-[rgba(79, 103, 57, 0.14)] rounded-xl py-3 px-4 items-center justify-center mt-2">
-                            <View className="flex-row items-center">
-                              <Ionicons name="checkmark-circle" size={20} color="#16A34A" style={{ marginRight: 8 }} />
-                              <Text className="text-[#16A34A] text-sm" style={{ fontFamily: 'Poppins-SemiBold' }}>
-                                Quotation Accepted
-                              </Text>
-                            </View>
-                            <Text className="text-[#16A34A] text-xs mt-1" style={{ fontFamily: 'Poppins-Regular' }}>
-                              {request?.status === 'accepted' ? 'Proceed to payment to start the job' : 'Payment completed'}
-                            </Text>
-                          </View>
-                          
-                          {/* Pay Now Button - Show if quotation accepted but payment not completed */}
-                          {request?.status === 'accepted' && (
-                            <TouchableOpacity
-                              activeOpacity={0.85}
-                              className="bg-[#4F6739] rounded-xl py-4 items-center justify-center mt-3"
-                              onPress={async () => {
-                                const currentQuote = quotations[currentQuoteIndex];
-                                if (currentQuote && currentQuote.id) {
-                                  haptics.light();
-                                  router.push({
-                                    pathname: '/ConfirmWalletPaymentScreen' as any,
-                                    params: {
-                                      requestId: params.requestId,
-                                      amount: currentQuote.total.toString(),
-                                      quotationId: currentQuote.id.toString(),
-                                      providerName: currentQuote.provider.name,
-                                      serviceName: request?.jobTitle || 'Service Request',
-                                    },
-                                  } as any);
-                                } else {
-                                  showError('Invalid quotation. Please try again.');
-                                }
-                              }}
-                            >
-                              <Text className="text-white text-base" style={{ fontFamily: 'Poppins-SemiBold' }}>
-                                Pay Now
-                              </Text>
-                            </TouchableOpacity>
-                          )}
-                        </>
-                      )}
-
-                      {/* Status Badge - Show if quotation is rejected */}
-                      {quotations[currentQuoteIndex]?.status === 'rejected' && (
-                        <View className="bg-[#FEE2E2] rounded-xl py-3 px-4 items-center justify-center mt-2">
-                          <View className="flex-row items-center">
-                            <Ionicons name="close-circle" size={20} color="#DC2626" style={{ marginRight: 8 }} />
-                            <Text className="text-[#DC2626] text-sm" style={{ fontFamily: 'Poppins-SemiBold' }}>
-                              Quotation Rejected
-                            </Text>
-                          </View>
-                          <Text className="text-[#DC2626] text-xs mt-1" style={{ fontFamily: 'Poppins-Regular' }}>
-                            This quotation has been rejected
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-
                     {/* Navigation & Pagination */}
                     <View className="flex-row items-center justify-between mb-6">
                       <TouchableOpacity
@@ -2408,13 +2049,13 @@ export default function OngoingJobDetails() {
                         <Ionicons
                           name="chevron-back"
                           size={20}
-                          color={currentQuoteIndex === 0 ? '#9CA3AF' : '#4F6739'}
+                          color={currentQuoteIndex === 0 ? '#9CA3AF' : Colors.accent}
                         />
                         <Text
                           className="text-sm ml-1"
                           style={{
                             fontFamily: 'Poppins-SemiBold',
-                            color: currentQuoteIndex === 0 ? '#9CA3AF' : '#4F6739',
+                            color: currentQuoteIndex === 0 ? '#9CA3AF' : Colors.accent,
                           }}
                         >
                           Previous
@@ -2440,7 +2081,7 @@ export default function OngoingJobDetails() {
                           className="text-sm mr-1"
                           style={{
                             fontFamily: 'Poppins-SemiBold',
-                            color: currentQuoteIndex === quotations.length - 1 ? '#9CA3AF' : '#4F6739',
+                            color: currentQuoteIndex === quotations.length - 1 ? '#9CA3AF' : Colors.accent,
                           }}
                         >
                           Next
@@ -2448,7 +2089,7 @@ export default function OngoingJobDetails() {
                         <Ionicons
                           name="chevron-forward"
                           size={20}
-                          color={currentQuoteIndex === quotations.length - 1 ? '#9CA3AF' : '#4F6739'}
+                          color={currentQuoteIndex === quotations.length - 1 ? '#9CA3AF' : Colors.accent}
                         />
                       </TouchableOpacity>
                     </View>
@@ -2464,9 +2105,9 @@ export default function OngoingJobDetails() {
                     </Text>
                   </View>
                 )}
-              </View>
-            )}
-          </ScrollView>
+            </ScrollView>
+            {renderQuotationFooter()}
+          </View>
         )}
       </View>
     </SafeAreaWrapper>

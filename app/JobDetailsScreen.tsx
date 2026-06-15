@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ActivityIndicator, Animated, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { Colors } from '@/lib/designSystem';
 import Toast from '@/components/Toast';
 import { useToast } from '@/hooks/useToast';
 import { useUserLocation } from '@/hooks/useUserLocation';
@@ -334,7 +335,7 @@ export default function JobDetailsScreen() {
               onPress={handleBack}
               className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-gray-100"
             >
-              <ArrowLeft size={20} color="#111827" />
+              <ArrowLeft size={20} color={Colors.surfaceDark} />
             </TouchableOpacity>
             <Text className="text-xl text-black" style={{ fontFamily: 'Poppins-Bold' }}>
               Job details
@@ -375,13 +376,13 @@ export default function JobDetailsScreen() {
 
             <View className="flex-row items-center">
               <View className="flex-row items-center mr-4">
-                <MapPin size={14} color="#4F6739" />
+                <MapPin size={14} color={Colors.accent} />
                 <Text className="text-xs text-gray-600 ml-1" style={{ fontFamily: 'Poppins-Medium' }}>
                   GPS Verified
                 </Text>
               </View>
               <View className="flex-row items-center">
-                <Clock size={14} color="#6B7280" />
+                <Clock size={14} color={Colors.iconMuted} />
                 <Text className="text-xs text-gray-600 ml-1" style={{ fontFamily: 'Poppins-Medium' }}>
                   2 min ago
                 </Text>
@@ -400,7 +401,7 @@ export default function JobDetailsScreen() {
               className={`rounded-xl border bg-white px-5 py-4 text-base text-black ${
                 errors.jobTitle ? 'border-[#EF4444]' : 'border-gray-200'
               }`}
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={Colors.placeholder}
               style={{ fontFamily: 'Poppins-Medium' }}
               maxLength={MAX_JOB_TITLE_LENGTH}
             />
@@ -429,7 +430,7 @@ export default function JobDetailsScreen() {
               className={`rounded-xl border bg-white px-5 py-4 text-base text-black ${
                 errors.description ? 'border-[#EF4444]' : 'border-gray-200'
               }`}
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={Colors.placeholder}
               style={{
                 fontFamily: 'Poppins-Medium',
                 minHeight: 140,

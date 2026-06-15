@@ -1,11 +1,12 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import { BorderRadius, Colors } from '@/lib/designSystem';
 import { haptics } from '@/hooks/useHaptics';
 import { useToast } from '@/hooks/useToast';
 import { walletService, type BankAccount } from '@/services/api';
 import { getSpecificErrorMessage } from '@/utils/errorMessages';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { ArrowLeft, Building2, ChevronDown, Lock, Wallet } from 'lucide-react-native';
+import { Building2, ChevronDown, Lock, Wallet } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -166,7 +167,7 @@ export default function WithdrawScreen() {
               width: 72,
               height: 72,
               borderRadius: 36,
-              backgroundColor: '#F2F8EA',
+              backgroundColor: Colors.sageTint,
               alignItems: 'center',
               justifyContent: 'center',
               marginBottom: 18,
@@ -188,9 +189,7 @@ export default function WithdrawScreen() {
   if (bankAccounts.length === 0) {
     return (
       <SafeAreaWrapper backgroundColor={Colors.backgroundLight}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: 16 }}>
-          <ArrowLeft size={24} color={Colors.textPrimary} />
-        </TouchableOpacity>
+        <ScreenHeader title="" onBack={() => router.back()} backgroundColor={Colors.backgroundLight} />
         <View style={{ flex: 1, padding: 24, justifyContent: 'center', alignItems: 'center' }}>
           <View
             style={{
@@ -226,15 +225,7 @@ export default function WithdrawScreen() {
 
   return (
     <SafeAreaWrapper backgroundColor={Colors.backgroundLight}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12 }}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: 8 }}>
-          <ArrowLeft size={24} color={Colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={{ fontSize: 18, fontFamily: 'Poppins-Bold', color: Colors.textPrimary, flex: 1, textAlign: 'center' }}>
-          Withdraw
-        </Text>
-        <View style={{ width: 40 }} />
-      </View>
+      <ScreenHeader title="Withdraw" onBack={() => router.back()} backgroundColor={Colors.backgroundLight} />
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
         <View
@@ -327,7 +318,7 @@ export default function WithdrawScreen() {
             if (!isNaN(n)) setSelectedAmount(n);
           }}
           placeholder="Custom amount"
-          placeholderTextColor={Colors.textSecondaryDark}
+          placeholderTextColor={Colors.placeholder}
           keyboardType="numeric"
           style={{
             backgroundColor: Colors.white,

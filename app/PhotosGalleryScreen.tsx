@@ -1,7 +1,8 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import { BorderRadius, Colors } from '@/lib/designSystem';
 import { useRouter } from 'expo-router';
-import { ArrowLeft } from 'lucide-react-native';
+
 import React from 'react';
 import { Dimensions, Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
@@ -22,42 +23,7 @@ export default function PhotosGalleryScreen() {
   return (
     <SafeAreaWrapper backgroundColor={Colors.white}>
       <View style={{ flex: 1 }}>
-        {/* Header */}
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            paddingHorizontal: 20,
-            paddingTop: 16,
-            paddingBottom: 12,
-            marginBottom: 8,
-          }}
-        >
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={{
-              width: 40,
-              height: 40,
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginRight: 12,
-            }}
-            activeOpacity={0.7}
-          >
-            <ArrowLeft size={24} color={Colors.textPrimary} />
-          </TouchableOpacity>
-          <Text
-            style={{
-              fontSize: 20,
-              fontFamily: 'Poppins-Bold',
-              color: Colors.textPrimary,
-              flex: 1,
-            }}
-          >
-            Photos
-          </Text>
-        </View>
-
+        <ScreenHeader title="Photos" onBack={() => router.back()} backgroundColor={Colors.white} />
         {/* Grid of Images */}
         <ScrollView
           showsVerticalScrollIndicator={false}

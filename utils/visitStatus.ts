@@ -72,8 +72,92 @@ export function getVisitDeclinedDescription(
   return 'Visit was declined.';
 }
 
+export function patchVisitDeclined(
+  visitRequest?: Record<string, unknown> | null,
+  actor: VisitDeclineActor = 'client'
+): Record<string, unknown> {
+  const status =
+    actor === 'client'
+      ? 'client_declined'
+      : actor === 'provider'
+        ? 'provider_declined'
+        : 'declined';
+  return {
+    ...(visitRequest || {}),
+    logisticsStatus: status,
+    declined: true,
+    ...(actor !== 'unknown' ? { declinedBy: actor } : {}),
+  };
+}
+
+/** Some backends mark the whole request cancelled when only the visit was declined. */
+export function healJobStatusAfterVisitDecline<T extends { status?: string; visitRequest?: unknown }>(
+  request: T
+): T {
+  if (!isVisitDeclined(request.visitRequest as Record<string, unknown> | null | undefined)) {
+    return request;
+  }
+  const status = (request.status || '').toString().toLowerCase();
+  if (status !== 'cancelled') return request;
+  return { ...request, status: 'inspecting' as T['status'] };
+}
+
 export function isTerminalVisitStatus(status?: string | null): boolean {
   if (!status) return false;
   const normalized = status.toLowerCase().trim();
   return normalized === 'paid' || isVisitDeclined({ logisticsStatus: normalized });
+}
+
+export function hasVisitRequestEvidence(visitRequest?: Record<string, unknown> | null): boolean {
+  if (!visitRequest) return false;
+  return !!(
+    visitRequest.scheduledDate ||
+    visitRequest.scheduled_date ||
+    visitRequest.scheduledTime ||
+    visitRequest.scheduled_time ||
+    visitRequest.requestedAt ||
+    visitRequest.requested_at ||
+    visitRequest.logisticsStatus ||
+    visitRequest.logistics_status ||
+    visitRequest.logisticsCost != null ||
+    visitRequest.logistics_cost != null
+  );
+}
+
+export function isVisitPaid(visitRequest?: Record<string, unknown> | null): boolean {
+  return getVisitLogisticsStatus(visitRequest) === 'paid';
+}
+
+export function isVisitCompletedOrPaid(visitRequest?: Record<string, unknown> | null): boolean {
+  const status = getVisitLogisticsStatus(visitRequest);
+  if (!status) return isVisitPaid(visitRequest);
+  if (status === 'paid') return true;
+  return ['completed', 'complete', 'done', 'visited', 'inspected', 'confirmed', 'finished'].some(
+    (token) => status.includes(token)
+  );
+}
+
+export function quotationImpliesPriorVisit(quotations: unknown[] | null | undefined): boolean {
+  if (!Array.isArray(quotations)) return false;
+  return quotations.some((entry) => {
+    if (!entry || typeof entry !== 'object') return false;
+    const quote = entry as Record<string, unknown>;
+    const findings = quote.findingsAndWorkRequired ?? quote.findings_and_work_required;
+    return typeof findings === 'string' && findings.trim().length > 0;
+  });
+}
+
+/** True when a site visit was requested, paid, completed, or clearly happened before a quote. */
+export function resolveVisitOccurred(input: {
+  visitRequest?: Record<string, unknown> | null;
+  requestStatus?: string | null;
+  quotations?: unknown[] | null;
+}): boolean {
+  const { visitRequest, requestStatus, quotations } = input;
+  if (hasVisitRequestEvidence(visitRequest)) return true;
+  if (isVisitCompletedOrPaid(visitRequest)) return true;
+  const status = (requestStatus || '').toLowerCase();
+  if (status === 'inspecting' || status.includes('inspect')) return true;
+  if (quotationImpliesPriorVisit(quotations)) return true;
+  return false;
 }

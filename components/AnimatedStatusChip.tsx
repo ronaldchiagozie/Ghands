@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
-import { BorderRadius, Colors, Fonts, Spacing } from '@/lib/designSystem';
+import { BorderRadius, Colors, Fonts, Spacing, runSpring, runTiming, useReducedMotion } from '@/lib/designSystem';
 
 interface AnimatedStatusChipProps {
   status: string;
@@ -28,28 +28,28 @@ export default function AnimatedStatusChip({
 }: AnimatedStatusChipProps) {
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const colorAnim = useRef(new Animated.Value(0)).current;
+  const reducedMotion = useReducedMotion();
+  const shouldAnimate = animated && !reducedMotion;
 
   useEffect(() => {
-    if (animated) {
-      // Scale animation
-      Animated.spring(scaleAnim, {
+    if (shouldAnimate) {
+      runSpring(reducedMotion, scaleAnim, {
         toValue: 1,
         useNativeDriver: true,
         tension: 100,
         friction: 7,
-      }).start();
+      });
 
-      // Color fade animation
-      Animated.timing(colorAnim, {
+      runTiming(reducedMotion, colorAnim, {
         toValue: 1,
         duration: 300,
         useNativeDriver: false,
-      }).start();
+      });
     } else {
       scaleAnim.setValue(1);
       colorAnim.setValue(1);
     }
-  }, [animated, scaleAnim, colorAnim]);
+  }, [shouldAnimate, scaleAnim, colorAnim, reducedMotion]);
 
   const scale = scaleAnim.interpolate({
     inputRange: [0, 1],

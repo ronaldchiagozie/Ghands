@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   CLIENT_TAB_BAR_BASE_HEIGHT,
 } from '@/lib/tabletLayout';
-import { Colors } from '@/lib/designSystem';
+import { Colors, runParallel, useReducedMotion } from '@/lib/designSystem';
 import { surfaceElevation } from '@/lib/surfaceStyles';
 
 type IconName = keyof typeof MaterialIcons.glyphMap;
@@ -16,9 +16,17 @@ const AnimatedIcon = ({ iconName, color, focused }: { iconName: IconName; color:
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const opacityAnim = useRef(new Animated.Value(focused ? 1 : 0.7)).current;
   const translateYAnim = useRef(new Animated.Value(0)).current;
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
-    Animated.parallel([
+    if (reducedMotion) {
+      scaleAnim.setValue(focused ? 1.15 : 1);
+      opacityAnim.setValue(focused ? 1 : 0.6);
+      translateYAnim.setValue(focused ? -2 : 0);
+      return;
+    }
+
+    runParallel(reducedMotion, [
       Animated.spring(scaleAnim, {
         toValue: focused ? 1.15 : 1,
         tension: 400,
@@ -36,8 +44,8 @@ const AnimatedIcon = ({ iconName, color, focused }: { iconName: IconName; color:
         friction: 8,
         useNativeDriver: true,
       }),
-    ]).start();
-  }, [focused]);
+    ]);
+  }, [focused, reducedMotion, scaleAnim, opacityAnim, translateYAnim]);
 
   return (
     <Animated.View

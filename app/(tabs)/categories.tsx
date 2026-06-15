@@ -10,9 +10,11 @@ import { ActivityIndicator, ScrollView, Text, TextInput, TouchableOpacity, View 
 import { serviceRequestService, ServiceCategory, authService } from '@/services/api';
 import { getCategoryIcon } from '@/utils/categoryIcons';
 import { haptics } from '@/hooks/useHaptics';
+import { useOnNetworkRestore } from '@/hooks/useNetworkConnectivity';
 import { getSpecificErrorMessage } from '@/utils/errorMessages';
+import { isConnectivityOrNetworkError } from '@/utils/isNetworkFailure';
 import { extractUserIdFromToken } from '@/utils/tokenUtils';
-import { Colors, Spacing, SHADOWS, useTabScrollContentPaddingTop, useTabScreenScrollBottomPadding } from '@/lib/designSystem';
+import { Colors, MIN_TOUCH_TARGET, Spacing, SHADOWS, useTabScrollContentPaddingTop, useTabScreenScrollBottomPadding } from '@/lib/designSystem';
 
 interface CategoryData extends ServiceCategory {
   IconComponent: React.ComponentType;
@@ -57,6 +59,10 @@ export default function CategoryPage() {
     loadCategories();
   }, []);
 
+  useOnNetworkRestore(() => {
+    void loadCategories();
+  });
+
   const loadCategories = async () => {
     setIsLoading(true);
     try {
@@ -77,9 +83,11 @@ export default function CategoryPage() {
       setCategories(categoriesWithIcons);
     } catch (error: any) {
       console.error('Error loading categories:', error);
+      if (isConnectivityOrNetworkError(error)) {
+        return;
+      }
       const errorMessage = getSpecificErrorMessage(error, 'get_categories');
       showError(errorMessage);
-      // Keep empty array on error
       setCategories([]);
     } finally {
       setIsLoading(false);
@@ -117,6 +125,10 @@ export default function CategoryPage() {
         setIsSearching(false);
       } catch (error: any) {
         console.error('Error searching categories:', error);
+        if (isConnectivityOrNetworkError(error)) {
+          setIsSearching(false);
+          return;
+        }
         const errorMessage = getSpecificErrorMessage(error, 'search_categories');
         showError(errorMessage);
         setCategories([]);
@@ -446,7 +458,7 @@ export default function CategoryPage() {
                 }}
                 className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-gray-100"
               >
-                <ArrowLeft size={20} color="#111827" />
+                <ArrowLeft size={20} color={Colors.surfaceDark} />
               </TouchableOpacity>
               <Text style={{
                 fontSize: 18,
@@ -477,21 +489,23 @@ export default function CategoryPage() {
                 value={searchQuery}
                 onChangeText={handleSearchQueryChange}
                 className="flex-1 text-black text-base"
-                placeholderTextColor="#666"
+                placeholderTextColor={Colors.placeholder}
                 style={{ fontFamily: 'Poppins-Medium' }}
               />
               {searchQuery.length > 0 && (
                 <TouchableOpacity
                   onPress={handleClearSearch}
-                  className="w-8 h-8 items-center justify-center mr-2"
+                  style={{ width: MIN_TOUCH_TARGET, height: MIN_TOUCH_TARGET, alignItems: 'center', justifyContent: 'center', marginRight: 8 }}
                   activeOpacity={0.7}
+                  accessibilityLabel="Clear search"
                 >
-                  <X size={18} color="#666" />
+                  <X size={18} color={Colors.textSecondaryDark} />
                 </TouchableOpacity>
               )}
               <TouchableOpacity 
-                className="w-10 h-10 bg-[#000] rounded-lg items-center justify-center ml-2"
+                style={{ width: MIN_TOUCH_TARGET, height: MIN_TOUCH_TARGET, backgroundColor: Colors.black, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginLeft: 8 }}
                 disabled={isSearching}
+                accessibilityLabel="Search categories"
               >
                 {isSearching ? (
                   <ActivityIndicator size="small" color="#9bd719ff" />
@@ -656,7 +670,7 @@ export default function CategoryPage() {
                       padding: 12,
                       marginBottom: 16,
                       borderWidth: isToggle === category.name ? 2 : 1,
-                      borderColor: isToggle === category.name ? '#4F6739' : '#e5e5e5',
+                      borderColor: isToggle === category.name ? Colors.accent : '#e5e5e5',
                       flexDirection: 'row',
                       alignItems: 'center'
                     }}
@@ -666,7 +680,7 @@ export default function CategoryPage() {
                       backgroundColor: 'transparent',
                       borderRadius: 12,
                       borderWidth: 1,
-                      borderColor: isToggle === category.name ? '#4F6739' : '#e5e5e5',
+                      borderColor: isToggle === category.name ? Colors.accent : '#e5e5e5',
                       padding: 16,
                       marginRight: 16,
                       alignItems: 'center',

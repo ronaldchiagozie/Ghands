@@ -464,7 +464,7 @@ export default function ProviderDetailScreen() {
                     marginBottom: 8,
                   }}
                 >
-                  <Star size={18} color="#FACC15" fill="#FACC15" />
+                  <Star size={18} color={Colors.star} fill={Colors.star} />
                   <Text
                     style={{
                       fontSize: 14,
@@ -920,8 +920,8 @@ export default function ProviderDetailScreen() {
                   <Star
                     key={i}
                     size={16}
-                    color={i < review.rating ? '#FACC15' : '#E5E7EB'}
-                    fill={i < review.rating ? '#FACC15' : 'transparent'}
+                    color={i < review.rating ? Colors.star : Colors.border}
+                    fill={i < review.rating ? Colors.star : 'transparent'}
                     style={{ marginRight: 2 }}
                   />
                 ))}

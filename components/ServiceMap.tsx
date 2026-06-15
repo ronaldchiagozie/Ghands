@@ -3,7 +3,7 @@ import { Animated, Image, Platform, ScrollView, Text, TextInput, TouchableOpacit
 import MapView, { Marker, PROVIDER_GOOGLE, Region } from 'react-native-maps';
 import { useRouter } from 'expo-router';
 import { Search } from 'lucide-react-native';
-import { BorderRadius, Colors } from '@/lib/designSystem';
+import { BorderRadius, Colors, MIN_TOUCH_TARGET } from '@/lib/designSystem';
 import { SURFACE_STYLES } from '@/lib/surfaceStyles';
 
 import mapStyle from '@/lib/mapStyle';
@@ -197,7 +197,7 @@ const ServiceMap: React.FC<ServiceMapProps> = ({
           <Search size={20} color={Colors.textSecondaryDark} style={{ marginRight: 12 }} />
           <TextInput
             placeholder="Where do you need service?"
-            placeholderTextColor={Colors.textSecondaryDark}
+            placeholderTextColor={Colors.placeholder}
             value={locationSearchQuery}
             onChangeText={setLocationSearchQuery}
             style={{
@@ -406,7 +406,8 @@ const ServiceMap: React.FC<ServiceMapProps> = ({
               </View>
               <TouchableOpacity
                 onPress={() => setActiveProvider(null)}
-                className="ml-2 w-8 h-8 rounded-full bg-gray-100 items-center justify-center"
+                style={{ marginLeft: 8, width: MIN_TOUCH_TARGET, height: MIN_TOUCH_TARGET, borderRadius: 999, backgroundColor: Colors.backgroundGray, alignItems: 'center', justifyContent: 'center' }}
+                accessibilityLabel="Close provider details"
               >
                 <Text className="text-gray-500" style={{ fontFamily: 'Poppins-Bold' }}>
                   ×

@@ -9,7 +9,7 @@ module.exports = {
     orientation: 'portrait',
     icon: './assets/images/icon.png',
     scheme: 'ghands',
-    userInterfaceStyle: 'automatic',
+    userInterfaceStyle: 'light',
     backgroundColor: '#4F6739',
     newArchEnabled: true,
     extra: {

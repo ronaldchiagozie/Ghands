@@ -1,4 +1,5 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import Toast from '@/components/Toast';
 import { Button } from '@/components/ui/Button';
 import { haptics } from '@/hooks/useHaptics';
@@ -12,7 +13,7 @@ import { getSpecificErrorMessage } from '@/utils/errorMessages';
 import { appendAddressBookExtra } from '@/utils/addressBookExtras';
 import * as Location from 'expo-location';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, MapPin, Search, Send } from 'lucide-react-native';
+import { MapPin, Search, Send } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, FlatList, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
@@ -666,30 +667,7 @@ export default function LocationSearchScreen() {
           flex: 1,
         }}
       >
-        {/* Header */}
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            paddingHorizontal: 20,
-            paddingTop: 16,
-            paddingBottom: 12,
-          }}
-        >
-          <TouchableOpacity
-            onPress={handleBack}
-            style={{
-              width: 40,
-              height: 40,
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginRight: 12,
-            }}
-            activeOpacity={0.7}
-          >
-            <ArrowLeft size={24} color={Colors.textPrimary} />
-          </TouchableOpacity>
-        </View>
+        <ScreenHeader title="Find location" onBack={handleBack} backgroundColor={Colors.backgroundLight} />
 
         <View style={{ flex: 1 }}>
           {/* Search Input */}
@@ -715,7 +693,7 @@ export default function LocationSearchScreen() {
             >
               <TextInput
                 placeholder="Search for a location..."
-                placeholderTextColor={Colors.textSecondaryDark}
+                placeholderTextColor={Colors.placeholder}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 onSubmitEditing={handleConfirm}
@@ -811,7 +789,7 @@ export default function LocationSearchScreen() {
                     style={{
                       fontSize: 14,
                       fontFamily: 'Poppins-Medium',
-                      color: '#DC2626',
+                      color: Colors.error,
                       textAlign: 'center',
                       marginBottom: 8,
                     }}

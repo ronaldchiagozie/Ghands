@@ -1,4 +1,5 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import { Colors } from '@/lib/designSystem';
 import { authService, locationService } from '@/services/api';
 import type { SavedLocation } from '@/services/api';
@@ -190,31 +191,25 @@ export default function AddressBookScreen() {
 
   return (
     <SafeAreaWrapper backgroundColor={Colors.white}>
-      <View
-        className="flex-row items-center px-4 py-3 bg-white border-b border-gray-100"
-        style={{ paddingTop: 20 }}
-      >
-        <TouchableOpacity onPress={() => router.back()} activeOpacity={0.85}>
-          <Ionicons name="arrow-back" size={24} color="#000000" />
-        </TouchableOpacity>
-        <Text
-          className="text-xl font-bold text-black flex-1 text-center"
-          style={{ fontFamily: 'Poppins-Bold' }}
-        >
-          Address Book
-        </Text>
-        <TouchableOpacity
-          onPress={() =>
-            router.push({
-              pathname: '/LocationSearchScreen' as any,
-              params: { next: 'AddressBookScreen' },
-            } as any)
-          }
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-          <Text style={{ fontFamily: 'Poppins-SemiBold', fontSize: 15, color: Colors.accent }}>Add</Text>
-        </TouchableOpacity>
-      </View>
+      <ScreenHeader
+        title="Address Book"
+        onBack={() => router.back()}
+        rightElement={
+          <TouchableOpacity
+            onPress={() =>
+              router.push({
+                pathname: '/LocationSearchScreen' as any,
+                params: { next: 'AddressBookScreen' },
+              } as any)
+            }
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityLabel="Add address"
+            accessibilityHint="Opens location search to save a new address"
+          >
+            <Text style={{ fontFamily: 'Poppins-SemiBold', fontSize: 15, color: Colors.accent }}>Add</Text>
+          </TouchableOpacity>
+        }
+      />
 
       {isLoading ? (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>

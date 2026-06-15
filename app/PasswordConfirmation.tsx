@@ -1,6 +1,7 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Lock } from 'lucide-react-native';
+import { Lock } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { AuthButton } from '../components/AuthButton';
@@ -59,35 +60,16 @@ export default function PasswordConfirmationScreen() {
 
   return (
     <SafeAreaWrapper>
+      <ScreenHeader title="" onBack={handleBackToOtp} />
       <ScrollView
         className="flex-1"
         contentContainerStyle={{
           paddingHorizontal: 20,
-          paddingVertical: 40,
+          paddingVertical: 24,
           flexGrow: 1,
         }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Back Button */}
-        <TouchableOpacity
-          onPress={handleBackToOtp}
-          style={{ marginBottom: 24 }}
-          activeOpacity={0.7}
-        >
-          <View
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              backgroundColor: Colors.backgroundGray,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <ArrowLeft size={20} color={Colors.textPrimary} />
-          </View>
-        </TouchableOpacity>
-
         {/* Title */}
         <Text
           style={{

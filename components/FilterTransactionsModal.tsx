@@ -1,5 +1,5 @@
 import AnimatedModal from '@/components/AnimatedModal';
-import { BorderRadius, Colors } from '@/lib/designSystem';
+import { BorderRadius, Colors, MIN_TOUCH_TARGET} from '@/lib/designSystem';
 import { ChevronDown, X } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -69,12 +69,14 @@ export default function FilterTransactionsModal({ visible, onClose, onApply }: F
           <TouchableOpacity
             onPress={onClose}
             style={{
-              width: 32,
-              height: 32,
+              width: MIN_TOUCH_TARGET,
+height: MIN_TOUCH_TARGET,
               alignItems: 'center',
               justifyContent: 'center',
             }}
             activeOpacity={0.7}
+            accessibilityLabel="Close filter"
+            accessibilityHint="Dismisses the filter panel"
           >
             <X size={24} color={Colors.textPrimary} />
           </TouchableOpacity>

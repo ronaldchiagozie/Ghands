@@ -1,7 +1,7 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import AnimatedStatusChip from '@/components/AnimatedStatusChip';
 import Demcatorline from "@/components/Demacator";
-import HeaderComponent from "@/components/HeaderComponent";
+import { ScreenHeader } from "@/components/ScreenHeader";
 import { haptics } from '@/hooks/useHaptics';
 import { authService, serviceRequestService, ServiceRequest } from '@/services/api';
 import { useToast } from '@/hooks/useToast';
@@ -536,7 +536,7 @@ export default function CompletedJobDetail() {
     return (
       <SafeAreaWrapper>
         <View className="flex-1 items-center justify-center py-20">
-          <ActivityIndicator size="large" color="#4F6739" />
+          <ActivityIndicator size="large" color={Colors.accent} />
           <Text className="text-gray-600 mt-4" style={{ fontFamily: 'Poppins-Medium' }}>
             Loading job details...
           </Text>
@@ -572,7 +572,7 @@ export default function CompletedJobDetail() {
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
           <View style={{ paddingHorizontal: CLIENT_HOME_SCROLL_GUTTER, paddingTop: 20 }}>
             <View className="mb-6">
-              <HeaderComponent name="Job details" onPress={router.back} />
+              <ScreenHeader title="Job details" onBack={() => router.back()} />
             </View>
             <View className="mb-6">
               <Text
@@ -631,7 +631,7 @@ export default function CompletedJobDetail() {
                               key={i}
                               name={filled ? 'star' : 'star-outline'}
                               size={14}
-                              color={filled ? '#FACC15' : '#E5E7EB'}
+                              color={filled ? Colors.star : Colors.border}
                             />
                           );
                         })}
@@ -662,7 +662,7 @@ export default function CompletedJobDetail() {
                               key={`y-${i}`}
                               name={i < myReviewRating ? 'star' : 'star-outline'}
                               size={16}
-                              color={i < myReviewRating ? '#4F6739' : '#E5E7EB'}
+                              color={i < myReviewRating ? Colors.accent : Colors.border}
                             />
                           ))}
                         </View>
@@ -685,7 +685,7 @@ export default function CompletedJobDetail() {
                   paddingVertical: 10,
                   paddingHorizontal: 12,
                   borderWidth: 1,
-                  borderColor: '#E5E7EB',
+                  borderColor: Colors.border,
                 }}
               >
                 <Text
@@ -693,7 +693,7 @@ export default function CompletedJobDetail() {
                   style={{ fontFamily: 'Poppins-Regular', lineHeight: 18 }}
                 >
                   Chat and voice calls are closed once a job is completed. If you need help with this job, go to{' '}
-                  <Text style={{ fontFamily: 'Poppins-SemiBold', color: '#166534' }}>Help & Support</Text> in the app
+                  <Text style={{ fontFamily: 'Poppins-SemiBold', color: Colors.success }}>Help & Support</Text> in the app
                   to reach our team.
                 </Text>
                 <TouchableOpacity
@@ -706,7 +706,7 @@ export default function CompletedJobDetail() {
                 >
                   <Text
                     className="text-sm"
-                    style={{ fontFamily: 'Poppins-SemiBold', color: '#4F6739' }}
+                    style={{ fontFamily: 'Poppins-SemiBold', color: Colors.accent }}
                   >
                     Open Help & Support
                   </Text>
@@ -802,7 +802,7 @@ export default function CompletedJobDetail() {
                   style={{
                     fontSize: 14,
                     fontFamily: 'Poppins-SemiBold',
-                    color: '#166534',
+                    color: Colors.success,
                   }}
                 >
                   You’ve rated this job — thank you!
@@ -950,7 +950,7 @@ export default function CompletedJobDetail() {
                           <Ionicons
                             name={filled ? 'star' : 'star-outline'}
                             size={28}
-                            color={filled ? '#FACC15' : '#CBD5E1'}
+                            color={filled ? Colors.star : '#CBD5E1'}
                           />
                         </TouchableOpacity>
                       );
@@ -972,7 +972,7 @@ export default function CompletedJobDetail() {
                     value={comment}
                     onChangeText={setComment}
                     placeholder="Write a comment (optional)"
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={Colors.placeholder}
                     multiline
                     numberOfLines={3}
                     style={{

@@ -300,7 +300,7 @@ export default function WalletScreen() {
                 style={{
                   fontSize: 14,
                   fontFamily: 'Poppins-Medium',
-                  color: '#E5E7EB',
+                  color: Colors.border,
                 }}
               >
                 Available balance
@@ -520,7 +520,7 @@ export default function WalletScreen() {
                   {transaction.status === 'completed' ? (
                     <CheckCircle size={20} color={Colors.accent} />
                   ) : (
-                    <Clock size={20} color="#F59E0B" />
+                    <Clock size={20} color={Colors.warning} />
                   )}
                 </View>
 
@@ -568,7 +568,7 @@ export default function WalletScreen() {
                       paddingHorizontal: 8,
                       paddingVertical: 4,
                       borderRadius: 12,
-                      backgroundColor: transaction.status === 'pending' ? 'rgba(245, 158, 11, 0.18)' : 'rgba(79, 103, 57, 0.14)',
+                      backgroundColor: transaction.status === 'pending' ? 'rgba(245, 158, 11, 0.18)' : Colors.successLight,
                       marginBottom: 6,
                     }}
                   >
@@ -576,7 +576,7 @@ export default function WalletScreen() {
                       style={{
                         fontSize: 11,
                         fontFamily: 'Poppins-SemiBold',
-                        color: transaction.status === 'pending' ? '#92400E' : '#2A3B1F',
+                        color: transaction.status === 'pending' ? Colors.warningForeground : Colors.successForeground,
                       }}
                     >
                       {transaction.status === 'pending' ? 'Pending' : 'Completed'}

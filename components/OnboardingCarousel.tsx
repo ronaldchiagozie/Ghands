@@ -4,6 +4,7 @@ import { ChevronRight } from 'lucide-react-native';
 import { SlideData } from '../lib/assets';
 import OnboardingSlide from './OnboardingSlide';
 import { Colors } from '../lib/designSystem';
+import { motionDuration, runParallel, runTiming, useReducedMotion } from '../lib/designSystem';
 import { PHONE_LANE_MAX_WIDTH, useIsTablet } from '@/lib/tabletLayout';
 
 interface OnboardingCarouselProps {
@@ -33,6 +34,7 @@ export default function OnboardingCarousel({
   const ONBOARDING_CONTROLS_RESERVE = 138;
   const slideHeight = Math.max(420, contentH - ONBOARDING_CONTROLS_RESERVE);
   const translateX = useRef(new Animated.Value(0)).current;
+  const reducedMotion = useReducedMotion();
 
   const onContainerLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
@@ -44,12 +46,13 @@ export default function OnboardingCarousel({
   };
 
   useEffect(() => {
-    Animated.timing(translateX, {
-      toValue: -currentIndex * contentW,
+    const target = -currentIndex * contentW;
+    runTiming(reducedMotion, translateX, {
+      toValue: target,
       duration: 400,
       useNativeDriver: true,
-    }).start();
-  }, [currentIndex, contentW, translateX]);
+    });
+  }, [currentIndex, contentW, translateX, reducedMotion]);
 
   return (
     <View style={styles.container} onLayout={onContainerLayout}>

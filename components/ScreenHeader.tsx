@@ -1,11 +1,9 @@
-import { Colors, BorderRadius, SPACING } from '@/lib/designSystem';
+import { BorderRadius, Colors, MIN_TOUCH_TARGET, SPACING } from '@/lib/designSystem';
 import { useRouter } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 import React from 'react';
 import { Text, TouchableOpacity, View, ViewStyle } from 'react-native';
 import { navigateBack } from '@/utils/navigation';
-
-const MIN_TOUCH_TARGET = 44;
 
 interface ScreenHeaderProps {
   title: string;
@@ -46,8 +44,8 @@ export function ScreenHeader({ title, onBack, backFallback, rightElement, backgr
             onPress={handleBack}
             activeOpacity={0.7}
             style={{
-              width: Math.max(40, MIN_TOUCH_TARGET),
-              height: Math.max(40, MIN_TOUCH_TARGET),
+              width: MIN_TOUCH_TARGET,
+height: MIN_TOUCH_TARGET,
               borderRadius: BorderRadius.full,
               backgroundColor: Colors.backgroundGray,
               alignItems: 'center',
@@ -61,6 +59,7 @@ export function ScreenHeader({ title, onBack, backFallback, rightElement, backgr
           </TouchableOpacity>
         ) : null}
         <Text
+          accessibilityRole="header"
           style={{
             fontSize: 18,
             fontFamily: 'Poppins-Bold',

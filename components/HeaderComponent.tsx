@@ -1,18 +1,13 @@
-import { Ionicons } from '@expo/vector-icons'
-import React from 'react'
-import { Text, View } from 'react-native'
+import React from 'react';
+import { ScreenHeader } from '@/components/ScreenHeader';
 
-export default function HeaderComponent({name,onPress}: {name:string,onPress: () => void}) {
-    return(
-        <View className='flex flex-row   gap-32 item-center '>
-            <View>
-                <Ionicons name='arrow-back' size={20} onPress={onPress}/>
-            </View>
-            <Text className='text-xl' style={{
-                fontFamily: 'Poppins-Bold'
-            }}>
-                {name}
-            </Text>
-        </View>
-    )
+/** @deprecated Use ScreenHeader directly — kept for existing imports. */
+export default function HeaderComponent({
+  name,
+  onPress,
+}: {
+  name: string;
+  onPress: () => void;
+}) {
+  return <ScreenHeader title={name} onBack={onPress} />;
 }

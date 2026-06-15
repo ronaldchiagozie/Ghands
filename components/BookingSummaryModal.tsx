@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ScrollView, Text, TouchableOpacity, View, Image, StyleSheet, InteractionManager } from 'react-native';
 import AnimatedModal from './AnimatedModal';
-import { Colors, BorderRadius, Spacing } from '@/lib/designSystem';
+import {Colors, BorderRadius, Spacing, MIN_TOUCH_TARGET} from '@/lib/designSystem';
 import { Edit2, Calendar, Clock, MapPin, Image as ImageIcon, Users, ChevronRight, X } from 'lucide-react-native';
 import { Button } from './ui/Button';
 import { haptics } from '@/hooks/useHaptics';
@@ -342,8 +342,8 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
   },
   closeButton: {
-    width: 32,
-    height: 32,
+    width: MIN_TOUCH_TARGET,
+height: MIN_TOUCH_TARGET,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 16,

@@ -1,7 +1,8 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import { BorderRadius, Colors, Fonts, Spacing } from '@/lib/designSystem';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Lock } from 'lucide-react-native';
+import { Lock } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { ScrollView, Text, TextInput, TouchableOpacity, View, Alert } from 'react-native';
 import { Button } from '@/components/ui/Button';
@@ -36,43 +37,7 @@ export default function BankTransferScreen() {
 
   return (
     <SafeAreaWrapper backgroundColor={Colors.backgroundLight}>
-      {/* Header */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          paddingHorizontal: 20,
-          paddingTop: 16,
-          paddingBottom: 16,
-        }}
-      >
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={{
-            width: 40,
-            height: 40,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginRight: 12,
-          }}
-          activeOpacity={0.7}
-        >
-          <ArrowLeft size={24} color={Colors.textPrimary} />
-        </TouchableOpacity>
-        <Text
-          style={{
-            fontSize: 24,
-            fontFamily: 'Poppins-Bold',
-            color: Colors.textPrimary,
-            flex: 1,
-            textAlign: 'center',
-          }}
-        >
-          Account details
-        </Text>
-        <View style={{ width: 40 }} />
-      </View>
-
+        <ScreenHeader title="Account details" onBack={() => router.back()} backgroundColor={Colors.white} />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{

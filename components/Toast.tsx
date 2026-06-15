@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useRef } from 'react';
 import { Animated, Text, TouchableOpacity, View } from 'react-native';
+import { Colors, runParallel, useReducedMotion } from '@/lib/designSystem';
 import { useNarrowOverlayMaxWidth } from '@/lib/tabletLayout';
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning';
@@ -15,32 +16,32 @@ interface ToastProps {
 
 const TOAST_CONFIG = {
   success: {
-    bgColor: '#FFFFFF',
+    bgColor: Colors.white,
     borderColor: '#BBF7D0',
-    textColor: '#166534',
+    textColor: Colors.success,
     icon: 'checkmark-circle' as const,
-    iconColor: '#22C55E',
+    iconColor: Colors.successIcon,
   },
   error: {
-    bgColor: '#FFFFFF',
+    bgColor: Colors.white,
     borderColor: '#FECACA',
-    textColor: '#991B1B',
+    textColor: Colors.errorForeground,
     icon: 'close-circle' as const,
-    iconColor: '#EF4444',
+    iconColor: Colors.errorBright,
   },
   info: {
-    bgColor: '#FFFFFF',
+    bgColor: Colors.white,
     borderColor: '#BFDBFE',
     textColor: '#1E40AF',
     icon: 'information-circle' as const,
     iconColor: '#3B82F6',
   },
   warning: {
-    bgColor: '#FFFFFF',
+    bgColor: Colors.white,
     borderColor: '#FDE68A',
-    textColor: '#92400E',
+    textColor: Colors.warningForeground,
     icon: 'warning' as const,
-    iconColor: '#F59E0B',
+    iconColor: Colors.warning,
   },
 };
 
@@ -50,25 +51,29 @@ export default function Toast({ message, type = 'info', duration = 3000, onClose
   const safeOnClose = onClose || (() => {});
   const slideAnim = useRef(new Animated.Value(-100)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
     if (visible) {
-      // Slide in and fade in
-      Animated.parallel([
-        Animated.spring(slideAnim, {
-          toValue: 0,
-          useNativeDriver: true,
-          tension: 50,
-          friction: 7,
-        }),
-        Animated.timing(opacityAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-      ]).start();
+      if (reducedMotion) {
+        slideAnim.setValue(0);
+        opacityAnim.setValue(1);
+      } else {
+        runParallel(reducedMotion, [
+          Animated.spring(slideAnim, {
+            toValue: 0,
+            useNativeDriver: true,
+            tension: 50,
+            friction: 7,
+          }),
+          Animated.timing(opacityAnim, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+        ]);
+      }
 
-      // Auto dismiss after duration
       const timer = setTimeout(() => {
         handleClose();
       }, duration);
@@ -77,10 +82,17 @@ export default function Toast({ message, type = 'info', duration = 3000, onClose
     } else {
       handleClose();
     }
-  }, [visible, duration]);
+  }, [visible, duration, reducedMotion]);
 
   const handleClose = () => {
-    Animated.parallel([
+    if (reducedMotion) {
+      slideAnim.setValue(-100);
+      opacityAnim.setValue(0);
+      safeOnClose();
+      return;
+    }
+
+    runParallel(reducedMotion, [
       Animated.timing(slideAnim, {
         toValue: -100,
         duration: 250,
@@ -91,7 +103,7 @@ export default function Toast({ message, type = 'info', duration = 3000, onClose
         duration: 250,
         useNativeDriver: true,
       }),
-    ]).start(() => {
+    ], () => {
       safeOnClose();
     });
   };

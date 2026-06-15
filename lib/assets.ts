@@ -72,6 +72,8 @@ export const DESIGN_TOKENS = {
     textSecondary: '#F5F0E8',
     textPrimary: '#000000',
     textSecondaryDark: '#666666',
+    /** Input placeholders — ≥4.5:1 on white and backgroundGray. Do not use textTertiary for placeholders. */
+    placeholder: '#666666',
     textTertiary: '#999999',
     
     // UI colors
@@ -93,8 +95,57 @@ export const DESIGN_TOKENS = {
     error: '#DC2626',
     errorLight: '#FEF2F2',
     errorBorder: '#FEE2E2',
+    /** Form validation and alert red (Tailwind red-500) */
+    errorBright: '#EF4444',
+    /** Readable red on errorLight / badge backgrounds */
+    errorForeground: '#991B1B',
+    /** Translucent red badge fill */
+    errorBadge: 'rgba(239, 68, 68, 0.14)',
+    /** Readable amber on warningLight / badge backgrounds */
+    warningForeground: '#92400E',
+    /** Translucent amber badge fill */
+    warningBadge: 'rgba(245, 158, 11, 0.18)',
     
-    // Tab colors
+    // Semantic surfaces & tints
+    /** Sage-tinted chip / pill background */
+    sageTint: '#F2F8EA',
+    /** Soft sage empty-state surface */
+    sageSurface: '#F8FAF7',
+    /** Dark hero panels and banners */
+    surfaceDark: '#111827',
+    /** Sage-tinted border on white cards */
+    borderSage: '#E8EBE5',
+    
+    // Neutral text & icons
+    /** Muted icon and secondary meta (gray-500) */
+    iconMuted: '#6B7280',
+    /** Body meta on light surfaces (gray-600) */
+    textMuted: '#4B5563',
+    /** Dark neutral icons (gray-800) */
+    inkMuted: '#1F2937',
+    
+    // Info / in-progress (blue family)
+    /** Soft blue badge background (in-progress jobs) */
+    infoSoft: '#E4ECFF',
+    /** Notification info icon background */
+    infoLight: '#DBEAFE',
+    /** Info icon accent */
+    info: '#1D4ED8',
+    /** In-progress badge text */
+    infoDark: '#2750B8',
+    
+    /** Rich green icons on sage tints */
+    successIcon: '#15803D',
+    
+    // Job status badge fills
+    /** Warm pending badge background */
+    statusPendingBg: '#FFF4E0',
+    statusPendingText: '#9E6B1F',
+    /** Yellow pending chip (jobs tab) */
+    statusPendingAltBg: '#FEF9C3',
+    
+    /** Rating star fill */
+    star: '#FACC15',
     tabActive: '#4F6739',
     tabInactive: '#9CA3AF',
     

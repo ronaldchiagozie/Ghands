@@ -1,4 +1,5 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { Colors } from '@/lib/designSystem';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Camera, Info } from 'lucide-react-native';
@@ -111,8 +112,8 @@ export default function AddCardDetailsScreen() {
   };
 
   const getBorderColor = (isValid: boolean | null): string => {
-    if (isValid === null) return '#E5E7EB';
-    return isValid ? '#10B981' : '#EF4444';
+    if (isValid === null) return Colors.border;
+    return isValid ? '#10B981' : Colors.errorBright;
   };
 
   const isFormValid = () => {
@@ -170,7 +171,7 @@ export default function AddCardDetailsScreen() {
                 value={cardNumber}
                 onChangeText={handleCardNumberChange}
                 placeholder="1234 5678 9101 1121"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={Colors.placeholder}
                 keyboardType="numeric"
                 maxLength={19}
                 className="border rounded-xl px-4 py-4 text-base"
@@ -184,12 +185,12 @@ export default function AddCardDetailsScreen() {
                 className="absolute right-4 top-0 bottom-0 justify-center"
                 activeOpacity={0.7}
               >
-                <Camera size={20} color="#6B7280" />
+                <Camera size={20} color={Colors.iconMuted} />
               </TouchableOpacity>
             </View>
             {validation.cardNumber === false && (
               <View className="flex-row items-center mt-2">
-                <Ionicons name="alert-circle" size={16} color="#EF4444" />
+                <Ionicons name="alert-circle" size={16} color={Colors.errorBright} />
                 <Text 
                   className="text-red-500 text-sm ml-2" 
                   style={{ fontFamily: 'Poppins-Regular' }}
@@ -213,7 +214,7 @@ export default function AddCardDetailsScreen() {
                 value={expiration}
                 onChangeText={handleExpirationChange}
                 placeholder="MM/YY"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={Colors.placeholder}
                 keyboardType="numeric"
                 maxLength={5}
                 className="border rounded-xl px-4 py-4 text-base"
@@ -234,14 +235,14 @@ export default function AddCardDetailsScreen() {
                   CVC
                 </Text>
                 <TouchableOpacity className="ml-1" activeOpacity={0.7}>
-                  <Info size={14} color="#6B7280" />
+                  <Info size={14} color={Colors.iconMuted} />
                 </TouchableOpacity>
               </View>
               <TextInput
                 value={cvc}
                 onChangeText={handleCVCChange}
                 placeholder="123"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={Colors.placeholder}
                 keyboardType="numeric"
                 maxLength={3}
                 className="border rounded-xl px-4 py-4 text-base"
@@ -266,7 +267,7 @@ export default function AddCardDetailsScreen() {
               value={zipCode}
               onChangeText={handleZipCodeChange}
               placeholder="ZIP"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={Colors.placeholder}
               className="border rounded-xl px-4 py-4 text-base"
               style={{
                 fontFamily: 'Poppins-Regular',

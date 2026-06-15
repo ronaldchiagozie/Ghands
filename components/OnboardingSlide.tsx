@@ -3,6 +3,7 @@ import { Animated, Image, SafeAreaView, StyleSheet, Text, View, useWindowDimensi
 import Svg, { Defs, Rect, Stop, LinearGradient as SvgLinearGradient } from 'react-native-svg';
 import { SlideData } from '../lib/assets';
 import { Colors } from '../lib/designSystem';
+import { runParallel, runTiming, useReducedMotion } from '../lib/designSystem';
 
 interface OnboardingSlideProps {
   slide: SlideData;
@@ -24,6 +25,7 @@ export default function OnboardingSlide({
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const titleSlideAnim = useRef(new Animated.Value(30)).current;
   const descSlideAnim = useRef(new Animated.Value(30)).current;
+  const reducedMotion = useReducedMotion();
 
   const styles = useMemo(() => {
     const isSmallScreen = windowWidth < 375;
@@ -83,11 +85,18 @@ export default function OnboardingSlide({
 
   useEffect(() => {
     if (isActive) {
+      if (reducedMotion) {
+        fadeAnim.setValue(1);
+        titleSlideAnim.setValue(0);
+        descSlideAnim.setValue(0);
+        return;
+      }
+
       fadeAnim.setValue(0);
       titleSlideAnim.setValue(30);
       descSlideAnim.setValue(30);
 
-      Animated.parallel([
+      runParallel(reducedMotion, [
         Animated.timing(fadeAnim, {
           toValue: 1,
           duration: 400,
@@ -98,35 +107,44 @@ export default function OnboardingSlide({
           duration: 500,
           useNativeDriver: true,
         }),
-      ]).start();
+      ]);
 
-      setTimeout(() => {
-        Animated.timing(descSlideAnim, {
+      const descTimer = setTimeout(() => {
+        runTiming(reducedMotion, descSlideAnim, {
           toValue: 0,
           duration: 500,
           useNativeDriver: true,
-        }).start();
-      }, 150);
-    } else {
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(titleSlideAnim, {
-          toValue: -30,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(descSlideAnim, {
-          toValue: -30,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-      ]).start();
+        });
+      }, reducedMotion ? 0 : 150);
+
+      return () => clearTimeout(descTimer);
     }
-  }, [isActive, fadeAnim, titleSlideAnim, descSlideAnim]);
+
+    if (reducedMotion) {
+      fadeAnim.setValue(0);
+      titleSlideAnim.setValue(-30);
+      descSlideAnim.setValue(-30);
+      return;
+    }
+
+    runParallel(reducedMotion, [
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(titleSlideAnim, {
+        toValue: -30,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(descSlideAnim, {
+        toValue: -30,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]);
+  }, [isActive, fadeAnim, titleSlideAnim, descSlideAnim, reducedMotion]);
 
   return (
     <SafeAreaView style={styles.root}>

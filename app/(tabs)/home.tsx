@@ -12,8 +12,9 @@ import { quickActions, todoItems, type QuickAction } from '@/components/home/dat
 import useCoachMarks from '@/hooks/useCoachMarks';
 import { haptics } from '@/hooks/useHaptics';
 import { useTokenGuard } from '@/hooks/useTokenGuard';
+import { useOnNetworkRestore } from '@/hooks/useNetworkConnectivity';
 import { useUserLocation } from '@/hooks/useUserLocation';
-import { BorderRadius, Colors, useTabScrollContentPaddingTop, useTabScreenBottomSpacerHeight } from '@/lib/designSystem';
+import { BorderRadius, Colors, MIN_TOUCH_TARGET, useReducedMotion, useTabScrollContentPaddingTop, useTabScreenBottomSpacerHeight } from '@/lib/designSystem';
 import { SURFACE_STYLES, surfaceElevation } from '@/lib/surfaceStyles';
 import { providerListCard } from '@/lib/providerSurfaceStyles';
 import { CLIENT_HOME_SCROLL_GUTTER } from '@/lib/tabletLayout';
@@ -22,6 +23,7 @@ import { logDevAuthTokens } from '@/utils/devAuthTokens';
 import { handleAuthErrorRedirect } from '@/utils/authRedirect';
 import { getCategoryIcon, resolveCategoryImageSource } from '@/utils/categoryIcons';
 import { AuthError } from '@/utils/errors';
+import { isConnectivityOrNetworkError } from '@/utils/isNetworkFailure';
 // import { shareReferral } from '@/utils/referral';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -31,7 +33,7 @@ import { Animated, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity
 import { ServiceCategory } from '../../data/serviceCategories';
 
 /** Deep olive: Quick actions panel + matching CTAs (pin, search, badges) on home. */
-const HOME_QUICK_ACTIONS_PANEL_BG = '#4F6739';
+const HOME_QUICK_ACTIONS_PANEL_BG = Colors.accent;
 const HOME_QUICK_ACTIONS_PANEL_BORDER = 'rgba(45, 65, 24, 0.72)';
 /** Inner quick-action tiles: frosted on sage (pure white felt too loud). */
 const HOME_QUICK_ACTION_TILE_BG = 'rgba(255, 255, 255, 0.16)';
@@ -145,6 +147,7 @@ const HomeScreen = React.memo(() => {
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const slideAnim = useRef(new Animated.Value(0)).current;
   const categoriesFadeAnim = useRef(new Animated.Value(1)).current; // Start visible for dummy data
+  const reducedMotion = useReducedMotion();
 
   // Dev-only: log client + provider tokens (cached on each login)
   useEffect(() => {
@@ -172,11 +175,17 @@ const HomeScreen = React.memo(() => {
   }), []);
 
   useEffect(() => {
+    if (reducedMotion) {
+      fadeAnim.setValue(1);
+      slideAnim.setValue(0);
+      return;
+    }
+
     Animated.parallel([
       Animated.timing(fadeAnim, animationConfig.fadeConfig),
       Animated.timing(slideAnim, animationConfig.slideConfig),
     ]).start();
-  }, [fadeAnim, slideAnim, animationConfig]);
+  }, [fadeAnim, slideAnim, animationConfig, reducedMotion]);
 
   // Helper function to format time ago
   const formatTimeAgo = useCallback((dateString: string): string => {
@@ -317,9 +326,9 @@ const HomeScreen = React.memo(() => {
         await handleAuthErrorRedirect(router);
         return;
       }
-      const isNetworkError = error?.isNetworkError || (error?.message || '').includes('Network') || (error?.message || '').includes('Failed to fetch');
+      const isNetworkError = isConnectivityOrNetworkError(error);
       if (isNetworkError) {
-        setJobActivities([]);
+        // Global offline overlay handles UI; keep cached list for reconnect.
         return;
       }
       const status = (error as any)?.status;
@@ -363,7 +372,11 @@ const HomeScreen = React.memo(() => {
   // Animate categories when API data loads
   useEffect(() => {
     if (apiCategories.length > 0) {
-      // Subtle fade animation when real data replaces dummy data
+      if (reducedMotion) {
+        categoriesFadeAnim.setValue(1);
+        return;
+      }
+
       Animated.sequence([
         Animated.timing(categoriesFadeAnim, {
           toValue: 0.7,
@@ -377,7 +390,7 @@ const HomeScreen = React.memo(() => {
         }),
       ]).start();
     }
-  }, [apiCategories]);
+  }, [apiCategories, categoriesFadeAnim, reducedMotion]);
 
   // Shuffle array function for randomizing category order
   const shuffleArray = useCallback(<T,>(array: T[]): T[] => {
@@ -431,7 +444,11 @@ const HomeScreen = React.memo(() => {
         return;
       }
 
-      // On error, clear categories to show empty state
+      // On error, keep existing categories — global offline overlay covers connectivity loss.
+      if (isConnectivityOrNetworkError(error)) {
+        return;
+      }
+
       setApiCategories([]);
       if (__DEV__) {
         console.error('Error loading categories from API:', error);
@@ -441,6 +458,12 @@ const HomeScreen = React.memo(() => {
       setIsLoadingCategories(false);
     }
   };
+
+  useOnNetworkRestore(() => {
+    refreshLocation();
+    void loadJobActivities();
+    void loadCategoriesFromAPI();
+  });
 
   const handleCategoryPress = useCallback((category: ServiceCategory) => {
     router.push({
@@ -615,23 +638,24 @@ const HomeScreen = React.memo(() => {
                   onSubmitEditing={handleSearch}
                   returnKeyType="search"
                   className="flex-1 text-black text-base"
-                  placeholderTextColor="#666"
+                  placeholderTextColor={Colors.placeholder}
                   style={{ fontFamily: 'Poppins-Medium' }}
                 />
                 {searchQuery.length > 0 && (
                   <TouchableOpacity
                     onPress={() => setSearchQuery('')}
-                    className="w-8 h-8 items-center justify-center mr-2"
+                    style={{ width: MIN_TOUCH_TARGET, height: MIN_TOUCH_TARGET, alignItems: 'center', justifyContent: 'center', marginRight: 8 }}
                     activeOpacity={0.7}
+                    accessibilityLabel="Clear search"
                   >
-                    <Ionicons name='close-outline' size={20} color="#666" />
+                    <Ionicons name='close-outline' size={20} color={Colors.textSecondaryDark} />
                   </TouchableOpacity>
                 )}
                 <TouchableOpacity
-                  className="w-10 h-10 rounded-lg items-center justify-center ml-2"
-                  style={{ backgroundColor: HOME_QUICK_ACTIONS_PANEL_BG }}
+                  style={{ width: MIN_TOUCH_TARGET, height: MIN_TOUCH_TARGET, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginLeft: 8, backgroundColor: HOME_QUICK_ACTIONS_PANEL_BG }}
                   onPress={handleSearch}
                   activeOpacity={0.8}
+                  accessibilityLabel="Search"
                 >
                   <Search size={18} color="#FFFFFF" />
                 </TouchableOpacity>
@@ -814,7 +838,7 @@ const HomeScreen = React.memo(() => {
           <View style={{ paddingHorizontal: 16, marginBottom: 28 }}>
             <View
               style={{
-                backgroundColor: '#4F6739',
+                backgroundColor: Colors.accent,
                 borderRadius: 16,
                 paddingVertical: 24,
                 paddingHorizontal: 18,

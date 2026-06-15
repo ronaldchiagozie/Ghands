@@ -1,19 +1,21 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import AnimatedStatusChip from '@/components/AnimatedStatusChip';
 import { haptics } from '@/hooks/useHaptics';
+import { useOnNetworkRestore } from '@/hooks/useNetworkConnectivity';
 import { authService, serviceRequestService, ServiceRequest } from '@/services/api';
 import { useToast } from '@/hooks/useToast';
 import { getSpecificErrorMessage } from '@/utils/errorMessages';
 import { AuthError } from '@/utils/errors';
+import { isConnectivityOrNetworkError } from '@/utils/isNetworkFailure';
 import { handleAuthErrorRedirect } from '@/utils/authRedirect';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { RefreshControl, ScrollView, Text, TouchableOpacity, View, Modal, Pressable, StyleSheet } from 'react-native';
+import { FlatList, Modal, Platform, Pressable, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { JobHistoryCardSkeleton } from '@/components/LoadingSkeleton';
 import { JobsTabEmptyState } from '@/components/JobsTabEmptyState';
 import { useSkeletonGate } from '@/hooks/useSkeletonGate';
-import { BorderRadius, Colors, useTabScrollContentPaddingTop, useTabScreenScrollBottomPadding } from '@/lib/designSystem';
+import { BorderRadius, Colors, JOB_STATUS_BADGE, REFRESH_CONTROL, useTabScrollContentPaddingTop, useTabScreenScrollBottomPadding } from '@/lib/designSystem';
 import { providerListCard } from '@/lib/providerSurfaceStyles';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { extractMyRatingFromRequest, reviewRatingStorageKey } from '@/utils/reviewSync';
@@ -35,6 +37,158 @@ type JobItem = {
   /** Client’s rating (1–5) for this job when completed */
   myRating?: number;
 };
+
+type JobListItemProps = {
+  job: JobItem;
+  activeTab: JobStatus;
+  onPrimaryAction: (status: JobStatus, job: JobItem) => void;
+  onCancelRequest: (job: JobItem) => void;
+};
+
+const JobListItem = React.memo(function JobListItem({
+  job,
+  activeTab,
+  onPrimaryAction,
+  onCancelRequest,
+}: JobListItemProps) {
+  return (
+    <View
+      style={{
+        ...providerListCard,
+        marginBottom: 12,
+      }}
+    >
+      <View className="flex-row justify-between mb-3">
+        <View className="flex-1 pr-3">
+          <Text className="text-lg text-black mb-1" style={{ fontFamily: 'Poppins-Bold' }}>
+            {job.title}
+          </Text>
+          <Text className="text-sm text-gray-600" style={{ fontFamily: 'Poppins-Regular' }}>
+            {job.subtitle}
+          </Text>
+        </View>
+        <View className="flex-row items-center gap-2">
+          <AnimatedStatusChip
+            status={job.status}
+            statusColor={
+              job.status === 'In Progress'
+                ? JOB_STATUS_BADGE.inProgress.bg
+                : job.status === 'Completed'
+                  ? JOB_STATUS_BADGE.completed.bg
+                  : activeTab === 'Cancelled'
+                    ? JOB_STATUS_BADGE.cancelled.bg
+                    : JOB_STATUS_BADGE.pendingAlt.bg
+            }
+            textColor={
+              job.status === 'In Progress'
+                ? JOB_STATUS_BADGE.inProgress.text
+                : job.status === 'Completed'
+                  ? Colors.success
+                  : activeTab === 'Cancelled'
+                    ? JOB_STATUS_BADGE.cancelled.text
+                    : JOB_STATUS_BADGE.pendingAlt.text
+            }
+            size="small"
+            animated={true}
+          />
+          {activeTab === 'Ongoing' && job.status === 'Pending' && (job.acceptedProvidersCount ?? 0) === 0 && (
+            <TouchableOpacity
+              className="bg-red-50 py-1.5 px-3 rounded-lg"
+              activeOpacity={0.85}
+              onPress={() => {
+                haptics.warning();
+                onCancelRequest(job);
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontFamily: 'Poppins-SemiBold',
+                  color: '#FF2C2C',
+                }}
+              >
+                Cancel
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      {(job.status === 'Pending' || job.status === 'In Progress') && (job.quotationsCount ?? 0) >= 0 && (
+        <View className="flex-row items-center gap-3 mt-2">
+          <Ionicons name="document-text-outline" size={16} color={Colors.textMuted} />
+          <Text className="text-sm text-gray-600" style={{ fontFamily: 'Poppins-Regular' }}>
+            {job.quotationsCount === 0
+              ? 'Awaiting quotes'
+              : `${job.quotationsCount} quote${job.quotationsCount === 1 ? '' : 's'}`}
+          </Text>
+        </View>
+      )}
+      <View className="flex-row items-center gap-3 mt-2">
+        <Ionicons name="person-outline" size={16} color={Colors.textMuted} />
+        <Text className="text-sm text-gray-600" style={{ fontFamily: 'Poppins-Regular' }}>
+          {job.name}
+        </Text>
+      </View>
+      <View className="flex-row items-center gap-3 mt-2">
+        <Ionicons name="calendar-outline" size={16} color={Colors.textMuted} />
+        <Text className="text-sm text-gray-600" style={{ fontFamily: 'Poppins-Regular' }}>
+          {job.time}
+        </Text>
+      </View>
+      <View className="flex-row items-center gap-3 mt-2">
+        <Ionicons name="location-outline" size={16} color={Colors.textMuted} />
+        <Text className="text-sm text-gray-600" style={{ fontFamily: 'Poppins-Regular' }}>
+          {job.location}
+        </Text>
+      </View>
+
+      {activeTab === 'Completed' && job.myRating != null && job.myRating >= 1 && (
+        <View className="flex-row items-center gap-2 mt-3">
+          <Text className="text-xs text-gray-500" style={{ fontFamily: 'Poppins-Medium' }}>
+            Your rating
+          </Text>
+          <View className="flex-row">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Ionicons
+                key={`r-${job.id}-${i}`}
+                name={i < job.myRating! ? 'star' : 'star-outline'}
+                size={14}
+                color={i < job.myRating! ? Colors.accent : Colors.border}
+              />
+            ))}
+          </View>
+          <Text className="text-xs" style={{ fontFamily: 'Poppins-SemiBold', color: Colors.success }}>
+            {job.myRating}/5
+          </Text>
+        </View>
+      )}
+
+      <View className="flex flex-row pt-4 justify-center">
+        <TouchableOpacity
+          className={`py-3 px-6 rounded-lg ${
+            activeTab === 'Ongoing'
+              ? 'bg-gray-100 w-full'
+              : activeTab === 'Completed'
+                ? 'bg-[#4F6739] w-full'
+                : 'bg-black w-full'
+          }`}
+          activeOpacity={0.85}
+          onPress={() => onPrimaryAction(activeTab, job)}
+        >
+          <Text
+            className={`text-sm  text-center ${
+              activeTab === 'Ongoing' ? 'text-black' : 'text-white '
+            }`}
+            style={{ fontFamily: 'Poppins-Medium' }}
+          >
+            {activeTab === 'Ongoing' ? 'Check Updates' : 'View Details'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+});
 
 // Helper to format date
 const formatDate = (dateString?: string, timeString?: string): string => {
@@ -183,14 +337,8 @@ export default function JobsScreen() {
       }
       
       // Check if it's a network error first
-      const isNetworkError = error?.isNetworkError || 
-                            error?.message?.includes('Network') || 
-                            error?.message?.includes('Failed to fetch') ||
-                            error?.message?.includes('Network request failed');
-      
-      if (isNetworkError) {
-        showError('No internet connection. Please check your connection and reconnect to continue.');
-        setAllJobs([]);
+      if (isConnectivityOrNetworkError(error)) {
+        // Global offline overlay handles UI; keep cached jobs for reconnect.
         return;
       }
       
@@ -225,6 +373,10 @@ export default function JobsScreen() {
     setRefreshing(false);
     haptics.success();
   }, [loadRequests]);
+
+  useOnNetworkRestore(() => {
+    void loadRequests();
+  });
 
   const jobs = useMemo(() => {
     const filtered = allJobs.filter(job => {
@@ -261,6 +413,23 @@ export default function JobsScreen() {
     }
   };
 
+  const renderJobItem = useCallback(
+    ({ item }: { item: JobItem }) => (
+      <JobListItem
+        job={item}
+        activeTab={activeTab}
+        onPrimaryAction={handlePrimaryAction}
+        onCancelRequest={setPendingCancelJob}
+      />
+    ),
+    [activeTab]
+  );
+
+  const jobKeyExtractor = useCallback(
+    (item: JobItem) => `${activeTab}-${item.id}`,
+    [activeTab]
+  );
+
   return (
     <SafeAreaWrapper tabletShellTop>
       <View style={{ flex: 1, paddingHorizontal: 12, paddingTop: tabScrollTop }}>
@@ -296,177 +465,39 @@ export default function JobsScreen() {
         </View>
 
         {showJobsSkeleton || isJobsLoadingEmpty ? (
-          <ScrollView 
-            showsVerticalScrollIndicator={false} 
+          <FlatList
+            data={[1, 2, 3]}
+            keyExtractor={(item) => `${activeTab}-skel-${item}`}
+            renderItem={() => <JobHistoryCardSkeleton />}
+            showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: scrollBottomPad }}
-          >
-            {[1, 2, 3].map((index) => (
-              <JobHistoryCardSkeleton key={`${activeTab}-skel-${index}`} />
-            ))}
-          </ScrollView>
+          />
         ) : (
-          <ScrollView 
+          <FlatList
+            data={jobs}
+            keyExtractor={jobKeyExtractor}
+            renderItem={renderJobItem}
             style={{ flex: 1 }}
-            showsVerticalScrollIndicator={false} 
+            showsVerticalScrollIndicator={false}
             contentContainerStyle={
               jobs.length === 0
                 ? { flexGrow: 1, justifyContent: 'center', paddingBottom: scrollBottomPad }
                 : { paddingBottom: scrollBottomPad }
             }
             refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4F6739" />
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={REFRESH_CONTROL.tintColor}
+                colors={REFRESH_CONTROL.colors as unknown as string[]}
+              />
             }
-          >
-            {jobs.length === 0 ? (
-              <JobsTabEmptyState audience="client" activeTab={activeTab} />
-            ) : (
-              jobs.map((job) => (
-            <View
-              key={`${activeTab}-${job.id}`}
-              style={{
-                ...providerListCard,
-                marginBottom: 12,
-              }}
-            >
-              <View className="flex-row justify-between mb-3">
-                <View className="flex-1 pr-3">
-                  <Text className="text-lg text-black mb-1" style={{ fontFamily: 'Poppins-Bold' }}>
-                    {job.title}
-                  </Text>
-                  <Text className="text-sm text-gray-600" style={{ fontFamily: 'Poppins-Regular' }}>
-                    {job.subtitle}
-                  </Text>
-                </View>
-                <View className="flex-row items-center gap-2">
-                  <AnimatedStatusChip
-                    status={job.status}
-                    // Use blue for "In Progress" to match home activity cards,
-                    // keep yellow for pending, green for completed, gray for cancelled.
-                    statusColor={
-                      job.status === 'In Progress'
-                        ? '#E4ECFF' // blue background
-                        : job.status === 'Completed'
-                          ? 'rgba(79, 103, 57, 0.14)' // green background
-                          : activeTab === 'Cancelled'
-                            ? '#F3F4F6' // gray background
-                            : '#FEF9C3' // yellow for pending
-                    }
-                    textColor={
-                      job.status === 'In Progress'
-                        ? '#2750B8' // blue text
-                        : job.status === 'Completed'
-                          ? '#166534' // green text
-                          : activeTab === 'Cancelled'
-                            ? '#6B7280' // gray text
-                            : '#92400E' // brown/yellow text for pending
-                    }
-                    size="small"
-                    animated={true}
-                  />
-                  {/* Cancel Request button in header - only show while job is still pending AND no providers have accepted */}
-                  {activeTab === 'Ongoing' && job.status === 'Pending' && (job.acceptedProvidersCount ?? 0) === 0 && (
-                    <TouchableOpacity
-                      className="bg-red-50 py-1.5 px-3 rounded-lg"
-                      activeOpacity={0.85}
-                      onPress={() => {
-                        haptics.warning();
-                        setPendingCancelJob(job);
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 12,
-                          fontFamily: 'Poppins-SemiBold',
-                          color: '#FF2C2C',
-                        }}
-                      >
-                        Cancel
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </View>
-
-              {(job.status === 'Pending' || job.status === 'In Progress') && (job.quotationsCount ?? 0) >= 0 && (
-                <View className="flex-row items-center gap-3 mt-2">
-                  <Ionicons name="document-text-outline" size={16} color="#4B5563" />
-                  <Text className="text-sm text-gray-600" style={{ fontFamily: 'Poppins-Regular' }}>
-                    {job.quotationsCount === 0
-                      ? 'Awaiting quotes'
-                      : `${job.quotationsCount} quote${job.quotationsCount === 1 ? '' : 's'}`}
-                  </Text>
-                </View>
-              )}
-              <View className="flex-row items-center gap-3 mt-2">
-                <Ionicons name="person-outline" size={16} color="#4B5563" />
-                <Text className="text-sm text-gray-600" style={{ fontFamily: 'Poppins-Regular' }}>
-                  {job.name}
-                </Text>
-              </View>
-              <View className="flex-row items-center gap-3 mt-2">
-                <Ionicons name="calendar-outline" size={16} color="#4B5563" />
-                <Text className="text-sm text-gray-600" style={{ fontFamily: 'Poppins-Regular' }}>
-                  {job.time}
-                </Text>
-              </View>
-              <View className="flex-row items-center gap-3 mt-2">
-                <Ionicons name="location-outline" size={16} color="#4B5563" />
-                <Text className="text-sm text-gray-600" style={{ fontFamily: 'Poppins-Regular' }}>
-                  {job.location}
-                </Text>
-              </View>
-
-              {activeTab === 'Completed' && job.myRating != null && job.myRating >= 1 && (
-                <View className="flex-row items-center gap-2 mt-3">
-                  <Text className="text-xs text-gray-500" style={{ fontFamily: 'Poppins-Medium' }}>
-                    Your rating
-                  </Text>
-                  <View className="flex-row">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Ionicons
-                        key={`r-${job.id}-${i}`}
-                        name={i < job.myRating! ? 'star' : 'star-outline'}
-                        size={14}
-                        color={i < job.myRating! ? '#4F6739' : '#E5E7EB'}
-                      />
-                    ))}
-                  </View>
-                  <Text className="text-xs text-[#166534]" style={{ fontFamily: 'Poppins-SemiBold' }}>
-                    {job.myRating}/5
-                  </Text>
-                </View>
-              )}
-
-              <View className="flex flex-row pt-4 justify-center">
-                <TouchableOpacity
-                  className={`py-3 px-6 rounded-lg ${
-                    activeTab === 'Ongoing'
-                      ? 'bg-gray-100 w-full'
-                      : activeTab === 'Completed'
-                        ? 'bg-[#4F6739] w-full'
-                        : 'bg-black w-full'
-                  }`}
-                  activeOpacity={0.85}
-                  onPress={() => handlePrimaryAction(activeTab, job)}
-                >
-                  <Text
-                    className={`text-sm  text-center ${
-                      activeTab === 'Ongoing' ? 'text-black' : 'text-white '
-                    }`}
-                    style={{ fontFamily: 'Poppins-Medium' }}
-                  >
-                    {activeTab === 'Ongoing'
-                      ? 'Check Updates'
-                      : activeTab === 'Completed'
-                        ? 'View Details'
-                        : 'View Details'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))
-            )}
-          </ScrollView>
+            ListEmptyComponent={<JobsTabEmptyState audience="client" activeTab={activeTab} />}
+            initialNumToRender={6}
+            maxToRenderPerBatch={8}
+            windowSize={7}
+            removeClippedSubviews={Platform.OS === 'android'}
+          />
         )}
       </View>
 

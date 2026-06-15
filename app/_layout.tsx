@@ -2,7 +2,7 @@ import { useFonts } from 'expo-font';
 import * as NavigationBar from 'expo-navigation-bar';
 import { Stack, useRouter, usePathname } from "expo-router";
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import TabletRootFrame from '@/components/TabletRootFrame';
@@ -14,14 +14,19 @@ import { AuthErrorBoundary } from '@/components/AuthErrorBoundary';
 import { analytics } from '@/services/analytics';
 import { performance } from '@/services/performance';
 import { crashReporting } from '@/services/crashReporting';
-import { AuthError } from '@/utils/errors';
+import { isAuthError } from '@/utils/errors';
+import { isInAuthTransition } from '@/utils/authNavigationGuard';
+import { expireAuthSession } from '@/utils/enforceAuthSession';
 import { redirectToAuthScreen } from '@/utils/authNavigationGuard';
 import { subscribeToSessionExpired } from '@/utils/sessionExpiredEvents';
-import { authService } from '@/services/authService';
+import { installAuthRejectionHandler } from '@/utils/installAuthRejectionHandler';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
 import { UserLocationProvider } from '@/hooks/useUserLocation';
-import { Platform, StatusBar } from 'react-native';
+import { NetworkProvider } from '@/hooks/useNetworkConnectivity';
+import GlobalOfflineOverlay from '@/components/GlobalOfflineOverlay';
+import { Colors } from '@/lib/designSystem';
+import { Platform, StatusBar, View } from 'react-native';
 import { ScreenBootLoader } from '@/components/ScreenBootLoader';
 import { isRoleSwitchInProgress } from '@/hooks/useRoleSwitching';
 
@@ -46,6 +51,9 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const router = useRouter();
   const pathname = usePathname();
+  const pathnameRef = useRef(pathname);
+  pathnameRef.current = pathname;
+
   /** No token on protected routes, or JWT expired → login (same as 401 handling) */
   useSessionTimeout(router, pathname);
   const { notification } = useNotifications();
@@ -88,11 +96,16 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
-    return subscribeToSessionExpired(async () => {
+    const redirectOnSessionExpired = async () => {
       if (await isRoleSwitchInProgress()) return;
-      await redirectToAuthScreen(router, { pathname: pathname || '', clearSession: true });
-    });
-  }, [router, pathname]);
+      await redirectToAuthScreen(router, {
+        pathname: pathnameRef.current,
+        clearSession: true,
+      });
+    };
+
+    return subscribeToSessionExpired(redirectOnSessionExpired);
+  }, [router]);
 
   useEffect(() => {
     // Initialize analytics and performance monitoring
@@ -103,68 +116,35 @@ export default function RootLayout() {
       timestamp: new Date().toISOString(),
     });
 
-    // Global error handler for AuthError (catches async errors that React error boundaries can't)
-    // ErrorUtils is a global in React Native
-    const ErrorUtilsGlobal = (global as any).ErrorUtils;
-    if (ErrorUtilsGlobal) {
-      const originalHandler = ErrorUtilsGlobal.getGlobalHandler?.();
-      const globalErrorHandler = async (error: Error, isFatal?: boolean) => {
-        // Check if it's an AuthError
-        if (error instanceof AuthError || error.name === 'AuthError') {
-          if (await isRoleSwitchInProgress()) return;
-
-          await redirectToAuthScreen(router, { pathname: pathname || '', clearSession: true });
-          return;
-        }
-        
-        // For other errors, call original handler
-        if (originalHandler) {
-          originalHandler(error, isFatal);
-        }
-      };
-
-      // Set global error handler
-      ErrorUtilsGlobal.setGlobalHandler(globalErrorHandler);
-    }
-
-    // Also handle unhandled promise rejections (async errors)
-    // React Native doesn't have a built-in handler, so we use a workaround
-    const handleUnhandledRejection = (event: any) => {
-      const error = event?.reason || event;
-      if (error instanceof AuthError || (error?.name === 'AuthError')) {
-        // Prevent default logging
-        event?.preventDefault?.();
-        
-        // Handle auth error immediately
-        (async () => {
-          if (await isRoleSwitchInProgress()) return;
-
-          await redirectToAuthScreen(router, { pathname: pathname || '', clearSession: true });
-        })();
-      }
+    const redirectOnAuthError = async () => {
+      if (await isRoleSwitchInProgress()) return;
+      if (isInAuthTransition()) return;
+      await expireAuthSession();
     };
 
-    // Try to add promise rejection handler (works in some React Native environments)
-    if (typeof global !== 'undefined') {
-      (global as any).onunhandledrejection = handleUnhandledRejection;
+    // Global error handler for AuthError (catches sync errors that React error boundaries can't)
+    const ErrorUtilsGlobal = (global as any).ErrorUtils;
+    const originalHandler = ErrorUtilsGlobal?.getGlobalHandler?.();
+    if (ErrorUtilsGlobal) {
+      ErrorUtilsGlobal.setGlobalHandler(async (error: Error, isFatal?: boolean) => {
+        if (isAuthError(error)) {
+          await redirectOnAuthError();
+          return;
+        }
+        originalHandler?.(error, isFatal);
+      });
     }
+
+    const uninstallRejectionHandler = installAuthRejectionHandler();
 
     return () => {
       performance.measure('app_init', 'app_init_start');
-      // Restore original handler
-      const ErrorUtilsGlobal = (global as any).ErrorUtils;
-      if (ErrorUtilsGlobal) {
-        const originalHandler = ErrorUtilsGlobal.getGlobalHandler?.();
-        if (originalHandler) {
-          ErrorUtilsGlobal.setGlobalHandler(originalHandler);
-        }
-      }
-      // Cleanup promise rejection handler
-      if (typeof global !== 'undefined') {
-        delete (global as any).onunhandledrejection;
+      uninstallRejectionHandler();
+      if (ErrorUtilsGlobal && originalHandler) {
+        ErrorUtilsGlobal.setGlobalHandler(originalHandler);
       }
     };
-  }, [router, pathname]);
+  }, [router]);
 
  
   useEffect(() => {
@@ -243,14 +223,19 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <ErrorBoundary>
           <QueryProvider>
+            <NetworkProvider>
+            <View style={{ flex: 1 }}>
             <UserLocationProvider>
             <AuthErrorBoundary router={router}>
-              <StatusBar barStyle="dark-content" backgroundColor="white" translucent={false} />
+              <StatusBar barStyle="dark-content" backgroundColor={Colors.backgroundLight} translucent={false} />
               <TabletRootFrame>
                 <Stack screenOptions={{ headerShown: false }} />
               </TabletRootFrame>
             </AuthErrorBoundary>
             </UserLocationProvider>
+            <GlobalOfflineOverlay />
+            </View>
+            </NetworkProvider>
           </QueryProvider>
         </ErrorBoundary>
       </SafeAreaProvider>

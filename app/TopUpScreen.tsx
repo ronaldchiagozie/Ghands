@@ -1,8 +1,9 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import AnimatedModal from '@/components/AnimatedModal';
 import { BorderRadius, Colors, Fonts, Spacing } from '@/lib/designSystem';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
-import { ArrowLeft, ChevronRight, Lock, Wallet } from 'lucide-react-native';
+import { ChevronRight, Lock, Wallet } from 'lucide-react-native';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { ScrollView, Text, TextInput, TouchableOpacity, View, Alert, ActivityIndicator, Linking, AppState, Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
@@ -524,44 +525,7 @@ export default function TopUpScreen() {
 
   return (
     <SafeAreaWrapper backgroundColor={Colors.backgroundLight}>
-      {/* Header */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          paddingHorizontal: 20,
-          paddingTop: 12,
-          paddingBottom: 12,
-        }}
-      >
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={{
-            width: 40,
-            height: 40,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginRight: 12,
-          }}
-          activeOpacity={0.7}
-        >
-          <ArrowLeft size={24} color={Colors.textPrimary} />
-        </TouchableOpacity>
-            <Text
-              style={{
-                fontSize: 18,
-                fontFamily: 'Poppins-Bold',
-                color: Colors.textPrimary,
-                flex: 1,
-                textAlign: 'center',
-                letterSpacing: -0.3,
-              }}
-            >
-              Top Up
-            </Text>
-        <View style={{ width: 40 }} />
-      </View>
-
+        <ScreenHeader title="Top Up" onBack={() => router.back()} backgroundColor={Colors.backgroundLight} />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
@@ -693,7 +657,7 @@ export default function TopUpScreen() {
                 color: Colors.textPrimary,
                 letterSpacing: -0.2,
               }}
-              placeholderTextColor={Colors.textSecondaryDark}
+              placeholderTextColor={Colors.placeholder}
             />
           </View>
         </View>
@@ -789,7 +753,7 @@ export default function TopUpScreen() {
         {pendingDepositReference && (
           <View
             style={{
-              backgroundColor: '#FEF3C7',
+              backgroundColor: Colors.warningLight,
               borderRadius: 14,
               padding: 16,
               marginBottom: 24,
@@ -809,7 +773,7 @@ export default function TopUpScreen() {
                 style={{
                   fontSize: 15,
                   fontFamily: 'Poppins-SemiBold',
-                  color: '#92400E',
+                  color: Colors.warningForeground,
                   flex: 1,
                 }}
               >
@@ -832,7 +796,7 @@ export default function TopUpScreen() {
                 style={{
                   fontSize: 11,
                   fontFamily: 'Poppins-Regular',
-                  color: '#92400E',
+                  color: Colors.warningForeground,
                   marginBottom: 12,
                   fontStyle: 'italic',
                 }}
@@ -1203,7 +1167,7 @@ export default function TopUpScreen() {
                 fontFamily: 'Poppins-Regular',
                 color: Colors.textPrimary,
               }}
-              placeholderTextColor={Colors.textSecondaryDark}
+              placeholderTextColor={Colors.placeholder}
             />
           </View>
 

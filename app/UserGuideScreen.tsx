@@ -1,4 +1,5 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import { useRouter } from 'expo-router';
 import { BookOpen, ChevronRight } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
@@ -162,14 +163,7 @@ export default function UserGuideScreen() {
 
   return (
     <SafeAreaWrapper>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} activeOpacity={0.85}>
-          <Text style={styles.backArrow}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>User Guide</Text>
-        <View style={{ width: 24 }} />
-      </View>
+      <ScreenHeader title="User Guide" onBack={() => router.back()} />
 
       <View style={styles.container}>
         <Animated.View

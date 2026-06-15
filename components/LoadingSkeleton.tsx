@@ -1,10 +1,20 @@
 import { SHIMMER_PALETTE, useShimmerAnimation } from '@/hooks/useShimmerAnimation';
 import { BorderRadius, Colors } from '@/lib/designSystem';
-import { providerHomeSurface, providerHomeSurfacePadding, providerListCard } from '@/lib/providerSurfaceStyles';
+import { JOB_TIMELINE_LAYOUT } from '@/lib/jobTimelineTheme';
+import {
+  providerHeaderActionButton,
+  providerHomeSurface,
+  providerHomeSurfacePadding,
+  providerJobDetailsPanel,
+  providerListCard,
+  providerPanelDivider,
+  providerStackGapMd,
+} from '@/lib/providerSurfaceStyles';
 import { PROVIDER_TAB_GUTTER } from '@/lib/tabletLayout';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
-import { Animated, ScrollView, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
+import { Animated, ScrollView, StyleProp, StyleSheet, useWindowDimensions, View, ViewStyle } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import SafeAreaWrapper from './SafeAreaWrapper';
 import { SageHeroPanel } from './provider/SageHeroPanel';
 
@@ -23,8 +33,12 @@ function ShimmerOverlay({
   variant: 'default' | 'sage';
   borderRadius?: number;
 }) {
-  const { translateX, translateY, shimmerWidth, shimmerRotate } = useShimmerAnimation();
+  const { translateX, translateY, shimmerWidth, shimmerRotate, shimmerEnabled } = useShimmerAnimation();
   const palette = SHIMMER_PALETTE[variant];
+
+  if (!shimmerEnabled) {
+    return null;
+  }
 
   return (
     <Animated.View
@@ -398,130 +412,325 @@ export const NotificationCardSkeleton = () => (
   </View>
 );
 
-/** Vertical timeline rail + cards — matches provider/client job details */
-export const JobDetailsTimelineSkeleton = ({ steps = 3 }: { steps?: number }) => (
-  <View>
-    {Array.from({ length: steps }).map((_, i) => (
-      <View key={i} style={{ flexDirection: 'row', marginBottom: i < steps - 1 ? 14 : 0 }}>
-        <View style={{ alignItems: 'center', marginRight: 12 }}>
-          <Skeleton width={30} height={30} borderRadius={15} />
-          {i < steps - 1 ? (
-            <Skeleton width={2} height={52} borderRadius={1} style={{ marginTop: 6, flex: 1, minHeight: 30 }} />
-          ) : null}
-        </View>
-        <View style={{ flex: 1 }}>
+/** Timeline rail — matches JobProgressTimeline (26px dots, PROGRESS section). */
+export const JobDetailsTimelineSkeleton = ({
+  steps = 6,
+  fillRemaining = false,
+}: {
+  steps?: number;
+  fillRemaining?: boolean;
+}) => {
+  const layout = JOB_TIMELINE_LAYOUT;
+
+  return (
+    <View
+      style={{
+        paddingHorizontal: layout.sectionPaddingH,
+        paddingVertical: layout.sectionPaddingV,
+        flex: fillRemaining ? 1 : undefined,
+        flexGrow: fillRemaining ? 1 : undefined,
+      }}
+    >
+      <Skeleton width={72} height={12} borderRadius={6} style={{ marginBottom: 10 }} />
+      {Array.from({ length: steps }).map((_, i) => {
+        const isLast = i === steps - 1;
+        return (
           <View
+            key={i}
             style={{
-              backgroundColor: Colors.white,
-              borderRadius: BorderRadius.default,
-              borderWidth: 1,
-              borderColor: 'rgba(17, 24, 39, 0.06)',
-              padding: 14,
+              flexDirection: 'row',
+              marginBottom: isLast ? 0 : layout.rowMarginBottom,
+              flexGrow: fillRemaining && isLast ? 1 : undefined,
             }}
           >
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-              <Skeleton width="52%" height={14} borderRadius={7} />
-              <Skeleton width={44} height={22} borderRadius={12} />
+            <View style={{ alignItems: 'center', marginRight: 10 }}>
+              <Skeleton
+                width={layout.dotSize}
+                height={layout.dotSize}
+                borderRadius={layout.dotRadius}
+              />
+              {!isLast ? (
+                fillRemaining ? (
+                  <View
+                    style={{
+                      width: layout.connectorWidth,
+                      flex: 1,
+                      minHeight: layout.connectorMinHeight,
+                      marginTop: layout.connectorMarginTop,
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Skeleton width={layout.connectorWidth} borderRadius={1} style={{ flex: 1 }} />
+                  </View>
+                ) : (
+                  <Skeleton
+                    width={layout.connectorWidth}
+                    height={layout.connectorMinHeight}
+                    borderRadius={1}
+                    style={{ marginTop: layout.connectorMarginTop }}
+                  />
+                )
+              ) : null}
             </View>
-            <Skeleton width="78%" height={12} borderRadius={6} style={{ marginBottom: 6 }} />
-            <Skeleton width="36%" height={10} borderRadius={5} />
+            <View
+              style={{
+                flex: 1,
+                paddingVertical: 2,
+                paddingBottom: isLast ? 0 : 8,
+                borderBottomWidth: isLast ? 0 : 1,
+                borderBottomColor: '#E5E7EB',
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'flex-start',
+                  justifyContent: 'space-between',
+                  marginBottom: 4,
+                }}
+              >
+                <Skeleton width="52%" height={13} borderRadius={7} style={{ flex: 1, marginRight: 8 }} />
+                <Skeleton width={44} height={18} borderRadius={6} />
+              </View>
+              <Skeleton width="88%" height={12} borderRadius={6} style={{ marginBottom: 4 }} />
+              <Skeleton width="72%" height={12} borderRadius={6} style={{ marginBottom: 4 }} />
+              <Skeleton width="38%" height={11} borderRadius={5} />
+            </View>
           </View>
+        );
+      })}
+      {fillRemaining ? (
+        <View style={{ flex: 1, minHeight: 48, paddingTop: 12, paddingHorizontal: layout.sectionPaddingH }}>
+          <Skeleton width="100%" height={12} borderRadius={6} style={{ marginBottom: 10, opacity: 0.55 }} />
+          <Skeleton width="76%" height={12} borderRadius={6} style={{ marginBottom: 10, opacity: 0.45 }} />
+          <Skeleton width="54%" height={12} borderRadius={6} style={{ opacity: 0.35 }} />
         </View>
+      ) : null}
+    </View>
+  );
+};
+
+/** Matches ClientJobUpdatesPanel — provider row, CURRENT STATUS, PROGRESS timeline. */
+export const ClientJobUpdatesPanelSkeleton = ({
+  fillHeight,
+}: {
+  fillHeight?: number;
+}) => (
+  <View
+    style={[
+      providerJobDetailsPanel,
+      fillHeight != null
+        ? { flex: 1, height: '100%', minHeight: fillHeight, marginBottom: 0 }
+        : null,
+    ]}
+  >
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: providerHomeSurfacePadding,
+        paddingVertical: providerStackGapMd,
+      }}
+    >
+      <Skeleton width={38} height={38} borderRadius={19} style={{ marginRight: 10 }} />
+      <View style={{ flex: 1 }}>
+        <Skeleton width="46%" height={14} borderRadius={7} style={{ marginBottom: 6 }} />
+        <Skeleton width="32%" height={11} borderRadius={6} />
       </View>
-    ))}
+      <View style={[providerHeaderActionButton, { marginLeft: 6, backgroundColor: '#F3F4F6' }]}>
+        <Skeleton width={16} height={16} borderRadius={8} />
+      </View>
+      <View style={[providerHeaderActionButton, { marginLeft: 6, backgroundColor: '#F3F4F6' }]}>
+        <Skeleton width={16} height={16} borderRadius={8} />
+      </View>
+    </View>
+
+    <View style={providerPanelDivider} />
+
+    <View
+      style={{
+        paddingHorizontal: providerHomeSurfacePadding,
+        paddingVertical: providerStackGapMd,
+      }}
+    >
+      <Skeleton width={96} height={10} borderRadius={5} style={{ marginBottom: 8 }} />
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+        <View style={{ flex: 1, paddingRight: 8 }}>
+          <Skeleton width="78%" height={15} borderRadius={7} style={{ marginBottom: 8 }} />
+          <Skeleton width="92%" height={12} borderRadius={6} />
+        </View>
+        <Skeleton width={18} height={18} borderRadius={9} />
+      </View>
+    </View>
+
+    <View style={providerPanelDivider} />
+
+    <View style={{ flex: 1 }}>
+      <JobDetailsTimelineSkeleton steps={6} fillRemaining={fillHeight != null} />
+    </View>
   </View>
 );
 
 /** Provider Updates tab — client row, status pill, timeline (matches ProviderJobDetailsScreen). */
 export const ProviderJobUpdatesTabSkeleton = () => (
-  <View>
-    <View
-      style={{
-        backgroundColor: Colors.white,
-        borderRadius: BorderRadius.xl,
-        padding: 12,
-        marginBottom: 12,
-        borderWidth: 1,
-        borderColor: 'rgba(17, 24, 39, 0.045)',
-      }}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <Skeleton width={42} height={42} borderRadius={21} style={{ marginRight: 10 }} />
-        <View style={{ flex: 1 }}>
-          <Skeleton width="46%" height={15} borderRadius={7} style={{ marginBottom: 6 }} />
-          <Skeleton width="28%" height={11} borderRadius={5} />
+  <ClientJobUpdatesPanelSkeleton />
+);
+
+/** Scroll body — unified updates panel (client job details Updates tab) */
+export const JobDetailsContentSkeleton = ({
+  areaHeight,
+}: {
+  areaHeight?: number;
+}) => {
+  const { height: windowHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const fallbackHeight = Math.max(520, windowHeight - insets.top - insets.bottom - 168);
+  const fillHeight = areaHeight && areaHeight > 0 ? areaHeight : fallbackHeight;
+
+  return (
+    <View style={{ height: fillHeight, minHeight: fillHeight }}>
+      <ClientJobUpdatesPanelSkeleton fillHeight={fillHeight} />
+    </View>
+  );
+};
+
+/** Quotations tab — banner, quote card, breakdown, findings, sticky footer (client job details). */
+export const JobDetailsQuotationsTabSkeleton = ({
+  areaHeight,
+}: {
+  areaHeight?: number;
+}) => {
+  const { height: windowHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const fallbackHeight = Math.max(520, windowHeight - insets.top - insets.bottom - 168);
+  const fillHeight = areaHeight && areaHeight > 0 ? areaHeight : fallbackHeight;
+
+  return (
+    <View style={{ flex: 1, minHeight: fillHeight }}>
+      <View style={{ flex: 1 }}>
+        <View
+          style={{
+            backgroundColor: Colors.white,
+            borderRadius: 18,
+            paddingVertical: 12,
+            paddingHorizontal: 13,
+            marginBottom: 14,
+            flexDirection: 'row',
+            alignItems: 'center',
+            borderWidth: 0.6,
+            borderColor: 'rgba(17, 24, 39, 0.04)',
+          }}
+        >
+          <Skeleton width={30} height={30} borderRadius={15} style={{ marginRight: 10 }} />
+          <View style={{ flex: 1 }}>
+            <Skeleton width="58%" height={13} borderRadius={7} style={{ marginBottom: 6 }} />
+            <Skeleton width="88%" height={11} borderRadius={6} />
+          </View>
         </View>
-        <Skeleton width={40} height={40} borderRadius={20} style={{ marginLeft: 8 }} />
-        <Skeleton width={40} height={40} borderRadius={20} style={{ marginLeft: 8 }} />
-      </View>
-    </View>
 
-    <View
-      style={{
-        marginBottom: 16,
-        borderRadius: 18,
-        backgroundColor: Colors.white,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        padding: 14,
-      }}
-    >
+        <View
+          style={{
+            backgroundColor: '#E3F4DF',
+            borderRadius: 16,
+            paddingHorizontal: 16,
+            paddingVertical: 16,
+            marginBottom: 16,
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Skeleton width={56} height={56} borderRadius={28} style={{ marginRight: 12 }} />
+            <View style={{ flex: 1 }}>
+              <Skeleton width="62%" height={16} borderRadius={8} style={{ marginBottom: 6 }} />
+              <Skeleton width="48%" height={12} borderRadius={6} />
+            </View>
+            <Skeleton width={72} height={24} borderRadius={8} />
+          </View>
+        </View>
+
+        <Skeleton width="52%" height={16} borderRadius={8} style={{ marginBottom: 12 }} />
+        <View
+          style={{
+            backgroundColor: Colors.white,
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: '#F3F4F6',
+            paddingHorizontal: 16,
+            paddingVertical: 16,
+            marginBottom: 16,
+          }}
+        >
+          {[0, 1, 2, 3].map((i) => (
+            <View
+              key={i}
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: i < 3 ? 12 : 0,
+                paddingBottom: i < 3 ? 12 : 0,
+                borderBottomWidth: i < 3 ? 1 : 0,
+                borderBottomColor: '#F3F4F6',
+              }}
+            >
+              <Skeleton width={`${48 + i * 8}%` as `${number}%`} height={13} borderRadius={6} />
+              <Skeleton width={64} height={13} borderRadius={6} />
+            </View>
+          ))}
+          <View
+            style={{
+              marginTop: 12,
+              paddingTop: 12,
+              borderTopWidth: 1,
+              borderTopColor: '#E5E7EB',
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
+            <Skeleton width={48} height={16} borderRadius={8} />
+            <Skeleton width={88} height={18} borderRadius={8} />
+          </View>
+        </View>
+
+        <Skeleton width="64%" height={16} borderRadius={8} style={{ marginBottom: 12 }} />
+        <View
+          style={{
+            backgroundColor: Colors.white,
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: '#F3F4F6',
+            paddingHorizontal: 16,
+            paddingVertical: 16,
+            marginBottom: 16,
+          }}
+        >
+          <Skeleton width="100%" height={12} borderRadius={6} style={{ marginBottom: 8 }} />
+          <Skeleton width="92%" height={12} borderRadius={6} style={{ marginBottom: 8 }} />
+          <Skeleton width="76%" height={12} borderRadius={6} />
+        </View>
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <Skeleton width={72} height={14} borderRadius={7} />
+          <Skeleton width={36} height={14} borderRadius={7} />
+          <Skeleton width={56} height={14} borderRadius={7} />
+        </View>
+      </View>
+
       <View
         style={{
-          backgroundColor: '#EEF0F3',
-          borderRadius: 16,
-          paddingHorizontal: 14,
-          paddingVertical: 12,
-          flexDirection: 'row',
-          alignItems: 'center',
+          paddingTop: 12,
+          paddingBottom: Math.max(insets.bottom, 12),
+          borderTopWidth: 1,
+          borderTopColor: Colors.border,
+          backgroundColor: Colors.white,
         }}
       >
-        <Skeleton width="56%" height={16} borderRadius={8} style={{ flex: 1, marginRight: 12 }} />
-        <Skeleton width={72} height={24} borderRadius={12} />
+        <Skeleton width="100%" height={52} borderRadius={12} style={{ marginBottom: 12 }} />
+        <Skeleton width="100%" height={52} borderRadius={12} />
       </View>
     </View>
-
-    <View style={{ ...providerListCard, padding: 16, marginBottom: 16 }}>
-      <Skeleton width={108} height={17} borderRadius={8} style={{ marginBottom: 14 }} />
-      <JobDetailsTimelineSkeleton steps={3} />
-    </View>
-  </View>
-);
-
-/** Scroll body — status card + timeline (client job details Updates tab) */
-export const JobDetailsContentSkeleton = () => (
-  <View style={{ flex: 1 }}>
-    <View
-      style={{
-        marginBottom: 16,
-        borderRadius: 18,
-        backgroundColor: Colors.white,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        padding: 14,
-      }}
-    >
-      <View
-        style={{
-          backgroundColor: '#EEF0F3',
-          borderRadius: 16,
-          paddingHorizontal: 14,
-          paddingVertical: 12,
-          flexDirection: 'row',
-          alignItems: 'center',
-        }}
-      >
-        <Skeleton width="56%" height={16} borderRadius={8} style={{ flex: 1, marginRight: 12 }} />
-        <Skeleton width={72} height={24} borderRadius={12} />
-      </View>
-    </View>
-
-    <View style={{ ...providerListCard, padding: 16, marginBottom: 16 }}>
-      <Skeleton width={108} height={17} borderRadius={8} style={{ marginBottom: 14 }} />
-      <JobDetailsTimelineSkeleton steps={3} />
-    </View>
-  </View>
-);
+  );
+};
 
 export const JobDetailsTabsSkeleton = () => (
   <View
@@ -564,11 +773,14 @@ export const JobDetailsScreenSkeleton = () => (
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
+          flexGrow: 1,
           paddingHorizontal: PROVIDER_TAB_GUTTER,
           paddingBottom: 120,
         }}
       >
-        <ProviderJobUpdatesTabSkeleton />
+        <View style={{ flex: 1, minHeight: 520 }}>
+          <ProviderJobUpdatesTabSkeleton />
+        </View>
       </ScrollView>
     </View>
   </SafeAreaWrapper>

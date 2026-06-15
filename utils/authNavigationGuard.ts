@@ -48,7 +48,7 @@ export async function redirectToAuthScreen(
   const { pathname, clearSession = true } = options;
   const now = Date.now();
 
-  if (pathname != null && isPublicUnauthenticatedRoute(pathname)) {
+  if (pathname && isPublicUnauthenticatedRoute(pathname)) {
     return false;
   }
 
@@ -61,11 +61,13 @@ export async function redirectToAuthScreen(
   try {
     const route = clearSession ? await handleTokenExpiration() : await getLoginRouteForStoredRole();
 
-    if (pathname != null && normalizePath(pathname) === normalizePath(route)) {
+    if (pathname && normalizePath(pathname) === normalizePath(route)) {
+      redirectInFlight = false;
       return false;
     }
 
     router.replace(route as never);
+    lastRedirectAt = Date.now();
     return true;
   } catch {
     try {
