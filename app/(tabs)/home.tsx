@@ -1,5 +1,5 @@
 import { CoachMarkTarget } from '@/components/CoachMarkTarget';
-import LiveSupportScreen from '@/components/LiveSupportScreen';
+import AiSparkleFab from '@/components/home/AiSparkleFab';
 import { CategoryChipSkeleton, JobCardSkeleton } from '@/components/LoadingSkeleton';
 import { useSkeletonGate } from '@/hooks/useSkeletonGate';
 import LocationSearchModal from '@/components/LocationSearchModal';
@@ -528,7 +528,8 @@ const HomeScreen = React.memo(() => {
 
   const searchBarStyle = useMemo(() => ({ height: 52 }), []);
 
-  const bottomSpacerHeight = useTabScreenBottomSpacerHeight(16);
+  /** Clears the floating AI FAB (tab bar + 88pt). */
+  const bottomSpacerHeight = useTabScreenBottomSpacerHeight(88);
   const tabScrollTop = useTabScrollContentPaddingTop(10);
 
   const { showSkeleton: showCategoriesSkeleton, isLoadingEmpty: isCategoriesLoadingEmpty } =
@@ -538,6 +539,7 @@ const HomeScreen = React.memo(() => {
 
   return (
     <SafeAreaWrapper tabletShellTop>
+      <View style={{ flex: 1 }}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         removeClippedSubviews={false}
@@ -923,48 +925,56 @@ const HomeScreen = React.memo(() => {
               ))}
             </ScrollView>
           </View>
-          <CoachMarkTarget name="job-activity">
-            <View style={{ paddingHorizontal: CLIENT_HOME_SCROLL_GUTTER, marginBottom: HOME_SECTION_VERTICAL_GAP }}>
-              <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 12 }}>
-                <View>
-                  <Text
-                    className="text-lg font-bold text-black"
-                    style={{ letterSpacing: -0.3, fontFamily: 'Poppins-Bold' }}
-                  >
-                    Job activity
-                  </Text>
-                  <Text
-                    style={{
-                      fontSize: 12,
-                      fontFamily: 'Poppins-Regular',
-                      color: Colors.textSecondaryDark,
-                      marginTop: 4,
-                      lineHeight: 18,
-                    }}
-                  >
-                    Track your latest requests — in progress, completed, or declined.
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  className="flex-row items-center"
-                  onPress={handleViewAllJobs}
-                  activeOpacity={0.7}
+          <CoachMarkTarget name="job-activity" style={{ overflow: 'visible' }}>
+            <View style={{ paddingHorizontal: CLIENT_HOME_SCROLL_GUTTER, marginBottom: HOME_SECTION_VERTICAL_GAP, overflow: 'visible' }}>
+              <View style={{ marginBottom: 12 }}>
+                <View
                   style={{
-                    backgroundColor: Colors.white,
-                    paddingHorizontal: 11,
-                    paddingVertical: 7,
-                    borderRadius: 999,
-                    ...SURFACE_STYLES.chipOutline,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: 4,
                   }}
                 >
                   <Text
-                    className="text-xs"
-                    style={{ fontFamily: 'Poppins-SemiBold', color: HOME_QUICK_ACTIONS_PANEL_BG }}
+                    className="text-lg font-bold text-black"
+                    style={{ letterSpacing: -0.3, fontFamily: 'Poppins-Bold', flexShrink: 1 }}
                   >
-                    View all
+                    Job activity
                   </Text>
-                  <Ionicons name="chevron-forward" size={14} color={HOME_QUICK_ACTIONS_PANEL_BG} />
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    className="flex-row items-center"
+                    onPress={handleViewAllJobs}
+                    activeOpacity={0.7}
+                    style={{
+                      flexShrink: 0,
+                      marginLeft: 12,
+                      backgroundColor: Colors.white,
+                      paddingHorizontal: 11,
+                      paddingVertical: 7,
+                      borderRadius: 999,
+                      ...SURFACE_STYLES.chipOutline,
+                    }}
+                  >
+                    <Text
+                      className="text-xs"
+                      style={{ fontFamily: 'Poppins-SemiBold', color: HOME_QUICK_ACTIONS_PANEL_BG }}
+                    >
+                      View all
+                    </Text>
+                    <Ionicons name="chevron-forward" size={14} color={HOME_QUICK_ACTIONS_PANEL_BG} />
+                  </TouchableOpacity>
+                </View>
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontFamily: 'Poppins-Regular',
+                    color: Colors.textSecondaryDark,
+                    lineHeight: 18,
+                  }}
+                >
+                  Track your latest requests, in progress, completed, or declined.
+                </Text>
               </View>
               {(showJobsSkeleton || isJobsLoadingEmpty) ? (
                 <>
@@ -1049,10 +1059,11 @@ const HomeScreen = React.memo(() => {
           </View>
           */}
 
-          <LiveSupportScreen />
           <View style={{ height: bottomSpacerHeight }} />
         </Animated.View>
       </ScrollView>
+
+      <AiSparkleFab />
 
       {/* Coach Marks - disabled */}
 
@@ -1068,6 +1079,7 @@ const HomeScreen = React.memo(() => {
           refreshLocation();
         }}
       />
+      </View>
     </SafeAreaWrapper>
   );
 });

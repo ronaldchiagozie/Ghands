@@ -12,6 +12,18 @@ export function surfaceElevation(value: number): number {
 }
 
 /**
+ * Minimal Android Material elevation (0–1). Use with iosOnlyShadow() for iOS depth.
+ */
+export function androidElevation(level: 0 | 1 = 1): number {
+  return Platform.OS === 'android' ? level : 0;
+}
+
+/** Apply shadow* only on iOS — Android uses elevation via androidElevation(). */
+export function iosOnlyShadow(style: ViewStyle): ViewStyle {
+  return Platform.OS === 'ios' ? style : {};
+}
+
+/**
  * Card / field elevation tokens — standalone module (no designSystem imports)
  * so map and tab screens never hit a partial-loaded barrel.
  */

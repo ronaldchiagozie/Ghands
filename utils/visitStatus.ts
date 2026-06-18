@@ -128,6 +128,49 @@ export function isVisitPaid(visitRequest?: Record<string, unknown> | null): bool
   return getVisitLogisticsStatus(visitRequest) === 'paid';
 }
 
+/** Provider sent a visit request the client can respond to (pay or decline). */
+export function isProviderVisitRequestSent(visitRequest?: Record<string, unknown> | null): boolean {
+  if (!visitRequest || isVisitDeclined(visitRequest)) return false;
+  if (isVisitPaid(visitRequest) || isVisitCompletedOrPaid(visitRequest)) return false;
+
+  const hasSchedule = !!(
+    visitRequest.scheduledDate ||
+    visitRequest.scheduled_date ||
+    visitRequest.scheduledTime ||
+    visitRequest.scheduled_time
+  );
+  const hasFee =
+    visitRequest.logisticsCost != null ||
+    visitRequest.logistics_cost != null ||
+    visitRequest.logisticsFee != null ||
+    visitRequest.logistics_fee != null;
+  const hasRequestedAt = !!(visitRequest.requestedAt || visitRequest.requested_at);
+
+  if (!hasSchedule && !hasFee && !hasRequestedAt) return false;
+
+  const status = getVisitLogisticsStatus(visitRequest);
+  if (status === 'paid') return false;
+  if (status && (status.includes('declin') || status.includes('cancel') || status.includes('reject'))) {
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Client may decline a visit only after a provider sent one and before the visit fee is paid.
+ */
+export function canClientDeclineVisit(input: {
+  visitRequest?: Record<string, unknown> | null;
+  providerHasAccepted: boolean;
+  visitDeclined: boolean;
+  hasQuotationSent: boolean;
+}): boolean {
+  const { visitRequest, providerHasAccepted, visitDeclined, hasQuotationSent } = input;
+  if (!providerHasAccepted || visitDeclined || hasQuotationSent) return false;
+  return isProviderVisitRequestSent(visitRequest);
+}
+
 export function isVisitCompletedOrPaid(visitRequest?: Record<string, unknown> | null): boolean {
   const status = getVisitLogisticsStatus(visitRequest);
   if (!status) return isVisitPaid(visitRequest);

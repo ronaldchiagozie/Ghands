@@ -4,12 +4,28 @@ import React from 'react';
 import { isAuthError } from '@/utils/errors';
 import { isInAuthTransition } from '@/utils/authNavigationGuard';
 import { expireAuthSession } from '@/utils/enforceAuthSession';
-import { deriveOnlineFromNetInfo } from '@/hooks/useNetworkConnectivity';
+import {
+  deriveOnlineFromNetInfo,
+  isApiUnreachable,
+  subscribeApiUnreachable,
+} from '@/utils/connectivityCheck';
+import { subscribeToNetworkRestore } from '@/utils/networkRestoreEvents';
 
 onlineManager.setEventListener((setOnline) => {
-  return NetInfo.addEventListener((state) => {
-    setOnline(deriveOnlineFromNetInfo(state));
-  });
+  const apply = (state: Parameters<typeof deriveOnlineFromNetInfo>[0]) => {
+    setOnline(deriveOnlineFromNetInfo(state) && !isApiUnreachable());
+  };
+
+  const unsubNet = NetInfo.addEventListener(apply);
+  const unsubApi = subscribeApiUnreachable(() => setOnline(false));
+  const unsubRestore = subscribeToNetworkRestore(() => setOnline(true));
+  void NetInfo.fetch().then(apply);
+
+  return () => {
+    unsubNet();
+    unsubApi();
+    unsubRestore();
+  };
 });
 
 function handleQueryAuthError(error: unknown) {

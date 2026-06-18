@@ -1,14 +1,21 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import ChatDateSeparator from '@/components/chat/ChatDateSeparator';
+import ChatMessageRow from '@/components/chat/ChatMessageRow';
+import ChatNewMessagesChip from '@/components/chat/ChatNewMessagesChip';
+import ChatTypingBubble from '@/components/chat/ChatTypingBubble';
 import { BorderRadius, Colors, Spacing, SHADOWS, MIN_TOUCH_TARGET} from '@/lib/designSystem';
+import { androidElevation, iosOnlyShadow } from '@/lib/surfaceStyles';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
-import { ArrowLeft, AlertCircle, FileText, Image as ImageIcon, Mic, Phone, Send, User, MoreVertical, Check, CheckCheck } from 'lucide-react-native';
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { ArrowLeft, AlertCircle, FileText, Phone, Send, User, MoreVertical } from 'lucide-react-native';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import {
   FlatList,
   Alert,
   Image,
   Keyboard,
   type KeyboardEvent,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   Dimensions,
   Modal,
   Platform,
@@ -23,6 +30,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { haptics } from '@/hooks/useHaptics';
 import { useToast } from '@/hooks/useToast';
+import { useChatTypingIndicator } from '@/hooks/useChatTypingIndicator';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   providerService,
@@ -31,8 +39,10 @@ import {
   serviceRequestService,
   Message as ApiMessage,
 } from '@/services/api';
-import { logCallDebug } from '@/utils/callDebugLog';
+import { joinSubtitleParts } from '@/utils/copy';
 import { logChatDebug } from '@/utils/chatDebugLog';
+import { buildChatListItems } from '@/utils/chatListItems';
+import { formatLastActiveLabel, isPeerRecentlyActive } from '@/utils/chatFormatting';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type DirectionHint = 'outgoing' | 'incoming' | null;
@@ -115,7 +125,7 @@ interface UIMessage {
  * Features:
  * - Load messages from API
  * - Send messages via API
- * - Auto-refresh messages every 5 seconds
+ * - Auto-refresh messages every 2s while focused, 5s when backgrounded
  * - Mark messages as read when viewing
  * - Show unread count
  * - Pull-to-refresh
@@ -161,6 +171,7 @@ export default function ChatScreen() {
   const [chatMenuOpen, setChatMenuOpen] = useState(false);
   const [keyboardInset, setKeyboardInset] = useState(0);
   const [footerHeight, setFooterHeight] = useState(76);
+  const [pendingNewCount, setPendingNewCount] = useState(0);
 
   // Refs
   const flatListRef = useRef<FlatList>(null);
@@ -168,6 +179,11 @@ export default function ChatScreen() {
   const isMarkingAsReadRef = useRef(false);
   const ownershipByMessageIdRef = useRef<Record<string, boolean>>({});
   const stableCurrentUserIdRef = useRef<number | null>(null);
+  const isNearBottomRef = useRef(true);
+  const prevMessageCountRef = useRef(0);
+  const animatedMessageIdsRef = useRef<Set<string>>(new Set());
+  const initialLoadDoneRef = useRef(false);
+  const { isPeerTyping } = useChatTypingIndicator(requestId);
 
   // Determine if this is provider view (has clientName) or user view
   const isProviderView = !!params.clientName;
@@ -175,7 +191,39 @@ export default function ChatScreen() {
   const deletedIdsKey = isValidRequestId ? `@ghands:chat_deleted_ids:${requestId}` : null;
   const providerIdNum = params.providerId ? Number(params.providerId) : null;
   const peerName = isProviderView ? clientName : providerName;
-  const peerRoleLabel = isProviderView ? 'Client' : 'Provider';
+
+  const chatListItems = useMemo(() => buildChatListItems(messages), [messages]);
+
+  const peerLastActiveAt = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i];
+      if (!m.isFromCurrentUser) return m.timestamp;
+    }
+    return null;
+  }, [messages]);
+
+  const lastActiveLabel = formatLastActiveLabel(peerLastActiveAt);
+  const showActiveDot = isPeerRecentlyActive(peerLastActiveAt);
+
+  const scrollToBottom = useCallback((animated = true) => {
+    flatListRef.current?.scrollToEnd({ animated });
+  }, []);
+
+  const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset, layoutMeasurement, contentSize } = event.nativeEvent;
+    const distanceFromBottom = contentSize.height - layoutMeasurement.height - contentOffset.y;
+    const nearBottom = distanceFromBottom < 96;
+    isNearBottomRef.current = nearBottom;
+    if (nearBottom) {
+      setPendingNewCount(0);
+    }
+  }, []);
+
+  const handleJumpToNewMessages = useCallback(() => {
+    setPendingNewCount(0);
+    isNearBottomRef.current = true;
+    scrollToBottom(true);
+  }, [scrollToBottom]);
 
   useEffect(() => {
     setResolvedProviderId(null);
@@ -389,6 +437,7 @@ export default function ChatScreen() {
         setIsLoading(true);
         const cached = await loadCachedMessages();
         if (cached && cached.length > 0) {
+          cached.forEach((m) => animatedMessageIdsRef.current.add(m.id));
           setMessages(cached);
         }
       }
@@ -484,9 +533,13 @@ export default function ChatScreen() {
       setMessages((prev) => {
         if (filteredMessages.length > 0) return filteredMessages;
         if (prev.length > 0) return prev;
-        // Background refresh returned 0 messages – keep existing to avoid disappearing messages
         return filteredMessages;
       });
+
+      if (!initialLoadDoneRef.current) {
+        filteredMessages.forEach((m) => animatedMessageIdsRef.current.add(m.id));
+        initialLoadDoneRef.current = true;
+      }
 
       if (filteredMessages.length > 0) {
         await persistMessagesCache(filteredMessages);
@@ -495,10 +548,10 @@ export default function ChatScreen() {
       setIsSyncDegraded(false);
       setLastSyncError(null);
 
-      // Scroll to bottom after loading
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: false });
-      }, 100);
+      // Scroll to bottom after loading if user was already near bottom
+      if (isNearBottomRef.current) {
+        setTimeout(() => scrollToBottom(false), 100);
+      }
     } catch (error) {
       if (__DEV__) {
         console.error('Error loading messages:', error);
@@ -521,6 +574,7 @@ export default function ChatScreen() {
     deletedMessageIds,
     resolvedProviderId,
     providerIdNum,
+    scrollToBottom,
   ]);
 
   useEffect(() => {
@@ -657,10 +711,8 @@ export default function ChatScreen() {
     setMessages((prev) => [...prev, optimisticMessage]);
     haptics.selection();
 
-    // Scroll to bottom
-    setTimeout(() => {
-      flatListRef.current?.scrollToEnd({ animated: true });
-    }, 100);
+    // Scroll to bottom when sending
+    setTimeout(() => scrollToBottom(true), 100);
 
     try {
       // Send message to API
@@ -739,6 +791,7 @@ export default function ChatScreen() {
     showError,
     providerIdNum,
     resolvedProviderId,
+    scrollToBottom,
   ]);
 
   /**
@@ -852,45 +905,53 @@ export default function ChatScreen() {
     }
   }, [isValidRequestId, loadMessages, loadUnreadCount, checkQuotation]);
 
-  // Mark messages as read when screen is focused
+  // Mark messages as read + poll faster while chat is focused
   useFocusEffect(
     useCallback(() => {
-      if (isValidRequestId) {
-        markMessagesAsRead();
-        loadUnreadCount();
+      if (!isValidRequestId) {
+        return undefined;
       }
-    }, [isValidRequestId, markMessagesAsRead, loadUnreadCount])
+
+      markMessagesAsRead();
+      loadUnreadCount();
+      void loadMessages(false);
+
+      refreshIntervalRef.current = setInterval(() => {
+        loadMessages(false);
+        loadUnreadCount();
+      }, 2000);
+
+      return () => {
+        if (refreshIntervalRef.current) {
+          clearInterval(refreshIntervalRef.current);
+          refreshIntervalRef.current = null;
+        }
+      };
+    }, [isValidRequestId, markMessagesAsRead, loadUnreadCount, loadMessages])
   );
 
-  // Auto-refresh messages every 5 seconds
+  // Scroll to bottom for new peer messages only when already near bottom
   useEffect(() => {
-    if (!isValidRequestId) {
+    if (messages.length <= prevMessageCountRef.current) {
+      prevMessageCountRef.current = messages.length;
       return;
     }
 
-    // Set up interval for auto-refresh
-    refreshIntervalRef.current = setInterval(() => {
-      loadMessages(false);
-      loadUnreadCount();
-    }, 5000); // Refresh every 5 seconds
+    const newMessages = messages.slice(prevMessageCountRef.current);
+    const incomingCount = newMessages.filter((m) => !m.isFromCurrentUser).length;
 
-    // Cleanup interval on unmount
-    return () => {
-      if (refreshIntervalRef.current) {
-        clearInterval(refreshIntervalRef.current);
-        refreshIntervalRef.current = null;
+    if (incomingCount > 0) {
+      if (isNearBottomRef.current) {
+        setTimeout(() => scrollToBottom(true), 50);
+      } else {
+        setPendingNewCount((count) => count + incomingCount);
       }
-    };
-  }, [isValidRequestId, loadMessages, loadUnreadCount]);
-
-  // Scroll to bottom when messages change
-  useEffect(() => {
-    if (messages.length > 0) {
-    setTimeout(() => {
-      flatListRef.current?.scrollToEnd({ animated: true });
-    }, 100);
+    } else if (isNearBottomRef.current) {
+      setTimeout(() => scrollToBottom(true), 50);
     }
-  }, [messages.length]);
+
+    prevMessageCountRef.current = messages.length;
+  }, [messages, scrollToBottom]);
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -900,9 +961,7 @@ export default function ChatScreen() {
       const windowHeight = Dimensions.get('window').height;
       const insetFromBottom = Math.max(0, windowHeight - event.endCoordinates.screenY);
       setKeyboardInset(insetFromBottom);
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 50);
+      setTimeout(() => scrollToBottom(true), 50);
     };
     const onHide = () => setKeyboardInset(0);
 
@@ -912,135 +971,32 @@ export default function ChatScreen() {
       showSub.remove();
       hideSub.remove();
     };
-  }, []);
+  }, [scrollToBottom]);
 
-  /**
-   * Render a single message
-   */
-  const renderMessage = ({ item, index }: { item: UIMessage; index: number }) => {
-    const isFromCurrentUser = item.isFromCurrentUser ?? false;
-    const isFromProvider = item.sender === 'provider';
-
-    const prev = index > 0 ? messages[index - 1] : null;
-    const next = index < messages.length - 1 ? messages[index + 1] : null;
-    const isSameCluster = (a: UIMessage, b: UIMessage) =>
-      a.isFromCurrentUser === b.isFromCurrentUser && a.sender === b.sender;
-    const groupedWithPrev = prev ? isSameCluster(prev, item) : false;
-    const groupedWithNext = next ? isSameCluster(item, next) : false;
-    const showAvatar = !isFromCurrentUser && !groupedWithNext;
-    const showMeta = !groupedWithNext;
-    
-    const getStatusIcon = () => {
-      if (!isFromCurrentUser || !item.status) return null;
-      switch (item.status) {
-        case 'sending':
-          return <ActivityIndicator size="small" color={Colors.textSecondaryDark} style={{ marginLeft: 4 }} />;
-        case 'failed':
-          return <AlertCircle size={12} color={Colors.error} style={{ marginLeft: 4 }} />;
-        case 'sent':
-          return <Check size={12} color={Colors.textSecondaryDark} style={{ marginLeft: 4 }} />;
-        case 'delivered':
-          return <CheckCheck size={12} color={Colors.textSecondaryDark} style={{ marginLeft: 4 }} />;
-        case 'read':
-          return <CheckCheck size={12} color="#4F46E5" style={{ marginLeft: 4 }} />;
-        default:
-          return null;
+  const renderChatItem = useCallback(
+    ({ item }: { item: ReturnType<typeof buildChatListItems<UIMessage>>[number] }) => {
+      if (item.kind === 'date') {
+        return <ChatDateSeparator label={item.label} />;
       }
-    };
-    
-    return (
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'flex-end',
-          marginBottom: groupedWithNext ? 2 : 8,
-          paddingHorizontal: 16,
-          justifyContent: isFromCurrentUser ? 'flex-end' : 'flex-start',
-        }}
-      >
-        {!isFromCurrentUser ? (
-          showAvatar ? (
-            <View
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: 14,
-                overflow: 'hidden',
-                marginRight: 8,
-                borderWidth: 1,
-                borderColor: Colors.border,
-              }}
-            >
-              <Image
-                source={isFromProvider ? require('../assets/images/plumbericon2.png') : require('../assets/images/userimg.jpg')}
-                style={{ width: 28, height: 28, borderRadius: 14 }}
-                resizeMode="cover"
-              />
-            </View>
-          ) : (
-            <View style={{ width: 28, marginRight: 8 }} />
-          )
-        ) : null}
 
-        <TouchableOpacity
-          style={{
-            maxWidth: '78%',
-            alignItems: isFromCurrentUser ? 'flex-end' : 'flex-start',
-          }}
-          activeOpacity={item.status === 'failed' && isFromCurrentUser ? 0.7 : 1}
-          onPress={item.status === 'failed' && isFromCurrentUser ? () => retryFailedMessage(item) : undefined}
-          onLongPress={() => handleDeleteMessageForMe(item)}
-        >
-          <View
-            style={{
-              backgroundColor: isFromCurrentUser ? Colors.accent : Colors.white,
-              borderRadius: 18,
-              borderTopLeftRadius: isFromCurrentUser ? 18 : groupedWithPrev ? 12 : 18,
-              borderTopRightRadius: isFromCurrentUser ? (groupedWithPrev ? 12 : 18) : 18,
-              borderBottomLeftRadius: isFromCurrentUser ? 18 : groupedWithNext ? 12 : 5,
-              borderBottomRightRadius: isFromCurrentUser ? (groupedWithNext ? 12 : 5) : 18,
-              paddingHorizontal: 14,
-              paddingVertical: 7,
-              borderWidth: isFromCurrentUser ? 0 : 1,
-              borderColor: 'rgba(17, 24, 39, 0.045)',
-              shadowColor: Colors.surfaceDark,
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: isFromCurrentUser ? 0.05 : 0.03,
-              shadowRadius: 5,
-              elevation: 0.76,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 14.5,
-                fontFamily: 'Poppins-Regular',
-                color: isFromCurrentUser ? Colors.white : Colors.textPrimary,
-                lineHeight: 19,
-              }}
-            >
-              {item.text}
-            </Text>
-          </View>
-          {showMeta ? (
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                marginTop: 2,
-                paddingHorizontal: 2,
-                justifyContent: isFromCurrentUser ? 'flex-end' : 'flex-start',
-              }}
-            >
-              <Text style={{ fontSize: 10, fontFamily: 'Poppins-Regular', color: '#9AA19A' }}>
-                {item.time}
-              </Text>
-              {getStatusIcon()}
-            </View>
-          ) : null}
-        </TouchableOpacity>
-      </View>
-    );
-  };
+      const animateEnter = !animatedMessageIdsRef.current.has(item.message.id);
+      animatedMessageIdsRef.current.add(item.message.id);
+
+      return (
+        <ChatMessageRow
+          message={item.message}
+          isFirstInGroup={item.isFirstInGroup}
+          isLastInGroup={item.isLastInGroup}
+          animateEnter={animateEnter}
+          onRetry={
+            item.message.status === 'failed' ? () => retryFailedMessage(item.message) : undefined
+          }
+          onLongPress={() => handleDeleteMessageForMe(item.message)}
+        />
+      );
+    },
+    [handleDeleteMessageForMe, retryFailedMessage]
+  );
 
   // Show error if requestId is invalid
   if (!isValidRequestId) {
@@ -1117,19 +1073,21 @@ height: MIN_TOUCH_TARGET,
                 }}
                 resizeMode="cover"
               />
-              <View
-                style={{
-                  position: 'absolute',
-                  right: 1,
-                  bottom: 1,
-                  width: 11,
-                  height: 11,
-                  borderRadius: 6,
-                  backgroundColor: '#22C55E',
-                  borderWidth: 2,
-                  borderColor: Colors.white,
-                }}
-              />
+              {showActiveDot ? (
+                <View
+                  style={{
+                    position: 'absolute',
+                    right: 1,
+                    bottom: 1,
+                    width: 11,
+                    height: 11,
+                    borderRadius: 6,
+                    backgroundColor: '#22C55E',
+                    borderWidth: 2,
+                    borderColor: Colors.white,
+                  }}
+                />
+              ) : null}
             </View>
             <View style={{ flex: 1 }}>
           <Text
@@ -1145,12 +1103,14 @@ height: MIN_TOUCH_TARGET,
                 style={{
                   fontSize: 11.5,
                   fontFamily: 'Poppins-Regular',
-                  color: Colors.textSecondaryDark,
+                  color: showActiveDot ? '#16A34A' : Colors.textSecondaryDark,
                   marginTop: 2,
                 }}
               >
-                {peerRoleLabel} • Usually replies here
-                {unreadCount > 0 && ` • ${unreadCount} unread`}
+                {joinSubtitleParts([
+                  lastActiveLabel,
+                  unreadCount > 0 ? `${unreadCount} unread` : '',
+                ])}
               </Text>
             </View>
           </View>
@@ -1237,9 +1197,9 @@ height: MIN_TOUCH_TARGET,
                 color: Colors.warningForeground,
                 flex: 1,
               }}
-              numberOfLines={1}
+              numberOfLines={2}
             >
-              Reconnecting messages. {lastSyncError ? 'Showing last saved chat.' : ''}
+              Reconnecting messages.{lastSyncError ? ' Showing last saved chat.' : ''}
             </Text>
           </View>
         )}
@@ -1269,10 +1229,11 @@ height: MIN_TOUCH_TARGET,
             </Text>
           </View>
         ) : (
+        <>
         <FlatList
           ref={flatListRef}
-          data={messages}
-          renderItem={renderMessage}
+          data={chatListItems}
+          renderItem={renderChatItem}
           keyExtractor={(item) => item.id}
             contentContainerStyle={{ 
               flexGrow: 1,
@@ -1280,25 +1241,11 @@ height: MIN_TOUCH_TARGET,
               paddingBottom: footerHeight + 10,
             }}
           showsVerticalScrollIndicator={false}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
             style={{ flex: 1, backgroundColor: '#F7F8F5' }}
-            ListHeaderComponent={
-              messages.length > 0 ? (
-                <View
-                  style={{
-                    alignSelf: 'center',
-                    backgroundColor: '#E9EEE0',
-                    borderRadius: 999,
-                    paddingHorizontal: 12,
-                    paddingVertical: 4,
-                    marginBottom: 8,
-                  }}
-                >
-                  <Text style={{ fontSize: 11, fontFamily: 'Poppins-Medium', color: '#64705A' }}>
-                    Today
-                  </Text>
-                </View>
-              ) : null
+            ListFooterComponent={
+              isPeerTyping ? <ChatTypingBubble isProviderView={isProviderView} /> : null
             }
             ListEmptyComponent={
               <View
@@ -1342,6 +1289,12 @@ height: MIN_TOUCH_TARGET,
               />
             }
           />
+        <ChatNewMessagesChip
+          count={pendingNewCount}
+          onPress={handleJumpToNewMessages}
+          bottomOffset={footerHeight + keyboardInset}
+        />
+        </>
         )}
 
         <View
@@ -1381,11 +1334,13 @@ height: MIN_TOUCH_TARGET,
                 flexDirection: 'row',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                shadowColor: Colors.surfaceDark,
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.05,
-                shadowRadius: 12,
-                elevation: 0.76,
+                ...iosOnlyShadow({
+                  shadowColor: Colors.surfaceDark,
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.04,
+                  shadowRadius: 6,
+                }),
+                elevation: androidElevation(0),
               }}
               activeOpacity={0.8}
             >
@@ -1450,29 +1405,11 @@ height: MIN_TOUCH_TARGET,
               borderRadius: 26,
               borderWidth: 1,
               borderColor: '#E1E8D6',
-              paddingHorizontal: 7,
+              paddingHorizontal: 12,
               paddingVertical: 6,
               minHeight: 52,
             }}
           >
-            <TouchableOpacity 
-              onPress={() => {
-                haptics.light();
-                // Image picker action
-              }}
-              activeOpacity={0.7} 
-              style={{ 
-                width: 36,
-                height: 36,
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: 18,
-                marginRight: 2,
-              }}
-            >
-              <ImageIcon size={20} color={Colors.textSecondaryDark} />
-            </TouchableOpacity>
-            
             <TextInput
               placeholder="Type a message..."
               value={message}
@@ -1528,26 +1465,7 @@ height: MIN_TOUCH_TARGET,
               >
                 <ActivityIndicator size="small" color={Colors.accent} />
               </View>
-            ) : (
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => {
-                  haptics.light();
-                  // Voice message action
-                }}
-                style={{
-                  width: MIN_TOUCH_TARGET,
-height: MIN_TOUCH_TARGET,
-                  borderRadius: 19,
-                  backgroundColor: '#E9EEE0',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginLeft: 4,
-                }}
-              >
-                <Mic size={18} color="#64705A" />
-              </TouchableOpacity>
-            )}
+            ) : null}
           </View>
         </View>
         </View>

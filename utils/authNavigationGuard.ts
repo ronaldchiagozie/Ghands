@@ -7,9 +7,11 @@ type RouterLike = Pick<Router, 'replace'>;
 let redirectInFlight = false;
 let lastRedirectAt = 0;
 let sessionEndedAt = 0;
+let lastRedirectRoute: string | null = null;
 
-const REDIRECT_COOLDOWN_MS = 4000;
-const SESSION_END_GRACE_MS = 5000;
+const REDIRECT_COOLDOWN_MS = 3000;
+const SESSION_END_GRACE_MS = 3500;
+const REDIRECT_IN_FLIGHT_MS = 2500;
 
 function normalizePath(pathname: string): string {
   const p = pathname.trim();
@@ -43,9 +45,11 @@ export async function redirectToAuthScreen(
   options: {
     pathname?: string | null;
     clearSession?: boolean;
+    /** Intentional sign-out — bypass cooldown but still dedupe in-flight. */
+    force?: boolean;
   } = {}
 ): Promise<boolean> {
-  const { pathname, clearSession = true } = options;
+  const { pathname, clearSession = true, force = false } = options;
   const now = Date.now();
 
   if (pathname && isPublicUnauthenticatedRoute(pathname)) {
@@ -53,25 +57,32 @@ export async function redirectToAuthScreen(
   }
 
   if (redirectInFlight) return false;
-  if (now - lastRedirectAt < REDIRECT_COOLDOWN_MS) return false;
+  if (!force && now - lastRedirectAt < REDIRECT_COOLDOWN_MS) return false;
 
   redirectInFlight = true;
   markAuthSessionEnded();
 
   try {
     const route = clearSession ? await handleTokenExpiration() : await getLoginRouteForStoredRole();
+    const normalizedRoute = normalizePath(route);
 
-    if (pathname && normalizePath(pathname) === normalizePath(route)) {
-      redirectInFlight = false;
+    if (pathname && normalizePath(pathname) === normalizedRoute) {
+      return false;
+    }
+
+    if (lastRedirectRoute === normalizedRoute && now - lastRedirectAt < REDIRECT_COOLDOWN_MS) {
       return false;
     }
 
     router.replace(route as never);
+    lastRedirectRoute = normalizedRoute;
     lastRedirectAt = Date.now();
     return true;
   } catch {
     try {
       router.replace('/SelectAccountTypeScreen' as never);
+      lastRedirectRoute = '/SelectAccountTypeScreen';
+      lastRedirectAt = Date.now();
       return true;
     } catch {
       return false;
@@ -79,6 +90,6 @@ export async function redirectToAuthScreen(
   } finally {
     setTimeout(() => {
       redirectInFlight = false;
-    }, 600);
+    }, REDIRECT_IN_FLIGHT_MS);
   }
 }

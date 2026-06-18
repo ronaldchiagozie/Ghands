@@ -20,6 +20,7 @@ import { providerListCard } from '@/lib/providerSurfaceStyles';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { extractMyRatingFromRequest, reviewRatingStorageKey } from '@/utils/reviewSync';
 import { navigateToJob } from '@/utils/navigation';
+import { summarizeJobDescription } from '@/utils/jobDescriptionSummary';
 
 type JobStatus = 'Ongoing' | 'Completed' | 'Cancelled';
 
@@ -63,7 +64,12 @@ const JobListItem = React.memo(function JobListItem({
           <Text className="text-lg text-black mb-1" style={{ fontFamily: 'Poppins-Bold' }}>
             {job.title}
           </Text>
-          <Text className="text-sm text-gray-600" style={{ fontFamily: 'Poppins-Regular' }}>
+          <Text
+            className="text-sm text-gray-600"
+            style={{ fontFamily: 'Poppins-Regular' }}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
             {job.subtitle}
           </Text>
         </View>
@@ -240,7 +246,11 @@ const mapRequestToJobItem = (
     id: request.id,
     requestId: request.id,
     title: request.jobTitle || `${categoryDisplayName} Service`,
-    subtitle: request.description || 'Service request',
+    subtitle: summarizeJobDescription(request.description, {
+      jobTitle: request.jobTitle,
+      maxLength: 72,
+      maxSentences: 1,
+    }),
     status,
     name: providerName,
     time: formatDate(request.scheduledDate, request.scheduledTime),

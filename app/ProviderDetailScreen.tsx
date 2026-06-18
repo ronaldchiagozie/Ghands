@@ -837,7 +837,7 @@ export default function ProviderDetailScreen() {
                 }}
               >
                 Reviews from completed jobs will show here. Book this provider and share feedback after your
-                service — it helps everyone choose with confidence.
+                service. It helps everyone choose with confidence.
               </Text>
             </View>
           )}

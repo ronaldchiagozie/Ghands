@@ -3,7 +3,8 @@ import { isInAuthTransition } from '@/utils/authNavigationGuard';
 import { expireAuthSession } from '@/utils/enforceAuthSession';
 
 /**
- * Auth failure (401 / expired JWT) — clears session once; root layout listener performs navigation.
+ * Auth failure (401 / expired JWT) — clears session once.
+ * Root layout session-expired listener performs the single redirect.
  */
 export async function handleAuthErrorRedirect(
   _router?: { replace: (href: any) => void },

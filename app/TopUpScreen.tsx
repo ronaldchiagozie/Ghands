@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/Button';
 import { walletService, profileService, authService } from '@/services/api';
 import { useToast } from '@/hooks/useToast';
 import { haptics } from '@/hooks/useHaptics';
+import { EMPTY_LABEL, NOT_SET_LABEL } from '@/utils/copy';
 import { getSpecificErrorMessage } from '@/utils/errorMessages';
 import { handleAuthErrorRedirect } from '@/utils/authRedirect';
 import { AuthError } from '@/utils/errors';
@@ -925,7 +926,7 @@ export default function TopUpScreen() {
                   color: Colors.textPrimary,
                 }}
               >
-                {bankTransferAccount?.number ?? '—'}
+                {bankTransferAccount?.number ?? NOT_SET_LABEL}
               </Text>
             </View>
           </View>
@@ -996,7 +997,7 @@ export default function TopUpScreen() {
                   color: Colors.textPrimary,
                 }}
               >
-                {bankTransferAccount?.name ?? '—'}
+                {bankTransferAccount?.name ?? NOT_SET_LABEL}
               </Text>
             </View>
           </View>

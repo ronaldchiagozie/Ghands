@@ -16,8 +16,8 @@ import { providerListCard } from '@/lib/providerSurfaceStyles';
 import { CLIENT_HOME_SCROLL_GUTTER } from '@/lib/tabletLayout';
 import { handleAuthErrorRedirect } from '@/utils/authRedirect';
 import { AuthError } from '@/utils/errors';
-import { shareReferral } from '@/utils/referral';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { NOT_SET_LABEL } from '@/utils/copy';
+import { useFocusEffect, usePathname, useRouter } from 'expo-router';
 import {
   Bell,
   ChevronRight,
@@ -72,6 +72,7 @@ const ProfileScreen = () => {
   const scrollBodyTopPad = useTabScrollContentPaddingTop(20);
   const scrollBottomPad = useTabScreenScrollBottomPadding(16);
   const router = useRouter();
+  const pathname = usePathname();
   const { logout } = useAuthRole();
   const { location } = useUserLocation();
   const profileReadyRef = useRef(false);
@@ -98,9 +99,9 @@ const ProfileScreen = () => {
 
   useEffect(() => {
     if (profileError instanceof AuthError) {
-      void handleAuthErrorRedirect(router);
+      void handleAuthErrorRedirect(router, pathname);
     }
-  }, [profileError, router]);
+  }, [profileError, router, pathname]);
 
   useFocusEffect(
     useCallback(() => {
@@ -523,7 +524,7 @@ const ProfileScreen = () => {
                   color: Colors.textPrimary,
                 }}
               >
-                {profile?.referralCode ?? '—'}
+                {profile?.referralCode ?? NOT_SET_LABEL}
               </Text>
             </View>
             <TouchableOpacity

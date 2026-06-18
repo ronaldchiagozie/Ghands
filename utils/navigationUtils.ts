@@ -1,4 +1,4 @@
-import { Linking, Platform, Alert } from 'react-native';
+import { EMPTY_LABEL } from '@/utils/copy';
 
 /**
  * Calculate distance between two coordinates using Haversine formula
@@ -52,7 +52,7 @@ export function estimateTravelTime(distanceKm: number, mode: 'driving' | 'walkin
  */
 export function formatDistance(distanceKm: number): string {
   if (!Number.isFinite(distanceKm) || distanceKm < 0) {
-    return '—';
+    return EMPTY_LABEL;
   }
   if (distanceKm < 1) {
     const m = Math.max(0, Math.round(distanceKm * 1000));
@@ -68,7 +68,7 @@ export function formatDistance(distanceKm: number): string {
  */
 export function formatTravelTime(minutes: number | null | undefined): string {
   if (minutes == null || !Number.isFinite(minutes) || minutes < 0) {
-    return '—';
+    return EMPTY_LABEL;
   }
   const total = Math.max(0, Math.round(minutes));
   if (total < 60) {
@@ -83,7 +83,7 @@ export function formatTravelTime(minutes: number | null | undefined): string {
 }
 
 /**
- * One line for job / provider cards: distance (with unit conversion) and ETA, e.g. "250 m away • ~5 min".
+ * One line for job / provider cards: distance and ETA, e.g. "250 m away, ~5 min".
  */
 export function formatProviderProximitySubtitle(
   distanceKm?: number | null,
@@ -95,11 +95,11 @@ export function formatProviderProximitySubtitle(
   }
   if (minutesAway != null && Number.isFinite(minutesAway) && minutesAway >= 0) {
     const timeLabel = formatTravelTime(minutesAway);
-    if (timeLabel !== '—') {
+    if (timeLabel !== EMPTY_LABEL) {
       parts.push(timeLabel);
     }
   }
-  return parts.length > 0 ? parts.join(' • ') : null;
+  return parts.length > 0 ? parts.join(', ') : null;
 }
 
 /**

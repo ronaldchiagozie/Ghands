@@ -1,6 +1,7 @@
 import { AuthError } from '../../utils/errors';
 import { authService as authServiceInstance } from '../authService';
 import { assertValidAuthToken, expireAuthSession } from '../../utils/enforceAuthSession';
+import { reportApiUnreachable } from '../../utils/connectivityCheck';
 import { API_BASE_URL } from '../../lib/apiConfig';
 
 interface RequestConfig extends RequestInit {
@@ -216,6 +217,9 @@ class ApiClient {
             ? 'Whoops! No internet connection found. Check your internet connection or try again.'
             : (error instanceof Error ? error.message : 'Request failed');
           const statusCode = (error as any)?.status || (error as any)?.response?.status;
+          if (isNetworkErr) {
+            reportApiUnreachable();
+          }
           // Only 401/403 → session expired. Skip if this failure is really offline / flaky network
           // (avoids mis-classifying connection issues as logout when proxies or DNS act up).
           if (

@@ -82,7 +82,7 @@ export function useProviderMonthlyEarnings(options?: { refreshOnFocus?: boolean 
         applyCache({
           thisMonth: 0,
           percentChangeMonth: 0,
-          trendLabel: '— vs last month',
+          trendLabel: 'No change vs last month',
           trend: 'flat',
         });
       }

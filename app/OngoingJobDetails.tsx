@@ -26,6 +26,7 @@ import { getSpecificErrorMessage } from '@/utils/errorMessages';
 import { isDuplicateActionError } from '@/utils/idempotentSubmit';
 import { mergeCachedVisitRequest, saveCachedVisitRequest } from '@/utils/visitRequestCache';
 import {
+  canClientDeclineVisit,
   getVisitDeclinedDescription,
   getVisitLogisticsStatus,
   healJobStatusAfterVisitDecline,
@@ -451,6 +452,12 @@ export default function OngoingJobDetails() {
       visitRequest,
       visitOccurred,
     });
+    const canDeclineVisit = canClientDeclineVisit({
+      visitRequest,
+      providerHasAccepted: hasAcceptedProviders,
+      visitDeclined,
+      hasQuotationSent,
+    });
     timeline.push({
       id: 'step-3',
       title: 'Inspection',
@@ -460,9 +467,8 @@ export default function OngoingJobDetails() {
         !hasQuotationSent && visitOccurred && !visitDeclined && !visitPaid && visitFeeText
           ? `${inspectionVisual.description.replace(/\.$/, '')}. Fee: ${visitFeeText}.`
           : inspectionVisual.description,
-      showPayLogistics:
-        visitOccurred && !visitPaid && !visitDeclined && hasPayableVisitFee && !hasQuotationSent,
-      showRejectVisit: visitOccurred && !visitPaid && !visitDeclined && !hasQuotationSent,
+      showPayLogistics: canDeclineVisit && hasPayableVisitFee,
+      showRejectVisit: canDeclineVisit,
       logisticsCost: visitLogisticsCost,
     });
 
@@ -473,7 +479,7 @@ export default function OngoingJobDetails() {
         timeline.push({
           id: 'step-3b',
           title: 'Quotation',
-          description: 'Review the quote when ready.',
+          description: 'Quote received.',
           status: formatTimeAgo(quotation?.sentAt || (quotation as any)?.submittedAt || request.updatedAt || ''),
           accent: JOB_TIMELINE.completeSoft,
           dotColor: JOB_TIMELINE.sage,
@@ -547,7 +553,7 @@ export default function OngoingJobDetails() {
       timeline.push({
         id: 'step-4',
         title: 'Quote accepted',
-        description: 'Review and accept the quote.',
+        description: 'Accept the quote.',
         status: 'Active',
         accent: JOB_TIMELINE.activeSoft,
         dotColor: JOB_TIMELINE.activeDot,
@@ -734,7 +740,7 @@ export default function OngoingJobDetails() {
     }
     if (quotationAccepted && !isPaymentConfirmed) {
       const amt = acceptedQuotation ? `₦${formatCurrency(acceptedQuotation.total)}` : '';
-      return { title: 'Quotation accepted – payment required', subtitle: amt ? `Accepted ${amt}. Complete payment to secure the job.` : 'Complete payment to secure the job.', variant: 'action' as const, showPayButton: true, payAmount: acceptedQuotation?.total ?? 0, acceptedQuotation, statusPill: 'Payment required', pillBg: JOB_TIMELINE.activeSoft, pillText: JOB_TIMELINE.activeChipText, timestamp: null, provider: headerProvider };
+      return { title: 'Quotation accepted, payment required', subtitle: amt ? `Accepted ${amt}. Complete payment to secure the job.` : 'Complete payment to secure the job.', variant: 'action' as const, showPayButton: true, payAmount: acceptedQuotation?.total ?? 0, acceptedQuotation, statusPill: 'Payment required', pillBg: JOB_TIMELINE.activeSoft, pillText: JOB_TIMELINE.activeChipText, timestamp: null, provider: headerProvider };
     }
     if (hasQuotationSent) return { title: 'Quotation received', subtitle: 'Review cost and details, then accept or decline.', statusPill: 'Quote submitted', pillBg: JOB_TIMELINE.infoSoft, pillText: JOB_TIMELINE.infoChipText, timestamp: null, provider: headerProvider };
     if (hasAcceptedProviders) {
@@ -776,7 +782,14 @@ export default function OngoingJobDetails() {
         parseVisitFee((request as any)?.inspection_fee);
       const hasPayableVisitFee = typeof logisticsCost === 'number' && logisticsCost > 0;
 
-      if (__DEV__ && hasVR) {
+      const canDeclineVisit = canClientDeclineVisit({
+        visitRequest: vr,
+        providerHasAccepted: true,
+        visitDeclined,
+        hasQuotationSent,
+      });
+
+      if (__DEV__ && canDeclineVisit) {
         console.log('[OngoingJobDetails] visit header data', {
           requestId: params.requestId,
           rawVisitRequest: vr,
@@ -805,15 +818,15 @@ export default function OngoingJobDetails() {
         subtitle: hasVR
           ? hasPayableVisitFee
             ? 'Visit scheduled. Pay the visit fee or decline if you prefer a quote without a site visit.'
-            : 'Visit requested. Waiting for visit details — you can decline if you prefer a quote only.'
+            : 'Visit requested. Waiting for visit details. You can decline if you prefer a quote only.'
           : 'Waiting for inspection and quotation.',
         statusPill: hasVR ? 'Visit pending' : 'Provider accepted',
         pillBg: JOB_TIMELINE.activeSoft,
         pillText: JOB_TIMELINE.activeChipText,
         timestamp: acceptedAt ? formatTimeAgo(acceptedAt) : null,
         provider: headerProvider,
-        showVisitPayButton: hasVR && !vPaid && !visitDeclined && !hasQuotationSent,
-        showDeclineVisitButton: hasVR && !vPaid && !visitDeclined && !hasQuotationSent,
+        showVisitPayButton: canDeclineVisit && hasPayableVisitFee,
+        showDeclineVisitButton: canDeclineVisit,
         visitLogisticsCost: logisticsCost,
         onVisitPay: () => {
           if (params.requestId == null) return;
@@ -984,7 +997,7 @@ export default function OngoingJobDetails() {
       setRequest(healJobStatusAfterVisitDecline(hydratedRequestDetails));
       if (usedListFallback && !silent) {
         showWarning(
-          'We could not load the latest job details. Showing what we have — swipe down to refresh.'
+          'We could not load the latest job details. Showing what we have. Swipe down to refresh.'
         );
       }
 
@@ -1197,7 +1210,7 @@ export default function OngoingJobDetails() {
       });
 
       haptics.success();
-      showSuccess('Visit declined. Your job is still active — the provider can send a quotation.');
+      showSuccess('Visit declined. Your job is still active, and the provider can send a quotation.');
       await loadRequestData(true);
     } catch (e: any) {
       if (e instanceof AuthError) {
@@ -1213,7 +1226,7 @@ export default function OngoingJobDetails() {
     haptics.light();
     Alert.alert(
       'Decline visit?',
-      'Only the site visit is cancelled — not your job. The provider can still send a quotation.',
+      'Only the site visit is cancelled, not your job. The provider can still send a quotation.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -1395,8 +1408,10 @@ export default function OngoingJobDetails() {
       const actions: React.ReactNode[] = [];
 
       if (
-        (step.id === 'step-3b' && step.isCompleted && hasQuotationSent && !quotationAccepted) ||
-        (step.id === 'step-4' && step.isActive && hasQuotationSent)
+        step.id === 'step-4' &&
+        step.isActive &&
+        hasQuotationSent &&
+        !quotationAccepted
       ) {
         actions.push(
           <SageOutlineChip key="review" label="Review quote" onPress={openQuotationsTab} />
@@ -1428,7 +1443,7 @@ export default function OngoingJobDetails() {
         );
       }
 
-      if (step.showPayLogistics) {
+      if (step.showPayLogistics && step.isActive) {
         actions.push(
           <SagePrimaryButton
             key="pay-visit"
@@ -1450,7 +1465,7 @@ export default function OngoingJobDetails() {
         );
       }
 
-      if (step.showRejectVisit) {
+      if (step.showRejectVisit && step.isActive) {
         actions.push(
           <DestructiveButton
             key="decline-visit"

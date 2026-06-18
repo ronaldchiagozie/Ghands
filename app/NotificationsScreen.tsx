@@ -6,6 +6,10 @@ import { BorderRadius, Colors, MIN_TOUCH_TARGET} from '@/lib/designSystem';
 import { providerListCard } from '@/lib/providerSurfaceStyles';
 import { Notification, notificationService } from '@/services/api';
 import { formatTimeAgo } from '@/utils/dateFormatting';
+import {
+  notificationActionLabel,
+  resolveNotificationRoute,
+} from '@/utils/notificationNavigation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { Archive, Bell, Calendar, CheckCheck, Clock, FileText, Handshake, MessageCircle, Trash2, Wallet, X } from 'lucide-react-native';
@@ -103,6 +107,13 @@ const NotificationListItem = React.memo(function NotificationListItem({
         </View>
       )}
     >
+      <TouchableOpacity
+        activeOpacity={0.85}
+        onPress={() => {
+          onMarkAsRead(notification.id);
+          onNavigate(notification);
+        }}
+      >
       <View
         style={{
           flexDirection: 'row',
@@ -244,6 +255,7 @@ const NotificationListItem = React.memo(function NotificationListItem({
           </Text>
         </View>
       </View>
+      </TouchableOpacity>
     </Swipeable>
   );
 });
@@ -702,82 +714,44 @@ export default function NotificationsScreen() {
     }
   }, [persistArchivedIds]);
 
-  // Navigate to the correct screen for a backend notification
-  const handleNavigateToDetails = (notification: Notification | UINotification) => {
-    setPreviewNotification(null);
+  const handleNavigateToDetails = useCallback(
+    (notification: Notification | UINotification) => {
+      setPreviewNotification(null);
 
-    // Extract raw notification if it's a UINotification
-    const rawNotification = 'raw' in notification ? notification.raw : notification;
-    logNotificationDebug('navigate: pressed notification', {
-      id: rawNotification.id,
-      type: rawNotification.type,
-      status: rawNotification.status,
-      requestId: rawNotification.requestId,
-      providerId: rawNotification.providerId,
-      quotationId: rawNotification.quotationId,
-      transactionId: rawNotification.transactionId,
-      userRole,
-    });
+      const rawNotification = 'raw' in notification ? notification.raw : notification;
+      logNotificationDebug('navigate: pressed notification', {
+        id: rawNotification.id,
+        type: rawNotification.type,
+        status: rawNotification.status,
+        requestId: rawNotification.requestId,
+        providerId: rawNotification.providerId,
+        quotationId: rawNotification.quotationId,
+        transactionId: rawNotification.transactionId,
+        userRole,
+      });
 
-    switch (rawNotification.type) {
-      case 'message':
-      case 'chat_new':
-        if (rawNotification.requestId) {
-          router.push({
-            pathname: '/ChatScreen' as any,
-            params: {
-              requestId: String(rawNotification.requestId),
-              ...(rawNotification.providerId != null && {
-                providerId: String(rawNotification.providerId),
-              }),
-              ...(rawNotification.metadata &&
-                typeof rawNotification.metadata.providerName === 'string' && {
-                  providerName: rawNotification.metadata.providerName,
-                }),
-            },
-          } as any);
-          return;
-        }
-        break;
-      case 'request_accepted':
-      case 'work_order_issued':
-      case 'work_order_created':
-        if (rawNotification.requestId) {
-          router.push({
-            pathname: '/OngoingJobDetails' as any,
-            params: { requestId: String(rawNotification.requestId), tab: 'updates' },
-          } as any);
-          return;
-        }
-        break;
-      case 'quotation_sent':
-      case 'quotation_accepted':
-        if (rawNotification.requestId) {
-          router.push({
-            pathname: '/OngoingJobDetails' as any,
-            params: { requestId: String(rawNotification.requestId), tab: 'quotations' },
-          } as any);
-          return;
-        }
-        break;
-      case 'deposit_success':
-        router.push('/WalletScreen' as any);
+      const route = resolveNotificationRoute(rawNotification, userRole);
+      if (route) {
+        router.push({
+          pathname: route.pathname as any,
+          params: route.params,
+        } as any);
         return;
-      default:
-        // If request-linked but not explicitly handled, still open details screen.
-        if (rawNotification.requestId) {
-          router.push({
-            pathname: userRole === 'provider' ? '/ProviderJobDetailsScreen' : '/OngoingJobDetails',
-            params: { requestId: String(rawNotification.requestId) },
-          } as any);
-          return;
-        }
-        // For other notification types without route, show preview modal
-        const uiNotif = 'raw' in notification ? notification : mapNotificationToUI(rawNotification);
-        setPreviewNotification(uiNotif);
-        break;
-    }
-  };
+      }
+
+      const uiNotif = 'raw' in notification ? notification : mapNotificationToUI(rawNotification);
+      setPreviewNotification(uiNotif);
+    },
+    [router, userRole]
+  );
+
+  const previewRoute = useMemo(
+    () =>
+      previewNotification
+        ? resolveNotificationRoute(previewNotification.raw, userRole)
+        : null,
+    [previewNotification, userRole]
+  );
 
   const notificationSections = useMemo<NotificationSection[]>(
     () =>
@@ -835,7 +809,7 @@ export default function NotificationsScreen() {
         setSwipeableRef={setSwipeableRef}
       />
     ),
-    [filterPill, handleArchive, handleDelete, handleUnarchive, setSwipeableRef]
+    [filterPill, handleArchive, handleDelete, handleNavigateToDetails, handleUnarchive, setSwipeableRef]
   );
 
   const listEmpty = useMemo(() => {
@@ -1263,28 +1237,30 @@ height: MIN_TOUCH_TARGET,
                       Close
                     </Text>
                   </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => handleNavigateToDetails(previewNotification)}
-                    style={{
-                      flex: 1,
-                      backgroundColor: Colors.accent,
-                      borderRadius: 14,
-                      paddingVertical: 13,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Text
+                  {previewRoute ? (
+                    <TouchableOpacity
+                      onPress={() => handleNavigateToDetails(previewNotification)}
                       style={{
-                        fontSize: 14,
-                        fontFamily: 'Poppins-SemiBold',
-                        color: Colors.white,
+                        flex: 1,
+                        backgroundColor: Colors.accent,
+                        borderRadius: 14,
+                        paddingVertical: 13,
+                        alignItems: 'center',
+                        justifyContent: 'center',
                       }}
+                      activeOpacity={0.7}
                     >
-                      View Full Details
-                    </Text>
-                  </TouchableOpacity>
+                      <Text
+                        style={{
+                          fontSize: 14,
+                          fontFamily: 'Poppins-SemiBold',
+                          color: Colors.white,
+                        }}
+                      >
+                        {notificationActionLabel(previewRoute)}
+                      </Text>
+                    </TouchableOpacity>
+                  ) : null}
                 </View>
               </View>
             )}

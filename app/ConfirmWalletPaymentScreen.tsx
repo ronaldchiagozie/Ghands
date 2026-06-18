@@ -187,7 +187,7 @@ export default function ConfirmWalletPaymentScreen() {
         const notSet = /pin not set|no pin|not been set|set up|create.*pin|must set/i.test(errorMessage);
         showError(
           notSet
-            ? 'Wallet PIN required. Create one below, then come back to pay—or try again if you already have a PIN.'
+            ? 'Wallet PIN required. Create one below, then come back to pay, or try again if you already have a PIN.'
             : 'That PIN is incorrect. Try again, or create a new PIN below.'
         );
         return;

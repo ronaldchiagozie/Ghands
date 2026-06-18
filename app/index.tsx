@@ -5,6 +5,8 @@ import { authService } from '@/services/authService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { isAppEntryRoute } from '@/utils/authPublicRoutes';
 import { ScreenBootLoader } from '@/components/ScreenBootLoader';
+import { isAccessTokenExpired } from '@/utils/jwtExpiry';
+import { getRoleLoginRoute, handleTokenExpiration } from '@/utils/tokenExpirationHandler';
 
 const AUTH_ROLE_KEY = '@ghands:user_role';
 
@@ -29,6 +31,13 @@ export default function ClientEntryPoint() {
         const token = await authService.getAuthToken();
 
         if (token) {
+          if (isAccessTokenExpired(token)) {
+            hasRedirectedRef.current = true;
+            await handleTokenExpiration();
+            const loginRoute = await getRoleLoginRoute();
+            router.replace(loginRoute as never);
+            return;
+          }
           hasRedirectedRef.current = true;
           router.replace('/(tabs)/home' as never);
           return;

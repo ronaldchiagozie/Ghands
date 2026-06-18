@@ -205,7 +205,7 @@ export function getQuotationNegotiationStep(input: {
 
   if (quotationSent) {
     return completedStep(
-      audience === 'client' ? 'Review the quote when ready.' : 'Waiting for client review.',
+      audience === 'client' ? 'Quote received.' : 'Waiting for client review.',
       audience === 'client' ? 'Received' : 'Sent'
     );
   }

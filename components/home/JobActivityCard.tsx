@@ -92,7 +92,7 @@ const JobActivityCardComponent = ({ activity }: JobActivityCardProps) => {
               className="text-xs text-gray-500"
               style={{ fontFamily: 'Poppins-Medium' }}
             >
-              {activity.category} • {activity.submittedAt}
+              {activity.category}, {activity.submittedAt}
             </Text>
           </View>
         </View>

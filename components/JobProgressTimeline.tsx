@@ -267,7 +267,8 @@ export function JobProgressTimeline({ steps, renderStepActions }: JobProgressTim
                     lineHeight: 17,
                     marginRight: 12,
                   }}
-                  numberOfLines={2}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
                 >
                   {step.description}
                 </Text>

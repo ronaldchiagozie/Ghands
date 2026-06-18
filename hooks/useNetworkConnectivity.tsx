@@ -1,6 +1,14 @@
 import NetInfo, { type NetInfoState } from '@react-native-community/netinfo';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { notifyNetworkRestored, subscribeToNetworkRestore } from '@/utils/networkRestoreEvents';
+import {
+  checkConnectivity,
+  deriveOnlineFromNetInfo,
+  isApiUnreachable,
+  subscribeApiUnreachable,
+} from '@/utils/connectivityCheck';
+
+export { deriveOnlineFromNetInfo } from '@/utils/connectivityCheck';
 
 type NetworkContextValue = {
   isOnline: boolean;
@@ -14,20 +22,14 @@ const NetworkContext = createContext<NetworkContextValue>({
   recheck: async () => true,
 });
 
-export function deriveOnlineFromNetInfo(state: NetInfoState | null | undefined): boolean {
-  if (!state) return true;
-  if (state.isConnected === false) return false;
-  if (state.isInternetReachable === false) return false;
-  return true;
-}
-
 export function NetworkProvider({ children }: { children: React.ReactNode }) {
   const [isOnline, setIsOnline] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
   const wasOnlineRef = useRef(true);
 
   const applyNetState = useCallback((state: NetInfoState) => {
-    const online = deriveOnlineFromNetInfo(state);
+    const linkUp = deriveOnlineFromNetInfo(state);
+    const online = linkUp && !isApiUnreachable();
     if (wasOnlineRef.current && !online) {
       /* offline transition */
     }
@@ -45,9 +47,16 @@ export function NetworkProvider({ children }: { children: React.ReactNode }) {
     return unsubscribe;
   }, [applyNetState]);
 
+  useEffect(() => {
+    return subscribeApiUnreachable(() => {
+      wasOnlineRef.current = false;
+      setIsOnline(false);
+      setIsInitialized(true);
+    });
+  }, []);
+
   const recheck = useCallback(async () => {
-    const state = await NetInfo.fetch();
-    const online = deriveOnlineFromNetInfo(state);
+    const online = await checkConnectivity();
     if (!wasOnlineRef.current && online) {
       notifyNetworkRestored();
     }

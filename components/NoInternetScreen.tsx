@@ -11,7 +11,7 @@ const ILLUSTRATION_WIDTH = 300;
 const ILLUSTRATION_HEIGHT = 278;
 
 type NoInternetScreenProps = {
-  onRetry: () => void | Promise<void>;
+  onRetry: () => void | Promise<void | boolean>;
 };
 
 /**

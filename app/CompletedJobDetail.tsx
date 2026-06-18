@@ -805,7 +805,7 @@ export default function CompletedJobDetail() {
                     color: Colors.success,
                   }}
                 >
-                  You’ve rated this job — thank you!
+                  You’ve rated this job. Thank you!
                 </Text>
               </View>
             )}

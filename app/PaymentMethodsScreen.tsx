@@ -249,7 +249,7 @@ export default function PaymentMethodsScreen() {
           /pin not set|no pin|not been set|set up|create.*pin|must set/i.test(errorMessage);
         showError(
           notSet
-            ? 'Wallet PIN required. Create one using the link below, then return here—or try your PIN again.'
+            ? 'Wallet PIN required. Create one using the link below, then return here, or try your PIN again.'
             : 'That PIN is incorrect. Try again, or create a new PIN below.'
         );
         return;

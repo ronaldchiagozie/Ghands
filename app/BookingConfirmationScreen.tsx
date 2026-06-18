@@ -142,7 +142,7 @@ export default function BookingConfirmationScreen() {
         title: 'Inspection & quote',
         description: hasAccepted
           ? hasQuotationSent
-            ? `${quotationCount} quote${quotationCount === 1 ? '' : 's'} received — review when ready.`
+            ? `${quotationCount} quote${quotationCount === 1 ? '' : 's'} received. Review when ready.`
             : 'Provider will inspect and send a quote.'
           : 'Waiting for a provider to accept your request.',
         status: quotationAccepted ? 'completed' : hasAccepted || hasQuotationSent ? 'in-progress' : 'pending',

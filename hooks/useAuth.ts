@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ONBOARDING_STORAGE_KEY } from './useOnboarding';
 import { authService } from '@/services/api';
 import { beginRoleSwitch, endRoleSwitch } from '@/hooks/useRoleSwitching';
-import { markAuthSessionEnded } from '@/utils/authNavigationGuard';
+import { markAuthSessionEnded, redirectToAuthScreen } from '@/utils/authNavigationGuard';
 
 export type UserRole = 'client' | 'provider' | null;
 
@@ -105,15 +105,8 @@ export function useAuthRole(): UseAuthRoleReturn {
 
   const logout = useCallback(async () => {
     try {
-      // Get role BEFORE clearing it so we know where to redirect
-      const currentRole = await AsyncStorage.getItem(AUTH_ROLE_KEY);
-
-      markAuthSessionEnded();
-
-      // Clear all auth data using authService (includes token, refresh token, and user ID)
       await authService.clearAuthTokens();
-      
-      // Clear all provider-related data
+
       const providerKeys = [
         '@ghands:business_name',
         '@ghands:company_name',
@@ -122,29 +115,12 @@ export function useAuthRole(): UseAuthRoleReturn {
         '@ghands:provider_email',
         '@ghands:company_email',
         '@ghands:company_phone',
-        '@ghands:profile_complete', // Provider profile completion status
+        '@ghands:profile_complete',
       ];
-     
-      // IMPORTANT:
-      // Do NOT clear AUTH_ROLE_KEY or ONBOARDING_STORAGE_KEY on logout.
-      // - Role tells us whether this user is a client or provider so we can
-      //   send them straight to the correct login screen.
-      // - Onboarding complete should stay true so they never get bounced back
-      //   to the SelectAccountTypeScreen after logging out.
-      //
-      // We only clear provider-specific cached data here.
+
       await AsyncStorage.multiRemove(providerKeys);
-      
-      // Redirect to appropriate login screen based on role
-      // User is signing out, so they're not a first-timer - go to login, not role selection
-      if (currentRole === 'provider') {
-        router.replace('/ProviderSignInScreen');
-      } else if (currentRole === 'client') {
-        router.replace('/LoginScreen');
-      } else {
-        // Only go to role selection if no role was found (shouldn't happen on logout)
-        router.replace('/SelectAccountTypeScreen');
-      }
+
+      await redirectToAuthScreen(router, { clearSession: false, force: true });
     } catch (error) {
       console.error('Error during logout:', error);
       throw error;

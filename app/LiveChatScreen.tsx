@@ -229,7 +229,7 @@ export default function LiveChatScreen() {
                 color: Colors.textSecondaryDark,
               }}
             >
-              {isUser ? 'You' : 'Support'} • {item.time}
+              {isUser ? 'You' : 'Support'}, {item.time}
             </Text>
             {getStatusIcon()}
           </View>
@@ -336,7 +336,7 @@ export default function LiveChatScreen() {
                   marginTop: 2,
                 }}
               >
-                Online • Usually replies instantly
+                Online, usually replies instantly
               </Text>
             </View>
           </View>

@@ -19,6 +19,7 @@ import { isInAuthTransition } from '@/utils/authNavigationGuard';
 import { expireAuthSession } from '@/utils/enforceAuthSession';
 import { redirectToAuthScreen } from '@/utils/authNavigationGuard';
 import { subscribeToSessionExpired } from '@/utils/sessionExpiredEvents';
+import { resolvePushNotificationRoute } from '@/utils/notificationNavigation';
 import { installAuthRejectionHandler } from '@/utils/installAuthRejectionHandler';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
@@ -98,9 +99,10 @@ export default function RootLayout() {
   useEffect(() => {
     const redirectOnSessionExpired = async () => {
       if (await isRoleSwitchInProgress()) return;
+      if (isInAuthTransition()) return;
       await redirectToAuthScreen(router, {
         pathname: pathnameRef.current,
-        clearSession: true,
+        clearSession: false,
       });
     };
 
@@ -153,61 +155,12 @@ export default function RootLayout() {
     const data = notification.request.content.data as Record<string, unknown> | undefined;
     if (!data) return;
 
-    const typeRaw = data.type;
-    const typeNorm =
-      typeof typeRaw === 'string' ? typeRaw.toLowerCase() : String(typeRaw ?? '').toLowerCase();
-    const requestId = data.requestId;
-
-    // Chat / message pushes → messages screen (not job timeline)
-    if (
-      requestId != null &&
-      requestId !== '' &&
-      (typeNorm === 'message' ||
-        typeNorm === 'chat_new' ||
-        typeNorm === 'new_message' ||
-        typeNorm === 'chat_message')
-    ) {
-      const meta =
-        data.metadata && typeof data.metadata === 'object'
-          ? (data.metadata as Record<string, unknown>)
-          : null;
-      const providerNameFromMeta =
-        meta && typeof meta.providerName === 'string' ? meta.providerName : undefined;
+    const route = resolvePushNotificationRoute(data, 'client');
+    if (route) {
       router.push({
-        pathname: '/ChatScreen' as any,
-        params: {
-          requestId: String(requestId),
-          ...(data.providerId != null && data.providerId !== '' && { providerId: String(data.providerId) }),
-          ...(data.clientId != null && data.clientId !== '' && { clientId: String(data.clientId) }),
-          ...(typeof data.providerName === 'string'
-            ? { providerName: data.providerName }
-            : providerNameFromMeta != null
-              ? { providerName: providerNameFromMeta }
-              : {}),
-        },
+        pathname: route.pathname as any,
+        params: route.params,
       } as any);
-      return;
-    }
-
-    if (data.requestId != null && data.requestId !== '') {
-      if (
-        typeNorm === 'quotation_accepted' ||
-        typeNorm === 'quotation_sent' ||
-        typeNorm === 'request_accepted' ||
-        typeNorm === 'work_order_issued' ||
-        typeNorm === 'work_order_created'
-      ) {
-        const screen = '/OngoingJobDetails';
-
-        const quoteTab =
-          typeNorm === 'quotation_sent' || typeNorm === 'quotation_accepted' ? 'quotations' : 'updates';
-        router.push({
-          pathname: screen as any,
-          params: { requestId: String(data.requestId), tab: quoteTab },
-        } as any);
-      }
-    } else if (typeNorm === 'deposit_success') {
-      router.push('/WalletScreen' as any);
     }
   }, [notification, router]);
 
