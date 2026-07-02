@@ -1,7 +1,7 @@
 import { AuthError } from '../../utils/errors';
 import { authService as authServiceInstance } from '../authService';
 import { assertValidAuthToken, expireAuthSession } from '../../utils/enforceAuthSession';
-import { reportApiUnreachable } from '../../utils/connectivityCheck';
+import { reportApiUnreachable, clearApiUnreachable } from '../../utils/connectivityCheck';
 import { API_BASE_URL } from '../../lib/apiConfig';
 
 interface RequestConfig extends RequestInit {
@@ -199,6 +199,7 @@ class ApiClient {
         }
         const processedResponse = await this.applyResponseInterceptors(response);
         const jsonData = await processedResponse.json();
+        clearApiUnreachable();
         if (processedResponse.url?.includes('/login')) {
           const headers: any = {};
           processedResponse.headers.forEach((value, key) => { headers[key] = value; });

@@ -34,6 +34,21 @@ export type {
 } from './provider';
 export { communicationService } from './communication';
 export type { Message, SendMessagePayload, SendMessageResponse, GetMessagesResponse, UnreadCountResponse } from './communication';
+export { aiService } from './ai';
+export type {
+  AiStatus,
+  AiChatRequest,
+  AiChatResponse,
+  AiResponseType,
+  AiEstimate,
+  AiBookingSuggestion,
+  AiConversationSummary,
+  AiConversationMessage,
+  AiConversationDetail,
+  AiQuickBookingRequest,
+  AiQuickBookingResponse,
+  AiQuickBookingProvider,
+} from './ai';
 export type {
   LocationData,
   NearbyProvider,

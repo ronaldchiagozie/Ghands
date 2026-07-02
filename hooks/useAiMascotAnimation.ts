@@ -1,14 +1,11 @@
+import { AI_ANIMATION } from '@/components/ai/aiAssistantTheme';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing } from 'react-native';
 
-const ENTRANCE_MS = 600;
-const SOMERSAULT_MS = 500;
-const FLOAT_HALF_MS = 1500;
-const FLOAT_DISTANCE = 6;
-
 export function useAiMascotAnimation() {
   const reducedMotion = useReducedMotion();
+  const opacity = useRef(new Animated.Value(reducedMotion ? 1 : 0)).current;
   const translateY = useRef(new Animated.Value(reducedMotion ? 0 : 40)).current;
   const scale = useRef(new Animated.Value(reducedMotion ? 1 : 0.8)).current;
   const rotateX = useRef(new Animated.Value(0)).current;
@@ -23,15 +20,21 @@ export function useAiMascotAnimation() {
     }
 
     const bounceIn = Animated.parallel([
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: AI_ANIMATION.mascotEntranceMs,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }),
       Animated.timing(translateY, {
         toValue: 0,
-        duration: ENTRANCE_MS,
+        duration: AI_ANIMATION.mascotEntranceMs,
         easing: Easing.out(Easing.bounce),
         useNativeDriver: true,
       }),
       Animated.timing(scale, {
         toValue: 1,
-        duration: ENTRANCE_MS,
+        duration: AI_ANIMATION.mascotEntranceMs,
         easing: Easing.out(Easing.bounce),
         useNativeDriver: true,
       }),
@@ -42,7 +45,7 @@ export function useAiMascotAnimation() {
 
       Animated.timing(rotateX, {
         toValue: 1,
-        duration: SOMERSAULT_MS,
+        duration: AI_ANIMATION.mascotSomersaultMs,
         easing: Easing.inOut(Easing.ease),
         useNativeDriver: true,
       }).start(({ finished: flipFinished }) => {
@@ -53,14 +56,14 @@ export function useAiMascotAnimation() {
         floatLoopRef.current = Animated.loop(
           Animated.sequence([
             Animated.timing(floatY, {
-              toValue: -FLOAT_DISTANCE,
-              duration: FLOAT_HALF_MS,
+              toValue: -AI_ANIMATION.mascotFloatDistance,
+              duration: AI_ANIMATION.mascotFloatHalfMs,
               easing: Easing.inOut(Easing.ease),
               useNativeDriver: true,
             }),
             Animated.timing(floatY, {
               toValue: 0,
-              duration: FLOAT_HALF_MS,
+              duration: AI_ANIMATION.mascotFloatHalfMs,
               easing: Easing.inOut(Easing.ease),
               useNativeDriver: true,
             }),
@@ -74,7 +77,7 @@ export function useAiMascotAnimation() {
       bounceIn.stop();
       floatLoopRef.current?.stop();
     };
-  }, [floatY, reducedMotion, rotateX, scale, translateY]);
+  }, [floatY, opacity, reducedMotion, rotateX, scale, translateY]);
 
   const rotateXDeg = rotateX.interpolate({
     inputRange: [0, 1],
@@ -82,6 +85,7 @@ export function useAiMascotAnimation() {
   });
 
   const animatedStyle = {
+    opacity,
     transform: [
       { perspective: 800 },
       { translateY: Animated.add(translateY, floatY) },

@@ -124,6 +124,66 @@ export function hasVisitRequestEvidence(visitRequest?: Record<string, unknown> |
   );
 }
 
+const VISIT_BYPASS_STATUSES = [
+  'skipped',
+  'bypassed',
+  'not_required',
+  'notrequired',
+  'waived',
+  'direct_quote',
+  'direct_quotation',
+  'no_visit',
+];
+
+/** Backend may attach a placeholder visit record when the provider chose a direct quote. */
+export function isVisitBypassed(visitRequest?: Record<string, unknown> | null): boolean {
+  const status = getVisitLogisticsStatus(visitRequest);
+  if (!status) return false;
+  return VISIT_BYPASS_STATUSES.some((token) => status.includes(token));
+}
+
+function parseVisitMoney(value: unknown): number | undefined {
+  if (value == null || value === '') return undefined;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : undefined;
+  if (typeof value === 'string') {
+    const parsed = Number(value.replace(/[₦,\s]/g, ''));
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
+}
+
+/** True when a real inspection/visit was requested or completed — not a direct-quote placeholder. */
+export function hasMeaningfulVisitEngagement(visitRequest?: Record<string, unknown> | null): boolean {
+  if (!visitRequest || isVisitBypassed(visitRequest)) return false;
+  if (isVisitDeclined(visitRequest)) return true;
+  if (isVisitPaid(visitRequest) || isVisitCompletedOrPaid(visitRequest)) return true;
+
+  const hasSchedule = !!(
+    visitRequest.scheduledDate ||
+    visitRequest.scheduled_date ||
+    visitRequest.scheduledTime ||
+    visitRequest.scheduled_time
+  );
+  const hasRequestedAt = !!(visitRequest.requestedAt || visitRequest.requested_at);
+  const visitCost =
+    parseVisitMoney(visitRequest.logisticsCost) ??
+    parseVisitMoney(visitRequest.logistics_cost) ??
+    parseVisitMoney(visitRequest.logisticsFee) ??
+    parseVisitMoney(visitRequest.logistics_fee);
+  const hasFee = typeof visitCost === 'number' && visitCost > 0;
+
+  if (hasSchedule || hasRequestedAt || hasFee) return true;
+
+  const status = getVisitLogisticsStatus(visitRequest);
+  if (!status) return false;
+
+  if (['pending', 'pending_payment', 'awaiting_payment', 'requested'].includes(status)) {
+    return false;
+  }
+
+  return true;
+}
+
 export function isVisitPaid(visitRequest?: Record<string, unknown> | null): boolean {
   return getVisitLogisticsStatus(visitRequest) === 'paid';
 }
@@ -185,8 +245,20 @@ export function quotationImpliesPriorVisit(quotations: unknown[] | null | undefi
   return quotations.some((entry) => {
     if (!entry || typeof entry !== 'object') return false;
     const quote = entry as Record<string, unknown>;
-    const findings = quote.findingsAndWorkRequired ?? quote.findings_and_work_required;
-    return typeof findings === 'string' && findings.trim().length > 0;
+
+    const visitedAt =
+      quote.visitCompletedAt ??
+      quote.visit_completed_at ??
+      quote.inspectedAt ??
+      quote.inspected_at ??
+      quote.visitDate ??
+      quote.visit_date;
+    if (typeof visitedAt === 'string' && visitedAt.trim().length > 0) return true;
+
+    if (quote.visitCompleted === true || quote.visit_completed === true) return true;
+    if (quote.inspectionCompleted === true || quote.inspection_completed === true) return true;
+
+    return false;
   });
 }
 
@@ -197,10 +269,9 @@ export function resolveVisitOccurred(input: {
   quotations?: unknown[] | null;
 }): boolean {
   const { visitRequest, requestStatus, quotations } = input;
-  if (hasVisitRequestEvidence(visitRequest)) return true;
-  if (isVisitCompletedOrPaid(visitRequest)) return true;
-  const status = (requestStatus || '').toLowerCase();
-  if (status === 'inspecting' || status.includes('inspect')) return true;
+  if (hasMeaningfulVisitEngagement(visitRequest)) return true;
   if (quotationImpliesPriorVisit(quotations)) return true;
+  const status = (requestStatus || '').toLowerCase();
+  if (status === 'inspecting') return true;
   return false;
 }

@@ -1,3 +1,4 @@
+import { AI_ANIMATION } from '@/components/ai/aiAssistantTheme';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useEffect, useRef, useState } from 'react';
 
@@ -56,7 +57,7 @@ export function useTypewriterText(
 
     const cursorTimer = setInterval(() => {
       setCursorVisible((visible) => !visible);
-    }, 530);
+    }, AI_ANIMATION.typewriterCursorBlinkMs);
 
     return () => clearInterval(cursorTimer);
   }, [isComplete]);

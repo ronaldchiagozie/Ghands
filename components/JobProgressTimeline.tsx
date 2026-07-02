@@ -152,10 +152,11 @@ export function JobProgressTimeline({ steps, renderStepActions }: JobProgressTim
         const rowAnim = rowAnims.current[index] ?? new Animated.Value(1);
         const railAnim = railAnims.current[index] ?? new Animated.Value(1);
 
-        const isPendingDot = phase === 'pending';
-        const iconColor =
-          phase === 'pending' ? JOB_TIMELINE.iconMuted : '#FFFFFF';
-        const iconSize = isPendingDot ? layout.dotIconPending : layout.dotIconActive;
+        const isMutedDot = phase === 'pending' || phase === 'skipped';
+        const iconColor = isMutedDot ? JOB_TIMELINE.iconMuted : '#FFFFFF';
+        const iconSize = isMutedDot ? layout.dotIconPending : layout.dotIconActive;
+        const titleColor = phase === 'skipped' ? JOB_TIMELINE.pendingChipText : JOB_TIMELINE.titleText;
+        const descriptionColor = phase === 'skipped' ? JOB_TIMELINE.timestampSkipped : JOB_TIMELINE.metaText;
 
         return (
           <Animated.View
@@ -180,8 +181,8 @@ export function JobProgressTimeline({ steps, renderStepActions }: JobProgressTim
                   height: layout.dotSize,
                   borderRadius: layout.dotRadius,
                   backgroundColor: dotFill,
-                  borderWidth: isPendingDot ? 2 : 0,
-                  borderColor: isPendingDot ? JOB_TIMELINE.pendingDotBorder : 'transparent',
+                  borderWidth: isMutedDot ? 2 : 0,
+                  borderColor: isMutedDot ? JOB_TIMELINE.pendingDotBorder : 'transparent',
                   alignItems: 'center',
                   justifyContent: 'center',
                   transform: [
@@ -240,7 +241,7 @@ export function JobProgressTimeline({ steps, renderStepActions }: JobProgressTim
                     flex: 1,
                     fontSize: 13,
                     fontFamily: 'Poppins-SemiBold',
-                    color: JOB_TIMELINE.titleText,
+                    color: titleColor,
                     lineHeight: 18,
                     marginRight: 8,
                   }}
@@ -263,7 +264,7 @@ export function JobProgressTimeline({ steps, renderStepActions }: JobProgressTim
                     flex: 1,
                     fontSize: 12,
                     fontFamily: 'Poppins-Regular',
-                    color: JOB_TIMELINE.metaText,
+                    color: descriptionColor,
                     lineHeight: 17,
                     marginRight: 12,
                   }}

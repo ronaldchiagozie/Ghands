@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { FlatList } from 'react-native';
+import { isRenderableUiSuggestion } from '@/utils/aiChatMappers';
 import AiChatBotBubble from './AiChatBotBubble';
 import AiChatImageRow from './AiChatImageRow';
 import AiChatUserBubble from './AiChatUserBubble';
@@ -40,6 +41,9 @@ function buildListItems(
   const items: AiChatListItem[] = [];
   let suggestionInserted = false;
 
+  const showSuggestion =
+    suggestionVisible && isRenderableUiSuggestion(suggestion);
+
   messages.forEach((message) => {
     items.push({ kind: 'message', message });
 
@@ -58,23 +62,22 @@ function buildListItems(
 
     if (
       message.id === suggestionMessageId &&
-      suggestionVisible &&
-      suggestion
+      showSuggestion
     ) {
       items.push({
         kind: 'suggestion',
-        suggestion,
-        key: suggestion.id,
+        suggestion: suggestion!,
+        key: suggestion!.id,
       });
       suggestionInserted = true;
     }
   });
 
-  if (suggestionVisible && suggestion && !suggestionInserted) {
+  if (showSuggestion && !suggestionInserted) {
     items.push({
       kind: 'suggestion',
-      suggestion,
-      key: suggestion.id,
+      suggestion: suggestion!,
+      key: suggestion!.id,
     });
   }
 
@@ -191,9 +194,9 @@ export default function AiChatMessageList({
         );
       }}
       contentContainerStyle={{
-        paddingHorizontal: 20,
-        paddingTop: 8,
-        paddingBottom: 12,
+        paddingHorizontal: 16,
+        paddingTop: 12,
+        paddingBottom: 16,
       }}
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"

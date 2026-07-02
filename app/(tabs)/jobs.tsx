@@ -15,12 +15,22 @@ import { FlatList, Modal, Platform, Pressable, RefreshControl, StyleSheet, Text,
 import { JobHistoryCardSkeleton } from '@/components/LoadingSkeleton';
 import { JobsTabEmptyState } from '@/components/JobsTabEmptyState';
 import { useSkeletonGate } from '@/hooks/useSkeletonGate';
-import { BorderRadius, Colors, JOB_STATUS_BADGE, REFRESH_CONTROL, useTabScrollContentPaddingTop, useTabScreenScrollBottomPadding } from '@/lib/designSystem';
+import { BorderRadius, Colors, REFRESH_CONTROL, useTabScrollContentPaddingTop, useTabScreenScrollBottomPadding } from '@/lib/designSystem';
 import { providerListCard } from '@/lib/providerSurfaceStyles';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { extractMyRatingFromRequest, reviewRatingStorageKey } from '@/utils/reviewSync';
 import { navigateToJob } from '@/utils/navigation';
 import { summarizeJobDescription } from '@/utils/jobDescriptionSummary';
+import {
+  canCancelJobFromCard,
+  getJobDisplayStatusBadge,
+  isCancelledTabJobDisplayStatus,
+  isCompletedJobDisplayStatus,
+  isOngoingJobDisplayStatus,
+  resolveJobDisplayStatus,
+  showQuoteCountOnJobCard,
+  type JobDisplayStatus,
+} from '@/utils/jobDisplayStatus';
 
 type JobStatus = 'Ongoing' | 'Completed' | 'Cancelled';
 
@@ -28,7 +38,7 @@ type JobItem = {
   id: number;
   title: string;
   subtitle: string;
-  status: string;
+  status: JobDisplayStatus;
   name: string;
   time: string;
   location: string;
@@ -52,6 +62,8 @@ const JobListItem = React.memo(function JobListItem({
   onPrimaryAction,
   onCancelRequest,
 }: JobListItemProps) {
+  const statusBadge = getJobDisplayStatusBadge(job.status);
+
   return (
     <View
       style={{
@@ -76,28 +88,12 @@ const JobListItem = React.memo(function JobListItem({
         <View className="flex-row items-center gap-2">
           <AnimatedStatusChip
             status={job.status}
-            statusColor={
-              job.status === 'In Progress'
-                ? JOB_STATUS_BADGE.inProgress.bg
-                : job.status === 'Completed'
-                  ? JOB_STATUS_BADGE.completed.bg
-                  : activeTab === 'Cancelled'
-                    ? JOB_STATUS_BADGE.cancelled.bg
-                    : JOB_STATUS_BADGE.pendingAlt.bg
-            }
-            textColor={
-              job.status === 'In Progress'
-                ? JOB_STATUS_BADGE.inProgress.text
-                : job.status === 'Completed'
-                  ? Colors.success
-                  : activeTab === 'Cancelled'
-                    ? JOB_STATUS_BADGE.cancelled.text
-                    : JOB_STATUS_BADGE.pendingAlt.text
-            }
+            statusColor={statusBadge.bg}
+            textColor={statusBadge.text}
             size="small"
             animated={true}
           />
-          {activeTab === 'Ongoing' && job.status === 'Pending' && (job.acceptedProvidersCount ?? 0) === 0 && (
+          {activeTab === 'Ongoing' && canCancelJobFromCard(job.status, job.acceptedProvidersCount ?? 0) && (
             <TouchableOpacity
               className="bg-red-50 py-1.5 px-3 rounded-lg"
               activeOpacity={0.85}
@@ -120,7 +116,7 @@ const JobListItem = React.memo(function JobListItem({
         </View>
       </View>
 
-      {(job.status === 'Pending' || job.status === 'In Progress') && (job.quotationsCount ?? 0) >= 0 && (
+      {showQuoteCountOnJobCard(job.status) && (job.quotationsCount ?? 0) >= 0 && (
         <View className="flex-row items-center gap-3 mt-2">
           <Ionicons name="document-text-outline" size={16} color={Colors.textMuted} />
           <Text className="text-sm text-gray-600" style={{ fontFamily: 'Poppins-Regular' }}>
@@ -223,22 +219,8 @@ const mapRequestToJobItem = (
     ? request.categoryName.charAt(0).toUpperCase() + request.categoryName.slice(1).replace(/([A-Z])/g, ' $1')
     : 'Service';
   
-  // Determine status: payment (scheduled) and quotation acceptance mean "In Progress"
-  let status: string;
-  if (request.status === 'accepted' || request.status === 'in_progress' ||
-      request.status === 'scheduled' || request.status === 'reviewing' ||
-      (request.status as any) === 'inspecting') {
-    // scheduled = payment received, provider can start; reviewing = provider marked complete, client confirms
-    status = 'In Progress';
-  } else if (request.status === 'completed') {
-    status = 'Completed';
-  } else if (request.status === 'cancelled') {
-    status = 'Cancelled';
-  } else if (acceptedProvidersCount > 0) {
-    status = 'In Progress';
-  } else {
-    status = 'Pending';
-  }
+    const apiStatus = ((request as any).status ?? '').toString().toLowerCase();
+    const status = resolveJobDisplayStatus(apiStatus, { acceptedProvidersCount });
   
   const apiMyRating = extractMyRatingFromRequest(request);
 
@@ -293,9 +275,7 @@ export default function JobsScreen() {
           return false;
         }
 
-        // Hide when all providers declined (backend may return status 'rejected' or 'no_providers')
-        const status = ((request as any).status ?? '').toString().toLowerCase();
-        if (status === 'rejected' || status === 'no_providers') return false;
+        // Show all confirmed requests — rejected / no_providers appear under Cancelled tab.
         return true;
       });
       
@@ -389,16 +369,11 @@ export default function JobsScreen() {
   });
 
   const jobs = useMemo(() => {
-    const filtered = allJobs.filter(job => {
-      if (activeTab === 'Ongoing') {
-        return job.status === 'In Progress' || job.status === 'Pending';
-      } else if (activeTab === 'Completed') {
-        return job.status === 'Completed';
-      } else {
-        return job.status === 'Cancelled';
-      }
+    return allJobs.filter((job) => {
+      if (activeTab === 'Ongoing') return isOngoingJobDisplayStatus(job.status);
+      if (activeTab === 'Completed') return isCompletedJobDisplayStatus(job.status);
+      return isCancelledTabJobDisplayStatus(job.status);
     });
-    return filtered;
   }, [activeTab, allJobs]);
 
   const { showSkeleton: showJobsSkeleton, isLoadingEmpty: isJobsLoadingEmpty } =

@@ -1,7 +1,4 @@
-import {
-  resolveAiChatTurn,
-  resolvePostImageAnalysisTurn,
-} from '@/components/ai/chat/aiChatResponses';
+import { resolvePostImageAnalysisTurn } from '@/components/ai/chat/aiChatResponses';
 import type {
   AiImageAttachment,
   AiMessage,
@@ -10,22 +7,33 @@ import type {
 } from '@/components/ai/chat/types';
 import { formatAiChatTime } from '@/hooks/useRevealText';
 import { haptics } from '@/hooks/useHaptics';
+import { aiService, type AiConversationSummary } from '@/services/api';
+import {
+  mapChatResponseToUi,
+  mapStoredMessageToUi,
+  isRenderableUiSuggestion,
+} from '@/utils/aiChatMappers';
+import { handleApiAuthFailure } from '@/utils/authRedirect';
+import { getSpecificErrorMessage } from '@/utils/errorMessages';
+import { usePathname, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 
 function wait(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
 }
 
-function inferIssueLabel(messages: AiMessage[], userText: string): string {
-  const haystack = [...messages.map((m) => m.text), userText].join(' ').toLowerCase();
-  if (/\bac|air.?condition|1\.5hp|hp\b/.test(haystack)) return 'Air Conditioner';
-  if (/\b(sink|drain|gurgling|plumb|pipe)\b/.test(haystack)) return 'plumbing';
-  return 'service';
-}
-
 export function useAiChatSession() {
+  const router = useRouter();
+  const pathname = usePathname();
   const [mode, setMode] = useState<AiViewMode>('home');
   const [messages, setMessages] = useState<AiMessage[]>([]);
+  const [conversationId, setConversationId] = useState<number | null>(null);
+  const [botName, setBotName] = useState('Handy');
+  const [drawerVisible, setDrawerVisible] = useState(false);
+  const [conversations, setConversations] = useState<AiConversationSummary[]>([]);
+  const [isLoadingConversations, setIsLoadingConversations] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [isCheckingStatus, setIsCheckingStatus] = useState(true);
   const [isBotTyping, setIsBotTyping] = useState(false);
   const [suggestion, setSuggestion] = useState<AiSuggestion | null>(null);
   const [pendingSuggestion, setPendingSuggestion] = useState<AiSuggestion | null>(null);
@@ -41,16 +49,184 @@ export function useAiChatSession() {
   const imageUploadMessageIdRef = useRef<string | null>(null);
   const suggestionMessageIdRef = useRef<string | null>(null);
   const pendingSuggestionRef = useRef<AiSuggestion | null>(null);
+  const conversationIdRef = useRef<number | null>(null);
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
+  conversationIdRef.current = conversationId;
   imageUploadMessageIdRef.current = imageUploadMessageId;
   suggestionMessageIdRef.current = suggestionMessageId;
   pendingSuggestionRef.current = pendingSuggestion;
 
   const revealSuggestionNow = useCallback((next: AiSuggestion) => {
+    if (!isRenderableUiSuggestion(next)) return;
     setSuggestion(next);
     setSuggestionVisible(true);
   }, []);
+
+  const clearSuggestionState = useCallback(() => {
+    setSuggestionVisible(false);
+    setSuggestion(null);
+    setPendingSuggestion(null);
+    pendingSuggestionRef.current = null;
+    suggestionMessageIdRef.current = null;
+    setSuggestionMessageId(null);
+  }, []);
+
+  const resetChatState = useCallback(() => {
+    replyTokenRef.current += 1;
+    setConversationId(null);
+    conversationIdRef.current = null;
+    setMessages([]);
+    setMode('home');
+    clearSuggestionState();
+    setImageUploadMessageId(null);
+    imageUploadMessageIdRef.current = null;
+    setImageSlotVisible(false);
+    setImagePromptItems([]);
+    setHiddenImageCount(0);
+    setIsBotTyping(false);
+  }, [clearSuggestionState]);
+
+  const attachSuggestion = useCallback(
+    (botMessageId: string, next: AiSuggestion, revealAfterMs?: number) => {
+      if (!isRenderableUiSuggestion(next)) return;
+
+      setSuggestionMessageId(botMessageId);
+      setPendingSuggestion(next);
+      suggestionMessageIdRef.current = botMessageId;
+      pendingSuggestionRef.current = next;
+
+      if (revealAfterMs != null) {
+        const token = replyTokenRef.current;
+        setTimeout(() => {
+          if (replyTokenRef.current !== token) return;
+          if (suggestionMessageIdRef.current !== botMessageId) return;
+          if (!pendingSuggestionRef.current) return;
+          revealSuggestionNow(pendingSuggestionRef.current);
+        }, revealAfterMs);
+      }
+    },
+    [revealSuggestionNow]
+  );
+
+  const refreshConversations = useCallback(async () => {
+    try {
+      const items = await aiService.listConversations(20);
+      setConversations(items);
+    } catch (error: unknown) {
+      await handleApiAuthFailure(error, router, pathname);
+    }
+  }, [pathname, router]);
+
+  const closeDrawer = useCallback(() => {
+    setDrawerVisible(false);
+  }, []);
+
+  const openDrawer = useCallback(async () => {
+    haptics.light();
+    setDrawerVisible(true);
+    setIsLoadingConversations(true);
+    try {
+      const items = await aiService.listConversations(20);
+      setConversations(items);
+    } catch (error: unknown) {
+      if (await handleApiAuthFailure(error, router, pathname)) return;
+    } finally {
+      setIsLoadingConversations(false);
+    }
+  }, [pathname, router]);
+
+  const checkAvailability = useCallback(async () => {
+    setIsCheckingStatus(true);
+    try {
+      const status = await aiService.getStatus();
+      if (!status.available) {
+        setMode('unavailable');
+      }
+      if (status.botName) {
+        setBotName(status.botName);
+      }
+    } catch (error: unknown) {
+      if (await handleApiAuthFailure(error, router, pathname)) return;
+    } finally {
+      setIsCheckingStatus(false);
+    }
+  }, [pathname, router]);
+
+  const startNewChat = useCallback(() => {
+    resetChatState();
+    closeDrawer();
+  }, [closeDrawer, resetChatState]);
+
+  const startNewConversation = startNewChat;
+
+  const deleteConversation = useCallback(
+    async (id: number) => {
+      try {
+        await aiService.deleteConversation(id);
+        setConversations((prev) => prev.filter((item) => item.id !== id));
+        if (conversationIdRef.current === id) {
+          resetChatState();
+        }
+        haptics.success();
+      } catch (error: unknown) {
+        if (await handleApiAuthFailure(error, router, pathname)) return;
+        throw error;
+      }
+    },
+    [pathname, resetChatState, router]
+  );
+
+  const loadConversation = useCallback(
+    async (id: number) => {
+      closeDrawer();
+      replyTokenRef.current += 1;
+      clearSuggestionState();
+      setIsLoadingHistory(true);
+      setMode('chat');
+
+      try {
+        const detail = await aiService.getConversationMessages(id);
+        setConversationId(detail.conversation.id);
+        conversationIdRef.current = detail.conversation.id;
+
+        const mappedMessages: AiMessage[] = [];
+        let lastSuggestion: AiSuggestion | null = null;
+        let lastSuggestionMessageId: string | null = null;
+
+        detail.messages.forEach((stored) => {
+          const { message, suggestion: mappedSuggestion } = mapStoredMessageToUi(stored);
+          mappedMessages.push(message);
+          if (mappedSuggestion && stored.role === 'assistant') {
+            lastSuggestion = mappedSuggestion;
+            lastSuggestionMessageId = message.id;
+          }
+        });
+
+        setMessages(mappedMessages);
+
+        if (lastSuggestion && lastSuggestionMessageId && isRenderableUiSuggestion(lastSuggestion)) {
+          setSuggestionMessageId(lastSuggestionMessageId);
+          suggestionMessageIdRef.current = lastSuggestionMessageId;
+          revealSuggestionNow(lastSuggestion);
+        }
+      } catch (error: unknown) {
+        if (await handleApiAuthFailure(error, router, pathname)) return;
+        const botMessage: AiMessage = {
+          id: `bot-error-${Date.now()}`,
+          role: 'assistant',
+          text: getSpecificErrorMessage(error as Error, 'generic'),
+          time: formatAiChatTime(),
+          revealText: false,
+        };
+        setMessages([botMessage]);
+      } finally {
+        setIsLoadingHistory(false);
+        setIsBotTyping(false);
+      }
+    },
+    [clearSuggestionState, closeDrawer, pathname, revealSuggestionNow, router]
+  );
 
   const runPostImageAnalysis = useCallback(async () => {
     if (postImageAnalysisTriggeredRef.current) return;
@@ -61,10 +237,7 @@ export function useAiChatSession() {
     const token = ++replyTokenRef.current;
     const turn = resolvePostImageAnalysisTurn(messagesRef.current);
 
-    setSuggestionVisible(false);
-    setSuggestion(null);
-    setPendingSuggestion(null);
-    pendingSuggestionRef.current = null;
+    clearSuggestionState();
     setIsBotTyping(true);
 
     await wait(turn.thinkingMs ?? 1200);
@@ -83,21 +256,14 @@ export function useAiChatSession() {
 
     setMessages((prev) => [...prev, botMessage]);
 
-    if (turn.suggestion) {
-      setSuggestionMessageId(botMessageId);
-      setPendingSuggestion(turn.suggestion);
-      suggestionMessageIdRef.current = botMessageId;
-      pendingSuggestionRef.current = turn.suggestion;
-
-      const typewriterMs = turn.text.length * 16 + 160;
-      setTimeout(() => {
-        if (replyTokenRef.current !== token) return;
-        if (suggestionMessageIdRef.current !== botMessageId) return;
-        if (!pendingSuggestionRef.current) return;
-        revealSuggestionNow(pendingSuggestionRef.current);
-      }, typewriterMs);
+    if (turn.suggestion && isRenderableUiSuggestion(turn.suggestion)) {
+      attachSuggestion(
+        botMessageId,
+        turn.suggestion,
+        turn.text.length * 16 + 160
+      );
     }
-  }, [revealSuggestionNow]);
+  }, [attachSuggestion, clearSuggestionState]);
 
   const simulateUploadComplete = useCallback(
     (ids: string[], uris: string[]) => {
@@ -182,11 +348,7 @@ export function useAiChatSession() {
       if (!text || isBotTyping || mode === 'unavailable') return;
 
       haptics.selection();
-      setSuggestionVisible(false);
-      setSuggestion(null);
-      setPendingSuggestion(null);
-      pendingSuggestionRef.current = null;
-      suggestionMessageIdRef.current = null;
+      clearSuggestionState();
 
       const userMessage: AiMessage = {
         id: `user-${Date.now()}`,
@@ -201,54 +363,67 @@ export function useAiChatSession() {
       }
 
       const token = ++replyTokenRef.current;
-      const turn = resolveAiChatTurn(text, messages, inferIssueLabel(messages, text));
-
-      if (turn.markUnavailable) {
-        setMode('unavailable');
-        return;
-      }
-
       setIsBotTyping(true);
 
-      await wait(turn.thinkingMs ?? 900);
-      if (replyTokenRef.current !== token) return;
+      try {
+        const response = await aiService.sendMessage({
+          message: text,
+          ...(conversationIdRef.current != null
+            ? { conversationId: conversationIdRef.current }
+            : {}),
+        });
 
-      setIsBotTyping(false);
+        if (replyTokenRef.current !== token) return;
 
-      if (turn.text) {
-        const botMessageId = `bot-${Date.now()}`;
-        const botMessage: AiMessage = {
-          id: botMessageId,
-          role: 'assistant',
-          text: turn.text,
-          time: formatAiChatTime(),
-          revealText: turn.revealText ?? true,
-        };
+        setConversationId(response.conversationId);
+        conversationIdRef.current = response.conversationId;
+
+        const { botMessage, suggestion: mappedSuggestion } = mapChatResponseToUi(response);
         setMessages((prev) => [...prev, botMessage]);
 
-        if (turn.showImagePrompt) {
-          openImageUploadSlot(botMessageId);
+        if (mappedSuggestion) {
+          if (response.responseType === 'suggestion') {
+            revealSuggestionNow(mappedSuggestion);
+            setSuggestionMessageId(botMessage.id);
+            suggestionMessageIdRef.current = botMessage.id;
+          } else {
+            attachSuggestion(
+              botMessage.id,
+              mappedSuggestion,
+              botMessage.text.length * 16 + 160
+            );
+          }
         }
 
-        if (turn.suggestion) {
-          setSuggestionMessageId(botMessageId);
-          setPendingSuggestion(turn.suggestion);
-          suggestionMessageIdRef.current = botMessageId;
-          pendingSuggestionRef.current = turn.suggestion;
+        void refreshConversations();
+      } catch (error: unknown) {
+        if (replyTokenRef.current !== token) return;
+        if (await handleApiAuthFailure(error, router, pathname)) return;
+
+        const botMessage: AiMessage = {
+          id: `bot-error-${Date.now()}`,
+          role: 'assistant',
+          text: getSpecificErrorMessage(error as Error, 'generic'),
+          time: formatAiChatTime(),
+          revealText: false,
+        };
+        setMessages((prev) => [...prev, botMessage]);
+      } finally {
+        if (replyTokenRef.current === token) {
+          setIsBotTyping(false);
         }
-      } else if (turn.suggestion) {
-        const anchorId = `suggestion-anchor-${Date.now()}`;
-        setSuggestionMessageId(anchorId);
-        setPendingSuggestion(turn.suggestion);
-        suggestionMessageIdRef.current = anchorId;
-        pendingSuggestionRef.current = turn.suggestion;
-        setTimeout(() => {
-          if (replyTokenRef.current !== token) return;
-          revealSuggestionNow(turn.suggestion!);
-        }, 360);
       }
     },
-    [isBotTyping, messages, mode, openImageUploadSlot, revealSuggestionNow]
+    [
+      attachSuggestion,
+      clearSuggestionState,
+      isBotTyping,
+      mode,
+      pathname,
+      refreshConversations,
+      revealSuggestionNow,
+      router,
+    ]
   );
 
   const applySuggestionDraft = useCallback((draft: AiSuggestion) => {
@@ -257,9 +432,19 @@ export function useAiChatSession() {
     return draft.body;
   }, []);
 
+  const showWelcomeHome = mode === 'home' && messages.length === 0;
+  const showChatLayout = mode === 'chat' || messages.length > 0;
+
   return {
     mode,
     messages,
+    conversationId,
+    botName,
+    drawerVisible,
+    conversations,
+    isLoadingConversations,
+    isLoadingHistory,
+    isCheckingStatus,
     isBotTyping,
     suggestion,
     suggestionMessageId,
@@ -268,9 +453,19 @@ export function useAiChatSession() {
     imageSlotVisible,
     imagePromptItems,
     hiddenImageCount,
+    showWelcomeHome,
+    showChatLayout,
     sendMessage,
     applySuggestionDraft,
     addImagesFromPicker,
     onBotMessageRevealed,
+    checkAvailability,
+    loadConversation,
+    startNewConversation,
+    startNewChat,
+    openDrawer,
+    closeDrawer,
+    deleteConversation,
+    refreshConversations,
   };
 }

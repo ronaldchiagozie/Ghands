@@ -103,6 +103,7 @@ export default function RootLayout() {
       await redirectToAuthScreen(router, {
         pathname: pathnameRef.current,
         clearSession: false,
+        force: true,
       });
     };
 

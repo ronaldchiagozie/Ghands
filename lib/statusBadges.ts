@@ -28,6 +28,30 @@ export const JOB_STATUS_BADGE = {
     bg: Colors.errorBorder,
     text: Colors.errorForeground,
   },
+  accepted: {
+    bg: Colors.infoSoft,
+    text: Colors.infoDark,
+  },
+  inspecting: {
+    bg: Colors.statusPendingAltBg,
+    text: Colors.warningForeground,
+  },
+  quoting: {
+    bg: 'rgba(59, 130, 246, 0.12)',
+    text: '#1D4ED8',
+  },
+  scheduled: {
+    bg: Colors.successLight,
+    text: Colors.successForeground,
+  },
+  reviewing: {
+    bg: 'rgba(245, 158, 11, 0.14)',
+    text: '#B45309',
+  },
+  noProviders: {
+    bg: Colors.errorBorder,
+    text: Colors.errorForeground,
+  },
 } as const;
 
 export type JobStatusBadgeKey = keyof typeof JOB_STATUS_BADGE;

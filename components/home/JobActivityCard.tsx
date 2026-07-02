@@ -4,9 +4,13 @@ import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { SURFACE_STYLES } from '@/lib/surfaceStyles';
 import { Colors } from '@/lib/designSystem';
-import { JOB_STATUS_BADGE } from '@/lib/statusBadges';
+import {
+  getJobDisplayStatusBadge,
+  normalizeJobDisplayStatus,
+  type JobDisplayStatus,
+} from '@/utils/jobDisplayStatus';
 
-export type JobActivityStatus = 'Completed' | 'In Progress' | 'Pending' | 'Rejected';
+export type JobActivityStatus = JobDisplayStatus;
 
 export type JobActivity = {
   id: string;
@@ -15,26 +19,7 @@ export type JobActivity = {
   submittedAt: string;
   quotes: number;
   priceRange: string;
-  status: JobActivityStatus;
-};
-
-const jobStatusTheme: Record<JobActivityStatus, { badgeBg: string; badgeText: string }> = {
-  Completed: {
-    badgeBg: JOB_STATUS_BADGE.completed.bg,
-    badgeText: JOB_STATUS_BADGE.completed.text,
-  },
-  'In Progress': {
-    badgeBg: JOB_STATUS_BADGE.inProgress.bg,
-    badgeText: JOB_STATUS_BADGE.inProgress.text,
-  },
-  Pending: {
-    badgeBg: JOB_STATUS_BADGE.pending.bg,
-    badgeText: JOB_STATUS_BADGE.pending.text,
-  },
-  Rejected: {
-    badgeBg: JOB_STATUS_BADGE.rejected.bg,
-    badgeText: JOB_STATUS_BADGE.rejected.text,
-  },
+  status: JobDisplayStatus;
 };
 
 type JobActivityCardProps = {
@@ -43,21 +28,20 @@ type JobActivityCardProps = {
 
 const JobActivityCardComponent = ({ activity }: JobActivityCardProps) => {
   const router = useRouter();
-  const theme = jobStatusTheme[activity.status];
-  const isAwaitingQuote = activity.priceRange.toLowerCase().includes('awaiting');
+  const displayStatus = normalizeJobDisplayStatus(activity.status);
+  const theme = getJobDisplayStatusBadge(displayStatus);
+  const isAwaitingQuote = (activity.priceRange ?? '').toLowerCase().includes('awaiting');
 
   const handlePress = () => {
     const requestId = parseInt(activity.id, 10);
     if (isNaN(requestId)) return;
 
-    // All non-completed jobs (In Progress, Pending) go to OngoingJobDetails (Check Updates page)
-    if (activity.status === 'Completed') {
+    if (displayStatus === 'Completed') {
       router.push({
         pathname: '/CompletedJobDetail',
         params: { requestId: activity.id },
       } as any);
     } else {
-      // Navigate to OngoingJobDetails for In Progress and Pending jobs
       router.push({
         pathname: '/OngoingJobDetails',
         params: { requestId: activity.id },
@@ -98,17 +82,17 @@ const JobActivityCardComponent = ({ activity }: JobActivityCardProps) => {
         </View>
         <View
           className="px-3 py-1 rounded-full"
-          style={{ backgroundColor: theme.badgeBg }}
+          style={{ backgroundColor: theme?.bg ?? Colors.statusPendingBg }}
         >
           <Text
             className="text-xs font-semibold"
-            style={{ fontFamily: 'Poppins-SemiBold', color: theme.badgeText }}
+            style={{ fontFamily: 'Poppins-SemiBold', color: theme?.text ?? Colors.statusPendingText }}
+            numberOfLines={1}
           >
-            {activity.status}
+            {displayStatus}
           </Text>
         </View>
       </View>
-      {/* One short footer line — avoid repeating quote count + “pending” + long helper copy */}
       <View className="flex-row items-center justify-between pt-2">
         {isAwaitingQuote ? (
           <Text
@@ -154,4 +138,3 @@ const JobActivityCardComponent = ({ activity }: JobActivityCardProps) => {
 const JobActivityCard = React.memo(JobActivityCardComponent);
 
 export default JobActivityCard;
-

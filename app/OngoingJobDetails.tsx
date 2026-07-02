@@ -29,6 +29,7 @@ import {
   canClientDeclineVisit,
   getVisitDeclinedDescription,
   getVisitLogisticsStatus,
+  hasMeaningfulVisitEngagement,
   healJobStatusAfterVisitDecline,
   isVisitDeclined,
   patchVisitDeclined,
@@ -217,7 +218,11 @@ export default function OngoingJobDetails() {
   useEffect(() => {
     if (params.requestId) {
       setIsLoading(true);
-      setHasAttemptedLoad(false); 
+      setHasAttemptedLoad(false);
+      setRequest(null);
+      setAcceptedProviders([]);
+      setQuotations([]);
+      setPaymentTransaction(null);
     } else {
       setIsLoading(false);
     }
@@ -412,13 +417,7 @@ export default function OngoingJobDetails() {
     const visitDeclined = isVisitDeclined(visitRequest);
     const visitFeeText = formatVisitFee(visitRequest?.logisticsCost);
     const visitScheduleText = formatVisitSchedule(visitRequest?.scheduledDate, visitRequest?.scheduledTime);
-    const hasVisitRequested = !!(visitRequest && (
-      visitRequest.scheduledDate ||
-      visitRequest.scheduledTime ||
-      visitRequest.requestedAt ||
-      visitRequest.logisticsStatus ||
-      visitRequest.logisticsCost != null
-    ));
+    const hasVisitRequested = hasMeaningfulVisitEngagement(visitRequest);
     const visitOccurred = resolveVisitOccurred({
       visitRequest,
       requestStatus: request.status,
@@ -1727,7 +1726,7 @@ export default function OngoingJobDetails() {
           })}
         </View>
 
-        {isLoading && !request ? (
+        {isLoading ? (
           <View
             style={{ flex: 1, marginTop: 8 }}
             onLayout={(event) => {

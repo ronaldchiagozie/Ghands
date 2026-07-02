@@ -27,7 +27,10 @@ export default function AiSparkleFab() {
 
   const handlePress = useCallback(() => {
     haptics.light();
-    router.push('/AiAssistantScreen' as any);
+    router.push({
+      pathname: '/AiAssistantScreen' as any,
+      params: { newChat: 'true' },
+    } as any);
   }, [router]);
 
   return (

@@ -1,6 +1,4 @@
 const googleMapsApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
-
-/** GHands — client app (homeowners / service requesters) */
 module.exports = {
   expo: {
     name: 'GHands',

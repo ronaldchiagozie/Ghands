@@ -38,7 +38,7 @@ export const jobActivities: JobActivity[] = [
     submittedAt: '2 days ago',
     quotes: 3,
     priceRange: '$120 - $180',
-    status: 'In Progress'
+    status: 'Reviewing',
   }
 ];
 

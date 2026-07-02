@@ -24,6 +24,7 @@ import { handleAuthErrorRedirect } from '@/utils/authRedirect';
 import { getCategoryIcon, resolveCategoryImageSource } from '@/utils/categoryIcons';
 import { AuthError } from '@/utils/errors';
 import { isConnectivityOrNetworkError } from '@/utils/isNetworkFailure';
+import { resolveJobDisplayStatus } from '@/utils/jobDisplayStatus';
 // import { shareReferral } from '@/utils/referral';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -222,24 +223,8 @@ const HomeScreen = React.memo(() => {
       ? request.categoryName.charAt(0).toUpperCase() + request.categoryName.slice(1).replace(/([A-Z])/g, ' $1')
       : 'Service';
 
-    // Map status — show the real job state, not only in-progress
-    let status: JobActivity['status'] = 'Pending';
     const apiStatus = ((request as any).status ?? '').toString().toLowerCase();
-    if (apiStatus === 'completed') {
-      status = 'Completed';
-    } else if (apiStatus === 'cancelled' || apiStatus === 'rejected' || apiStatus === 'no_providers') {
-      status = 'Rejected';
-    } else if (
-      apiStatus === 'accepted' ||
-      apiStatus === 'in_progress' ||
-      apiStatus === 'scheduled' ||
-      apiStatus === 'reviewing' ||
-      apiStatus === 'inspecting'
-    ) {
-      status = 'In Progress';
-    } else if (acceptedProvidersCount > 0) {
-      status = 'In Progress';
-    }
+    const status = resolveJobDisplayStatus(apiStatus, { acceptedProvidersCount });
 
     const requestPrice = [
       (request as any).totalCost,

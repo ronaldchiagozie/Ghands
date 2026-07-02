@@ -63,12 +63,13 @@ function skippedStep(description: string): NegotiationStepVisual {
     isDeclined: false,
     isSkipped: true,
     accent: JOB_TIMELINE.pendingSoft,
-    dotColor: JOB_TIMELINE.pendingDot,
     lineColor: JOB_TIMELINE.railMuted,
     showRequestVisit: false,
     canEdit: false,
   };
 }
+
+const DIRECT_QUOTATION_SKIP_NOTE = 'Direct quotation chosen.';
 
 function completedStep(description: string, status = 'Done'): NegotiationStepVisual {
   return {
@@ -139,9 +140,7 @@ export function getInspectionNegotiationStep(input: {
   }
 
   if (quotationSent && !visitHappened) {
-    return skippedStep(
-      audience === 'client' ? 'Quotation sent without a site visit.' : 'Quotation sent without visit.'
-    );
+    return skippedStep(DIRECT_QUOTATION_SKIP_NOTE);
   }
 
   if (visitDeclined && !quotationSent) {
@@ -155,9 +154,7 @@ export function getInspectionNegotiationStep(input: {
   }
 
   if (visitDeclined && quotationSent) {
-    return skippedStep(
-      audience === 'client' ? 'Visit skipped. Quotation received.' : 'Visit declined. Quotation sent.'
-    );
+    return skippedStep(DIRECT_QUOTATION_SKIP_NOTE);
   }
 
   if (visitHappened || hasVisitRequested) {

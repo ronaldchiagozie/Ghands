@@ -55,6 +55,18 @@ export function NetworkProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  useEffect(() => {
+    return subscribeToNetworkRestore(() => {
+      void NetInfo.fetch().then((state) => {
+        if (deriveOnlineFromNetInfo(state) && !isApiUnreachable()) {
+          wasOnlineRef.current = true;
+          setIsOnline(true);
+          setIsInitialized(true);
+        }
+      });
+    });
+  }, []);
+
   const recheck = useCallback(async () => {
     const online = await checkConnectivity();
     if (!wasOnlineRef.current && online) {

@@ -115,7 +115,7 @@ export function timelineDotFill(step: {
   if (phase === 'completed') return JOB_TIMELINE.sage;
   if (phase === 'active') return JOB_TIMELINE.activeDot;
   if (phase === 'declined') return JOB_TIMELINE.declinedDot;
-  if (phase === 'skipped') return JOB_TIMELINE.pendingDot;
+  if (phase === 'skipped') return JOB_TIMELINE.pendingDotFill;
   return JOB_TIMELINE.pendingDotFill;
 }
 

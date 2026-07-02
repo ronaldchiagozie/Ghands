@@ -5,7 +5,7 @@ import { runTiming } from '@/lib/motion';
 import { Plus, Send } from 'lucide-react-native';
 import React, { useEffect, useRef } from 'react';
 import { Animated, Pressable, TextInput, View } from 'react-native';
-import { AI_ASSISTANT_GLASS, AI_ASSISTANT_TEXT } from './aiAssistantTheme';
+import { AI_ASSISTANT_GLASS, AI_ASSISTANT_TEXT, AI_COLORS } from './aiAssistantTheme';
 
 type AiPromptInputProps = {
   value: string;
@@ -117,12 +117,12 @@ export default function AiPromptInput({
             width: MIN_TOUCH_TARGET,
             height: MIN_TOUCH_TARGET,
             borderRadius: MIN_TOUCH_TARGET / 2,
-            backgroundColor: 'rgba(255, 255, 255, 0.18)',
+            backgroundColor: canSend ? AI_COLORS.accent : 'rgba(255, 255, 255, 0.18)',
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <Send size={18} color={AI_ASSISTANT_TEXT.primary} />
+          <Send size={18} color={canSend ? AI_COLORS.drawerPanel : AI_ASSISTANT_TEXT.primary} />
         </Pressable>
       </Animated.View>
     </View>

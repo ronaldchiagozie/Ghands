@@ -1,7 +1,7 @@
 import { MIN_TOUCH_TARGET } from '@/lib/designSystem';
 import React from 'react';
 import { Pressable, View } from 'react-native';
-import { AI_ASSISTANT_TEXT } from './aiAssistantTheme';
+import { AI_COLORS } from './aiAssistantTheme';
 
 type AiMenuButtonProps = {
   onPress?: () => void;
@@ -25,9 +25,9 @@ export default function AiMenuButton({ onPress }: AiMenuButtonProps) {
         <View
           style={{
             height: 2,
-            width: 18,
+            width: 22,
             borderRadius: 1,
-            backgroundColor: AI_ASSISTANT_TEXT.primary,
+            backgroundColor: AI_COLORS.primary,
           }}
         />
         <View
@@ -35,16 +35,16 @@ export default function AiMenuButton({ onPress }: AiMenuButtonProps) {
             height: 2,
             width: 14,
             borderRadius: 1,
-            backgroundColor: AI_ASSISTANT_TEXT.primary,
+            backgroundColor: AI_COLORS.primary,
             marginLeft: 4,
           }}
         />
         <View
           style={{
             height: 2,
-            width: 20,
+            width: 18,
             borderRadius: 1,
-            backgroundColor: AI_ASSISTANT_TEXT.primary,
+            backgroundColor: AI_COLORS.primary,
           }}
         />
       </View>

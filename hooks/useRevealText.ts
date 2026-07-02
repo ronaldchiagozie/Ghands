@@ -1,7 +1,12 @@
+import { AI_ANIMATION } from '@/components/ai/aiAssistantTheme';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useEffect, useState } from 'react';
 
-export function useRevealText(fullText: string, active: boolean, charDelayMs = 18) {
+export function useRevealText(
+  fullText: string,
+  active: boolean,
+  charDelayMs = AI_ANIMATION.revealCharMs
+) {
   const reducedMotion = useReducedMotion();
   const [displayText, setDisplayText] = useState(reducedMotion || !active ? fullText : '');
   const [isComplete, setIsComplete] = useState(reducedMotion || !active || fullText.length === 0);
