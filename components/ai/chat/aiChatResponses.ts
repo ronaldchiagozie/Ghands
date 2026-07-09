@@ -62,14 +62,14 @@ export function resolvePostImageAnalysisTurn(messages: AiMessage[]): AiChatTurnR
   if (/\bac|air.?condition|1\.5hp|hp\b/.test(context)) {
     return {
       text:
-        'Great, I can see the photos. This looks like an air conditioner issue — here are suggested booking details you can use.',
+        'Great, I can see the photos. This looks like an air conditioner issue. Here are suggested booking details you can use.',
       thinkingMs: 1200,
       revealText: true,
       suggestion: {
         id: `suggestion-${Date.now()}`,
         variant: 'draft',
         title: 'Suggestion',
-        body: 'AC issue with photos attached — provider can review before the service visit. Please schedule at your earliest convenience.',
+        body: 'AC issue with photos attached. Provider can review before the service visit. Please schedule at your earliest convenience.',
         ctaLabel: 'Use draft',
         bookingPrefill: acBookingPrefill(
           'Air conditioner issue with photos attached for diagnosis before the service visit.'
@@ -165,7 +165,7 @@ export function resolveAiChatTurn(
   if (mentionsCost(lower)) {
     return {
       text:
-        'For a standard 1.5HP AC service in Lagos, you can expect roughly between ₦8,000 and ₦12,000 depending on gas level, cleaning depth, and parts. That is an estimate — your provider quote may vary.',
+        'For a standard 1.5HP AC service in Lagos, you can expect roughly between ₦8,000 and ₦12,000 depending on gas level, cleaning depth, and parts. That is an estimate. Your provider quote may vary.',
       thinkingMs: 1400,
       revealText: true,
     };

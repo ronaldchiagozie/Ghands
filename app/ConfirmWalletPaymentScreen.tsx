@@ -7,6 +7,7 @@ import { BorderRadius, Colors } from '@/lib/designSystem';
 import { walletService } from '@/services/api';
 import { getSpecificErrorMessage } from '@/utils/errorMessages';
 import { navigateBack, NAV_FALLBACK } from '@/utils/navigation';
+import { applyDefaultStatusBar } from '@/utils/statusBar';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { CheckCircle, Lock, RefreshCw, Wallet, X } from 'lucide-react-native';
@@ -79,6 +80,7 @@ export default function ConfirmWalletPaymentScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      applyDefaultStatusBar();
       loadBalance();
     }, [loadBalance])
   );
@@ -252,6 +254,18 @@ export default function ConfirmWalletPaymentScreen() {
       },
     } as any);
   };
+
+  useEffect(() => {
+    if (!showProcessingModal) {
+      applyDefaultStatusBar();
+    }
+  }, [showProcessingModal]);
+
+  useEffect(() => {
+    if (!showPinModal) {
+      applyDefaultStatusBar();
+    }
+  }, [showPinModal]);
 
   useEffect(() => {
     if (showProcessingModal && paymentStep !== 'success') {
@@ -515,8 +529,10 @@ export default function ConfirmWalletPaymentScreen() {
         visible={showPinModal}
         transparent
         animationType="slide"
-        onRequestClose={handleCancelPin}
-        statusBarTranslucent
+        onRequestClose={() => {
+          handleCancelPin();
+          applyDefaultStatusBar();
+        }}
       >
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' }}>
           <Pressable style={{ flex: 1 }} onPress={handleCancelPin} />

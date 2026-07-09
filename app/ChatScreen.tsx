@@ -39,7 +39,7 @@ import {
   serviceRequestService,
   Message as ApiMessage,
 } from '@/services/api';
-import { joinSubtitleParts } from '@/utils/copy';
+import { joinSubtitleParts, NOT_SET_LABEL } from '@/utils/copy';
 import { logChatDebug } from '@/utils/chatDebugLog';
 import { buildChatListItems } from '@/utils/chatListItems';
 import { formatLastActiveLabel, isPeerRecentlyActive } from '@/utils/chatFormatting';
@@ -482,7 +482,7 @@ export default function ChatScreen() {
         new Set(
           result.messages.map((m) => {
             const ex = extractSenderFieldsFromApiMessage(m as unknown as Record<string, unknown>);
-            return ex.senderIdRaw != null && ex.senderIdRaw !== '' ? String(ex.senderIdRaw) : '—';
+            return ex.senderIdRaw != null && ex.senderIdRaw !== '' ? String(ex.senderIdRaw) : NOT_SET_LABEL;
           })
         )
       );

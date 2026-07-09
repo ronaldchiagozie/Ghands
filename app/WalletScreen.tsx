@@ -3,7 +3,7 @@ import {
   SageAmountSkeleton,
   TransactionCardSkeleton,
 } from '@/components/LoadingSkeleton';
-import { useWalletBalance } from '@/hooks/useWalletBalance';
+import { invalidateWalletBalanceCache, useWalletBalance } from '@/hooks/useWalletBalance';
 import { useSkeletonGate } from '@/hooks/useSkeletonGate';
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -18,6 +18,7 @@ import {
   providerHomeViewAllLabel,
 } from '@/lib/providerSurfaceStyles';
 import { walletService } from '@/services/api';
+import { isCancelledWalletTransaction, mapWalletTransactionStatus } from '@/utils/walletTransactions';
 import { openClientReceipt } from '@/utils/receiptNavigation';
 
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -32,7 +33,7 @@ interface Transaction {
   date: string;
   time: string;
   amount: number;
-  status: 'pending' | 'completed';
+  status: 'pending' | 'completed' | 'failed';
   requestId?: string;
   reference?: string;
 }
@@ -61,6 +62,10 @@ export default function WalletScreen() {
   // Helper function to map API transaction to UI transaction
   const mapTransactionToUI = useCallback((apiTransaction: any): Transaction | null => {
     try {
+      if (isCancelledWalletTransaction(apiTransaction)) {
+        return null;
+      }
+
       // Extract service name from description or use default
       let serviceName = 'Service Payment';
       let serviceDescription = apiTransaction.description || 'Wallet transaction';
@@ -87,6 +92,7 @@ export default function WalletScreen() {
       }
 
       const { date, time } = formatDate(apiTransaction.createdAt || apiTransaction.completedAt || new Date().toISOString());
+      const status = mapWalletTransactionStatus(apiTransaction);
       
       return {
         id: String(apiTransaction.id || apiTransaction.reference || Math.random()),
@@ -95,7 +101,7 @@ export default function WalletScreen() {
         date,
         time,
         amount: Math.abs(apiTransaction.amount || 0), // Use absolute value for display
-        status: apiTransaction.status === 'completed' ? 'completed' : 'pending',
+        status,
         requestId: apiTransaction.requestId != null ? String(apiTransaction.requestId) : undefined,
         reference: apiTransaction.reference ? String(apiTransaction.reference) : undefined,
       };
@@ -140,6 +146,7 @@ export default function WalletScreen() {
   // Refresh transactions when screen comes into focus
   useFocusEffect(
     useCallback(() => {
+      invalidateWalletBalanceCache();
       loadTransactions();
       void refreshWalletBalance({ silent: true });
     }, [loadTransactions, refreshWalletBalance])

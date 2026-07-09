@@ -32,9 +32,13 @@ import {
   hasMeaningfulVisitEngagement,
   healJobStatusAfterVisitDecline,
   isVisitDeclined,
+  isVisitCompletedOrPaid,
+  isVisitPaid,
+  isProviderVisitRequestSent,
   patchVisitDeclined,
   resolveVisitOccurred,
 } from '@/utils/visitStatus';
+import { jobHasSentQuotation } from '@/utils/quotationStatus';
 import {
   getInspectionNegotiationStep,
   getQuotationNegotiationStep,
@@ -423,7 +427,7 @@ export default function OngoingJobDetails() {
       requestStatus: request.status,
       quotations: qList,
     });
-    const visitPaid = visitRequest?.logisticsStatus === 'paid';
+    const visitPaid = isVisitPaid(visitRequest);
     const visitBlocksQuote = visitOccurred && !visitPaid && !visitDeclined && !hasQuotationSent;
     const parseVisitFee = (value: unknown): number | undefined => {
       if (value == null || value === '') return undefined;
@@ -719,7 +723,7 @@ export default function OngoingJobDetails() {
     if (!request) return null;
     const hasAcceptedProviders = (acceptedProviders && acceptedProviders.length > 0) || !!request.selectedProvider;
     const qListH = Array.isArray(quotations) ? quotations : [];
-    const hasQuotationSent = qListH.some((q: any) => q?.sentAt || q?.submittedAt || (q?.status && q?.status !== 'draft') || (q?.total != null && q?.total > 0)) || !!((request as any).providerId && (request as any).price != null);
+    const hasQuotationSent = jobHasSentQuotation(qListH, request as Record<string, unknown>);
     const acceptedQuotation = qListH.find((q: any) => q?.status === 'accepted');
     const quotationAccepted = !!acceptedQuotation;
     const formatCurrency = (v: number | undefined | null) => (typeof v === 'number' ? v : 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -742,6 +746,17 @@ export default function OngoingJobDetails() {
       return { title: 'Quotation accepted, payment required', subtitle: amt ? `Accepted ${amt}. Complete payment to secure the job.` : 'Complete payment to secure the job.', variant: 'action' as const, showPayButton: true, payAmount: acceptedQuotation?.total ?? 0, acceptedQuotation, statusPill: 'Payment required', pillBg: JOB_TIMELINE.activeSoft, pillText: JOB_TIMELINE.activeChipText, timestamp: null, provider: headerProvider };
     }
     if (hasQuotationSent) return { title: 'Quotation received', subtitle: 'Review cost and details, then accept or decline.', statusPill: 'Quote submitted', pillBg: JOB_TIMELINE.infoSoft, pillText: JOB_TIMELINE.infoChipText, timestamp: null, provider: headerProvider };
+    if (statusLower === 'quoting' && hasAcceptedProviders) {
+      return {
+        title: 'Awaiting quotation',
+        subtitle: 'Your provider is preparing a quote for this job.',
+        statusPill: 'Quoting',
+        pillBg: JOB_TIMELINE.infoSoft,
+        pillText: JOB_TIMELINE.infoChipText,
+        timestamp: request.updatedAt ? formatTimeAgo(request.updatedAt) : null,
+        provider: headerProvider,
+      };
+    }
     if (hasAcceptedProviders) {
       const firstAccept = acceptedProviders?.[0];
       const acceptedAt = firstAccept?.acceptance?.acceptedAt ?? request.updatedAt ?? request.selectedAt;
@@ -753,7 +768,7 @@ export default function OngoingJobDetails() {
         requestStatus: request.status,
         quotations: qListH,
       });
-      const vPaid = vr?.logisticsStatus === 'paid';
+      const vPaid = isVisitPaid(vr);
       const parseVisitFee = (value: unknown): number | undefined => {
         if (value == null || value === '') return undefined;
         if (typeof value === 'number') return Number.isFinite(value) ? value : undefined;
@@ -804,49 +819,82 @@ export default function OngoingJobDetails() {
         return {
           title: 'Visit declined',
           subtitle: `${getVisitDeclinedDescription(vr, 'client')} Provider can request a new visit or send a quotation.`,
-          statusPill: 'Waiting',
-          pillBg: JOB_TIMELINE.activeSoft,
-          pillText: JOB_TIMELINE.activeChipText,
+          statusPill: 'Accepted',
+          pillBg: JOB_TIMELINE.completeSoft,
+          pillText: JOB_TIMELINE.sageChipText,
           timestamp: acceptedAt ? formatTimeAgo(acceptedAt) : null,
           provider: headerProvider,
         };
       }
 
+      const visitSent =
+        isProviderVisitRequestSent(vr) || vPaid || isVisitCompletedOrPaid(vr) || hasVR;
+
+      if (visitSent) {
+        const awaitingQuote =
+          !hasQuotationSent &&
+          (vPaid || isVisitCompletedOrPaid(vr)) &&
+          !(canDeclineVisit && hasPayableVisitFee);
+
+        if (awaitingQuote) {
+          return {
+            title: 'Awaiting quotation',
+            subtitle: 'The site visit is done. Your provider will send a quote shortly.',
+            statusPill: 'Quoting',
+            pillBg: JOB_TIMELINE.infoSoft,
+            pillText: JOB_TIMELINE.infoChipText,
+            timestamp: acceptedAt ? formatTimeAgo(acceptedAt) : null,
+            provider: headerProvider,
+          };
+        }
+
+        return {
+          title: 'Inspection in progress',
+          subtitle:
+            canDeclineVisit && hasPayableVisitFee
+              ? 'Visit scheduled. Pay the inspection fee or decline if you prefer a quote without a site visit.'
+              : vPaid || isVisitCompletedOrPaid(vr)
+                ? 'The site visit is confirmed. Your provider will inspect and follow up with a quote.'
+                : 'Visit requested. Waiting for visit details.',
+          statusPill: 'Inspecting',
+          pillBg: JOB_TIMELINE.infoSoft,
+          pillText: JOB_TIMELINE.infoChipText,
+          timestamp: acceptedAt ? formatTimeAgo(acceptedAt) : null,
+          provider: headerProvider,
+          showVisitPayButton: canDeclineVisit && hasPayableVisitFee,
+          showDeclineVisitButton: canDeclineVisit,
+          visitLogisticsCost: logisticsCost,
+          onVisitPay: () => {
+            if (params.requestId == null) return;
+            if (!hasPayableVisitFee) {
+              showError('The visit fee is not ready yet. Swipe down to refresh, or ask your provider to resend the visit details.');
+              return;
+            }
+            haptics.light();
+            router.push({
+              pathname: '/ConfirmWalletPaymentScreen',
+              params: {
+                requestId: params.requestId,
+                amount: String(logisticsCost),
+                paymentType: 'logistics_fee',
+                serviceName: request?.jobTitle || 'Inspection',
+              },
+            } as any);
+          },
+          onVisitDecline: () => {
+            declineVisitActionRef.current();
+          },
+        };
+      }
+
       return {
-        title: 'Inspection in progress',
-        subtitle: hasVR
-          ? hasPayableVisitFee
-            ? 'Visit scheduled. Pay the visit fee or decline if you prefer a quote without a site visit.'
-            : 'Visit requested. Waiting for visit details. You can decline if you prefer a quote only.'
-          : 'Waiting for inspection and quotation.',
-        statusPill: hasVR ? 'Visit pending' : 'Provider accepted',
-        pillBg: JOB_TIMELINE.activeSoft,
-        pillText: JOB_TIMELINE.activeChipText,
+        title: 'Provider accepted',
+        subtitle: 'Waiting for inspection or quotation.',
+        statusPill: 'Provider accepted',
+        pillBg: JOB_TIMELINE.completeSoft,
+        pillText: JOB_TIMELINE.sageChipText,
         timestamp: acceptedAt ? formatTimeAgo(acceptedAt) : null,
         provider: headerProvider,
-        showVisitPayButton: canDeclineVisit && hasPayableVisitFee,
-        showDeclineVisitButton: canDeclineVisit,
-        visitLogisticsCost: logisticsCost,
-        onVisitPay: () => {
-          if (params.requestId == null) return;
-          if (!hasPayableVisitFee) {
-            showError('The visit fee is not ready yet. Swipe down to refresh, or ask your provider to resend the visit details.');
-            return;
-          }
-          haptics.light();
-          router.push({
-            pathname: '/ConfirmWalletPaymentScreen',
-            params: {
-              requestId: params.requestId,
-              amount: String(logisticsCost),
-              paymentType: 'logistics_fee',
-              serviceName: request?.jobTitle || 'Inspection',
-            },
-          } as any);
-        },
-        onVisitDecline: () => {
-          declineVisitActionRef.current();
-        },
       };
     }
     return { title: 'Waiting for providers', subtitle: 'Nearby providers are being notified. Updates will appear here.', statusPill: 'Pending', pillBg: JOB_TIMELINE.pendingSoft, pillText: JOB_TIMELINE.pendingChipText, timestamp: null, provider: null };

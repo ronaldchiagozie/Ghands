@@ -31,7 +31,7 @@ import {
   User,
   Wallet,
 } from 'lucide-react-native';
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Image,
@@ -76,11 +76,11 @@ const ProfileScreen = () => {
   const { logout } = useAuthRole();
   const { location } = useUserLocation();
   const profileReadyRef = useRef(false);
+  const [isUserRefreshing, setIsUserRefreshing] = useState(false);
 
   const {
     data: profile,
     isLoading: isProfileLoading,
-    isFetching: isProfileFetching,
     refetch: refetchProfile,
     error: profileError,
   } = useCurrentUserProfile();
@@ -159,7 +159,12 @@ const ProfileScreen = () => {
   );
 
   const onRefresh = useCallback(async () => {
-    await Promise.all([refetchProfile(), refreshWallet({ silent: true })]);
+    setIsUserRefreshing(true);
+    try {
+      await Promise.all([refetchProfile(), refreshWallet({ silent: true })]);
+    } finally {
+      setIsUserRefreshing(false);
+    }
   }, [refetchProfile, refreshWallet]);
 
   const handleOptionPress = useCallback(
@@ -297,7 +302,7 @@ const ProfileScreen = () => {
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
-            refreshing={isProfileFetching && profileReadyRef.current}
+            refreshing={isUserRefreshing}
             onRefresh={onRefresh}
             tintColor={REFRESH_CONTROL.tintColor}
             colors={REFRESH_CONTROL.colors as unknown as string[]}

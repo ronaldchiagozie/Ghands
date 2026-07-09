@@ -5,24 +5,24 @@ import { JobsEmptyIllustration, JobsEmptyVariant } from '@/components/JobsEmptyI
 
 export type JobsTabAudience = 'client' | 'provider';
 
-type ClientTab = 'Ongoing' | 'Completed' | 'Cancelled';
+type ClientTab = 'Pending' | 'Ongoing' | 'Completed';
 type ProviderTab = 'Ongoing' | 'Pending' | 'Completed';
 
 const CLIENT_COPY: Record<ClientTab, { variant: JobsEmptyVariant; title: string; description: string }> = {
+  Pending: {
+    variant: 'pending',
+    title: 'No pending requests',
+    description: 'New requests waiting for providers will appear here.',
+  },
   Ongoing: {
     variant: 'ongoing',
     title: 'No ongoing jobs yet',
-    description: 'Your active bookings and pending provider updates will appear here.',
+    description: 'Active bookings with a provider will appear here.',
   },
   Completed: {
     variant: 'completed',
     title: 'No completed jobs yet',
     description: 'Finished jobs will show up here.',
-  },
-  Cancelled: {
-    variant: 'cancelled',
-    title: 'No cancelled jobs yet',
-    description: 'Cancelled requests will stay here for your records.',
   },
 };
 

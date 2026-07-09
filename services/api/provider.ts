@@ -143,6 +143,8 @@ const providerService = {
     if (token) {
       await authServiceInstance.setAuthToken(token);
       await cacheDevAuthTokenForRole('provider', token);
+      const { schedulePushSyncAfterAuth } = await import('@/utils/pushNotifications');
+      schedulePushSyncAfterAuth();
     }
     if (providerId) await authServiceInstance.setUserId(providerId);
     else if (token) {
@@ -173,6 +175,8 @@ const providerService = {
     if (!token) throw new Error('Login failed: No token received from server.');
     await authServiceInstance.setAuthToken(token);
     await cacheDevAuthTokenForRole('provider', token);
+    const { schedulePushSyncAfterAuth } = await import('@/utils/pushNotifications');
+    schedulePushSyncAfterAuth();
     let finalProviderId: number | undefined = undefined;
     if (providerId) {
       finalProviderId = typeof providerId === 'number' ? providerId : parseInt(providerId.toString(), 10);

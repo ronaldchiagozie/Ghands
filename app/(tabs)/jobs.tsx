@@ -21,18 +21,20 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { extractMyRatingFromRequest, reviewRatingStorageKey } from '@/utils/reviewSync';
 import { navigateToJob } from '@/utils/navigation';
 import { summarizeJobDescription } from '@/utils/jobDescriptionSummary';
+import { jobHasSentQuotation, countSentQuotations } from '@/utils/quotationStatus';
 import {
   canCancelJobFromCard,
   getJobDisplayStatusBadge,
-  isCancelledTabJobDisplayStatus,
   isCompletedJobDisplayStatus,
+  isJobsListHiddenStatus,
   isOngoingJobDisplayStatus,
+  isPendingTabJobDisplayStatus,
   resolveJobDisplayStatus,
   showQuoteCountOnJobCard,
   type JobDisplayStatus,
 } from '@/utils/jobDisplayStatus';
 
-type JobStatus = 'Ongoing' | 'Completed' | 'Cancelled';
+type JobStatus = 'Pending' | 'Ongoing' | 'Completed';
 
 type JobItem = {
   id: number;
@@ -93,7 +95,7 @@ const JobListItem = React.memo(function JobListItem({
             size="small"
             animated={true}
           />
-          {activeTab === 'Ongoing' && canCancelJobFromCard(job.status, job.acceptedProvidersCount ?? 0) && (
+          {activeTab === 'Pending' && canCancelJobFromCard(job.status, job.acceptedProvidersCount ?? 0) && (
             <TouchableOpacity
               className="bg-red-50 py-1.5 px-3 rounded-lg"
               activeOpacity={0.85}
@@ -169,22 +171,24 @@ const JobListItem = React.memo(function JobListItem({
       <View className="flex flex-row pt-4 justify-center">
         <TouchableOpacity
           className={`py-3 px-6 rounded-lg ${
-            activeTab === 'Ongoing'
+            activeTab === 'Ongoing' || activeTab === 'Pending'
               ? 'bg-gray-100 w-full'
-              : activeTab === 'Completed'
-                ? 'bg-[#4F6739] w-full'
-                : 'bg-black w-full'
+              : 'bg-[#4F6739] w-full'
           }`}
           activeOpacity={0.85}
           onPress={() => onPrimaryAction(activeTab, job)}
         >
           <Text
-            className={`text-sm  text-center ${
-              activeTab === 'Ongoing' ? 'text-black' : 'text-white '
+            className={`text-sm text-center ${
+              activeTab === 'Ongoing' || activeTab === 'Pending' ? 'text-black' : 'text-white'
             }`}
             style={{ fontFamily: 'Poppins-Medium' }}
           >
-            {activeTab === 'Ongoing' ? 'Check Updates' : 'View Details'}
+            {activeTab === 'Ongoing'
+              ? 'Check Updates'
+              : activeTab === 'Pending'
+                ? 'View request'
+                : 'View Details'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -209,7 +213,7 @@ const formatDate = (dateString?: string, timeString?: string): string => {
 const mapRequestToJobItem = (
   request: ServiceRequest,
   acceptedProvidersCount: number = 0,
-  quotationsCount: number = 0
+  quotations: unknown[] = [],
 ): JobItem => {
   const providerName =
     (request as ServiceRequest & { provider?: { name?: string } }).provider?.name ||
@@ -220,7 +224,14 @@ const mapRequestToJobItem = (
     : 'Service';
   
     const apiStatus = ((request as any).status ?? '').toString().toLowerCase();
-    const status = resolveJobDisplayStatus(apiStatus, { acceptedProvidersCount });
+    const hasQuotationSent = jobHasSentQuotation(quotations, request as Record<string, unknown>);
+    const quotationsCount =
+      countSentQuotations(quotations) || (hasQuotationSent ? 1 : 0);
+    const status = resolveJobDisplayStatus(apiStatus, {
+      acceptedProvidersCount,
+      visitRequest: (request as any).visitRequest,
+      hasQuotationSent,
+    });
   
   const apiMyRating = extractMyRatingFromRequest(request);
 
@@ -247,9 +258,12 @@ export default function JobsScreen() {
   const tabScrollTop = useTabScrollContentPaddingTop(20);
   const scrollBottomPad = useTabScreenScrollBottomPadding(16);
   const params = useLocalSearchParams<{ initialTab?: string; requestId?: string }>();
-  const [activeTab, setActiveTab] = useState<JobStatus>(
-    params.initialTab === 'Completed' ? 'Completed' : params.initialTab === 'Cancelled' ? 'Cancelled' : 'Ongoing'
-  );
+  const [activeTab, setActiveTab] = useState<JobStatus>(() => {
+    const tab = params.initialTab;
+    if (tab === 'Completed') return 'Completed';
+    if (tab === 'Pending' || tab === 'Cancelled') return 'Pending';
+    return 'Ongoing';
+  });
   const [pendingCancelJob, setPendingCancelJob] = useState<JobItem | null>(null);
   const [allJobs, setAllJobs] = useState<JobItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -275,7 +289,6 @@ export default function JobsScreen() {
           return false;
         }
 
-        // Show all confirmed requests — rejected / no_providers appear under Cancelled tab.
         return true;
       });
       
@@ -283,18 +296,18 @@ export default function JobsScreen() {
       const jobItems = await Promise.all(
         confirmedRequests.map(async (request) => {
           let acceptedProvidersCount = 0;
-          let quotationsCount = 0;
+          let quotations: unknown[] = [];
           try {
-            const [acceptedProviders, quotations] = await Promise.all([
+            const [acceptedProviders, quotes] = await Promise.all([
               serviceRequestService.getAcceptedProviders(request.id).catch(() => []),
               serviceRequestService.getQuotations(request.id).catch(() => []),
             ]);
             acceptedProvidersCount = acceptedProviders?.length || 0;
-            quotationsCount = (quotations || []).filter((q) => q.sentAt || (q.status && q.status !== null)).length;
+            quotations = Array.isArray(quotes) ? quotes : [];
           } catch {
             // Non-fatal: job row still renders with zero counts
           }
-          return mapRequestToJobItem(request, acceptedProvidersCount, quotationsCount);
+          return mapRequestToJobItem(request, acceptedProvidersCount, quotations);
         })
       );
 
@@ -318,7 +331,7 @@ export default function JobsScreen() {
           })
         );
       }
-      setAllJobs(finalJobs);
+      setAllJobs(finalJobs.filter((job) => !isJobsListHiddenStatus(job.status)));
     } catch (error: any) {
       // If AuthError, redirect immediately
       if (error instanceof AuthError) {
@@ -343,8 +356,8 @@ export default function JobsScreen() {
   // Deep-link / post-cancel: switch tab when initialTab param is passed
   useEffect(() => {
     const tab = params.initialTab;
-    if (tab === 'Cancelled') setActiveTab('Cancelled');
-    else if (tab === 'Completed') setActiveTab('Completed');
+    if (tab === 'Completed') setActiveTab('Completed');
+    else if (tab === 'Pending' || tab === 'Cancelled') setActiveTab('Pending');
     else if (tab === 'Ongoing') setActiveTab('Ongoing');
   }, [params.initialTab]);
 
@@ -370,9 +383,9 @@ export default function JobsScreen() {
 
   const jobs = useMemo(() => {
     return allJobs.filter((job) => {
+      if (activeTab === 'Pending') return isPendingTabJobDisplayStatus(job.status);
       if (activeTab === 'Ongoing') return isOngoingJobDisplayStatus(job.status);
-      if (activeTab === 'Completed') return isCompletedJobDisplayStatus(job.status);
-      return isCancelledTabJobDisplayStatus(job.status);
+      return isCompletedJobDisplayStatus(job.status);
     });
   }, [activeTab, allJobs]);
 
@@ -381,7 +394,7 @@ export default function JobsScreen() {
 
   const handlePrimaryAction = (status: JobStatus, job?: JobItem) => {
     haptics.selection();
-    if (status === 'Ongoing' && job) {
+    if ((status === 'Ongoing' || status === 'Pending') && job) {
       navigateToJob(router, { requestId: job.id, tab: 'updates' });
     } else if (status === 'Completed' && job) {
       // Pass requestId to CompletedJobDetail
@@ -391,8 +404,6 @@ export default function JobsScreen() {
           requestId: job.id.toString(),
         },
       } as any);
-    } else if (status === 'Cancelled' && job) {
-      navigateToJob(router, { requestId: job.id, tab: 'updates' });
     } else {
       router.push('/JobDetailsScreen');
     }
@@ -423,7 +434,7 @@ export default function JobsScreen() {
         </Text>
 
         <View className="flex flex-row justify-around mb-5">
-          {(['Ongoing', 'Completed', 'Cancelled'] as JobStatus[]).map((status) => {
+          {(['Pending', 'Ongoing', 'Completed'] as JobStatus[]).map((status) => {
             const isActive = activeTab === status;
             return (
               <TouchableOpacity
@@ -565,17 +576,12 @@ export default function JobsScreen() {
                       await serviceRequestService.cancelRequest(job.requestId);
                       haptics.success();
                       showSuccess('Request cancelled.');
-                      // Optimistic: move to Cancelled tab immediately so UI matches intent
-                      setAllJobs((prev) =>
-                        prev.map((j) =>
-                          j.requestId === job.requestId ? { ...j, status: 'Cancelled' } : j
-                        )
-                      );
-                      setActiveTab('Cancelled');
+                      setAllJobs((prev) => prev.filter((j) => j.requestId !== job.requestId));
+                      setActiveTab('Pending');
                       await loadRequests();
                       router.replace({
                         pathname: '/(tabs)/jobs',
-                        params: { initialTab: 'Cancelled' },
+                        params: { initialTab: 'Pending' },
                       } as any);
                     } catch (error: any) {
                       const errorMessage = getSpecificErrorMessage(error, 'cancel_request');

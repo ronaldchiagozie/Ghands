@@ -42,6 +42,14 @@ const WALLET_TYPES = new Set([
   'job_payment_released',
 ]);
 
+const CALL_TYPES = new Set([
+  'incoming_call',
+  'voice_call',
+  'call_incoming',
+  'call_request',
+  'call_started',
+]);
+
 export function normalizeNotificationType(type: unknown): string {
   return String(type ?? '')
     .trim()
@@ -103,9 +111,22 @@ function resolveProviderName(notification: Notification): string | undefined {
       ? (notification.metadata as Record<string, unknown>)
       : null;
 
-  const name = readMetaValue(meta, ['providerName', 'provider_name']);
+  const name = readMetaValue(meta, ['providerName', 'provider_name', 'callerName', 'caller_name']);
   if (typeof name === 'string' && name.trim()) {
     return name.trim();
+  }
+  return undefined;
+}
+
+function resolveCallerImage(notification: Notification): string | undefined {
+  const meta =
+    notification.metadata && typeof notification.metadata === 'object'
+      ? (notification.metadata as Record<string, unknown>)
+      : null;
+
+  const image = readMetaValue(meta, ['callerImage', 'caller_image', 'providerImage', 'provider_image']);
+  if (typeof image === 'string' && image.trim()) {
+    return image.trim();
   }
   return undefined;
 }
@@ -124,6 +145,18 @@ export function resolveNotificationRoute(
 
   if (WALLET_TYPES.has(type)) {
     return { pathname: '/WalletScreen' };
+  }
+
+  if (CALL_TYPES.has(type)) {
+    const params: Record<string, string> = { callState: 'incoming' };
+    if (requestIdStr) params.requestId = requestIdStr;
+    const providerId = resolveProviderId(notification);
+    if (providerId != null) params.callerId = String(providerId);
+    const callerName = resolveProviderName(notification);
+    params.callerName = callerName || 'Incoming call';
+    const callerImage = resolveCallerImage(notification);
+    if (callerImage) params.callerImage = callerImage;
+    return { pathname: '/CallScreen', params };
   }
 
   if (requestIdStr && MESSAGE_TYPES.has(type)) {
@@ -167,10 +200,15 @@ export function canNavigateFromNotification(
 
 export function notificationActionLabel(route: NotificationRoute | null): string {
   if (!route) return 'Close';
+  if (route.pathname === '/CallScreen') return 'Answer call';
   if (route.pathname === '/ChatScreen') return 'Open chat';
   if (route.pathname === '/WalletScreen') return 'Open wallet';
   if (route.params?.tab === 'quotations') return 'View quote';
   return 'View job';
+}
+
+export function isIncomingCallNotification(data: Record<string, unknown>): boolean {
+  return CALL_TYPES.has(normalizeNotificationType(data.type));
 }
 
 export function resolvePushNotificationRoute(

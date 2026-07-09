@@ -22,6 +22,66 @@ export interface ResolveAccountResponse {
   accountNumber: string;
 }
 
+export type DepositVerification = {
+  reference: string;
+  status: 'completed' | 'pending' | 'failed';
+  amount: number;
+  balance: number;
+};
+
+function readNumericField(...values: unknown[]): number {
+  for (const value of values) {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value === 'string' && value.trim()) {
+      const parsed = parseFloat(value);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+  }
+  return 0;
+}
+
+function normalizeDepositStatus(raw: unknown): 'completed' | 'pending' | 'failed' {
+  const status = String(raw ?? '').toLowerCase();
+  if (
+    status === 'completed' ||
+    status === 'success' ||
+    status === 'successful' ||
+    status === 'paid' ||
+    status === 'approved'
+  ) {
+    return 'completed';
+  }
+  if (status === 'failed' || status === 'cancelled' || status === 'canceled' || status === 'declined') {
+    return 'failed';
+  }
+  return 'pending';
+}
+
+function mapDepositVerification(reference: string, verificationData: Record<string, unknown>): DepositVerification {
+  const wallet =
+    verificationData.wallet && typeof verificationData.wallet === 'object'
+      ? (verificationData.wallet as Record<string, unknown>)
+      : null;
+
+  return {
+    reference: String(verificationData.reference ?? reference),
+    status: normalizeDepositStatus(verificationData.status ?? verificationData.paymentStatus),
+    amount: readNumericField(
+      verificationData.amount,
+      verificationData.depositAmount,
+      verificationData.paidAmount,
+      verificationData.transactionAmount,
+    ),
+    balance: readNumericField(
+      verificationData.balance,
+      verificationData.walletBalance,
+      verificationData.newBalance,
+      verificationData.balanceAfter,
+      wallet?.balance,
+    ),
+  };
+}
+
 export const walletService = {
   getWallet: async (): Promise<{ id: number; balance: number; currency: string; isPinSet: boolean }> => {
     const response = await apiClient.get<any>('/api/wallet');
@@ -58,10 +118,11 @@ export const walletService = {
     email: string;
     name?: string;
     phone?: string;
-    /** Deep link / web URL Korapay redirects to so the in-app browser can close and return to GHands */
+    /** Used only client-side for openAuthSessionAsync — not sent to API. */
     callbackUrl?: string;
   }): Promise<{ authorizationUrl: string; reference: string }> => {
-    const response = await apiClient.post<any>('/api/wallet/deposit', payload);
+    const { callbackUrl: _callbackUrl, ...apiPayload } = payload;
+    const response = await apiClient.post<any>('/api/wallet/deposit', apiPayload);
     const responseData = extractResponseData<any>(response);
     const depositData = responseData?.data || responseData;
     if (!depositData?.authorizationUrl || !depositData?.reference) {
@@ -70,17 +131,23 @@ export const walletService = {
     return { authorizationUrl: depositData.authorizationUrl, reference: depositData.reference };
   },
 
-  verifyDeposit: async (reference: string): Promise<{ reference: string; status: 'completed' | 'pending' | 'failed'; amount: number; balance: number }> => {
-    const response = await apiClient.get<any>(`/api/wallet/deposit/verify/${reference}`);
-    const responseData = extractResponseData<any>(response);
-    const verificationData = responseData?.data || responseData;
-    if (!verificationData) throw new Error('Invalid response from verification API.');
-    return {
-      reference: verificationData.reference || reference,
-      status: verificationData.status || 'pending',
-      amount: verificationData.amount || 0,
-      balance: verificationData.balance || 0,
-    };
+  verifyDeposit: async (reference: string): Promise<DepositVerification> => {
+    try {
+      const response = await apiClient.get<any>(`/api/wallet/deposit/verify/${reference}`);
+      const responseData = extractResponseData<any>(response);
+      const verificationData = (responseData?.data || responseData) as Record<string, unknown>;
+      if (!verificationData || typeof verificationData !== 'object') {
+        throw new Error('Invalid response from verification API.');
+      }
+
+      return mapDepositVerification(reference, verificationData);
+    } catch (error: unknown) {
+      const msg = String((error as Error)?.message ?? '').toLowerCase();
+      if (msg.includes('processing') || msg.includes('pending')) {
+        return { reference, status: 'pending', amount: 0, balance: 0 };
+      }
+      throw error;
+    }
   },
 
   payForService: async (payload: PayForServicePayload): Promise<PayForServiceResponse> => {

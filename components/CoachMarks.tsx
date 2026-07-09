@@ -11,6 +11,7 @@ import {
 import { Colors, Spacing, BorderRadius } from '@/lib/designSystem';
 import { ArrowLeft, ArrowRight } from 'lucide-react-native';
 import { haptics } from '@/hooks/useHaptics';
+import { applyDefaultStatusBar } from '@/utils/statusBar';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -203,6 +204,12 @@ const CoachMarks: React.FC<CoachMarksProps> = ({
     }
   }, [visible, currentStep, currentStepData, measureTarget]);
 
+  useEffect(() => {
+    if (!visible) {
+      applyDefaultStatusBar();
+    }
+  }, [visible]);
+
   const handleComplete = useCallback(() => {
     haptics.success();
     
@@ -288,7 +295,6 @@ const CoachMarks: React.FC<CoachMarksProps> = ({
       visible={visible}
       transparent
       animationType="none"
-      statusBarTranslucent
       onRequestClose={handleSkip}
     >
       <View style={styles.container}>

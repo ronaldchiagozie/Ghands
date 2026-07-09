@@ -86,6 +86,8 @@ export function useAuthRole(): UseAuthRoleReturn {
 
       await AsyncStorage.setItem(AUTH_ROLE_KEY, newRole);
       await AsyncStorage.setItem(ONBOARDING_STORAGE_KEY, 'true');
+      const { unregisterPushOnLogout } = await import('@/utils/pushNotifications');
+      await unregisterPushOnLogout();
       await authService.clearAuthTokens();
 
       setRoleState(newRole);
@@ -105,6 +107,8 @@ export function useAuthRole(): UseAuthRoleReturn {
 
   const logout = useCallback(async () => {
     try {
+      const { unregisterPushOnLogout } = await import('@/utils/pushNotifications');
+      await unregisterPushOnLogout();
       await authService.clearAuthTokens();
 
       const providerKeys = [

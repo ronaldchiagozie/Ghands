@@ -12,7 +12,7 @@ import {
   providerHomeSurfacePadding,
 } from '@/lib/providerSurfaceStyles';
 import { walletService } from '@/services/api';
-import { openClientReceipt } from '@/utils/receiptNavigation';
+import { isCancelledWalletTransaction, mapWalletTransactionStatus } from '@/utils/walletTransactions';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { CheckCircle, Clock, Filter, Receipt, XCircle } from 'lucide-react-native';
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
@@ -196,6 +196,10 @@ export default function ActivityScreen() {
   // Helper function to map API transaction to UI transaction
   const mapTransactionToUI = useCallback((apiTransaction: any): Transaction | null => {
     try {
+      if (isCancelledWalletTransaction(apiTransaction)) {
+        return null;
+      }
+
       // Extract service name from description or use default
       let serviceName = 'Service Payment';
       let serviceDescription = apiTransaction.description || 'Wallet transaction';
@@ -222,16 +226,7 @@ export default function ActivityScreen() {
       }
 
       const { date, time } = formatDate(apiTransaction.createdAt || apiTransaction.completedAt || new Date().toISOString());
-      
-      // Map API status to UI status
-      let status: 'completed' | 'pending' | 'failed' = 'pending';
-      if (apiTransaction.status === 'completed') {
-        status = 'completed';
-      } else if (apiTransaction.status === 'failed' || apiTransaction.status === 'cancelled') {
-        status = 'failed';
-      } else {
-        status = 'pending';
-      }
+      const status = mapWalletTransactionStatus(apiTransaction);
       
       return {
         id: String(apiTransaction.id || apiTransaction.reference || Math.random()),

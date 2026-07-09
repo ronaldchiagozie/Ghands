@@ -38,3 +38,14 @@ export async function handleApiAuthFailure(
   await handleAuthErrorRedirect(router, pathname);
   return true;
 }
+
+/** Fire-and-forget async work — auth failures redirect instead of uncaught rejections. */
+export function runAuthSafe(
+  task: () => Promise<void>,
+  router?: { replace: (href: any) => void },
+  pathname?: string | null,
+): void {
+  void task().catch(async (error) => {
+    await handleApiAuthFailure(error, router, pathname);
+  });
+}

@@ -20,11 +20,12 @@ import { providerListCard } from '@/lib/providerSurfaceStyles';
 import { CLIENT_HOME_SCROLL_GUTTER } from '@/lib/tabletLayout';
 import { ServiceRequest, serviceRequestService } from '@/services/api';
 import { logDevAuthTokens } from '@/utils/devAuthTokens';
-import { handleAuthErrorRedirect } from '@/utils/authRedirect';
+import { handleApiAuthFailure, runAuthSafe } from '@/utils/authRedirect';
 import { getCategoryIcon, resolveCategoryImageSource } from '@/utils/categoryIcons';
-import { AuthError } from '@/utils/errors';
+import { isAuthError } from '@/utils/errors';
 import { isConnectivityOrNetworkError } from '@/utils/isNetworkFailure';
 import { resolveJobDisplayStatus } from '@/utils/jobDisplayStatus';
+import { countSentQuotations, jobHasSentQuotation } from '@/utils/quotationStatus';
 // import { shareReferral } from '@/utils/referral';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -224,7 +225,13 @@ const HomeScreen = React.memo(() => {
       : 'Service';
 
     const apiStatus = ((request as any).status ?? '').toString().toLowerCase();
-    const status = resolveJobDisplayStatus(apiStatus, { acceptedProvidersCount });
+    const hasQuotationSent =
+      quotesCount > 0 || jobHasSentQuotation(undefined, request as unknown as Record<string, unknown>);
+    const status = resolveJobDisplayStatus(apiStatus, {
+      acceptedProvidersCount,
+      visitRequest: (request as any).visitRequest,
+      hasQuotationSent,
+    });
 
     const requestPrice = [
       (request as any).totalCost,
@@ -278,8 +285,14 @@ const HomeScreen = React.memo(() => {
             ]);
             acceptedProvidersCount = acceptedProviders?.length || 0;
             const qList = Array.isArray(quotations) ? quotations : [];
-            const sentQuotes = qList.filter((q: any) => q.sentAt || (q.status && q.status !== null));
-            quotesCount = sentQuotes.length;
+            const hasSent = jobHasSentQuotation(qList, request as unknown as Record<string, unknown>);
+            quotesCount = countSentQuotations(qList) || (hasSent ? 1 : 0);
+            const sentQuotes = qList.filter((q: any) => {
+              if (q?.sentAt || q?.submittedAt) return true;
+              if (q?.status && q.status !== 'draft') return true;
+              if (q?.total != null && Number(q.total) > 0) return true;
+              return false;
+            });
             if (sentQuotes.length > 0) {
               const toNum = (v: any) => (typeof v === 'number' && !isNaN(v) ? v : parseFloat(v));
               const accepted = sentQuotes.find((q: any) => q.status === 'accepted');
@@ -293,7 +306,8 @@ const HomeScreen = React.memo(() => {
                 if (validTotals.length > 0) priceFromQuotations = Math.min(...validTotals);
               }
             }
-          } catch {
+          } catch (error) {
+            if (isAuthError(error)) throw error;
             if (__DEV__) { /* backend schema error - continue */ }
           }
           const activity = mapRequestToJobActivity(request, acceptedProvidersCount, quotesCount, priceFromQuotations);
@@ -306,9 +320,8 @@ const HomeScreen = React.memo(() => {
         .slice(0, 2)
         .map((entry) => entry.activity);
       setJobActivities(sortedActivities);
-    } catch (error: any) {
-      if (error instanceof AuthError) {
-        await handleAuthErrorRedirect(router);
+    } catch (error: unknown) {
+      if (await handleApiAuthFailure(error, router)) {
         return;
       }
       const isNetworkError = isConnectivityOrNetworkError(error);
@@ -316,9 +329,9 @@ const HomeScreen = React.memo(() => {
         // Global offline overlay handles UI; keep cached list for reconnect.
         return;
       }
-      const status = (error as any)?.status;
+      const status = (error as { status?: number })?.status;
       if (status === 401 || status === 403) {
-        await handleAuthErrorRedirect(router);
+        await handleApiAuthFailure(error, router);
         return;
       }
       if (status === 500) {
@@ -326,7 +339,7 @@ const HomeScreen = React.memo(() => {
         // Do not redirect to auth flow for non-auth failures.
         if (__DEV__) console.warn('Job activities API returned 500; skipping redirect.');
       }
-      if (__DEV__) console.error('Error loading job activities:', error?.message || error);
+      if (__DEV__) console.error('Error loading job activities:', error);
       setJobActivities([]);
     } finally {
       jobsReadyRef.current = true;
@@ -344,15 +357,15 @@ const HomeScreen = React.memo(() => {
   useFocusEffect(
     useCallback(() => {
       refreshLocation();
-      loadJobActivities();
-    }, [refreshLocation, loadJobActivities])
+      runAuthSafe(() => loadJobActivities(), router);
+    }, [refreshLocation, loadJobActivities, router])
   );
 
   // Fetch categories from API on mount
   useEffect(() => {
-    loadCategoriesFromAPI();
-    loadJobActivities();
-  }, [loadJobActivities]);
+    runAuthSafe(() => loadCategoriesFromAPI(), router);
+    runAuthSafe(() => loadJobActivities(), router);
+  }, [loadJobActivities, router]);
 
   // Animate categories when API data loads
   useEffect(() => {
@@ -422,10 +435,8 @@ const HomeScreen = React.memo(() => {
 
       // Replace dummy data with API data
       setApiCategories(limitedCategories);
-    } catch (error: any) {
-      // If AuthError, redirect immediately
-      if (error instanceof AuthError) {
-        await handleAuthErrorRedirect(router);
+    } catch (error: unknown) {
+      if (await handleApiAuthFailure(error, router)) {
         return;
       }
 
@@ -446,8 +457,8 @@ const HomeScreen = React.memo(() => {
 
   useOnNetworkRestore(() => {
     refreshLocation();
-    void loadJobActivities();
-    void loadCategoriesFromAPI();
+    runAuthSafe(() => loadJobActivities(), router);
+    runAuthSafe(() => loadCategoriesFromAPI(), router);
   });
 
   const handleCategoryPress = useCallback((category: ServiceCategory) => {

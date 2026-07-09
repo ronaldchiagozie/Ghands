@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Colors } from '@/lib/designSystem';
+import { applyDefaultStatusBar } from '@/utils/statusBar';
 
 /**
  * Korapay / deposit deep-link target (expo-linking createURL path).
@@ -11,6 +12,7 @@ export default function WalletDepositReturnScreen() {
   const router = useRouter();
 
   useEffect(() => {
+    applyDefaultStatusBar();
     const t = setTimeout(() => {
       router.replace('/TopUpScreen' as any);
     }, 100);

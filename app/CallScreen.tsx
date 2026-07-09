@@ -1,18 +1,34 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
-import { Colors, Spacing, BorderRadius, SHADOWS } from '@/lib/designSystem';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Phone, PhoneOff, Mic, MicOff, Volume2, Shield, User, Calendar, MapPin, Hash, MessageCircle } from 'lucide-react-native';
-import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  Image,
-} from 'react-native';
+  CallActionButton,
+  CallJobSummaryCard,
+  CallPulseRing,
+  CallStatusPill,
+  mapCallAudioMessage,
+} from '@/components/call/CallUiParts';
+import { ScreenHeader } from '@/components/ScreenHeader';
+import { Colors, Spacing } from '@/lib/designSystem';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import {
+  MessageCircle,
+  Mic,
+  MicOff,
+  Phone,
+  PhoneOff,
+  Shield,
+  User,
+  Volume2,
+} from 'lucide-react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Image, ScrollView, Text, View } from 'react-native';
 import { haptics } from '@/hooks/useHaptics';
 import { useVoiceCallWebRtc } from '@/hooks/useVoiceCallWebRtc';
 import { communicationService } from '@/services/api';
 import { logCallDebug, logCallError, logCallWarn, serializeCallApiError } from '@/utils/callDebugLog';
+import {
+  isWebRtcNativeAvailable,
+  WEBRTC_UNAVAILABLE_MESSAGE,
+} from '@/utils/webrtcAvailability';
 
 export type CallState = 'incoming' | 'outgoing' | 'active' | 'ended';
 
@@ -29,27 +45,31 @@ interface CallScreenParams {
   location?: string;
   jobStatus?: string;
   requestId?: string;
-  isProvider?: string; // 'true' or 'false'
+  isProvider?: string;
 }
 
-interface JobDetails {
-  title: string;
-  description: string;
-  orderNumber: string;
-  scheduledDate: string;
-  scheduledTime: string;
-  location: string;
-  status: string;
+function resolveJobTitle(params: CallScreenParams): string {
+  const title = params.jobTitle?.trim();
+  if (title && title !== 'Service Request') return title;
+  return 'Your service job';
+}
+
+function resolveJobSubtitle(params: CallScreenParams): string | undefined {
+  const parts: string[] = [];
+  const location = params.location?.trim();
+  if (location && !/service location|123 main/i.test(location)) parts.push(location);
+  const when = [params.scheduledDate?.trim(), params.scheduledTime?.trim()].filter(Boolean).join(' · ');
+  if (when && !/oct 20, 2024/i.test(when)) parts.push(when);
+  return parts.length > 0 ? parts.join(' · ') : undefined;
 }
 
 export default function CallScreen() {
   const router = useRouter();
   const params = useLocalSearchParams() as unknown as CallScreenParams;
-  
-  // Parse call state from params
+
   const initialCallState: CallState = (params.callState as CallState) || 'incoming';
   const [callState, setCallState] = useState<CallState>(initialCallState);
-  const [callDuration, setCallDuration] = useState(0); // in seconds
+  const [callDuration, setCallDuration] = useState(0);
   const [callId, setCallId] = useState<string | null>(null);
   const [callReference, setCallReference] = useState<string | null>(null);
   const [isCreatingCall, setIsCreatingCall] = useState(false);
@@ -59,145 +79,136 @@ export default function CallScreen() {
   const [isProvider] = useState(params.isProvider === 'true');
 
   const voice = useVoiceCallWebRtc();
-
   const durationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const requestIdNum = params.requestId ? parseInt(params.requestId, 10) : null;
   const hasRequestId = requestIdNum !== null && !isNaN(requestIdNum);
 
-  // Job details from params
-  const jobDetails: JobDetails = {
-    title: params.jobTitle || 'Plumbing Repair',
-    description: params.jobDescription || 'Kitchen pipe leak repair',
-    orderNumber: params.orderNumber || '#WO-2024-1157',
-    scheduledDate: params.scheduledDate || 'Oct 20, 2024',
-    scheduledTime: params.scheduledTime || '2:00 PM',
-    location: params.location || '123 Main St, Downtown',
-    status: params.jobStatus || 'In Progress',
-  };
+  const jobTitle = resolveJobTitle(params);
+  const jobSubtitle = resolveJobSubtitle(params);
+  const callerName =
+    params.callerName?.trim() ||
+    (isProvider ? 'Client' : 'Provider');
+  const callerImage = params.callerImage?.trim() || null;
+  const peerRole = isProvider ? 'Client' : 'Provider';
 
-  const callerName = params.callerName || (isProvider ? 'JohnDoe Akpan' : 'AquaFix Solutions');
-  const callerImage = params.callerImage;
-  const statusLabel =
+  const isRinging = callState === 'incoming' || (callState === 'outgoing' && !callSetupError && !isCreatingCall);
+  const audioMessage = mapCallAudioMessage(voice.error, voice.status);
+
+  const headerTitle =
     callState === 'incoming'
       ? 'Incoming call'
       : callState === 'outgoing'
+        ? 'Calling'
+        : callState === 'active'
+          ? 'On call'
+          : 'Call ended';
+
+  const statusPillLabel =
+    callState === 'incoming'
+      ? 'Ringing'
+      : callState === 'outgoing'
         ? isCreatingCall
-          ? 'Starting secure call'
+          ? 'Connecting'
           : callSetupError
-            ? 'Call failed'
+            ? 'Unavailable'
             : 'Ringing'
         : callState === 'active'
-          ? 'Connected'
-          : 'Call ended';
-  const statusColor =
+          ? formatDuration(callDuration)
+          : `Ended · ${formatDuration(callDuration)}`;
+
+  const statusPillTone =
     callState === 'active'
-      ? '#047857'
-      : callState === 'ended' || callSetupError
-        ? Colors.error
-        : Colors.warningForeground;
-  const statusBg =
-    callState === 'active'
-      ? '#ECFDF3'
-      : callState === 'ended' || callSetupError
-        ? '#FEF2F2'
-        : '#FFF7DF';
+      ? 'active'
+      : callSetupError || voice.error
+        ? 'error'
+        : callState === 'ended'
+          ? 'neutral'
+          : 'warning';
+
+  const statusLine =
+    callState === 'incoming'
+      ? `${peerRole} is calling about your job`
+      : callState === 'outgoing'
+        ? callSetupError
+          ? mapCallAudioMessage(callSetupError, 'failed')
+          : isCreatingCall
+            ? 'Setting up secure voice…'
+            : `Calling ${callerName}…`
+        : callState === 'active'
+          ? audioMessage || 'You are connected'
+          : 'Call finished';
 
   useEffect(() => {
     logCallDebug('CallScreen mounted', {
       callState: initialCallState,
       requestIdParam: params.requestId,
-      requestIdParsed: requestIdNum,
-      hasRequestId,
-      isProvider: params.isProvider,
-      callerName: params.callerName,
-      callerId: params.callerId,
+      webrtcAvailable: isWebRtcNativeAvailable(),
     });
+    if (!isWebRtcNativeAvailable()) {
+      setCallSetupError(WEBRTC_UNAVAILABLE_MESSAGE);
+    }
   }, []);
 
-  // Format call duration (HH:MM:SS)
-  const formatDuration = (seconds: number): string => {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
+  function formatDuration(seconds: number): string {
+    const m = Math.floor(seconds / 60);
     const s = seconds % 60;
-    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  };
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  }
 
-  // Start call duration timer
   useEffect(() => {
     if (callState === 'active') {
       durationIntervalRef.current = setInterval(() => {
         setCallDuration((prev) => prev + 1);
       }, 1000);
-    } else {
-      if (durationIntervalRef.current) {
-        clearInterval(durationIntervalRef.current);
-        durationIntervalRef.current = null;
-      }
+    } else if (durationIntervalRef.current) {
+      clearInterval(durationIntervalRef.current);
+      durationIntervalRef.current = null;
     }
-
     return () => {
-      if (durationIntervalRef.current) {
-        clearInterval(durationIntervalRef.current);
-      }
+      if (durationIntervalRef.current) clearInterval(durationIntervalRef.current);
     };
   }, [callState]);
 
-  // Initiate call via API when outgoing and we have requestId
   useEffect(() => {
-    if (callState === 'outgoing' && hasRequestId && !callId) {
-      logCallDebug('CallScreen: auto initiate branch', { callState, requestId: requestIdNum });
-      setIsCreatingCall(true);
-      setCallSetupError(null);
-      communicationService
-        .initiateCall(requestIdNum!)
-        .then(async ({ callId: id, callReference: ref }) => {
-          setCallId(id || null);
-          setCallReference(ref || null);
-          logCallDebug('CallScreen: initiateCall state updated', { localCallId: id || null, callReference: ref || null });
-          if (id) {
-            try {
-              await communicationService.updateCallStatus(id, 'ringing');
-              logCallDebug('CallScreen: initial ringing status sent', { callId: id });
-            } catch (ringErr) {
-              logCallWarn('CallScreen: updateCallStatus(ringing) failed after create', {
-                callId: id,
-                ...serializeCallApiError(ringErr),
-              });
-            }
-          } else {
-            logCallWarn('CallScreen: skipping ringing PATCH — no callId from API', { requestId: requestIdNum });
+    if (callState !== 'outgoing' || !hasRequestId || callId) return;
+
+    setIsCreatingCall(true);
+    setCallSetupError(null);
+    communicationService
+      .initiateCall(requestIdNum!)
+      .then(async ({ callId: id, callReference: ref }) => {
+        setCallId(id || null);
+        setCallReference(ref || null);
+        if (id) {
+          try {
+            await communicationService.updateCallStatus(id, 'ringing');
+          } catch (ringErr) {
+            logCallWarn('CallScreen: updateCallStatus(ringing) failed', serializeCallApiError(ringErr));
           }
-        })
-        .catch((err) => {
-          const serialized = serializeCallApiError(err);
-          logCallError('CallScreen: initiateCall failed', { requestId: requestIdNum, ...serialized });
-          const msg = typeof serialized.message === 'string' ? serialized.message : 'Could not start call. Please try again.';
-          setCallSetupError(msg.length > 160 ? `${msg.slice(0, 160)}…` : msg);
-        })
-        .finally(() => {
-          setIsCreatingCall(false);
-        });
-    }
-    if (callState === 'outgoing' && !hasRequestId) {
-      logCallWarn('CallScreen: outgoing but missing/invalid requestId — API will not run', {
-        requestIdParam: params.requestId,
-        requestIdParsed: requestIdNum,
-      });
-    }
+        }
+      })
+      .catch((err) => {
+        const serialized = serializeCallApiError(err);
+        logCallError('CallScreen: initiateCall failed', { requestId: requestIdNum, ...serialized });
+        setCallSetupError(
+          typeof serialized.message === 'string'
+            ? serialized.message
+            : 'Could not start the call. Please try again.',
+        );
+      })
+      .finally(() => setIsCreatingCall(false));
   }, [callState, hasRequestId, requestIdNum, callId]);
 
-  // In-app WebRTC voice when we have a call reference (native dev / release builds)
   useEffect(() => {
     if (!callReference || callState === 'ended') {
       voice.stop();
       return;
     }
+    if (!isWebRtcNativeAvailable()) return;
     if (callState === 'outgoing' || callState === 'active') {
       voice.start(callReference);
     }
-    return () => {
-      voice.stop();
-    };
+    return () => voice.stop();
   }, [callReference, callState, voice.start, voice.stop]);
 
   useEffect(() => {
@@ -205,10 +216,7 @@ export default function CallScreen() {
   }, [isMuted, voice.setMuted]);
 
   const updateStatus = useCallback(async (status: string) => {
-    if (!callId) {
-      logCallWarn('updateCallStatus skipped: no callId on device yet', { status });
-      return;
-    }
+    if (!callId) return;
     try {
       await communicationService.updateCallStatus(callId, status);
     } catch (err) {
@@ -217,7 +225,6 @@ export default function CallScreen() {
   }, [callId]);
 
   const handleAcceptCall = () => {
-    logCallDebug('CallScreen: user accepted (incoming → active)', { callId, priorState: callState });
     haptics.success();
     updateStatus('connected');
     setCallState('active');
@@ -225,44 +232,25 @@ export default function CallScreen() {
   };
 
   const handleDeclineCall = () => {
-    logCallDebug('CallScreen: user declined', { callId, priorState: callState });
     haptics.error();
     voice.stop();
     updateStatus('ended');
     setCallState('ended');
-    if (durationIntervalRef.current) {
-      clearInterval(durationIntervalRef.current);
-    }
   };
 
   const handleEndCall = () => {
-    logCallDebug('CallScreen: user ended call', { callId, priorState: callState });
     haptics.error();
     voice.stop();
     updateStatus('ended');
     setCallState('ended');
-    if (durationIntervalRef.current) {
-      clearInterval(durationIntervalRef.current);
-    }
-  };
-
-  const handleToggleMute = () => {
-    haptics.light();
-    setIsMuted((prev) => !prev);
-  };
-
-  const handleToggleSpeaker = () => {
-    haptics.light();
-    setIsSpeakerOn(!isSpeakerOn);
   };
 
   const handleCallAgain = () => {
-    logCallDebug('CallScreen: call again (reset outgoing)', { hadCallId: callId });
     haptics.light();
     voice.stop();
     setCallId(null);
     setCallReference(null);
-    setCallSetupError(null);
+    setCallSetupError(isWebRtcNativeAvailable() ? null : WEBRTC_UNAVAILABLE_MESSAGE);
     setCallState('outgoing');
     setCallDuration(0);
   };
@@ -280,609 +268,302 @@ export default function CallScreen() {
     } as any);
   };
 
-  const handleCheckUpdates = () => {
+  const handleViewJob = () => {
     haptics.light();
-    if (params.requestId) {
-      router.push({
-        pathname: isProvider ? '/ProviderJobDetailsScreen' : '/OngoingJobDetails',
-        params: {
-          requestId: params.requestId,
-        },
-      } as any);
-    } else {
+    if (!params.requestId) {
       router.back();
+      return;
     }
+    router.push({
+      pathname: isProvider ? '/ProviderJobDetailsScreen' : '/OngoingJobDetails',
+      params: { requestId: params.requestId },
+    } as any);
   };
 
-  // Job Details Card Component
-  const JobDetailsCard = () => (
-    <View
-      style={{
-        backgroundColor: Colors.white,
-        borderRadius: 20,
-        padding: 16,
-        marginHorizontal: Spacing.lg,
-        marginTop: Spacing.lg,
-        borderWidth: 1,
-        borderColor: 'rgba(17, 24, 39, 0.045)',
-        shadowColor: '#101828',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.035,
-        shadowRadius: 10,
-        elevation: 0.76,
-      }}
-    >
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: Spacing.md }}>
-        <Text
-          style={{
-            fontSize: 18,
-            fontFamily: 'Poppins-Bold',
-            color: Colors.textPrimary,
-            flex: 1,
-            lineHeight: 24,
-          }}
-          numberOfLines={2}
-        >
-          {jobDetails.title}
-        </Text>
-        <View
-          style={{
-            backgroundColor: Colors.statusPendingAltBg,
-            paddingHorizontal: Spacing.sm + 2,
-            paddingVertical: 4,
-            borderRadius: 999,
-            marginLeft: Spacing.sm,
-          }}
-        >
-          <Text
-            style={{
-              fontSize: 11,
-              fontFamily: 'Poppins-SemiBold',
-              color: Colors.warningForeground,
-            }}
-          >
-            {jobDetails.status}
-          </Text>
-        </View>
-      </View>
-
-      <Text
-        style={{
-          fontSize: 14,
-          fontFamily: 'Poppins-Regular',
-          color: Colors.textSecondaryDark,
-          marginBottom: Spacing.md,
-          lineHeight: 20,
-        }}
-        numberOfLines={2}
-      >
-        {jobDetails.description}
-      </Text>
-
-      <View style={{ gap: Spacing.sm, marginTop: 2 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Calendar size={15} color={Colors.textSecondaryDark} style={{ marginRight: Spacing.sm }} />
-          <Text
-            style={{
-              fontSize: 13,
-              fontFamily: 'Poppins-Regular',
-              color: Colors.textSecondaryDark,
-            }}
-          >
-            {jobDetails.scheduledDate} • {jobDetails.scheduledTime}
-          </Text>
-        </View>
-
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <MapPin size={15} color={Colors.textSecondaryDark} style={{ marginRight: Spacing.sm }} />
-          <Text
-            style={{
-              fontSize: 13,
-              fontFamily: 'Poppins-Regular',
-              color: Colors.textSecondaryDark,
-              flex: 1,
-            }}
-            numberOfLines={1}
-          >
-            {jobDetails.location}
-          </Text>
-        </View>
-
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Hash size={15} color={Colors.textSecondaryDark} style={{ marginRight: Spacing.sm }} />
-          <Text
-            style={{
-              fontSize: 13,
-              fontFamily: 'Poppins-Regular',
-              color: Colors.textSecondaryDark,
-            }}
-          >
-            {jobDetails.orderNumber}
-          </Text>
-        </View>
-      </View>
-      {callState === 'ended' && (
-        <TouchableOpacity
-          onPress={handleCheckUpdates}
-          activeOpacity={0.8}
-          style={{
-            marginTop: Spacing.lg,
-            alignSelf: 'center',
-            backgroundColor: Colors.textPrimary,
-            paddingHorizontal: Spacing.lg,
-            paddingVertical: Spacing.sm,
-            borderRadius: BorderRadius.default,
-          }}
-        >
-          <Text style={{ fontSize: 14, fontFamily: 'Poppins-SemiBold', color: Colors.white }}>
-            Check updates
-          </Text>
-        </TouchableOpacity>
-      )}
-    </View>
-  );
+  const showJobSummary = callState === 'ended';
+  const showCompactJobLine = callState !== 'ended' && Boolean(params.requestId);
 
   return (
     <SafeAreaWrapper backgroundColor={Colors.backgroundLight}>
       <View style={{ flex: 1, backgroundColor: Colors.backgroundLight }}>
-        {/* Header */}
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingHorizontal: Spacing.lg,
-            paddingTop: Spacing.md + 4,
-            paddingBottom: Spacing.sm,
+        {(callState === 'ended' || callState === 'outgoing') && (
+          <ScreenHeader
+            title={headerTitle}
+            onBack={() => {
+              haptics.light();
+              if (callState === 'outgoing' && !isCreatingCall) {
+                handleEndCall();
+              } else {
+                router.back();
+              }
+            }}
+            backgroundColor={Colors.backgroundLight}
+          />
+        )}
+
+        {callState === 'incoming' || callState === 'active' ? (
+          <View style={{ alignItems: 'center', paddingTop: Spacing.lg, paddingBottom: Spacing.sm }}>
+            <Text
+              style={{
+                fontSize: 15,
+                fontFamily: 'Poppins-SemiBold',
+                color: Colors.textPrimary,
+              }}
+            >
+              {headerTitle}
+            </Text>
+          </View>
+        ) : null}
+
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{
+            flexGrow: 1,
+            paddingBottom: Spacing.lg,
           }}
         >
-          <TouchableOpacity
-            onPress={() => {
-              haptics.light();
-              router.back();
-            }}
-            activeOpacity={0.7}
-            style={{
-              width: 40,
-              height: 40,
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: 20,
-              backgroundColor: Colors.white,
-            }}
-          >
-            <ArrowLeft size={24} color={Colors.textPrimary} />
-          </TouchableOpacity>
+          <View style={{ alignItems: 'center', paddingHorizontal: Spacing.lg, paddingTop: Spacing.md }}>
+            <CallStatusPill label={statusPillLabel} tone={statusPillTone} />
 
-          <View style={{ flex: 1, alignItems: 'center' }}>
             <View
               style={{
-                backgroundColor: statusBg,
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                borderRadius: 999,
-                borderWidth: 1,
-                borderColor: callState === 'active' ? 'rgba(4, 120, 87, 0.12)' : 'rgba(17, 24, 39, 0.06)',
+                marginTop: Spacing.xl,
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 140,
+                height: 140,
               }}
             >
-              <Text
-                style={{
-                  fontSize: 13,
-                  fontFamily: 'Poppins-SemiBold',
-                  color: statusColor,
-                }}
-              >
-                {statusLabel}
-                {callState === 'active' ? ` • ${formatDuration(callDuration)}` : ''}
-              </Text>
-            </View>
-          </View>
-
-          <View style={{ width: 40 }} />
-        </View>
-
-        {/* Caller Info */}
-        <View
-          style={{
-            alignItems: 'center',
-            marginTop: Spacing.md,
-            marginHorizontal: Spacing.lg,
-            backgroundColor: Colors.white,
-            borderRadius: 28,
-            paddingVertical: 26,
-            paddingHorizontal: 18,
-            borderWidth: 1,
-            borderColor: 'rgba(17, 24, 39, 0.045)',
-            shadowColor: '#101828',
-            shadowOffset: { width: 0, height: 8 },
-            shadowOpacity: 0.045,
-            shadowRadius: 18,
-            elevation: 0.76,
-          }}
-        >
-          <View
-            style={{
-              width: 112,
-              height: 112,
-              borderRadius: 56,
-              backgroundColor: '#0a0a0a',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: Spacing.lg,
-              borderWidth: 3,
-              borderColor: callState === 'active' ? Colors.accent : 'rgba(17, 24, 39, 0.08)',
-              overflow: 'hidden',
-            }}
-          >
-            {callerImage ? (
-              <Image
-                source={{ uri: callerImage }}
-                style={{ width: 112, height: 112, borderRadius: 56 }}
-                resizeMode="cover"
-              />
-            ) : (
+              <CallPulseRing active={isRinging} size={112} />
               <View
                 style={{
-                  width: 72,
-                  height: 72,
-                  borderRadius: 36,
-                  backgroundColor: 'rgba(202, 255, 51, 0.18)',
+                  width: 112,
+                  height: 112,
+                  borderRadius: 56,
+                  backgroundColor: Colors.white,
                   alignItems: 'center',
                   justifyContent: 'center',
+                  borderWidth: 3,
+                  borderColor: callState === 'active' ? Colors.accent : 'rgba(79, 103, 57, 0.2)',
+                  overflow: 'hidden',
                 }}
               >
-                <User size={36} color={Colors.accent} />
+                {callerImage ? (
+                  <Image
+                    source={{ uri: callerImage }}
+                    style={{ width: 112, height: 112 }}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View
+                    style={{
+                      width: 72,
+                      height: 72,
+                      borderRadius: 36,
+                      backgroundColor: Colors.sageTint,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <User size={34} color={Colors.accent} />
+                  </View>
+                )}
               </View>
-            )}
+            </View>
+
+            <Text
+              style={{
+                marginTop: Spacing.lg,
+                fontSize: 24,
+                fontFamily: 'Poppins-Bold',
+                color: Colors.textPrimary,
+                textAlign: 'center',
+                letterSpacing: -0.3,
+              }}
+              numberOfLines={2}
+            >
+              {callerName}
+            </Text>
+
+            <Text
+              style={{
+                marginTop: 4,
+                fontSize: 14,
+                fontFamily: 'Poppins-Medium',
+                color: Colors.textSecondaryDark,
+              }}
+            >
+              {peerRole}
+            </Text>
+
+            <Text
+              style={{
+                marginTop: Spacing.md,
+                fontSize: 15,
+                fontFamily: 'Poppins-Regular',
+                color: callSetupError || voice.error ? Colors.error : Colors.textSecondaryDark,
+                textAlign: 'center',
+                lineHeight: 22,
+                maxWidth: 300,
+              }}
+            >
+              {statusLine}
+            </Text>
+
+            {showCompactJobLine ? (
+              <View
+                style={{
+                  marginTop: Spacing.lg,
+                  paddingHorizontal: 14,
+                  paddingVertical: 10,
+                  borderRadius: 12,
+                  backgroundColor: Colors.white,
+                  borderWidth: 1,
+                  borderColor: 'rgba(79, 103, 57, 0.12)',
+                  maxWidth: '100%',
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 13,
+                    fontFamily: 'Poppins-Medium',
+                    color: Colors.accent,
+                    textAlign: 'center',
+                  }}
+                  numberOfLines={2}
+                >
+                  {jobTitle}
+                  {params.requestId ? ` · #${params.requestId}` : ''}
+                </Text>
+              </View>
+            ) : null}
           </View>
 
-          <Text
+          {showJobSummary ? (
+            <CallJobSummaryCard
+              title={jobTitle}
+              subtitle={jobSubtitle}
+              requestId={params.requestId}
+              onViewJob={handleViewJob}
+            />
+          ) : null}
+        </ScrollView>
+
+        <View style={{ paddingHorizontal: Spacing.xl, paddingBottom: Spacing.md }}>
+          {callState === 'incoming' ? (
+            <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 48 }}>
+              <CallActionButton
+                label="Decline"
+                variant="danger"
+                onPress={handleDeclineCall}
+                icon={<PhoneOff size={28} color={Colors.white} />}
+              />
+              <CallActionButton
+                label="Answer"
+                variant="primary"
+                onPress={handleAcceptCall}
+                icon={<Phone size={28} color={Colors.white} />}
+              />
+            </View>
+          ) : null}
+
+          {callState === 'outgoing' ? (
+            <View style={{ alignItems: 'center', gap: Spacing.md }}>
+              <CallActionButton
+                label="Cancel"
+                variant="danger"
+                disabled={isCreatingCall}
+                onPress={handleEndCall}
+                icon={<PhoneOff size={28} color={Colors.white} />}
+              />
+              {callSetupError ? (
+                <CallActionButton
+                  label="Try again"
+                  variant="secondary"
+                  onPress={handleCallAgain}
+                  icon={<Phone size={22} color={Colors.accent} />}
+                  style={{ marginTop: 4 }}
+                />
+              ) : null}
+            </View>
+          ) : null}
+
+          {callState === 'active' ? (
+            <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 28, alignItems: 'flex-start' }}>
+              <CallActionButton
+                label={isMuted ? 'Unmute' : 'Mute'}
+                variant="secondary"
+                onPress={() => {
+                  haptics.light();
+                  setIsMuted((prev) => !prev);
+                }}
+                icon={
+                  isMuted ? (
+                    <MicOff size={22} color={Colors.textPrimary} />
+                  ) : (
+                    <Mic size={22} color={Colors.textPrimary} />
+                  )
+                }
+              />
+              <CallActionButton
+                label="End"
+                variant="danger"
+                onPress={handleEndCall}
+                icon={<PhoneOff size={28} color={Colors.white} />}
+              />
+              <CallActionButton
+                label="Speaker"
+                variant="secondary"
+                onPress={() => {
+                  haptics.light();
+                  setIsSpeakerOn((prev) => !prev);
+                }}
+                icon={
+                  <Volume2 size={22} color={isSpeakerOn ? Colors.accent : Colors.textPrimary} />
+                }
+              />
+            </View>
+          ) : null}
+
+          {callState === 'ended' ? (
+            <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 40 }}>
+              <CallActionButton
+                label="Message"
+                variant="secondary"
+                onPress={handleMessage}
+                icon={<MessageCircle size={22} color={Colors.accent} />}
+              />
+              <CallActionButton
+                label="Call again"
+                variant="secondary"
+                onPress={handleCallAgain}
+                icon={<Phone size={22} color={Colors.accent} />}
+              />
+            </View>
+          ) : null}
+
+          <View
             style={{
-              fontSize: 24,
-              fontFamily: 'Poppins-Bold',
-              color: Colors.textPrimary,
-              marginBottom: Spacing.xs,
-              textAlign: 'center',
-              letterSpacing: -0.4,
-            }}
-            numberOfLines={1}
-          >
-            {callerName}
-          </Text>
-
-          <Text
-            style={{
-              fontSize: 13,
-              fontFamily: 'Poppins-Medium',
-              color: Colors.textSecondaryDark,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginTop: Spacing.lg,
+              gap: 6,
             }}
           >
-            {isProvider ? 'Client' : 'Provider'}
-          </Text>
-
-          {callState === 'outgoing' && (
+            <Shield size={14} color={Colors.textSecondaryDark} />
             <Text
               style={{
-                fontSize: 14,
-                fontFamily: 'Poppins-Regular',
-                color: callSetupError ? Colors.error : Colors.textSecondaryDark,
-                marginTop: Spacing.md,
-                textAlign: 'center',
-                lineHeight: 20,
-              }}
-            >
-              {callSetupError
-                ? callSetupError
-                : isCreatingCall
-                ? 'Preparing secure call session...'
-                : 'Waiting for recipient to answer'}
-            </Text>
-          )}
-
-          {(callState === 'outgoing' || callState === 'active') && (voice.error || voice.status !== 'idle') && (
-            <Text
-              style={{
-                fontSize: 12,
-                fontFamily: 'Poppins-Regular',
-                color: voice.error ? Colors.error : Colors.iconMuted,
-                marginTop: Spacing.sm,
-                paddingHorizontal: Spacing.lg,
-                textAlign: 'center',
-              }}
-            >
-              {voice.error
-                ? `Audio: ${voice.error}`
-                : voice.status === 'starting'
-                  ? 'Connecting in-app audio…'
-                  : voice.status === 'connected'
-                    ? 'In-app audio active'
-                    : 'In-app audio unavailable'}
-            </Text>
-          )}
-
-          {callState === 'ended' && (
-            <Text
-              style={{
-                fontSize: 14,
+                fontSize: 11,
                 fontFamily: 'Poppins-Regular',
                 color: Colors.textSecondaryDark,
-                marginTop: Spacing.md,
+                textAlign: 'center',
+                flexShrink: 1,
               }}
             >
-              Duration: {formatDuration(callDuration)}
+              GHands secure voice · recorded for quality and disputes
             </Text>
-          )}
-        </View>
-
-        {/* Job Details Card */}
-        {(callState === 'incoming' || callState === 'outgoing' || callState === 'active' || callState === 'ended') && (
-          <JobDetailsCard />
-        )}
-
-        {/* Call Controls */}
-        {callState === 'incoming' && (
-          <View
-            style={{
-              flexDirection: 'row',
-              justifyContent: 'center',
-              gap: Spacing.xl,
-              marginTop: 'auto',
-              paddingBottom: Spacing.xl,
-            }}
-          >
-            <TouchableOpacity
-              onPress={handleDeclineCall}
-              activeOpacity={0.8}
-              style={{
-                width: 68,
-                height: 68,
-                borderRadius: 34,
-                backgroundColor: Colors.errorBright,
-                alignItems: 'center',
-                justifyContent: 'center',
-                ...SHADOWS.md,
-              }}
-            >
-              <PhoneOff size={32} color={Colors.white} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={handleAcceptCall}
-              activeOpacity={0.8}
-              style={{
-                width: 68,
-                height: 68,
-                borderRadius: 34,
-                backgroundColor: Colors.accent,
-                alignItems: 'center',
-                justifyContent: 'center',
-                ...SHADOWS.md,
-              }}
-            >
-              <Phone size={32} color={Colors.white} />
-            </TouchableOpacity>
           </View>
-        )}
-
-        {callState === 'outgoing' && (
-          <View
-            style={{
-              alignItems: 'center',
-              marginTop: 'auto',
-              paddingBottom: Spacing.xl,
-              gap: Spacing.md,
-            }}
-          >
-            <TouchableOpacity
-              onPress={handleEndCall}
-              activeOpacity={0.8}
-              disabled={isCreatingCall}
-              style={{
-                width: 70,
-                height: 70,
-                borderRadius: 35,
-                backgroundColor: Colors.errorBright,
-                alignItems: 'center',
-                justifyContent: 'center',
-                opacity: isCreatingCall ? 0.6 : 1,
-                ...SHADOWS.md,
-              }}
-            >
-              <PhoneOff size={32} color={Colors.white} />
-            </TouchableOpacity>
-
-            {!!callSetupError && (
-              <TouchableOpacity
-                onPress={handleCallAgain}
-                activeOpacity={0.8}
-                style={{
-                  backgroundColor: Colors.white,
-                  borderRadius: 14,
-                  borderWidth: 1,
-                  borderColor: 'rgba(17, 24, 39, 0.045)',
-                  paddingVertical: 10,
-                  paddingHorizontal: 18,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 14,
-                    fontFamily: 'Poppins-SemiBold',
-                    color: Colors.textPrimary,
-                  }}
-                >
-                  Retry call
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
-
-        {callState === 'active' && (
-          <View
-            style={{
-              flexDirection: 'row',
-              justifyContent: 'center',
-              gap: Spacing.lg,
-              marginTop: 'auto',
-              paddingBottom: Spacing.xl,
-            }}
-          >
-            <TouchableOpacity
-              onPress={handleToggleMute}
-              activeOpacity={0.8}
-              style={{
-                width: 60,
-                height: 60,
-                borderRadius: 30,
-                backgroundColor: isMuted ? '#FEF2F2' : Colors.white,
-                borderWidth: 1,
-                borderColor: isMuted ? 'rgba(220, 38, 38, 0.14)' : 'rgba(17, 24, 39, 0.08)',
-                alignItems: 'center',
-                justifyContent: 'center',
-                ...SHADOWS.sm,
-              }}
-            >
-              {isMuted ? (
-                <MicOff size={24} color={Colors.textPrimary} />
-              ) : (
-                <Mic size={24} color={Colors.textPrimary} />
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={handleEndCall}
-              activeOpacity={0.8}
-              style={{
-                width: 70,
-                height: 70,
-                borderRadius: 35,
-                backgroundColor: Colors.errorBright,
-                alignItems: 'center',
-                justifyContent: 'center',
-                ...SHADOWS.md,
-              }}
-            >
-              <PhoneOff size={32} color={Colors.white} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={handleToggleSpeaker}
-              activeOpacity={0.8}
-              style={{
-                width: 60,
-                height: 60,
-                borderRadius: 30,
-                backgroundColor: isSpeakerOn ? Colors.sageTint : Colors.white,
-                borderWidth: 1,
-                borderColor: isSpeakerOn ? 'rgba(79, 103, 57, 0.16)' : 'rgba(17, 24, 39, 0.08)',
-                alignItems: 'center',
-                justifyContent: 'center',
-                ...SHADOWS.sm,
-              }}
-            >
-              <Volume2 size={24} color={isSpeakerOn ? Colors.accent : Colors.textPrimary} />
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {callState === 'ended' && (
-          <View
-            style={{
-              alignItems: 'center',
-              marginTop: 'auto',
-              paddingBottom: Spacing.xl,
-              gap: Spacing.lg,
-            }}
-          >
-            <View style={{ flexDirection: 'row', gap: Spacing.xl }}>
-              <TouchableOpacity
-                onPress={handleMessage}
-                activeOpacity={0.8}
-                style={{
-                  alignItems: 'center',
-                  gap: Spacing.xs,
-                }}
-              >
-                <View
-                  style={{
-                    width: 56,
-                    height: 56,
-                    borderRadius: 28,
-                    backgroundColor: Colors.backgroundGray,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    ...SHADOWS.sm,
-                  }}
-                >
-                  <MessageCircle size={22} color={Colors.textPrimary} />
-                </View>
-                <Text
-                  style={{
-                    fontSize: 12,
-                    fontFamily: 'Poppins-Medium',
-                    color: Colors.textSecondaryDark,
-                  }}
-                >
-                  Message {isProvider ? 'client' : 'provider'}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={handleCallAgain}
-                activeOpacity={0.8}
-                style={{
-                  alignItems: 'center',
-                  gap: Spacing.xs,
-                }}
-              >
-                <View
-                  style={{
-                    width: 56,
-                    height: 56,
-                    borderRadius: 28,
-                    backgroundColor: Colors.backgroundGray,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    ...SHADOWS.sm,
-                  }}
-                >
-                  <Phone size={24} color={Colors.textPrimary} />
-                </View>
-                <Text
-                  style={{
-                    fontSize: 12,
-                    fontFamily: 'Poppins-Medium',
-                    color: Colors.textSecondaryDark,
-                  }}
-                >
-                  Call again
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
-        {/* Call Recording Disclaimer */}
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            paddingBottom: Spacing.lg,
-            gap: Spacing.xs,
-          }}
-        >
-          <Shield size={14} color={Colors.textSecondaryDark} />
-          <Text
-            style={{
-              fontSize: 11,
-              fontFamily: 'Poppins-Regular',
-              color: Colors.textSecondaryDark,
-            }}
-          >
-            Calls are recorded for quality and dispute resolution
-          </Text>
         </View>
       </View>
     </SafeAreaWrapper>

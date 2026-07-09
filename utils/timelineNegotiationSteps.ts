@@ -145,11 +145,10 @@ export function getInspectionNegotiationStep(input: {
 
   if (visitDeclined && !quotationSent) {
     const declineNote = getVisitDeclinedDescription(visitRequest, audience);
-    return activeStep(
+    return pendingStep(
       audience === 'provider'
         ? `${declineNote} Request a new visit or send a quote.`
-        : `${declineNote} Provider can request again or send a quote.`,
-      { showRequestVisit: audience === 'provider' }
+        : `${declineNote} Provider can request again or send a quote.`
     );
   }
 

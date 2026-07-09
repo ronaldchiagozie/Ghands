@@ -20,7 +20,7 @@ export default function CancelRequestScreen() {
   const handleSubmit = () => {
     router.replace({
       pathname: '/(tabs)/jobs',
-      params: { initialTab: 'Cancelled' },
+      params: { initialTab: 'Pending' },
     } as any);
   };
 

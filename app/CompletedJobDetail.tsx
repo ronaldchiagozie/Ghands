@@ -1,5 +1,5 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
-import AnimatedStatusChip from '@/components/AnimatedStatusChip';
+import { JobProgressTimeline, type JobProgressStep } from '@/components/JobProgressTimeline';
 import Demcatorline from "@/components/Demacator";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { haptics } from '@/hooks/useHaptics';
@@ -11,14 +11,13 @@ import { handleAuthErrorRedirect } from '@/utils/authRedirect';
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Animated, Image, Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TouchableOpacity, TextInput, View } from "react-native";
+import { ActivityIndicator, Image, Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TouchableOpacity, TextInput, View } from "react-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { openClientReceipt } from '@/utils/receiptNavigation';
 import { analytics } from '@/services/analytics';
-import { CheckCircle2, FileText, Wrench, CheckCircle } from 'lucide-react-native';
+import { CheckCircle2, FileText, Wrench } from 'lucide-react-native';
 import { BorderRadius, Colors } from '@/lib/designSystem';
-import { JOB_TIMELINE, timelineChipText } from '@/lib/jobTimelineTheme';
-import { surfaceElevation } from '@/lib/surfaceStyles';
+import { JOB_TIMELINE } from '@/lib/jobTimelineTheme';
 import { CLIENT_HOME_SCROLL_GUTTER } from '@/lib/tabletLayout';
 import { formatTimeAgo } from '@/utils/dateFormatting';
 import { logRatingDebug, logRatingError } from '@/utils/ratingDebugLog';
@@ -43,7 +42,7 @@ const formatDate = (dateString?: string, timeString?: string): string => {
     const date = new Date(dateString);
     const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     const formattedDate = `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
-    return timeString ? `${formattedDate} - ${timeString}` : formattedDate;
+    return timeString ? `${formattedDate}, ${timeString}` : formattedDate;
   } catch {
     return dateString;
   }
@@ -308,46 +307,56 @@ export default function CompletedJobDetail() {
     }
   };
 
-  // Generate timeline from request data
-  const timelineSteps = useMemo(() => {
+  const timelineSteps = useMemo((): JobProgressStep[] => {
     if (!request) return [];
-    
+
+    const createdAt = request.createdAt || new Date().toISOString();
+    const updatedAt = request.updatedAt || createdAt;
+
     return [
       {
         id: 'step-1',
-        title: 'Job Request Submitted',
-        description: 'Request was created',
-        status: `Completed - ${formatTimeAgo(request.createdAt || new Date().toISOString())}`,
+        title: 'Request received',
+        description: 'Your job request was submitted.',
+        status: formatTimeAgo(createdAt),
         accent: JOB_TIMELINE.completeSoft,
         dotColor: JOB_TIMELINE.sage,
+        isActive: false,
+        isCompleted: true,
         icon: CheckCircle2,
       },
       {
         id: 'step-2',
-        title: 'Inspection & Quotation',
-        description: 'Provider inspected and submitted quotation',
-        status: `Completed - ${formatTimeAgo(request.updatedAt || new Date().toISOString())}`,
+        title: 'Inspection & quotation',
+        description: 'Provider inspected and submitted a quote.',
+        status: formatTimeAgo(updatedAt),
         accent: JOB_TIMELINE.completeSoft,
         dotColor: JOB_TIMELINE.sage,
+        isActive: false,
+        isCompleted: true,
         icon: FileText,
       },
       {
         id: 'step-3',
-        title: 'Job in Progress',
-        description: 'Provider completed the work',
-        status: `Completed - ${formatTimeAgo(request.updatedAt || new Date().toISOString())}`,
+        title: 'Job in progress',
+        description: 'Provider completed the work.',
+        status: formatTimeAgo(updatedAt),
         accent: JOB_TIMELINE.completeSoft,
         dotColor: JOB_TIMELINE.sage,
+        isActive: false,
+        isCompleted: true,
         icon: Wrench,
       },
       {
         id: 'step-4',
         title: 'Complete',
-        description: 'Job completed successfully',
-        status: `Completed - ${formatTimeAgo(request.updatedAt || new Date().toISOString())}`,
+        description: 'Job completed successfully.',
+        status: formatTimeAgo(updatedAt),
         accent: JOB_TIMELINE.completeSoft,
         dotColor: JOB_TIMELINE.sage,
-        icon: CheckCircle,
+        isActive: false,
+        isCompleted: true,
+        icon: CheckCircle2,
       },
     ];
   }, [request]);
@@ -380,28 +389,6 @@ export default function CompletedJobDetail() {
     ];
   }, [request]);
 
-  const timelineAnimations = useMemo(
-    () => timelineSteps.map(() => new Animated.Value(0)),
-    [timelineSteps]
-  );
-
-  useEffect(() => {
-    if (timelineSteps.length === 0) return;
-    
-    const timelineSequence = timelineAnimations.map((anim, index) =>
-      Animated.spring(anim, {
-        toValue: 1,
-        useNativeDriver: true,
-        tension: 80,
-        friction: 8,
-        delay: index * 120,
-      })
-    );
-    Animated.stagger(100, timelineSequence).start(() => {
-      haptics.light();
-    });
-  }, [timelineSteps, timelineAnimations]);
-
   useEffect(() => {
     if (!request || request.status !== 'completed') return;
     if (completedContactToastShown.current) return;
@@ -410,127 +397,6 @@ export default function CompletedJobDetail() {
       'Messaging and calls are not available after a job is completed. For issues, use Help & Support to reach our team.'
     );
   }, [request?.id, request?.status, showInfo]);
-
-  const renderTimeline = () => {
-    if (timelineSteps.length === 0) return null;
-    
-    return (
-      <View className="mb-8">
-        {timelineSteps.map((step, index) => {
-          const isLast = index === timelineSteps.length - 1;
-          const animation = timelineAnimations[index];
-
-        const IconComponent = step.icon || CheckCircle2;
-        
-        return (
-          <View key={step.id} className="flex-row" style={{ marginBottom: isLast ? 0 : 18 }}>
-            <View className="items-center" style={{ marginRight: 16, paddingTop: 4 }}>
-              <Animated.View
-                style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: 17,
-                  backgroundColor: step.dotColor,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderWidth: 2.5,
-                  borderColor: '#FFFFFF',
-                  transform: [
-                    {
-                      scale: animation.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0.82, 1],
-                      }),
-                    },
-                  ],
-                  opacity: animation,
-                  shadowColor: JOB_TIMELINE.dotShadow,
-                  shadowOffset: { width: 0, height: 3 },
-                  shadowOpacity: 0.18,
-                  shadowRadius: 5,
-                  elevation: surfaceElevation(3),
-                }}
-              >
-                <IconComponent size={15} color={Colors.white} />
-              </Animated.View>
-              {!isLast && (
-                <View
-                  style={{
-                    width: 3,
-                    flex: 1,
-                    backgroundColor: JOB_TIMELINE.sage,
-                    marginTop: 6,
-                    borderRadius: 2,
-                    minHeight: 44,
-                    opacity: 0.4,
-                  }}
-                />
-              )}
-            </View>
-            <Animated.View
-              style={{
-                flex: 1,
-                opacity: animation,
-                transform: [
-                  {
-                    translateY: animation.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [14, 0],
-                    }),
-                  },
-                ],
-                paddingTop: 0,
-              }}
-            >
-              <View
-                style={{
-                  borderRadius: 18,
-                  borderWidth: 1,
-                  borderColor: JOB_TIMELINE.rowBorder,
-                  backgroundColor: JOB_TIMELINE.rowBg,
-                  paddingVertical: 14,
-                  paddingHorizontal: 16,
-                }}
-              >
-              <Text
-                style={{
-                  fontSize: 15,
-                  fontFamily: 'Poppins-Bold',
-                  color: '#1A1F16',
-                  marginBottom: 6,
-                  lineHeight: 21,
-                  letterSpacing: -0.35,
-                }}
-              >
-                {step.title}
-              </Text>
-              <Text
-                style={{
-                  fontSize: 13,
-                  fontFamily: 'Poppins-Regular',
-                  color: 'rgba(71, 85, 75, 0.88)',
-                  marginBottom: 8,
-                  lineHeight: 19,
-                }}
-              >
-                {step.description}
-              </Text>
-              <AnimatedStatusChip
-                status={step.status}
-                statusColor={step.accent}
-                textColor={timelineChipText({ isCompleted: true, isActive: false })}
-                size="small"
-                animated={true}
-                pill
-              />
-              </View>
-            </Animated.View>
-          </View>
-        );
-      })}
-      </View>
-    );
-  };
 
   if (isLoading) {
     return (
@@ -784,7 +650,7 @@ export default function CompletedJobDetail() {
 
             
             <View className="mb-8">
-              {renderTimeline()}
+              <JobProgressTimeline steps={timelineSteps} />
             </View>
 
             {hasSubmittedReview && !showRatingModal && (

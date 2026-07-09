@@ -42,7 +42,7 @@ export default function LegalAboutScreen() {
     {
       id: '3',
       title: 'About G-Hands',
-      subtitle: 'Version 1.2.3 - Learn more about us',
+      subtitle: 'Version 1.2.3. Learn more about us.',
       icon: Info,
       iconBgColor: '#F5F5F5',
       onPress: () => {

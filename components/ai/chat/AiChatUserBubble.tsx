@@ -1,5 +1,7 @@
 import { AI_COLORS } from '@/components/ai/aiAssistantTheme';
 import { haptics } from '@/hooks/useHaptics';
+import { useToast } from '@/hooks/useToast';
+import { copyTextToClipboard } from '@/utils/clipboard';
 import { Copy, Pencil, User } from 'lucide-react-native';
 import React from 'react';
 import { Platform, Pressable, Text, View } from 'react-native';
@@ -20,6 +22,18 @@ type AiChatUserBubbleProps = {
 };
 
 export default function AiChatUserBubble({ message }: AiChatUserBubbleProps) {
+  const { showSuccess, showError } = useToast();
+
+  const handleCopy = async () => {
+    haptics.light();
+    const copied = await copyTextToClipboard(message.text);
+    if (copied) {
+      showSuccess('Copied to clipboard');
+    } else {
+      showError('Could not copy message');
+    }
+  };
+
   return (
     <View style={{ marginBottom: 20, alignItems: 'flex-end' }}>
       <Text
@@ -63,7 +77,7 @@ export default function AiChatUserBubble({ message }: AiChatUserBubbleProps) {
 
           <View style={{ flexDirection: 'row', gap: 12, marginTop: 8, marginRight: 4 }}>
             <Pressable
-              onPress={() => haptics.light()}
+              onPress={() => void handleCopy()}
               accessibilityRole="button"
               accessibilityLabel="Copy message"
               hitSlop={8}

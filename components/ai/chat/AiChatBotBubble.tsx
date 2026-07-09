@@ -1,6 +1,8 @@
 import { AI_ANIMATION, AI_COLORS } from '@/components/ai/aiAssistantTheme';
 import { useRevealText } from '@/hooks/useRevealText';
 import { haptics } from '@/hooks/useHaptics';
+import { useToast } from '@/hooks/useToast';
+import { copyTextToClipboard } from '@/utils/clipboard';
 import { Image } from 'expo-image';
 import { Copy } from 'lucide-react-native';
 import React, { useEffect } from 'react';
@@ -31,6 +33,7 @@ export default function AiChatBotBubble({
   isTypingPlaceholder = false,
   onRevealComplete,
 }: AiChatBotBubbleProps) {
+  const { showSuccess, showError } = useToast();
   const shouldReveal = Boolean(message.revealText && message.text.length > 0);
   const { displayText, isComplete } = useRevealText(
     message.text,
@@ -48,6 +51,16 @@ export default function AiChatBotBubble({
       onRevealComplete?.(message.id);
     }
   }, [isComplete, isTypingPlaceholder, message.id, message.text.length, onRevealComplete, shouldReveal]);
+
+  const handleCopy = async () => {
+    haptics.light();
+    const copied = await copyTextToClipboard(message.text);
+    if (copied) {
+      showSuccess('Copied to clipboard');
+    } else {
+      showError('Could not copy message');
+    }
+  };
 
   return (
     <View style={{ marginBottom: 20, alignItems: 'flex-start' }}>
@@ -109,7 +122,7 @@ export default function AiChatBotBubble({
 
           {!isTypingPlaceholder && message.text.length > 0 ? (
             <Pressable
-              onPress={() => haptics.light()}
+              onPress={() => void handleCopy()}
               accessibilityRole="button"
               accessibilityLabel="Copy message"
               hitSlop={8}

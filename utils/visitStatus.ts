@@ -98,8 +98,10 @@ export function healJobStatusAfterVisitDecline<T extends { status?: string; visi
     return request;
   }
   const status = (request.status || '').toString().toLowerCase();
-  if (status !== 'cancelled') return request;
-  return { ...request, status: 'inspecting' as T['status'] };
+  if (status === 'cancelled' || status === 'inspecting') {
+    return { ...request, status: 'accepted' as T['status'] };
+  }
+  return request;
 }
 
 export function isTerminalVisitStatus(status?: string | null): boolean {
@@ -155,7 +157,7 @@ function parseVisitMoney(value: unknown): number | undefined {
 /** True when a real inspection/visit was requested or completed — not a direct-quote placeholder. */
 export function hasMeaningfulVisitEngagement(visitRequest?: Record<string, unknown> | null): boolean {
   if (!visitRequest || isVisitBypassed(visitRequest)) return false;
-  if (isVisitDeclined(visitRequest)) return true;
+  if (isVisitDeclined(visitRequest)) return false;
   if (isVisitPaid(visitRequest) || isVisitCompletedOrPaid(visitRequest)) return true;
 
   const hasSchedule = !!(
@@ -178,7 +180,7 @@ export function hasMeaningfulVisitEngagement(visitRequest?: Record<string, unkno
   if (!status) return false;
 
   if (['pending', 'pending_payment', 'awaiting_payment', 'requested'].includes(status)) {
-    return false;
+    return hasSchedule || hasRequestedAt || hasFee;
   }
 
   return true;
@@ -269,9 +271,11 @@ export function resolveVisitOccurred(input: {
   quotations?: unknown[] | null;
 }): boolean {
   const { visitRequest, requestStatus, quotations } = input;
+  if (isVisitDeclined(visitRequest)) return false;
   if (hasMeaningfulVisitEngagement(visitRequest)) return true;
+  if (isProviderVisitRequestSent(visitRequest)) return true;
   if (quotationImpliesPriorVisit(quotations)) return true;
   const status = (requestStatus || '').toLowerCase();
-  if (status === 'inspecting') return true;
+  if (status === 'inspecting' && !isVisitDeclined(visitRequest)) return true;
   return false;
 }

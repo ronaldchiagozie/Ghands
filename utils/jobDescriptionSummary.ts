@@ -1,3 +1,5 @@
+import { normalizeUiPunctuation } from '@/utils/copy';
+
 const GREETING_PREFIX =
   /^(hi|hello|hey|good morning|good afternoon|good evening)[,!.\s]+/i;
 
@@ -16,14 +18,15 @@ type SummarizeOptions = {
 };
 
 function normalizeDescription(raw: string): string {
-  return raw
-    .trim()
-    .replace(/\s+/g, ' ')
-    .replace(/\s*[—–]\s*/g, ', ')
-    .replace(/,\s*,+/g, ',')
-    .replace(GREETING_PREFIX, '')
-    .replace(META_TAIL, '')
-    .trim();
+  return normalizeUiPunctuation(
+    raw
+      .trim()
+      .replace(/\s+/g, ' ')
+      .replace(/,\s*,+/g, ',')
+      .replace(GREETING_PREFIX, '')
+      .replace(META_TAIL, '')
+      .trim(),
+  );
 }
 
 function splitSentences(text: string): string[] {

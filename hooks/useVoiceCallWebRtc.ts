@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 
 import { communicationService } from '@/services/api';
 import { logCallDebug, logCallError, logCallWarn } from '@/utils/callDebugLog';
+import { loadWebRtcModule, WEBRTC_UNAVAILABLE_MESSAGE } from '@/utils/webrtcAvailability';
 
 type VoiceStatus = 'idle' | 'starting' | 'connected' | 'failed';
 
@@ -180,19 +181,19 @@ export function useVoiceCallWebRtc(): VoiceCallWebRtcControls {
       let RTCSessionDescription: any;
       let mediaDevices: any;
 
-      try {
-        const mod = await import('react-native-webrtc');
-        RTCPeerConnection = mod.RTCPeerConnection;
-        RTCSessionDescription = mod.RTCSessionDescription;
-        mediaDevices = mod.mediaDevices;
-      } catch (e) {
-        const msg =
-          'WebRTC native module not available. Build with: npx expo run:ios or npx expo run:android';
-        logCallError('useVoiceCallWebRtc: import failed', { message: String(e) });
-        setError(msg);
+      const webrtc = await loadWebRtcModule();
+      if (!webrtc) {
+        logCallError('useVoiceCallWebRtc: native module unavailable', {
+          hint: 'Use expo run:ios / expo run:android — not Expo Go',
+        });
+        setError(WEBRTC_UNAVAILABLE_MESSAGE);
         setStatus('failed');
         return;
       }
+
+      RTCPeerConnection = webrtc.RTCPeerConnection;
+      RTCSessionDescription = webrtc.RTCSessionDescription;
+      mediaDevices = webrtc.mediaDevices;
 
       try {
         const sessionRaw = await communicationService.getCallSession(callReference);

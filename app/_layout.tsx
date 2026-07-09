@@ -26,19 +26,15 @@ import { useSessionTimeout } from '@/hooks/useSessionTimeout';
 import { UserLocationProvider } from '@/hooks/useUserLocation';
 import { NetworkProvider } from '@/hooks/useNetworkConnectivity';
 import GlobalOfflineOverlay from '@/components/GlobalOfflineOverlay';
-import { Colors } from '@/lib/designSystem';
-import { Platform, StatusBar, View } from 'react-native';
+import AppStatusBar from '@/components/AppStatusBar';
+import { installStatusBarRestore } from '@/utils/statusBar';
+import { registerWebRtcGlobalsIfAvailable } from '@/utils/webrtcAvailability';
+import { Platform, View } from 'react-native';
 import { ScreenBootLoader } from '@/components/ScreenBootLoader';
 import { isRoleSwitchInProgress } from '@/hooks/useRoleSwitching';
 
 if (Platform.OS === 'ios' || Platform.OS === 'android') {
-  try {
-    // WebRTC native module — must not load on web (module throws if NativeModules.WebRTC is null)
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    require('react-native-webrtc').registerGlobals();
-  } catch {
-    /* optional: old Expo Go without native webrtc */
-  }
+  registerWebRtcGlobalsIfAvailable();
 }
 
 // ErrorUtils is a global in React Native, not exported from react-native
@@ -57,7 +53,8 @@ export default function RootLayout() {
 
   /** No token on protected routes, or JWT expired → login (same as 401 handling) */
   useSessionTimeout(router, pathname);
-  const { notification } = useNotifications();
+  const { notificationResponse } = useNotifications();
+  const lastHandledNotificationId = useRef<string | null>(null);
   
   const [fontsLoaded] = useFonts({
     'Outfit-Regular': require('../assets/fonts/Outfit/static/Outfit-Regular.ttf'),
@@ -80,6 +77,10 @@ export default function RootLayout() {
       });
     }
   }, [fontsLoaded]);
+
+  useEffect(() => {
+    return installStatusBarRestore();
+  }, []);
 
   useEffect(() => {
     const configureAndroidNav = async () => {
@@ -151,9 +152,15 @@ export default function RootLayout() {
 
  
   useEffect(() => {
-    if (!notification) return;
+    if (!notificationResponse) return;
 
-    const data = notification.request.content.data as Record<string, unknown> | undefined;
+    const notificationId = notificationResponse.notification.request.identifier;
+    if (lastHandledNotificationId.current === notificationId) return;
+    lastHandledNotificationId.current = notificationId;
+
+    const data = notificationResponse.notification.request.content.data as
+      | Record<string, unknown>
+      | undefined;
     if (!data) return;
 
     const route = resolvePushNotificationRoute(data, 'client');
@@ -163,7 +170,7 @@ export default function RootLayout() {
         params: route.params,
       } as any);
     }
-  }, [notification, router]);
+  }, [notificationResponse, router]);
 
   // Note: AuthError handling is now done by AuthErrorBoundary component
   // ApiClient throws AuthError, AuthErrorBoundary catches it and handles navigation + toast
@@ -181,7 +188,7 @@ export default function RootLayout() {
             <View style={{ flex: 1 }}>
             <UserLocationProvider>
             <AuthErrorBoundary router={router}>
-              <StatusBar barStyle="dark-content" backgroundColor={Colors.backgroundLight} translucent={false} />
+              <AppStatusBar />
               <TabletRootFrame>
                 <Stack screenOptions={{ headerShown: false }} />
               </TabletRootFrame>

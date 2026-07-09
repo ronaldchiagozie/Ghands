@@ -52,8 +52,8 @@ module.exports = {
       config: { googleMaps: { apiKey: googleMapsApiKey } },
     },
     androidStatusBar: {
-      backgroundColor: '#4F6739',
-      barStyle: 'light-content',
+      backgroundColor: '#FFFFFF',
+      barStyle: 'dark-content',
       translucent: false,
       hidden: false,
     },

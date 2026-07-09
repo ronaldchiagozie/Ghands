@@ -81,6 +81,8 @@ class AuthService {
   async setAuthToken(token: string): Promise<void> {
     try {
       await setSecureItem(AUTH_TOKEN_KEY, token);
+      const { resetAuthSessionGate } = await import('../utils/enforceAuthSession');
+      resetAuthSessionGate();
     } catch {
       /* storage failure – caller handles missing token */
     }

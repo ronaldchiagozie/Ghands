@@ -2,11 +2,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Activity, ChevronDown, ChevronUp, MessageCircle, Phone } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Image, Linking, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Text, TouchableOpacity, View } from 'react-native';
 
 import { JobProgressTimeline, type JobProgressStep } from '@/components/JobProgressTimeline';
 import { haptics } from '@/hooks/useHaptics';
 import { JOB_TIMELINE } from '@/lib/jobTimelineTheme';
+import { logCallDebug } from '@/utils/callDebugLog';
+import { makeCall } from '@/utils/callUtils';
 import {
   providerHeaderActionButton,
   providerHomeSurfacePadding,
@@ -109,10 +111,24 @@ export function ClientJobUpdatesPanel({
   };
 
   const handlePressCall = () => {
-    const phone = provider?.phoneNumber?.trim();
-    if (!phone) return;
+    if (!provider || !normalizedRequestId) return;
     haptics.light();
-    void Linking.openURL(`tel:${phone}`);
+    logCallDebug('ClientJobUpdatesPanel: open CallScreen (outgoing)', {
+      requestId: normalizedRequestId,
+      providerId: provider.id,
+      providerName,
+    });
+    makeCall(
+      providerName,
+      provider.id?.toString(),
+      {
+        title: 'Service Request',
+        description: 'Ongoing service request',
+        requestId: normalizedRequestId,
+        status: 'In Progress',
+      },
+      false,
+    );
   };
 
   const showStatusAccordion = Boolean(header?.title);
@@ -184,7 +200,7 @@ export function ClientJobUpdatesPanel({
                   </Text>
                 </View>
               </TouchableOpacity>
-              {provider.phoneNumber ? (
+              {normalizedRequestId ? (
                 <TouchableOpacity
                   activeOpacity={0.85}
                   onPress={handlePressCall}

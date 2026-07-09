@@ -217,7 +217,7 @@ export default function LocationSearchModal({ visible, onClose, onLocationSelect
 
   return (
     <>
-      <AnimatedModal visible={visible} onClose={onClose} animationType="slide">
+      <AnimatedModal visible={visible} onClose={onClose} animationType="slide" minHeightPercent={58}>
         <View style={styles.container}>
           {/* Header */}
           <View style={styles.header}>
@@ -226,13 +226,17 @@ export default function LocationSearchModal({ visible, onClose, onLocationSelect
               onPress={onClose}
               style={styles.closeButton}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Close"
             >
               <X size={24} color={Colors.textPrimary} />
             </TouchableOpacity>
           </View>
 
           <ScrollView
+            style={styles.scrollView}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
             contentContainerStyle={styles.scrollContent}
           >
             {/* Search Input */}
@@ -343,27 +347,33 @@ export default function LocationSearchModal({ visible, onClose, onLocationSelect
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    width: '100%',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: Spacing.xl,
+    marginBottom: Spacing.lg,
   },
   headerTitle: {
     fontSize: 20,
     fontFamily: 'Poppins-Bold',
     color: Colors.textPrimary,
     flex: 1,
+    marginRight: Spacing.sm,
   },
   closeButton: {
     width: MIN_TOUCH_TARGET,
-height: MIN_TOUCH_TARGET,
+    height: MIN_TOUCH_TARGET,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  scrollView: {
+    flex: 1,
+  },
   scrollContent: {
     paddingBottom: Spacing.md,
+    flexGrow: 1,
   },
   searchContainer: {
     flexDirection: 'row',
@@ -477,6 +487,9 @@ height: MIN_TOUCH_TARGET,
     lineHeight: 18,
   },
   actions: {
-    marginTop: Spacing.lg,
+    marginTop: 'auto',
+    paddingTop: Spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
   },
 });

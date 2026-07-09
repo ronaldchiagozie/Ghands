@@ -1,6 +1,8 @@
 import { haptics } from '@/hooks/useHaptics';
+import { useToast } from '@/hooks/useToast';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { runSpring, runTiming } from '@/lib/motion';
+import { buildAiSuggestionCopyText, copyTextToClipboard } from '@/utils/clipboard';
 import { Copy, Maximize2, Pencil } from 'lucide-react-native';
 import React, { useEffect, useRef } from 'react';
 import { Animated, Pressable, Text, View } from 'react-native';
@@ -19,6 +21,7 @@ export default function AiSuggestionCard({
   visible,
   onUseDraft,
 }: AiSuggestionCardProps) {
+  const { showSuccess, showError } = useToast();
   const reducedMotion = useReducedMotion();
   const opacity = useRef(new Animated.Value(reducedMotion || visible ? 1 : 0)).current;
   const translateY = useRef(new Animated.Value(reducedMotion || visible ? 0 : 40)).current;
@@ -51,6 +54,23 @@ export default function AiSuggestionCard({
       useNativeDriver: true,
     });
   }, [opacity, reducedMotion, translateY, visible]);
+
+  const handleCopy = async () => {
+    haptics.light();
+    const copied = await copyTextToClipboard(
+      buildAiSuggestionCopyText({
+        title: suggestion.title,
+        body: suggestion.body,
+        previewLabel: suggestion.previewLabel,
+        previewValue: suggestion.previewValue,
+      }),
+    );
+    if (copied) {
+      showSuccess('Copied to clipboard');
+    } else {
+      showError('Could not copy suggestion');
+    }
+  };
 
   if (!visible) return null;
 
@@ -189,7 +209,7 @@ export default function AiSuggestionCard({
         }}
       >
         <Pressable
-          onPress={() => haptics.light()}
+          onPress={() => void handleCopy()}
           accessibilityRole="button"
           accessibilityLabel="Copy suggestion"
           hitSlop={8}

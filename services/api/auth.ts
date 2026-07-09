@@ -28,6 +28,8 @@ export const authService = {
       }
       await authServiceInstance.setAuthToken(token);
       await cacheDevAuthTokenForRole('client', token);
+      const { schedulePushSyncAfterAuth } = await import('@/utils/pushNotifications');
+      schedulePushSyncAfterAuth();
       if (!userId && token.split('.').length === 3) {
         const extracted = extractUserIdFromToken(token);
         if (extracted) await authServiceInstance.setUserId(extracted);
@@ -51,6 +53,8 @@ export const authService = {
       const companyId = companyData?.id || companyData?.companyId || (response as any)?.id;
       if (!token) throw new Error('Signup failed: No token received from server.');
       await authServiceInstance.setAuthToken(token);
+      const { schedulePushSyncAfterAuth } = await import('@/utils/pushNotifications');
+      schedulePushSyncAfterAuth();
       let finalCompanyId: number | undefined = undefined;
       if (companyId) {
         finalCompanyId = typeof companyId === 'number' ? companyId : parseInt(companyId.toString(), 10);
@@ -93,6 +97,8 @@ export const authService = {
       }
       await authServiceInstance.setAuthToken(token);
       await cacheDevAuthTokenForRole('client', token);
+      const { schedulePushSyncAfterAuth } = await import('@/utils/pushNotifications');
+      schedulePushSyncAfterAuth();
       if (!id) {
         const extracted = extractUserIdFromToken(token);
         if (extracted) await authServiceInstance.setUserId(extracted);

@@ -207,6 +207,7 @@ class ApiClient {
         }
         return jsonData;
       } catch (error) {
+        if (error instanceof AuthError) throw error;
         const isNetworkErr = this.isNetworkError(error);
         if (isNetworkErr && attempt < retries) {
           await this.sleep(retryDelay * Math.pow(2, attempt));

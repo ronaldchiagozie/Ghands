@@ -4,6 +4,7 @@ import {
 } from '@/components/ai/aiAssistantTheme';
 import { haptics } from '@/hooks/useHaptics';
 import type { AiConversationSummary } from '@/services/api';
+import { applyDefaultStatusBar } from '@/utils/statusBar';
 import { MessageSquare, Plus } from 'lucide-react-native';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -176,6 +177,12 @@ export default function AiConversationDrawer({
     });
   }, [slideProgress, visible]);
 
+  useEffect(() => {
+    if (!modalVisible) {
+      applyDefaultStatusBar();
+    }
+  }, [modalVisible]);
+
   const handleDelete = (conversation: AiConversationSummary) => {
     haptics.light();
     Alert.alert(
@@ -200,7 +207,6 @@ export default function AiConversationDrawer({
       transparent
       animationType="none"
       onRequestClose={onClose}
-      statusBarTranslucent
     >
       <View style={styles.shell} pointerEvents="box-none">
         <Animated.View
