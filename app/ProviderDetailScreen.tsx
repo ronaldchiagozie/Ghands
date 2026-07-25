@@ -2,6 +2,7 @@ import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { BorderRadius, Colors, Fonts, Spacing } from '@/lib/designSystem';
 import { providerService } from '@/services/api';
 import { formatSkillLabel } from '@/utils/formatSkillLabel';
+import { buildReviewerDisplayName, reviewAvatarUrl } from '@/utils/reviewerDisplayName';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MapPin, Star } from 'lucide-react-native';
@@ -71,47 +72,6 @@ function cleanNamePart(value: unknown): string | null {
   const t = String(value).trim();
   if (!t || /^null$/i.test(t) || /^undefined$/i.test(t)) return null;
   return t;
-}
-
-function buildReviewerDisplayName(r: Record<string, any>): string {
-  const direct = cleanNamePart(r.reviewerName ?? r.reviewer?.name);
-  if (direct) return direct;
-
-  const fn = cleanNamePart(
-    r.firstName ?? r.reviewer?.firstName ?? r.user?.firstName ?? r.client?.firstName ?? r.customer?.firstName
-  );
-  const ln = cleanNamePart(
-    r.lastName ?? r.reviewer?.lastName ?? r.user?.lastName ?? r.client?.lastName ?? r.customer?.lastName
-  );
-  const joined = [fn, ln].filter(Boolean).join(' ').trim();
-  if (joined) return joined;
-
-  const full = cleanNamePart(
-    r.user?.name ??
-      r.client?.name ??
-      r.customerName ??
-      r.author ??
-      r.authorName ??
-      r.name
-  );
-  if (full) return full;
-
-  return 'Client';
-}
-
-function reviewAvatarUrl(r: Record<string, any>): string | null {
-  const candidates = [
-    r.reviewerImage,
-    r.reviewer?.image,
-    r.user?.image,
-    r.user?.avatar,
-    r.user?.profileImage,
-    r.client?.image,
-  ];
-  for (const c of candidates) {
-    if (typeof c === 'string' && /^https?:\/\//i.test(c.trim())) return c.trim();
-  }
-  return null;
 }
 
 function mapApiReviewToUi(r: any, index: number): Review {

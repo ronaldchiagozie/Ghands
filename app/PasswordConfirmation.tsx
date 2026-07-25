@@ -1,6 +1,9 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { useRouter } from 'expo-router';
+import { Spacing, Colors } from '@/lib/designSystem';
+import { passwordResetService } from '@/services/api';
+import { getSpecificErrorMessage } from '@/utils/errorMessages';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Lock } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
@@ -8,10 +11,15 @@ import { AuthButton } from '../components/AuthButton';
 import { InputField } from '../components/InputField';
 import { useToast } from '../hooks/useToast';
 import Toast from '../components/Toast';
-import { Spacing, Colors } from '@/lib/designSystem';
 
 export default function PasswordConfirmationScreen() {
   const router = useRouter();
+  const { email: emailParam, otp: otpParam } = useLocalSearchParams<{
+    email?: string;
+    otp?: string;
+  }>();
+  const email = typeof emailParam === 'string' ? emailParam.trim().toLowerCase() : '';
+  const otp = typeof otpParam === 'string' ? otpParam.trim() : '';
   const { toast, showError, showSuccess, hideToast } = useToast();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -37,10 +45,19 @@ export default function PasswordConfirmationScreen() {
     setIsLoading(true);
 
     try {
-      // Simulate API call to reset password
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      if (!email || !otp) {
+        showError('Session expired. Please start reset again.');
+        router.replace('/ResetPassword');
+        return;
+      }
 
-      // Show success message
+      await passwordResetService.resetPassword({
+        email,
+        otp,
+        newPassword: password,
+        confirmPassword,
+      });
+
       showSuccess('Password reset successfully! Redirecting to login...');
 
       // Navigate to login screen after a short delay
@@ -48,7 +65,7 @@ export default function PasswordConfirmationScreen() {
         router.replace('/LoginScreen');
       }, 2000);
     } catch (error) {
-      showError('Failed to reset password. Please try again.');
+      showError(getSpecificErrorMessage(error, 'Failed to reset password. Please try again.'));
     } finally {
       setIsLoading(false);
     }

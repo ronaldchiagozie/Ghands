@@ -1,14 +1,15 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { ScreenHeader } from '@/components/ScreenHeader';
+import { Button } from '@/components/ui/Button';
 import Toast from '@/components/Toast';
 import { WalletPinInput } from '@/components/WalletPinInput';
 import { haptics } from '@/hooks/useHaptics';
 import { useToast } from '@/hooks/useToast';
-import { BorderRadius, Colors } from '@/lib/designSystem';
+import { BorderRadius, Colors, Spacing } from '@/lib/designSystem';
 import { walletService } from '@/services/api';
 import { getSpecificErrorMessage } from '@/utils/errorMessages';
 import { navigateBack, NAV_FALLBACK } from '@/utils/navigation';
 import { applyDefaultStatusBar } from '@/utils/statusBar';
-import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { CheckCircle, Lock, RefreshCw, Wallet, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -287,26 +288,19 @@ export default function ConfirmWalletPaymentScreen() {
   const stepMessage = stepMessages[paymentStep];
 
   return (
-    <SafeAreaWrapper>
-      <View className="flex-row items-center px-4 py-3 border-b border-gray-100" style={{ paddingTop: 20 }}>
-        <TouchableOpacity
-          onPress={() => {
-            haptics.light();
-            navigateBack(router, NAV_FALLBACK.clientJobs);
-          }}
-          activeOpacity={0.85}
-        >
-          <Ionicons name="arrow-back" size={24} color="#000000" />
-        </TouchableOpacity>
-        <Text className="text-lg font-bold text-black flex-1 text-center" style={{ fontFamily: 'Poppins-Bold' }}>
-          Pay from Wallet
-        </Text>
-        <View style={{ width: 24 }} />
-      </View>
+    <SafeAreaWrapper backgroundColor={Colors.backgroundLight}>
+      <ScreenHeader
+        title="Pay from Wallet"
+        onBack={() => {
+          haptics.light();
+          navigateBack(router, NAV_FALLBACK.clientJobs);
+        }}
+        backgroundColor={Colors.backgroundLight}
+      />
 
       <ScrollView
-        className="flex-1 px-4"
-        contentContainerStyle={{ paddingBottom: 32 }}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingHorizontal: Spacing.lg, paddingBottom: 32 }}
         showsVerticalScrollIndicator={false}
       >
         {/* Error banner */}
@@ -352,47 +346,54 @@ export default function ConfirmWalletPaymentScreen() {
         {/* Balance & amount card */}
         <View
           style={{
-            backgroundColor: '#0a0a0a',
-            borderRadius: 24,
-            padding: 20,
-            marginTop: 16,
-            marginBottom: 18,
+            backgroundColor: '#1a2414',
+            borderRadius: BorderRadius.xl,
+            padding: 22,
+            marginTop: 8,
+            marginBottom: 20,
             overflow: 'hidden',
             borderWidth: 1,
-            borderColor: 'rgba(255, 255, 255, 0.08)',
-            shadowColor: '#101828',
-            shadowOffset: { width: 0, height: 10 },
-            shadowOpacity: 0.16,
-            shadowRadius: 18,
-            elevation: 0.76,
+            borderColor: 'rgba(79, 103, 57, 0.35)',
           }}
         >
           <View
             style={{
               position: 'absolute',
-              top: -52,
-              right: -52,
-              width: 160,
-              height: 160,
-              borderRadius: 80,
+              top: -40,
+              right: -30,
+              width: 140,
+              height: 140,
+              borderRadius: 70,
               backgroundColor: Colors.accent,
-              opacity: 0.14,
+              opacity: 0.12,
+            }}
+          />
+          <View
+            style={{
+              position: 'absolute',
+              bottom: -60,
+              left: -40,
+              width: 120,
+              height: 120,
+              borderRadius: 60,
+              backgroundColor: Colors.accent,
+              opacity: 0.08,
             }}
           />
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 18 }}>
             <View
               style={{
-                width: 46,
-                height: 46,
-                borderRadius: 23,
-                backgroundColor: 'rgba(202, 255, 51, 0.18)',
+                width: 48,
+                height: 48,
+                borderRadius: 24,
+                backgroundColor: 'rgba(79, 103, 57, 0.45)',
                 alignItems: 'center',
                 justifyContent: 'center',
                 borderWidth: 1,
-                borderColor: 'rgba(202, 255, 51, 0.28)',
+                borderColor: 'rgba(202, 255, 51, 0.25)',
               }}
             >
-              <Wallet size={23} color={Colors.accent} />
+              <Wallet size={24} color={Colors.accent} />
             </View>
             <View style={{ marginLeft: 16, flex: 1 }}>
               <Text style={{ fontSize: 12, fontFamily: 'Poppins-SemiBold', color: 'rgba(255,255,255,0.68)', letterSpacing: 0.6, textTransform: 'uppercase' }}>
@@ -411,17 +412,43 @@ export default function ConfirmWalletPaymentScreen() {
             <Text style={{ fontSize: 12, fontFamily: 'Poppins-SemiBold', color: 'rgba(255,255,255,0.68)', marginBottom: 4, letterSpacing: 0.6, textTransform: 'uppercase' }}>
               Amount to pay
             </Text>
-            <Text style={{ fontSize: 32, lineHeight: 40, fontFamily: 'Poppins-Bold', color: Colors.white, letterSpacing: -0.9 }}>
+            <Text style={{ fontSize: 34, lineHeight: 42, fontFamily: 'Poppins-Bold', color: Colors.white, letterSpacing: -1 }}>
               ₦{amount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </Text>
+            {!hasEnoughBalance && !isLoadingBalance && amount > 0 ? (
+              <Text
+                style={{
+                  marginTop: 6,
+                  fontSize: 12,
+                  fontFamily: 'Poppins-Medium',
+                  color: '#FCA5A5',
+                }}
+              >
+                Short ₦{Math.max(0, amount - balance).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </Text>
+            ) : null}
             <View
               style={{
-                marginTop: 14,
-                padding: 12,
-                borderRadius: 14,
-                backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                marginTop: 16,
+                padding: 14,
+                borderRadius: BorderRadius.lg,
+                backgroundColor: 'rgba(0, 0, 0, 0.22)',
+                gap: 10,
               }}
             >
+              {params.providerName ? (
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
+                  <Text style={{ fontSize: 12, fontFamily: 'Poppins-Medium', color: 'rgba(255,255,255,0.62)' }}>
+                    Provider
+                  </Text>
+                  <Text
+                    style={{ flex: 1, textAlign: 'right', fontSize: 12, fontFamily: 'Poppins-SemiBold', color: Colors.white }}
+                    numberOfLines={1}
+                  >
+                    {params.providerName}
+                  </Text>
+                </View>
+              ) : null}
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
                 <Text style={{ fontSize: 12, fontFamily: 'Poppins-Medium', color: 'rgba(255,255,255,0.62)' }}>
                   Payment type
@@ -481,26 +508,38 @@ export default function ConfirmWalletPaymentScreen() {
 
         {/* Pay Now - only when sufficient balance */}
         {!isLoadingBalance && hasEnoughBalance && (
-          <View style={{ marginTop: 8 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-              <Lock size={16} color={Colors.textSecondaryDark} />
-              <Text style={{ fontSize: 14, fontFamily: 'Poppins-Medium', color: Colors.textSecondaryDark, marginLeft: 8 }}>
-                Secure payment. This amount will be deducted from your wallet.
-              </Text>
-            </View>
-            <TouchableOpacity
-              onPress={handlePayNow}
+          <View style={{ marginTop: 4 }}>
+            <View
               style={{
-                backgroundColor: Colors.black,
-                borderRadius: 12,
-                paddingVertical: 16,
-                alignItems: 'center',
+                flexDirection: 'row',
+                alignItems: 'flex-start',
+                justifyContent: 'center',
+                marginBottom: Spacing.lg,
+                paddingHorizontal: 8,
               }}
             >
-              <Text style={{ fontSize: 16, fontFamily: 'Poppins-SemiBold', color: Colors.white }}>
-                Pay ₦{amount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Now
+              <Lock size={16} color={Colors.textMuted} style={{ marginTop: 2 }} />
+              <Text
+                style={{
+                  flex: 1,
+                  fontSize: 13,
+                  fontFamily: 'Poppins-Regular',
+                  color: Colors.textSecondaryDark,
+                  marginLeft: 8,
+                  lineHeight: 19,
+                  textAlign: 'center',
+                }}
+              >
+                Secure payment. This amount will be deducted from your wallet after you enter your PIN.
               </Text>
-            </TouchableOpacity>
+            </View>
+            <Button
+              title={`Pay ₦${amount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} now`}
+              onPress={handlePayNow}
+              variant="primary"
+              size="large"
+              fullWidth
+            />
           </View>
         )}
       </ScrollView>

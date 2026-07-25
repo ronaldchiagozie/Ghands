@@ -12,6 +12,7 @@ import {
   providerHomeSurfacePadding,
 } from '@/lib/providerSurfaceStyles';
 import { walletService } from '@/services/api';
+import { openClientReceipt } from '@/utils/receiptNavigation';
 import { isCancelledWalletTransaction, mapWalletTransactionStatus } from '@/utils/walletTransactions';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { CheckCircle, Clock, Filter, Receipt, XCircle } from 'lucide-react-native';

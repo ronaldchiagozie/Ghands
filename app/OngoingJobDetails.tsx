@@ -1,4 +1,5 @@
 
+import ConfirmModal from '@/components/ConfirmModal';
 import { ClientJobUpdatesPanel } from '@/components/client/ClientJobUpdatesPanel';
 import {
   DestructiveButton,
@@ -9,6 +10,7 @@ import {
 import { type JobProgressStep } from '@/components/JobProgressTimeline';
 import { JobDetailsContentSkeleton, JobDetailsQuotationsTabSkeleton } from '@/components/LoadingSkeleton';
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import Toast from '@/components/Toast';
 import { haptics } from '@/hooks/useHaptics';
 import { useCurrentUserProfile } from '@/hooks/useProfile';
 import { useToast } from '@/hooks/useToast';
@@ -198,7 +200,7 @@ export default function OngoingJobDetails() {
     fromBooking?: string;
     tab?: string;
   }>();
-  const { toast, showError, showSuccess, showWarning, hideToast } = useToast();
+  const { toast, showError, showSuccess, showWarning, showInfo, hideToast } = useToast();
   const { data: currentUserProfile } = useCurrentUserProfile();
   const clientIdentity = useMemo(
     () => ({
@@ -239,6 +241,8 @@ export default function OngoingJobDetails() {
   const [isSelectingProvider, setIsSelectingProvider] = useState(false);
   const [selectionCountdown, setSelectionCountdown] = useState<number | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [declineVisitModalVisible, setDeclineVisitModalVisible] = useState(false);
+  const [isDecliningVisit, setIsDecliningVisit] = useState(false);
 
   const cameFromPaymentSuccess = params.paymentStatus === 'success';
   const cameFromBooking = params.fromBooking === '1';
@@ -470,8 +474,8 @@ export default function OngoingJobDetails() {
         !hasQuotationSent && visitOccurred && !visitDeclined && !visitPaid && visitFeeText
           ? `${inspectionVisual.description.replace(/\.$/, '')}. Fee: ${visitFeeText}.`
           : inspectionVisual.description,
-      showPayLogistics: canDeclineVisit && hasPayableVisitFee,
-      showRejectVisit: canDeclineVisit,
+      showPayLogistics: !visitDeclined && canDeclineVisit && hasPayableVisitFee,
+      showRejectVisit: !visitDeclined && canDeclineVisit,
       logisticsCost: visitLogisticsCost,
     });
 
@@ -819,16 +823,16 @@ export default function OngoingJobDetails() {
         return {
           title: 'Visit declined',
           subtitle: `${getVisitDeclinedDescription(vr, 'client')} Provider can request a new visit or send a quotation.`,
-          statusPill: 'Accepted',
-          pillBg: JOB_TIMELINE.completeSoft,
-          pillText: JOB_TIMELINE.sageChipText,
+          statusPill: 'Declined',
+          pillBg: JOB_TIMELINE.declinedSoft,
+          pillText: JOB_TIMELINE.declinedChipText,
           timestamp: acceptedAt ? formatTimeAgo(acceptedAt) : null,
           provider: headerProvider,
         };
       }
 
       const visitSent =
-        isProviderVisitRequestSent(vr) || vPaid || isVisitCompletedOrPaid(vr) || hasVR;
+        isProviderVisitRequestSent(vr) || vPaid || isVisitCompletedOrPaid(vr);
 
       if (visitSent) {
         const awaitingQuote =
@@ -1235,8 +1239,9 @@ export default function OngoingJobDetails() {
 
   const performDeclineVisit = useCallback(async () => {
     const rid = Number(params.requestId);
-    if (isNaN(rid)) return;
+    if (isNaN(rid) || isDecliningVisit) return;
 
+    setIsDecliningVisit(true);
     try {
       const declineResponse = await serviceRequestService.declineVisit(rid);
       if (__DEV__) {
@@ -1246,7 +1251,16 @@ export default function OngoingJobDetails() {
         });
       }
 
-      const declinedVisit = patchVisitDeclined((request as any)?.visitRequest, 'client');
+      const visitStatusFromApi =
+        typeof declineResponse?.visitStatus === 'string' ? declineResponse.visitStatus : undefined;
+      const declinedVisit = patchVisitDeclined(
+        {
+          ...((request as any)?.visitRequest || {}),
+          ...(visitStatusFromApi ? { logisticsStatus: visitStatusFromApi } : {}),
+        },
+        'client',
+      );
+
       await saveCachedVisitRequest(rid, declinedVisit);
       setRequest((prev) => {
         if (!prev) return prev;
@@ -1257,35 +1271,56 @@ export default function OngoingJobDetails() {
       });
 
       haptics.success();
-      showSuccess('Visit declined. Your job is still active, and the provider can send a quotation.');
+      showSuccess(
+        declineResponse?.message ||
+          'Visit declined. Your job is still active, and the provider can send a quotation.',
+      );
+      setDeclineVisitModalVisible(false);
+
       await loadRequestData(true);
+      setRequest((prev) => {
+        if (!prev) return prev;
+        if (isVisitDeclined((prev as any)?.visitRequest)) {
+          return healJobStatusAfterVisitDecline(prev);
+        }
+        return healJobStatusAfterVisitDecline({
+          ...prev,
+          visitRequest: declinedVisit,
+        } as ServiceRequest);
+      });
     } catch (e: any) {
       if (e instanceof AuthError) {
         await handleAuthErrorRedirect(router);
         return;
       }
       haptics.error();
-      showError(getSpecificErrorMessage(e, 'decline_visit') ?? e?.message ?? 'Failed to decline visit.');
+      const raw = (e?.message || e?.details?.data?.error || '').toString().toLowerCase();
+      const noVisitRequested = raw.includes('no visit') && raw.includes('requested');
+      const msg = getSpecificErrorMessage(e, 'decline_visit') ?? e?.message ?? 'Failed to decline visit.';
+      if (noVisitRequested) {
+        showInfo(msg);
+        setDeclineVisitModalVisible(false);
+        await loadRequestData(true);
+      } else {
+        showError(msg);
+      }
+    } finally {
+      setIsDecliningVisit(false);
     }
-  }, [params.requestId, request, loadRequestData, router, showError, showSuccess]);
+  }, [
+    params.requestId,
+    request,
+    loadRequestData,
+    router,
+    showError,
+    showSuccess,
+    isDecliningVisit,
+  ]);
 
   const confirmDeclineVisit = useCallback(() => {
     haptics.light();
-    Alert.alert(
-      'Decline visit?',
-      'Only the site visit is cancelled, not your job. The provider can still send a quotation.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Decline visit',
-          style: 'destructive',
-          onPress: () => {
-            void performDeclineVisit();
-          },
-        },
-      ]
-    );
-  }, [performDeclineVisit]);
+    setDeclineVisitModalVisible(true);
+  }, []);
 
   declineVisitActionRef.current = confirmDeclineVisit;
 
@@ -2172,6 +2207,29 @@ export default function OngoingJobDetails() {
           </View>
         )}
       </View>
+      <ConfirmModal
+        visible={declineVisitModalVisible}
+        title="Decline visit?"
+        message="Only the site visit is cancelled, not your job. The provider can still send a quotation."
+        cancelLabel="Keep visit"
+        confirmLabel="Decline visit"
+        confirmBackgroundColor={Colors.error}
+        loading={isDecliningVisit}
+        onCancel={() => {
+          if (isDecliningVisit) return;
+          haptics.light();
+          setDeclineVisitModalVisible(false);
+        }}
+        onConfirm={() => {
+          void performDeclineVisit();
+        }}
+      />
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        visible={toast.visible}
+        onClose={hideToast}
+      />
     </SafeAreaWrapper>
   );
 }

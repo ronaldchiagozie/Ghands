@@ -1,5 +1,10 @@
-import { Ionicons } from '@expo/vector-icons';
+import {
+  JobTabIconCompleted,
+  JobTabIconOngoing,
+  JobTabIconPending,
+} from '@/components/jobs/JobStatusIcons';
 import { useRouter } from 'expo-router';
+import { navigateToJob } from '@/utils/navigation';
 import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { SURFACE_STYLES } from '@/lib/surfaceStyles';
@@ -32,6 +37,15 @@ const JobActivityCardComponent = ({ activity }: JobActivityCardProps) => {
   const theme = getJobDisplayStatusBadge(displayStatus);
   const isAwaitingQuote = (activity.priceRange ?? '').toLowerCase().includes('awaiting');
 
+  const statusIcon =
+    displayStatus === 'Completed' ? (
+      <JobTabIconCompleted size={17} color={Colors.accent} />
+    ) : displayStatus === 'Pending' ? (
+      <JobTabIconPending size={17} color={Colors.accent} />
+    ) : (
+      <JobTabIconOngoing size={17} color={Colors.accent} />
+    );
+
   const handlePress = () => {
     const requestId = parseInt(activity.id, 10);
     if (isNaN(requestId)) return;
@@ -42,10 +56,7 @@ const JobActivityCardComponent = ({ activity }: JobActivityCardProps) => {
         params: { requestId: activity.id },
       } as any);
     } else {
-      router.push({
-        pathname: '/OngoingJobDetails',
-        params: { requestId: activity.id },
-      } as any);
+      navigateToJob(router, { requestId: activity.id });
     }
   };
 
@@ -62,7 +73,7 @@ const JobActivityCardComponent = ({ activity }: JobActivityCardProps) => {
             className="w-9 h-9 rounded-full items-center justify-center mr-3"
             style={{ backgroundColor: Colors.successLight }}
           >
-            <Ionicons name="construct" size={17} color={Colors.accent} />
+            {statusIcon}
           </View>
           <View style={{ flex: 1 }}>
             <Text

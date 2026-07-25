@@ -1,14 +1,20 @@
 import { isAuthError } from '@/utils/errors';
-import { isInAuthTransition } from '@/utils/authNavigationGuard';
+import { isInAuthTransition, redirectToAuthScreen } from '@/utils/authNavigationGuard';
 import { expireAuthSession } from '@/utils/enforceAuthSession';
 
 let installed = false;
+let routerRef: { replace: (href: any) => void } | null = null;
 
 /**
  * Catches AuthError promise rejections that React error boundaries cannot reach.
- * Clears session once; root layout listener performs navigation.
+ * Clears session and navigates to login (no error toast).
  */
-export function installAuthRejectionHandler(): () => void {
+export function installAuthRejectionHandler(
+  router?: { replace: (href: any) => void } | null
+): () => void {
+  if (router) {
+    routerRef = router;
+  }
   if (installed) {
     return () => {};
   }
@@ -19,6 +25,9 @@ export function installAuthRejectionHandler(): () => void {
     void (async () => {
       if (isInAuthTransition()) return;
       await expireAuthSession();
+      if (routerRef) {
+        await redirectToAuthScreen(routerRef, { clearSession: false, force: true });
+      }
     })();
   };
 

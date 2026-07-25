@@ -4,6 +4,12 @@ import { AppState, Platform, type AppStateStatus } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { notificationService } from '@/services/api';
 import { authService } from '@/services/authService';
+import {
+  isMessageNotificationType,
+  mergeMessageNotificationMetadata,
+  shouldShowMessageNotification,
+  type MessageNotificationPerspective,
+} from '@/utils/messageNotificationCopy';
 
 export const PUSH_TOKEN_STORAGE_KEY = '@ghands:push_token';
 
@@ -39,15 +45,74 @@ export function configureNotificationHandler(Notifications: NotificationsModule)
   if (notificationHandlerConfigured) return;
   notificationHandlerConfigured = true;
 
+  const defaultBehavior = {
+    shouldShowAlert: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+  };
+
+  async function loadMessagePerspective(): Promise<MessageNotificationPerspective> {
+    const role = await AsyncStorage.getItem('@ghands:user_role');
+    const userRole = role === 'provider' ? 'provider' : 'client';
+    const [currentUserId, currentCompanyId] = await Promise.all([
+      authService.getUserId(),
+      authService.getCompanyId(),
+    ]);
+    return { userRole, currentUserId, currentCompanyId };
+  }
+
   Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldShowBanner: true,
-      shouldShowList: true,
-      shouldPlaySound: true,
-      shouldSetBadge: true,
-    }),
+    handleNotification: async (notification) => {
+      try {
+        const data = notification.request.content.data as Record<string, unknown> | undefined;
+        const type = data?.type ?? data?.notificationType ?? data?.notification_type;
+        if (!isMessageNotificationType(type)) {
+          return defaultBehavior;
+        }
+
+        const perspective = await loadMessagePerspective();
+        perspective.metadata = mergeMessageNotificationMetadata(data);
+        perspective.notificationProviderId = parsePositiveIntFromData(
+          data,
+          ['providerId', 'provider_id'],
+        );
+        perspective.notificationCompanyId = parsePositiveIntFromData(
+          data,
+          ['companyId', 'company_id'],
+        );
+        perspective.bodyText = String(notification.request.content.body ?? '');
+
+        if (!shouldShowMessageNotification(perspective)) {
+          return {
+            ...defaultBehavior,
+            shouldShowAlert: false,
+            shouldShowBanner: false,
+            shouldShowList: false,
+            shouldPlaySound: false,
+          };
+        }
+      } catch {
+        // Fall back to server copy.
+      }
+      return defaultBehavior;
+    },
   });
+}
+
+function parsePositiveIntFromData(
+  data: Record<string, unknown> | undefined,
+  keys: string[],
+): number | null {
+  if (!data) return null;
+  for (const key of keys) {
+    const value = data[key];
+    if (value == null || value === '') continue;
+    const parsed = typeof value === 'number' ? value : parseInt(String(value), 10);
+    if (Number.isFinite(parsed) && parsed > 0) return parsed;
+  }
+  return null;
 }
 
 async function setupAndroidNotificationChannels(Notifications: NotificationsModule): Promise<void> {

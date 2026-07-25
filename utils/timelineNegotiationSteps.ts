@@ -87,6 +87,22 @@ function completedStep(description: string, status = 'Done'): NegotiationStepVis
   };
 }
 
+function declinedStep(description: string): NegotiationStepVisual {
+  return {
+    description,
+    status: 'Declined',
+    isActive: false,
+    isCompleted: false,
+    isDeclined: true,
+    isSkipped: false,
+    accent: JOB_TIMELINE.declinedSoft,
+    dotColor: JOB_TIMELINE.declinedDot,
+    lineColor: JOB_TIMELINE.railMuted,
+    showRequestVisit: false,
+    canEdit: false,
+  };
+}
+
 /** Inspection (visit) and quotation are parallel options — only one should be "active" at a time. */
 export function getInspectionNegotiationStep(input: {
   audience: Audience;
@@ -118,6 +134,18 @@ export function getInspectionNegotiationStep(input: {
     return pendingStep(audience === 'provider' ? 'Accept before taking action.' : 'Waiting for a provider.');
   }
 
+  if (visitDeclined) {
+    const declineNote = getVisitDeclinedDescription(visitRequest, audience);
+    const suffix = quotationSent
+      ? audience === 'client'
+        ? ' Quotation received.'
+        : ' Quotation sent.'
+      : audience === 'provider'
+        ? ' Request a new visit or send a quote.'
+        : ' Provider can request again or send a quote.';
+    return declinedStep(`${declineNote}${suffix}`);
+  }
+
   if (quotationSent && visitHappened) {
     if (visitPaid || isVisitCompletedOrPaid(visitRequest)) {
       const schedule =
@@ -143,32 +171,19 @@ export function getInspectionNegotiationStep(input: {
     return skippedStep(DIRECT_QUOTATION_SKIP_NOTE);
   }
 
-  if (visitDeclined && !quotationSent) {
-    const declineNote = getVisitDeclinedDescription(visitRequest, audience);
-    return pendingStep(
-      audience === 'provider'
-        ? `${declineNote} Request a new visit or send a quote.`
-        : `${declineNote} Provider can request again or send a quote.`
-    );
-  }
-
-  if (visitDeclined && quotationSent) {
-    return skippedStep(DIRECT_QUOTATION_SKIP_NOTE);
-  }
-
   if (visitHappened || hasVisitRequested) {
     if (visitPaid || isVisitPaid(visitRequest)) {
       return completedStep(`Visit confirmed for ${visitScheduleText}.`);
     }
     return activeStep(
       `Visit requested for ${visitScheduleText}.`,
-      { status: audience === 'client' ? 'Active' : 'Waiting' }
+      { status: audience === 'client' ? 'Active' : 'Waiting' },
     );
   }
 
   return activeStep(
     audience === 'provider' ? 'Request a visit or send a quote directly.' : 'Waiting for inspection or quotation.',
-    { showRequestVisit: audience === 'provider' }
+    { showRequestVisit: audience === 'provider' },
   );
 }
 
@@ -206,14 +221,16 @@ export function getQuotationNegotiationStep(input: {
     );
   }
 
-  if (visitBlocksQuote) {
-    return pendingStep('Visit payment comes first.');
+  if (visitDeclined && !quotationSent) {
+    return activeStep(
+      audience === 'client'
+        ? 'Waiting for provider to send a quotation.'
+        : 'Send a quote — visit was declined.',
+    );
   }
 
-  if (visitDeclined && !quotationSent) {
-    return pendingStep(
-      audience === 'provider' ? 'Send a quote when ready.' : 'Waiting for quotation.'
-    );
+  if (visitBlocksQuote) {
+    return pendingStep('Visit payment comes first.');
   }
 
   if (visitHappened && visitPaid) {

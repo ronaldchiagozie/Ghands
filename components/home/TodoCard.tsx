@@ -6,11 +6,17 @@ export type TodoCardConfig = {
   id: string;
   title: string;
   iconName: keyof typeof Ionicons.glyphMap;
+  onPress?: () => void;
 };
 
-const TodoCardComponent = ({ title, iconName }: TodoCardConfig) => {
+const TodoCardComponent = ({ title, iconName, onPress }: TodoCardConfig) => {
   return (
-    <TouchableOpacity className="w-40 bg-gray-100 py-4 pl-2 pr-4 rounded-xl mr-3">
+    <TouchableOpacity
+      className="w-40 bg-gray-100 py-4 pl-2 pr-4 rounded-xl mr-3"
+      onPress={onPress}
+      activeOpacity={onPress ? 0.85 : 1}
+      disabled={!onPress}
+    >
       <View className="flex">
         <View className="w-12 h-12 rounded-full  items-center justify-center">
           <Ionicons name={iconName} size={20} color="#1F2937"/>

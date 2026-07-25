@@ -14,6 +14,13 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, Modal, Platform, Pressable, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { JobHistoryCardSkeleton } from '@/components/LoadingSkeleton';
 import { JobsTabEmptyState } from '@/components/JobsTabEmptyState';
+import {
+  JobMetaIconCalendar,
+  JobMetaIconLocation,
+  JobMetaIconPerson,
+  JobMetaIconQuotes,
+  JobTabIcon,
+} from '@/components/jobs/JobStatusIcons';
 import { useSkeletonGate } from '@/hooks/useSkeletonGate';
 import { BorderRadius, Colors, REFRESH_CONTROL, useTabScrollContentPaddingTop, useTabScreenScrollBottomPadding } from '@/lib/designSystem';
 import { providerListCard } from '@/lib/providerSurfaceStyles';
@@ -33,6 +40,8 @@ import {
   showQuoteCountOnJobCard,
   type JobDisplayStatus,
 } from '@/utils/jobDisplayStatus';
+import { mergeCachedVisitRequest } from '@/utils/visitRequestCache';
+import { healJobStatusAfterVisitDecline } from '@/utils/visitStatus';
 
 type JobStatus = 'Pending' | 'Ongoing' | 'Completed';
 
@@ -120,7 +129,7 @@ const JobListItem = React.memo(function JobListItem({
 
       {showQuoteCountOnJobCard(job.status) && (job.quotationsCount ?? 0) >= 0 && (
         <View className="flex-row items-center gap-3 mt-2">
-          <Ionicons name="document-text-outline" size={16} color={Colors.textMuted} />
+          <JobMetaIconQuotes size={16} color={Colors.textMuted} />
           <Text className="text-sm text-gray-600" style={{ fontFamily: 'Poppins-Regular' }}>
             {job.quotationsCount === 0
               ? 'Awaiting quotes'
@@ -129,19 +138,19 @@ const JobListItem = React.memo(function JobListItem({
         </View>
       )}
       <View className="flex-row items-center gap-3 mt-2">
-        <Ionicons name="person-outline" size={16} color={Colors.textMuted} />
+        <JobMetaIconPerson size={16} color={Colors.textMuted} />
         <Text className="text-sm text-gray-600" style={{ fontFamily: 'Poppins-Regular' }}>
           {job.name}
         </Text>
       </View>
       <View className="flex-row items-center gap-3 mt-2">
-        <Ionicons name="calendar-outline" size={16} color={Colors.textMuted} />
+        <JobMetaIconCalendar size={16} color={Colors.textMuted} />
         <Text className="text-sm text-gray-600" style={{ fontFamily: 'Poppins-Regular' }}>
           {job.time}
         </Text>
       </View>
       <View className="flex-row items-center gap-3 mt-2">
-        <Ionicons name="location-outline" size={16} color={Colors.textMuted} />
+        <JobMetaIconLocation size={16} color={Colors.textMuted} />
         <Text className="text-sm text-gray-600" style={{ fontFamily: 'Poppins-Regular' }}>
           {job.location}
         </Text>
@@ -307,7 +316,15 @@ export default function JobsScreen() {
           } catch {
             // Non-fatal: job row still renders with zero counts
           }
-          return mapRequestToJobItem(request, acceptedProvidersCount, quotations);
+          let requestForStatus = request;
+          try {
+            requestForStatus = healJobStatusAfterVisitDecline(
+              await mergeCachedVisitRequest(request.id, request),
+            );
+          } catch {
+            requestForStatus = request;
+          }
+          return mapRequestToJobItem(requestForStatus, acceptedProvidersCount, quotations);
         })
       );
 
@@ -444,16 +461,24 @@ export default function JobsScreen() {
                   setActiveTab(status);
                 }}
                 activeOpacity={0.8}
+                style={{ alignItems: 'center' }}
               >
-                <Text
-                  className={`text-base ${isActive ? 'text-black' : 'text-gray-500'}`}
-                  style={{ fontFamily: 'Poppins-Medium' }}
-                >
-                  {status}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <JobTabIcon
+                    tab={status}
+                    size={18}
+                    color={isActive ? Colors.accent : Colors.textMuted}
+                  />
+                  <Text
+                    className={`text-base ${isActive ? 'text-black' : 'text-gray-500'}`}
+                    style={{ fontFamily: 'Poppins-Medium' }}
+                  >
+                    {status}
+                  </Text>
+                </View>
                 <View
                   className={`mt-2 h-0.5 rounded-full ${isActive ? 'bg-[#4F6739]' : 'bg-transparent'}`}
-                  style={{ width: 68 }}
+                  style={{ width: 88 }}
                 />
               </TouchableOpacity>
             );

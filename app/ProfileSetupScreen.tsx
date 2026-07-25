@@ -1,11 +1,13 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { Colors } from '@/lib/designSystem';
+import { API_BASE_URL } from '@/lib/apiConfig';
 import { useUserLocation } from '@/hooks/useUserLocation';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { Camera, MapPin, Plus, User } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Animated, Dimensions, Image, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { logClientProfilePhoto, writeLocalClientProfileImageUri } from '@/utils/clientProfilePhoto';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -14,7 +16,6 @@ export default function ProfileSetupScreen() {
   const { location: savedLocation } = useUserLocation();
   const [fullName, setFullName] = useState('');
   const [location, setLocation] = useState('');
-  const [selectedGender, setSelectedGender] = useState<'male' | 'female' | null>(null);
   const [description, setDescription] = useState('');
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -123,7 +124,10 @@ export default function ProfileSetupScreen() {
         type,
       } as any);
 
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://api.example.com'}/upload`, {
+      const uploadUrl = `${API_BASE_URL}/upload`;
+      logClientProfilePhoto('setup_upload_attempt', { uploadUrl });
+
+      const response = await fetch(uploadUrl, {
         method: 'POST',
         body: formData,
         headers: {
@@ -133,12 +137,23 @@ export default function ProfileSetupScreen() {
 
       if (response.ok) {
         const data = await response.json();
-        setProfileImage(data.imageUrl || imageUri);
+        const remoteUrl = data.imageUrl || data.url || data.data?.url;
+        const resolved =
+          typeof remoteUrl === 'string' && remoteUrl.trim() ? remoteUrl : imageUri;
+        logClientProfilePhoto('setup_upload_ok', { status: response.status });
+        setProfileImage(resolved);
+        await writeLocalClientProfileImageUri(resolved);
       } else {
+        logClientProfilePhoto('setup_upload_failed', { status: response.status });
         setProfileImage(imageUri);
+        await writeLocalClientProfileImageUri(imageUri);
       }
     } catch (error) {
+      logClientProfilePhoto('setup_upload_error', {
+        message: error instanceof Error ? error.message : String(error),
+      });
       setProfileImage(imageUri);
+      await writeLocalClientProfileImageUri(imageUri);
     } finally {
       setIsUploading(false);
     }
@@ -154,11 +169,15 @@ export default function ProfileSetupScreen() {
     router.push('/LocationSearchScreen');
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (profileImage?.trim()) {
+      await writeLocalClientProfileImageUri(profileImage);
+      logClientProfilePhoto('setup_save', { savedLocalImage: true });
+    }
     router.replace('/(tabs)/home');
   };
 
-  const isFormValid = fullName.trim()  && location.trim() && selectedGender && description.trim();
+  const isFormValid = fullName.trim() && location.trim() && description.trim();
 
   return (
     <SafeAreaWrapper>
@@ -330,66 +349,6 @@ export default function ProfileSetupScreen() {
             />
           </View>
 
-          
-          <View className="mb-6">
-            <Text 
-              className="text-black text-base mb-3"
-              style={{ 
-                fontFamily: 'Poppins-Medium',
-                fontSize: screenWidth < 375 ? 14 : 16
-              }}
-            >
-              Gender:
-            </Text>
-            <View className="flex-row">
-              <TouchableOpacity
-                onPress={() => setSelectedGender('male')}
-                className={`flex-1 mr-2 border-2 rounded-xl py-3 items-center ${
-                  selectedGender === 'male' 
-                    ? 'border-[#000000] bg-[#000000]' 
-                    : 'border-gray-300 bg-white'
-                }`}
-                activeOpacity={0.8}
-                style={{ minHeight: screenHeight * 0.06 }}
-              >
-                <Text 
-                style={{ 
-                  fontFamily: 'Poppins-Medium',
-                  fontSize: screenWidth < 375 ? 16 : 20
-                }}
-                  className={`${
-                    selectedGender === 'male' ? 'text-white' : 'text-gray-400'
-                  }`}
-                >
-                  Male 
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setSelectedGender('female')}
-                className={`flex-1 ml-2 border-2 rounded-xl py-3 items-center ${
-                  selectedGender === 'female' 
-                    ? 'border-[#000000] bg-[#000000]' 
-                    : 'border-gray-300 bg-white'
-                }`}
-                activeOpacity={0.8}
-                style={{ minHeight: screenHeight * 0.06 }}
-              >
-                <Text 
-                style={{ 
-                  fontFamily: 'Poppins-Medium',
-                  fontSize: screenWidth < 375 ? 16 : 20
-                }}
-                  className={`${
-                    selectedGender === 'female' ? 'text-white' : 'text-gray-400'
-                  }`}
-                >
-                  Female 
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          
           <View className="mb-8">
             <TextInput
               placeholder="Description"

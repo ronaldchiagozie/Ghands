@@ -1,14 +1,15 @@
+import { AI_CHAT_UI, AI_COLORS } from '@/components/ai/aiAssistantTheme';
 import { haptics } from '@/hooks/useHaptics';
 import { useToast } from '@/hooks/useToast';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { runSpring, runTiming } from '@/lib/motion';
 import { buildAiSuggestionCopyText, copyTextToClipboard } from '@/utils/clipboard';
-import { Copy, Maximize2, Pencil } from 'lucide-react-native';
+import { Copy, Lightbulb, Maximize2, Pencil } from 'lucide-react-native';
 import React, { useEffect, useRef } from 'react';
 import { Animated, Pressable, Text, View } from 'react-native';
 import type { AiSuggestion } from './types';
 
-const USE_DRAFT_LIME = '#E4FF5C';
+const S = AI_CHAT_UI.suggestion;
 
 type AiSuggestionCardProps = {
   suggestion: AiSuggestion;
@@ -87,8 +88,10 @@ export default function AiSuggestionCard({
     >
       <View
         style={{
-          backgroundColor: '#FFFFFF',
+          backgroundColor: S.surface,
           borderRadius: 20,
+          borderWidth: 1,
+          borderColor: S.previewBorder,
           paddingHorizontal: 16,
           paddingTop: 14,
           paddingBottom: 14,
@@ -109,41 +112,48 @@ export default function AiSuggestionCard({
         >
           <Text
             style={{
+              flex: 1,
               fontFamily: 'Poppins-Bold',
               fontSize: 16,
-              color: '#111827',
+              color: S.title,
+              marginRight: 8,
             }}
           >
             {suggestion.title}
           </Text>
-          <Maximize2 size={16} color="#111827" strokeWidth={2} />
+          <Maximize2 size={16} color={S.previewLabel} strokeWidth={2} />
         </View>
 
         {suggestion.variant === 'booking' && suggestion.previewLabel ? (
           <View
             style={{
               borderWidth: 1,
-              borderColor: '#E5E7EB',
+              borderColor: S.previewBorder,
               borderRadius: 14,
               padding: 12,
               marginBottom: 12,
+              backgroundColor: S.previewBg,
             }}
           >
-            <Text
-              style={{
-                fontFamily: 'Poppins-SemiBold',
-                fontSize: 13,
-                color: '#111827',
-                marginBottom: 8,
-              }}
-            >
-              💡 {suggestion.previewLabel}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 6 }}>
+              <Lightbulb size={15} color={AI_COLORS.accentInk} strokeWidth={2.2} />
+              <Text
+                style={{
+                  flex: 1,
+                  fontFamily: 'Poppins-SemiBold',
+                  fontSize: 13,
+                  color: S.previewLabel,
+                }}
+              >
+                {suggestion.previewLabel}
+              </Text>
+            </View>
             <Text
               style={{
                 fontFamily: 'Poppins-Regular',
                 fontSize: 13,
-                color: '#374151',
+                lineHeight: 20,
+                color: S.body,
               }}
             >
               {suggestion.previewValue}
@@ -153,19 +163,20 @@ export default function AiSuggestionCard({
           <View
             style={{
               borderWidth: 1,
-              borderColor: '#E5E7EB',
+              borderColor: S.previewBorder,
               borderRadius: 14,
               padding: 14,
               marginBottom: 14,
               minHeight: 108,
+              backgroundColor: S.previewBg,
             }}
           >
             <Text
               style={{
                 fontFamily: 'Poppins-Regular',
-                fontSize: 13,
-                lineHeight: 20,
-                color: '#9CA3AF',
+                fontSize: 14,
+                lineHeight: 22,
+                color: S.body,
               }}
             >
               {suggestion.body}
@@ -181,18 +192,23 @@ export default function AiSuggestionCard({
           accessibilityRole="button"
           accessibilityLabel={suggestion.ctaLabel}
           style={({ pressed }) => ({
-            backgroundColor: '#111827',
+            backgroundColor: S.ctaBg,
             borderRadius: 999,
             paddingVertical: 14,
+            paddingHorizontal: 20,
+            minHeight: 48,
             alignItems: 'center',
+            justifyContent: 'center',
             opacity: pressed ? 0.92 : 1,
           })}
         >
           <Text
             style={{
               fontFamily: 'Poppins-SemiBold',
-              fontSize: 15,
-              color: USE_DRAFT_LIME,
+              fontSize: 16,
+              lineHeight: 22,
+              color: S.ctaText,
+              textAlign: 'center',
             }}
           >
             {suggestion.ctaLabel}
@@ -215,7 +231,7 @@ export default function AiSuggestionCard({
           hitSlop={8}
           style={{ marginRight: 10 }}
         >
-          <Copy size={14} color="rgba(255,255,255,0.55)" />
+          <Copy size={16} color={S.footerIcon} strokeWidth={2} />
         </Pressable>
         <Pressable
           onPress={() => haptics.light()}
@@ -223,7 +239,7 @@ export default function AiSuggestionCard({
           accessibilityLabel="Edit suggestion"
           hitSlop={8}
         >
-          <Pencil size={14} color="rgba(255,255,255,0.55)" />
+          <Pencil size={16} color={S.footerIcon} strokeWidth={2} />
         </Pressable>
       </View>
     </Animated.View>

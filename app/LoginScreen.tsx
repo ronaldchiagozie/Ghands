@@ -13,9 +13,11 @@ import Toast from '../components/Toast';
 import { useToast } from '../hooks/useToast';
 import { getSpecificErrorMessage } from '@/utils/errorMessages';
 import { isValidEmail } from '@/utils/inputFormatting';
+import useOnboarding from '@/hooks/useOnboarding';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { isOnboardingComplete } = useOnboarding();
   const { toast, showError, showSuccess, hideToast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -101,7 +103,11 @@ export default function LoginScreen() {
   };
 
   const handleSignup = () => {
-    router.replace('/SignupScreen');
+    if (isOnboardingComplete) {
+      router.replace('/SignupScreen');
+    } else {
+      router.replace('/onboarding');
+    }
   };
 
   const handleGoogleLogin = () => {

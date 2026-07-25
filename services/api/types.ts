@@ -89,6 +89,22 @@ export interface CompanySignupPayload {
   password: string;
 }
 
+/** Client (book services) company account — POST /api/user/company-signup */
+export interface ClientCompanySignupPayload {
+  companyName: string;
+  companyPhoneNumber: string;
+  companyEmail: string;
+  companyPassword: string;
+}
+
+export interface ClientCompanySignupResponse {
+  id?: number;
+  companyName?: string;
+  companyEmail?: string;
+  companyPhoneNumber?: string;
+  token: string;
+}
+
 export interface CompanySignupResponse {
   id: number;
   companyName: string;

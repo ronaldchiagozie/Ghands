@@ -1,4 +1,5 @@
 import { cacheDevAuthTokenForRole } from '../../utils/devAuthTokens';
+import { setClientAccountType } from '../../utils/clientAccountType';
 import { extractUserIdFromToken } from '../../utils/tokenUtils';
 import { authService as authServiceInstance } from '../authService';
 import { apiClient } from './client';
@@ -9,9 +10,20 @@ import type {
   UserLoginResponse,
   CompanySignupPayload,
   CompanySignupResponse,
+  ClientCompanySignupPayload,
+  ClientCompanySignupResponse,
 } from './types';
 
-export type { UserSignupPayload, UserSignupResponse, UserLoginPayload, UserLoginResponse, CompanySignupPayload, CompanySignupResponse };
+export type {
+  UserSignupPayload,
+  UserSignupResponse,
+  UserLoginPayload,
+  UserLoginResponse,
+  CompanySignupPayload,
+  CompanySignupResponse,
+  ClientCompanySignupPayload,
+  ClientCompanySignupResponse,
+};
 
 export const authService = {
   userSignup: async (payload: UserSignupPayload): Promise<UserSignupResponse> => {
@@ -38,6 +50,55 @@ export const authService = {
     } catch (error: any) {
       throw error;
     }
+  },
+
+  /** Company client — full business details at signup; no individual complete-signup step. */
+  clientCompanySignup: async (
+    payload: ClientCompanySignupPayload,
+  ): Promise<ClientCompanySignupResponse> => {
+    const body = {
+      companyName: payload.companyName.trim(),
+      companyPhoneNumber: payload.companyPhoneNumber.replace(/\D/g, ''),
+      companyEmail: payload.companyEmail.trim().toLowerCase(),
+      companyPassword: payload.companyPassword,
+    };
+    const response = await apiClient.post<any>('/api/user/company-signup', body, {
+      skipAuth: true,
+    });
+    const responseAny = response as any;
+    const data = response.data?.data ?? responseAny.data ?? responseAny;
+    const token =
+      data?.token ?? response.data?.data?.token ?? responseAny.token ?? responseAny.data?.token;
+    const userId = data?.id ?? data?.userId ?? data?.companyId;
+    if (!token) {
+      throw new Error('Signup failed: No token received from server.');
+    }
+    await authServiceInstance.setAuthToken(token);
+    await cacheDevAuthTokenForRole('client', token);
+    const { schedulePushSyncAfterAuth } = await import('@/utils/pushNotifications');
+    schedulePushSyncAfterAuth();
+    if (userId) {
+      await authServiceInstance.setUserId(userId);
+    } else if (token.split('.').length === 3) {
+      const extracted = extractUserIdFromToken(token);
+      if (extracted) await authServiceInstance.setUserId(extracted);
+    }
+    await setClientAccountType('company');
+    const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+    await AsyncStorage.multiSet([
+      ['@ghands:user_role', 'client'],
+      ['@ghands:company_name', body.companyName],
+      ['@ghands:company_email', body.companyEmail],
+      ['@ghands:company_phone', body.companyPhoneNumber],
+      ['@ghands:profile_complete', 'true'],
+    ]);
+    return {
+      id: typeof userId === 'number' ? userId : undefined,
+      companyName: data?.companyName ?? body.companyName,
+      companyEmail: data?.companyEmail ?? body.companyEmail,
+      companyPhoneNumber: data?.companyPhoneNumber ?? body.companyPhoneNumber,
+      token,
+    };
   },
 
   companySignup: async (payload: CompanySignupPayload): Promise<CompanySignupResponse> => {

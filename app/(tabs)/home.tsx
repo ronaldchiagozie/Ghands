@@ -25,8 +25,11 @@ import { getCategoryIcon, resolveCategoryImageSource } from '@/utils/categoryIco
 import { isAuthError } from '@/utils/errors';
 import { isConnectivityOrNetworkError } from '@/utils/isNetworkFailure';
 import { resolveJobDisplayStatus } from '@/utils/jobDisplayStatus';
+import { navigateToClientHomeTab } from '@/utils/navigation';
+import { mergeCachedVisitRequest } from '@/utils/visitRequestCache';
+import { healJobStatusAfterVisitDecline } from '@/utils/visitStatus';
 import { countSentQuotations, jobHasSentQuotation } from '@/utils/quotationStatus';
-// import { shareReferral } from '@/utils/referral';
+import { shareReferral } from '@/utils/referral';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Bell, ChevronDown, MapPin, Search } from 'lucide-react-native';
@@ -310,7 +313,20 @@ const HomeScreen = React.memo(() => {
             if (isAuthError(error)) throw error;
             if (__DEV__) { /* backend schema error - continue */ }
           }
-          const activity = mapRequestToJobActivity(request, acceptedProvidersCount, quotesCount, priceFromQuotations);
+          let requestForStatus = request;
+          try {
+            requestForStatus = healJobStatusAfterVisitDecline(
+              await mergeCachedVisitRequest(request.id, request),
+            );
+          } catch {
+            requestForStatus = request;
+          }
+          const activity = mapRequestToJobActivity(
+            requestForStatus,
+            acceptedProvidersCount,
+            quotesCount,
+            priceFromQuotations,
+          );
           const createdAtMs = request?.createdAt ? new Date(request.createdAt).getTime() : 0;
           return { activity, createdAtMs };
         })
@@ -356,6 +372,9 @@ const HomeScreen = React.memo(() => {
 
   useFocusEffect(
     useCallback(() => {
+      if (router.canGoBack()) {
+        navigateToClientHomeTab(router);
+      }
       refreshLocation();
       runAuthSafe(() => loadJobActivities(), router);
     }, [refreshLocation, loadJobActivities, router])
@@ -513,6 +532,26 @@ const HomeScreen = React.memo(() => {
   const handleViewAllJobs = useCallback(() => {
     router.push('/(tabs)/jobs' as any);
   }, [router]);
+
+  const handleTodoPress = useCallback(
+    (id: string) => {
+      haptics.light();
+      switch (id) {
+        case 'todo-1':
+          router.push('/AccountInformationScreen' as never);
+          break;
+        case 'todo-2':
+          setShowLocationModal(true);
+          break;
+        case 'todo-3':
+          router.push('/PaymentMethodsScreen' as never);
+          break;
+        default:
+          break;
+      }
+    },
+    [router]
+  );
 
   // Temporarily disabling home recommendations until we plug in real data
   const personalizedRecommendations: any[] = [];
@@ -917,7 +956,7 @@ const HomeScreen = React.memo(() => {
             <Text className='text-lg font-bold mb-2' style={{ fontFamily: 'Poppins-Bold', letterSpacing: -0.3 }}>Todo</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} className='flex mt-0  flex-row '>
               {todoItems.map((item) => (
-                <TodoCard key={item.id} {...item} />
+                <TodoCard key={item.id} {...item} onPress={() => handleTodoPress(item.id)} />
               ))}
             </ScrollView>
           </View>

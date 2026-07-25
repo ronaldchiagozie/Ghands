@@ -9,10 +9,7 @@ import { useUserLocation } from '@/hooks/useUserLocation';
 import * as Location from 'expo-location';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, Text, TouchableOpacity, View } from 'react-native';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const scale = SCREEN_WIDTH < 375 ? 0.85 : SCREEN_WIDTH < 414 ? 0.92 : 1.0;
+import { ActivityIndicator, Alert, Text, TouchableOpacity, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { ErrorState } from '@/components/ErrorState';
 import { EmptyState } from '@/components/EmptyState';
@@ -21,6 +18,8 @@ import { getCategoryIcon } from '@/utils/categoryIcons';
 import { normalizeCategoryName, isValidCategoryName } from '@/utils/categoryMapping';
 import { formatSkillLabel } from '@/utils/formatSkillLabel';
 import { formatDistance } from '@/utils/navigationUtils';
+import { navigateBookingFlowToConfirmation } from '@/utils/navigation';
+import { resolveProviderDisplayName } from '@/utils/providerDisplayName';
 import { useToast } from '@/hooks/useToast';
 import Toast from '@/components/Toast';
 import { Colors, Spacing, BorderRadius, SHADOWS } from '@/lib/designSystem';
@@ -293,17 +292,10 @@ const ServiceMapScreen = () => {
             categoryName.split(' ')[0] || normalizedCategory || 'Service'
           ) as ProviderCategory;
 
-          const rawName = (provider.name || '').trim();
-          const slug = (s: string) =>
-            s.toLowerCase().replace(/[\s_-]/g, '');
-          const nameLooksLikeCategory =
-            !!rawName &&
-            slug(rawName) === slug(normalizedCategory || '') &&
-            slug(rawName) === slug(categoryName || '');
-          const displayName =
-            rawName && !nameLooksLikeCategory
-              ? rawName
-              : `Service provider #${provider.id}`;
+          const rawName = resolveProviderDisplayName(provider, {
+            id: provider.id,
+            categoryLabel: categoryName || normalizedCategory,
+          });
 
           // Calculate approximate provider coordinates based on distance and angle
           // API doesn't return exact coordinates, so we distribute providers around service location
@@ -313,7 +305,7 @@ const ServiceMapScreen = () => {
           return {
             id: `provider-${provider.id}`,
             providerId: provider.id, // Store real backend provider ID for API calls
-            name: displayName,
+            name: rawName,
             category: categoryDisplayName as ProviderCategory,
             rating: 4.5, // Default rating (API doesn't provide this yet)
             reviews: 0, // Default reviews (API doesn't provide this yet)
@@ -790,16 +782,14 @@ const ServiceMapScreen = () => {
           }
           
           haptics.success();
-          router.replace({
-            pathname: '../BookingConfirmationScreen',
-            params: {
-              requestId: params.requestId,
-              serviceType: params.serviceType || params.categoryName,
-              selectedDate: params.selectedDate,
-              selectedTime: params.selectedTime,
-              providerCount: selectedProviders.length > 0 ? String(selectedProviders.length) : undefined,
-            },
-          } as any);
+          navigateBookingFlowToConfirmation(router, {
+            requestId: params.requestId,
+            serviceType: params.serviceType || params.categoryName,
+            selectedDate: params.selectedDate,
+            selectedTime: params.selectedTime,
+            providerCount:
+              selectedProviders.length > 0 ? String(selectedProviders.length) : undefined,
+          });
         }}
         onEditService={(bookingData) => {
           const categoryHint =
@@ -838,6 +828,7 @@ const ServiceMapScreen = () => {
               photoCount: bookingData.photoCount?.toString() || params.photoCount,
               location: bookingData.location || serviceLocation,
               preserveData: 'true',
+              bookingOrigin: 'serviceMap',
             },
           } as any);
         }}

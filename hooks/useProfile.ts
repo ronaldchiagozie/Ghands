@@ -2,6 +2,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { profileService } from '../services/api';
 import { authService } from '../services/authService';
 import { ClientProfileView, UpdateProfilePayload, UserProfile } from '../types';
+import {
+  logClientProfilePhoto,
+  pickProfileImageUriFromApi,
+  readLocalClientProfileImageUri,
+  summarizeProfileImageFields,
+} from '../utils/clientProfilePhoto';
+import { unwrapProfilePayload } from '../utils/profilePayload';
+
+export { unwrapProfilePayload } from '../utils/profilePayload';
 
 const PROFILE_QUERY_KEY = 'profile';
 
@@ -10,22 +19,37 @@ export function mapApiProfileToUserProfile(raw: unknown): UserProfile {
   if (!raw || typeof raw !== 'object') {
     return { name: '', email: '', phone: '' };
   }
-  const r = raw as Record<string, unknown>;
-  const d = (r.data && typeof r.data === 'object' ? r.data : r) as Record<string, unknown>;
+  const d = unwrapProfilePayload(raw);
 
   const firstName = String(d.firstName ?? d.first_name ?? '').trim();
   const lastName = String(d.lastName ?? d.last_name ?? '').trim();
   const nameFromParts = firstName || lastName ? `${firstName} ${lastName}`.trim() : '';
-  const name = String(d.name ?? d.fullName ?? nameFromParts ?? '').trim();
+  const companyName = String(d.companyName ?? d.company_name ?? '').trim();
+  const name = String(
+    companyName || d.name || d.fullName || nameFromParts || '',
+  ).trim();
 
-  const email = String(d.email ?? d.userEmail ?? '').trim();
-  const phone = String(d.phone ?? d.phoneNumber ?? d.mobile ?? d.telephone ?? '').trim();
-  const profileImageUri =
-    (d.profileImageUri ??
-      d.profileImage ??
-      d.avatarUrl ??
-      d.imageUrl ??
-      d.photoUrl) as string | undefined;
+  const email = String(d.email ?? d.userEmail ?? d.companyEmail ?? d.company_email ?? '').trim();
+  const phone = String(
+    d.phone ??
+      d.phoneNumber ??
+      d.mobile ??
+      d.telephone ??
+      d.companyPhoneNumber ??
+      d.company_phone ??
+      '',
+  ).trim();
+  const profileImageUri = pickProfileImageUriFromApi(raw);
+
+  if (__DEV__) {
+    const imageFields = summarizeProfileImageFields(raw);
+    logClientProfilePhoto('map_api_profile', {
+      hasMappedImageUri: !!profileImageUri,
+      imageFieldsFromApi: imageFields,
+      nameLength: name.length,
+      phoneDigits: phone.replace(/\D/g, '').length,
+    });
+  }
 
   return {
     name,
@@ -36,10 +60,7 @@ export function mapApiProfileToUserProfile(raw: unknown): UserProfile {
 }
 
 function readProfileRecord(raw: unknown): Record<string, unknown> {
-  if (!raw || typeof raw !== 'object') return {};
-  const r = raw as Record<string, unknown>;
-  if (r.data && typeof r.data === 'object') return r.data as Record<string, unknown>;
-  return r;
+  return unwrapProfilePayload(raw);
 }
 
 /** Map API profile into client tab view (name, avatar, referral, ratings). */
@@ -80,7 +101,24 @@ export function useCurrentUserProfile() {
     queryKey: [PROFILE_QUERY_KEY, 'current'],
     queryFn: async () => {
       const raw = await profileService.getCurrentUserProfile();
-      return mapApiProfileToClientView(raw);
+      const mapped = mapApiProfileToClientView(raw);
+      const apiImage = mapped.profileImageUri;
+      const localUri = await readLocalClientProfileImageUri(mapped.id);
+
+      if (!apiImage && localUri) {
+        logClientProfilePhoto('avatar_source', {
+          source: 'local_cache',
+          reason: 'api_had_no_image_uri',
+        });
+        return { ...mapped, profileImageUri: localUri };
+      }
+
+      logClientProfilePhoto('avatar_source', {
+        source: apiImage ? 'api' : 'none',
+        apiHadImage: !!apiImage,
+        localHadImage: !!localUri,
+      });
+      return mapped;
     },
     staleTime: 2 * 60 * 1000,
     retry: 1,

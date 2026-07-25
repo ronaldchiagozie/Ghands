@@ -1,11 +1,22 @@
 import { haptics } from '@/hooks/useHaptics';
+import { FileText, Search } from 'lucide-react-native';
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import {
   AI_ASSISTANT_TEXT,
+  AI_COLORS,
   AI_QUICK_ACTION_CARD,
   type AiQuickAction,
+  type AiQuickActionIcon,
 } from './aiAssistantTheme';
+
+const QUICK_ACTION_ICONS: Record<
+  AiQuickActionIcon,
+  React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>
+> = {
+  service: Search,
+  describe: FileText,
+};
 
 type AiQuickActionCardProps = {
   action: AiQuickAction;
@@ -20,6 +31,8 @@ export default function AiQuickActionCard({
   height,
   onPress,
 }: AiQuickActionCardProps) {
+  const Icon = QUICK_ACTION_ICONS[action.icon];
+
   return (
     <Pressable
       onPress={() => {
@@ -51,15 +64,29 @@ export default function AiQuickActionCard({
         }}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-          <Text style={{ fontSize: 18, lineHeight: 22, marginRight: 8 }}>{action.emoji}</Text>
+          <View
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 10,
+              backgroundColor: 'rgba(228, 255, 92, 0.28)',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: 10,
+            }}
+          >
+            <Icon size={18} color={AI_COLORS.accent} strokeWidth={2.2} />
+          </View>
           <Text
             style={{
+              flex: 1,
               flexShrink: 1,
               fontFamily: 'Poppins-SemiBold',
-              fontSize: 15,
-              lineHeight: 20,
+              fontSize: 14,
+              lineHeight: 19,
               color: AI_ASSISTANT_TEXT.primary,
             }}
+            numberOfLines={2}
           >
             {action.title}
           </Text>

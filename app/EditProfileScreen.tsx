@@ -1,4 +1,6 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { ScreenHeader } from '@/components/ScreenHeader';
+import { Colors } from '@/lib/designSystem';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
@@ -8,7 +10,12 @@ import { useForm } from 'react-hook-form';
 import { ActivityIndicator, Alert, Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { InputField } from '../components/InputField';
 import { useCurrentUserProfile, useUpdateProfile } from '../hooks/useProfile';
+import { API_BASE_URL } from '../lib/apiConfig';
 import { ProfileFormData, profileFormSchema } from '../lib/validation';
+import {
+  logClientProfilePhoto,
+  writeLocalClientProfileImageUri,
+} from '../utils/clientProfilePhoto';
 
 export default function EditProfileScreen() {
   const router = useRouter();
@@ -52,6 +59,16 @@ export default function EditProfileScreen() {
 
   const onSubmit = async (data: ProfileFormData) => {
     try {
+      if (profileImageUri?.trim()) {
+        await writeLocalClientProfileImageUri(profileImageUri);
+        logClientProfilePhoto('edit_profile_save', {
+          persistedLocalImage: true,
+          sentImageToCompleteSignup: false,
+        });
+      } else {
+        logClientProfilePhoto('edit_profile_save', { persistedLocalImage: false });
+      }
+
       await updateProfileMutation.mutateAsync({
         userId: 'current',
         payload: {
@@ -143,6 +160,7 @@ export default function EditProfileScreen() {
 
   const handleImageUpload = async (imageUri: string) => {
     setIsUploadingImage(true);
+    logClientProfilePhoto('pick_image', { localUriPreview: `${imageUri.slice(0, 40)}…` });
     try {
       const formData = new FormData();
       const filename = imageUri.split('/').pop() || 'profile.jpg';
@@ -155,7 +173,10 @@ export default function EditProfileScreen() {
         type,
       } as any);
 
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://api.example.com'}/upload`, {
+      const uploadUrl = `${API_BASE_URL}/upload`;
+      logClientProfilePhoto('upload_attempt', { uploadUrl });
+
+      const response = await fetch(uploadUrl, {
         method: 'POST',
         body: formData,
         headers: {
@@ -165,12 +186,32 @@ export default function EditProfileScreen() {
 
       if (response.ok) {
         const data = await response.json();
-        setProfileImageUri(data.imageUrl || imageUri);
+        const remoteUrl = data.imageUrl || data.url || data.data?.url;
+        const resolved = typeof remoteUrl === 'string' && remoteUrl.trim() ? remoteUrl : imageUri;
+        logClientProfilePhoto('upload_ok', {
+          status: response.status,
+          usedRemoteUrl: resolved !== imageUri,
+          resolvedPreview: `${String(resolved).slice(0, 48)}…`,
+        });
+        setProfileImageUri(resolved);
+        await writeLocalClientProfileImageUri(resolved);
       } else {
+        const bodyText = await response.text().catch(() => '');
+        logClientProfilePhoto('upload_failed', {
+          status: response.status,
+          bodyPreview: bodyText.slice(0, 120),
+          fallback: 'using_local_file_uri_only',
+        });
         setProfileImageUri(imageUri);
+        await writeLocalClientProfileImageUri(imageUri);
       }
     } catch (error) {
+      logClientProfilePhoto('upload_error', {
+        message: error instanceof Error ? error.message : String(error),
+        fallback: 'using_local_file_uri_only',
+      });
       setProfileImageUri(imageUri);
+      await writeLocalClientProfileImageUri(imageUri);
     } finally {
       setIsUploadingImage(false);
     }
@@ -180,25 +221,17 @@ export default function EditProfileScreen() {
   const showHeaderLoader = isLoadingProfile;
 
   return (
-    <SafeAreaWrapper backgroundColor="#F9FAFB">
-      <View className='flex-row items-center px-4 py-4 bg-transparent border-b border-gray-100'>
-        <TouchableOpacity onPress={() => router.back()}>
-          <View className='w-8 h-8 items-center justify-center'>
-            <Text className='text-black text-2xl'>←</Text>
-          </View>
-        </TouchableOpacity>
-        <Text 
-          className='text-xl font-bold text-black flex-1 text-center mr-8' 
-          style={{ fontFamily: 'Poppins-Bold' }}
-        >
-          Edit your profile
-        </Text>
-        {showHeaderLoader ? (
-          <ActivityIndicator size="small" color="#4F6739" style={{ marginRight: 4 }} />
-        ) : (
-          <View style={{ width: 28 }} />
-        )}
-      </View>
+    <SafeAreaWrapper backgroundColor={Colors.backgroundGray}>
+      <View style={{ flex: 1 }}>
+        <ScreenHeader
+          title="Edit your profile"
+          onBack={() => router.back()}
+          backgroundColor={Colors.white}
+          showBottomBorder
+          rightElement={
+            showHeaderLoader ? <ActivityIndicator size="small" color={Colors.accent} /> : undefined
+          }
+        />
 
       <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
         <View className="px-6 pt-8">
@@ -300,6 +333,7 @@ export default function EditProfileScreen() {
         
         <View style={{ height: 100 }} />
       </ScrollView>
+      </View>
     </SafeAreaWrapper>
   );
 }

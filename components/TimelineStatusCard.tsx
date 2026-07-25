@@ -5,6 +5,7 @@ import { Image, Text, TouchableOpacity, View } from 'react-native';
 
 import { haptics } from '@/hooks/useHaptics';
 import { Colors } from '@/lib/designSystem';
+import { buildChatScreenParams } from '@/utils/navigation';
 import type { QuotationWithProvider, ServiceRequest } from '@/services/api';
 
 type TimelineHeaderData = {
@@ -118,15 +119,16 @@ const TimelineStatusCardComponent = ({
   };
 
   const handlePressChat = () => {
-    if (!provider) return;
+    if (!provider || !normalizedRequestId) return;
     haptics.light();
     router.push({
       pathname: '/ChatScreen',
-      params: {
+      params: buildChatScreenParams({
         providerName: provider?.name,
         providerId: provider?.id?.toString(),
         requestId: normalizedRequestId,
-      },
+        fromJobHub: true,
+      }),
     } as any);
   };
 

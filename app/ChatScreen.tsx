@@ -2,11 +2,13 @@ import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import ChatDateSeparator from '@/components/chat/ChatDateSeparator';
 import ChatMessageRow from '@/components/chat/ChatMessageRow';
 import ChatNewMessagesChip from '@/components/chat/ChatNewMessagesChip';
+import { ChatThreadEmptyState, ChatThreadLoadingState } from '@/components/chat/ChatThreadPlaceholder';
 import ChatTypingBubble from '@/components/chat/ChatTypingBubble';
 import { BorderRadius, Colors, Spacing, SHADOWS, MIN_TOUCH_TARGET} from '@/lib/designSystem';
 import { androidElevation, iosOnlyShadow } from '@/lib/surfaceStyles';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
-import { ArrowLeft, AlertCircle, FileText, Phone, Send, User, MoreVertical } from 'lucide-react-native';
+import { ArrowLeft, AlertCircle, FileText, Send, MoreVertical } from 'lucide-react-native';
+import { CallIconOutline } from '@/components/call/CallIcons';
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import {
   FlatList,
@@ -40,8 +42,10 @@ import {
   Message as ApiMessage,
 } from '@/services/api';
 import { joinSubtitleParts, NOT_SET_LABEL } from '@/utils/copy';
+import { logCallDebug } from '@/utils/callDebugLog';
 import { logChatDebug } from '@/utils/chatDebugLog';
 import { buildChatListItems } from '@/utils/chatListItems';
+import { exitChatToJobHub } from '@/utils/navigation';
 import { formatLastActiveLabel, isPeerRecentlyActive } from '@/utils/chatFormatting';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -145,6 +149,7 @@ export default function ChatScreen() {
     providerId?: string; 
     clientName?: string;
     requestId?: string;
+    fromJobHub?: string;
   }>();
 
   // Extract and validate requestId
@@ -607,18 +612,12 @@ export default function ChatScreen() {
     setChatMenuOpen(false);
     if (!requestId) return;
     haptics.light();
-    if (isProviderView) {
-      router.push({
-        pathname: '/ProviderJobDetailsScreen',
-        params: { requestId: String(requestId) },
-      } as any);
-    } else {
-      router.push({
-        pathname: '/OngoingJobDetails',
-        params: { requestId: String(requestId) },
-      } as any);
-    }
-  }, [requestId, isProviderView, router]);
+    exitChatToJobHub(router, {
+      requestId,
+      isProvider: isProviderView,
+      fromJobHub: params.fromJobHub,
+    });
+  }, [requestId, isProviderView, router, params.fromJobHub]);
 
   const clearChatCacheForThread = useCallback(async () => {
     setChatMenuOpen(false);
@@ -1153,7 +1152,7 @@ height: MIN_TOUCH_TARGET,
                 backgroundColor: Colors.sageTint,
               }}
             >
-              <Phone size={19} color={Colors.accent} />
+              <CallIconOutline size={19} color={Colors.accent} />
             </TouchableOpacity>
           <TouchableOpacity 
             onPress={() => {
@@ -1205,29 +1204,7 @@ height: MIN_TOUCH_TARGET,
         )}
 
         {isLoading && messages.length === 0 ? (
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F7F8F5', paddingHorizontal: 28 }}>
-            <View
-              style={{
-                width: 72,
-                height: 72,
-                borderRadius: 36,
-                backgroundColor: Colors.white,
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderWidth: 1,
-                borderColor: 'rgba(17, 24, 39, 0.045)',
-                marginBottom: 14,
-              }}
-            >
-              <ActivityIndicator size="small" color={Colors.accent} />
-            </View>
-            <Text style={{ fontSize: 15, fontFamily: 'Poppins-SemiBold', color: Colors.textPrimary, marginBottom: 4 }}>
-              Loading conversation
-            </Text>
-            <Text style={{ fontSize: 13, fontFamily: 'Poppins-Regular', color: Colors.textSecondaryDark, textAlign: 'center', lineHeight: 20 }}>
-              Getting the latest messages for this service request.
-            </Text>
-          </View>
+          <ChatThreadLoadingState />
         ) : (
         <>
         <FlatList
@@ -1248,37 +1225,7 @@ height: MIN_TOUCH_TARGET,
               isPeerTyping ? <ChatTypingBubble isProviderView={isProviderView} /> : null
             }
             ListEmptyComponent={
-              <View
-                style={{
-                  flex: 1,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  paddingHorizontal: 28,
-                  paddingBottom: 60,
-                }}
-              >
-                <View
-                  style={{
-                    width: 82,
-                    height: 82,
-                    borderRadius: 41,
-                    backgroundColor: Colors.white,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderWidth: 1,
-                    borderColor: 'rgba(17, 24, 39, 0.045)',
-                    marginBottom: 16,
-                  }}
-                >
-                  <User size={30} color={Colors.accent} />
-                </View>
-                <Text style={{ fontSize: 17, fontFamily: 'Poppins-SemiBold', color: Colors.textPrimary, marginBottom: 6, textAlign: 'center' }}>
-                  Start the conversation
-                </Text>
-                <Text style={{ fontSize: 13, fontFamily: 'Poppins-Regular', color: Colors.textSecondaryDark, lineHeight: 20, textAlign: 'center' }}>
-                  Message {peerName} about timing, access details, materials, or anything needed for this job.
-                </Text>
-              </View>
+              !isLoading ? <ChatThreadEmptyState peerName={peerName} /> : null
             }
             refreshControl={
               <RefreshControl

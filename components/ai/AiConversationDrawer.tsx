@@ -4,7 +4,7 @@ import {
 } from '@/components/ai/aiAssistantTheme';
 import { haptics } from '@/hooks/useHaptics';
 import type { AiConversationSummary } from '@/services/api';
-import { applyDefaultStatusBar } from '@/utils/statusBar';
+import { applyHandyAiStatusBar } from '@/utils/statusBar';
 import { MessageSquare, Plus } from 'lucide-react-native';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -179,7 +179,7 @@ export default function AiConversationDrawer({
 
   useEffect(() => {
     if (!modalVisible) {
-      applyDefaultStatusBar();
+      applyHandyAiStatusBar();
     }
   }, [modalVisible]);
 

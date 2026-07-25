@@ -1,12 +1,11 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { navigateBack, NAV_FALLBACK } from '@/utils/navigation';
-import { ChevronRight, HelpCircle, MapPin, User } from 'lucide-react-native';
-import React from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { Colors } from '@/lib/designSystem';
+import { CLIENT_HOME_SCROLL_GUTTER } from '@/lib/tabletLayout';
+import { useRouter } from 'expo-router';
+import { ChevronRight, MapPin, User } from 'lucide-react-native';
+import React from 'react';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const accountCards = [
   {
@@ -24,7 +23,7 @@ const accountCards = [
     icon: MapPin,
     iconColor: '#4F6739',
     iconBgColor: '#EEFFD9',
-  }
+  },
 ];
 
 export default function AccountInformationScreen() {
@@ -39,56 +38,91 @@ export default function AccountInformationScreen() {
   };
 
   return (
-    <SafeAreaWrapper backgroundColor="#F9FAFB">
-        <ScreenHeader title="Account Information" onBack={() => router.back()} backgroundColor={Colors.white} />
-      <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
-        <View className="px-4 pt-6">
+    <SafeAreaWrapper backgroundColor={Colors.backgroundGray}>
+      <View style={styles.root}>
+        <ScreenHeader
+          title="Account Information"
+          onBack={() => router.back()}
+          backgroundColor={Colors.white}
+          showBottomBorder
+        />
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          style={styles.scroll}
+        >
           {accountCards.map((card) => {
             const IconComponent = card.icon;
             return (
               <TouchableOpacity
                 key={card.id}
                 onPress={() => handleNavigation(card.id)}
-                className="bg-white rounded-2xl px-4 py-5 mb-4 flex-row items-center  border border-gray-200"
+                style={styles.card}
                 activeOpacity={0.7}
               >
-                <View 
-                  style={{ 
-                    width: 48, 
-                    height: 48, 
-                    borderRadius: 24, 
-                    backgroundColor: card.iconBgColor,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginRight: 16
-                  }}
-                >
+                <View style={[styles.iconWrap, { backgroundColor: card.iconBgColor }]}>
                   <IconComponent size={24} color={card.iconColor} />
                 </View>
-                
-                <View className="flex-1">
-                  <Text 
-                    className="text-base font-bold text-black mb-1" 
-                    style={{ fontFamily: 'Poppins-Bold' }}
-                  >
-                    {card.title}
-                  </Text>
-                  <Text 
-                    className="text-sm text-gray-500" 
-                    style={{ fontFamily: 'Poppins-Medium' }}
-                  >
-                    {card.subtitle}
-                  </Text>
+
+                <View style={styles.cardText}>
+                  <Text style={styles.cardTitle}>{card.title}</Text>
+                  <Text style={styles.cardSubtitle}>{card.subtitle}</Text>
                 </View>
 
-                <ChevronRight size={24} color="#666" />
+                <ChevronRight size={22} color={Colors.textSecondaryDark} />
               </TouchableOpacity>
             );
           })}
-        </View>
-
-        <View style={{ height: 100 }} />
-      </ScrollView>
+        </ScrollView>
+      </View>
     </SafeAreaWrapper>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: CLIENT_HOME_SCROLL_GUTTER,
+    paddingTop: 20,
+    paddingBottom: 100,
+  },
+  card: {
+    backgroundColor: Colors.white,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 18,
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  iconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  cardText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontFamily: 'Poppins-Bold',
+    color: Colors.textPrimary,
+    marginBottom: 4,
+  },
+  cardSubtitle: {
+    fontSize: 13,
+    fontFamily: 'Poppins-Medium',
+    color: Colors.textSecondaryDark,
+  },
+});

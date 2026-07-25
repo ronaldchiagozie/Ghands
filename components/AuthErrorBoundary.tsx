@@ -1,69 +1,44 @@
 import React, { Component, ReactNode } from 'react';
 import { AuthError } from '../utils/errors';
-import { isInAuthTransition } from '../utils/authNavigationGuard';
+import { isInAuthTransition, redirectToAuthScreen } from '../utils/authNavigationGuard';
 import { expireAuthSession } from '../utils/enforceAuthSession';
-import Toast from './Toast';
 
 interface Props {
   children: ReactNode;
-  router: any;
+  router: { replace: (href: any) => void };
 }
 
 interface State {
-  authError: { message: string; visible: boolean };
+  /** Reserved — auth failures redirect silently (no error toast). */
 }
 
 /**
- * AuthErrorBoundary - Catches AuthError and handles navigation + toast
- * 
- * This component wraps the app and catches authentication errors globally.
- * When an AuthError is thrown, it:
- * 1. Shows error toast
- * 2. Clears auth tokens
- * 3. Navigates to appropriate login screen
+ * Catches AuthError from render trees, clears session, and sends user to login.
  */
 export class AuthErrorBoundary extends Component<Props, State> {
-  constructor(props: Props) {
-    super(props);
-    this.state = {
-      authError: { message: '', visible: false },
-    };
-  }
-
   static getDerivedStateFromError(error: Error): Partial<State> | null {
     if (error instanceof AuthError) {
-      return {
-        authError: {
-          message: error.message || 'Your session has expired. Please sign in again.',
-          visible: true,
-        },
-      };
+      return null;
     }
     return null;
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  componentDidCatch(error: Error, _errorInfo: React.ErrorInfo) {
     if (error instanceof AuthError) {
-      this.handleAuthError(error);
+      void this.handleAuthError();
     }
   }
 
-  handleAuthError = async (_error: AuthError) => {
+  handleAuthError = async () => {
     if (isInAuthTransition()) return;
     await expireAuthSession();
+    await redirectToAuthScreen(this.props.router, {
+      clearSession: false,
+      force: true,
+    });
   };
 
   render() {
-    return (
-      <>
-        {this.props.children}
-        <Toast
-          message={this.state.authError.message}
-          type="error"
-          visible={this.state.authError.visible}
-          onClose={() => this.setState({ authError: { message: '', visible: false } })}
-        />
-      </>
-    );
+    return this.props.children;
   }
 }

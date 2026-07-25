@@ -1,7 +1,7 @@
-import React, { ReactNode, useState, useEffect, forwardRef, useId } from 'react';
-import { KeyboardTypeOptions, TextInput, TouchableOpacity, View, Text } from 'react-native';
+import { BorderRadius, Colors, INPUT_HEIGHTS, Spacing, TOUCH_HIT_SLOP } from '@/lib/designSystem';
 import { Eye, EyeOff } from 'lucide-react-native';
-import { Colors, Spacing, BorderRadius, INPUT_HEIGHTS, TOUCH_HIT_SLOP } from '@/lib/designSystem';
+import React, { forwardRef, ReactNode, useEffect, useId, useState } from 'react';
+import { KeyboardTypeOptions, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface InputFieldProps {
   placeholder: string;

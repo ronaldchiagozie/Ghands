@@ -1,9 +1,9 @@
 import React, { useCallback } from 'react';
 import { ViewStyle, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, usePathname } from 'expo-router';
 import { PHONE_LANE_OUTER_TOP, useIsTablet } from '@/lib/tabletLayout';
-import { applyDefaultStatusBar } from '@/utils/statusBar';
+import { applyDefaultStatusBar, applyHandyAiStatusBar, isHandyAiRoute } from '@/utils/statusBar';
 
 interface SafeAreaWrapperProps {
   children: React.ReactNode;
@@ -33,13 +33,18 @@ export default function SafeAreaWrapper({
   tabletShellTop = false,
 }: SafeAreaWrapperProps) {
   const isTablet = useIsTablet();
+  const pathname = usePathname();
   const resolvedEdges = tabletEdges(edges, isTablet);
   const tabletTopPad = isTablet && tabletShellTop ? PHONE_LANE_OUTER_TOP : 0;
 
   useFocusEffect(
     useCallback(() => {
-      applyDefaultStatusBar();
-    }, []),
+      if (isHandyAiRoute(pathname)) {
+        applyHandyAiStatusBar();
+      } else {
+        applyDefaultStatusBar();
+      }
+    }, [pathname]),
   );
 
   return (

@@ -12,7 +12,7 @@ interface AuthButtonProps {
 export const AuthButton: React.FC<AuthButtonProps> = ({
   title,
   onPress,
-  variant = 'secondary',
+  variant = 'primary',
   loading = false,
   disabled = false,
 }) => {

@@ -3,7 +3,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import AnimatedModal from '@/components/AnimatedModal';
 import { BorderRadius, Colors, Fonts, Spacing } from '@/lib/designSystem';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
-import { ChevronRight, ExternalLink, Lock, CheckCircle2, XCircle, Wallet } from 'lucide-react-native';
+import { ExternalLink, CheckCircle2, XCircle, Wallet } from 'lucide-react-native';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   ScrollView,
@@ -27,17 +27,17 @@ import * as WebBrowser from 'expo-web-browser';
 import * as ExpoLinking from 'expo-linking';
 import { Button } from '@/components/ui/Button';
 import { walletService, profileService, authService } from '@/services/api';
+import { mapApiProfileToUserProfile } from '@/hooks/useProfile';
 import { useToast } from '@/hooks/useToast';
 import { invalidateWalletBalanceCache } from '@/hooks/useWalletBalance';
 import { haptics } from '@/hooks/useHaptics';
-import { EMPTY_LABEL, NOT_SET_LABEL } from '@/utils/copy';
+import { EMPTY_LABEL } from '@/utils/copy';
 import { getSpecificErrorMessage } from '@/utils/errorMessages';
 import { handleAuthErrorRedirect } from '@/utils/authRedirect';
 import { AuthError } from '@/utils/errors';
 import Toast from '@/components/Toast';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { getBankTransferAccount } from '@/lib/apiConfig';
 import { applyDefaultStatusBar } from '@/utils/statusBar';
 
 const PRESET_AMOUNTS = [5000, 10000, 20000, 50000];
@@ -53,7 +53,6 @@ export default function TopUpScreen() {
     returnParams?: string; // JSON string of params to pass back
   }>();
   const { toast, showError, showSuccess, showInfo, hideToast } = useToast();
-  const bankTransferAccount = useMemo(() => getBankTransferAccount(), []);
   const insets = useSafeAreaInsets();
   const emailInputRef = useRef<TextInput>(null);
   const amountInputRef = useRef<TextInput>(null);
@@ -63,7 +62,6 @@ export default function TopUpScreen() {
   const [selectedAmount, setSelectedAmount] = useState<number>(0);
   const [customAmount, setCustomAmount] = useState<string>('');
   const [balance, setBalance] = useState<number>(0);
-  const [showBankTransferModal, setShowBankTransferModal] = useState(false);
   const [isVerifyingDeposit, setIsVerifyingDeposit] = useState(false);
   const [isProcessingCard, setIsProcessingCard] = useState(false);
   const [userEmail, setUserEmail] = useState<string>('');
@@ -91,6 +89,22 @@ export default function TopUpScreen() {
     setIsVerifyingDeposit(false);
     setIsProcessingCard(false);
     setShowEmailModal(false);
+    try {
+      void WebBrowser.dismissBrowser();
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  /** After Kora / browser: stop blocking the screen; keep verifying in background. */
+  const unblockUiAfterGatewayReturn = useCallback(() => {
+    setIsProcessingCard(false);
+    setIsVerifyingDeposit(false);
+    verificationInFlightRef.current = false;
+    setPaymentModalDismissed(true);
+    setDepositVerifyPhase((prev) =>
+      prev === 'preparing' || prev === 'checkout' ? 'checking' : prev,
+    );
     try {
       void WebBrowser.dismissBrowser();
     } catch {
@@ -267,11 +281,10 @@ export default function TopUpScreen() {
         
         try {
           // Method 1: Try profile API
-          const profile = await profileService.getCurrentUserProfile();
-          email = profile?.email || profile?.userEmail || '';
-          name = profile?.firstName && profile?.lastName 
-            ? `${profile.firstName} ${profile.lastName}` 
-            : profile?.name || '';
+          const profileRaw = await profileService.getCurrentUserProfile();
+          const profile = mapApiProfileToUserProfile(profileRaw);
+          email = profile.email || '';
+          name = profile.name || '';
         } catch (profileError: any) {
           if (profileError instanceof AuthError) {
             await handleAuthErrorRedirect(router);
@@ -302,6 +315,7 @@ export default function TopUpScreen() {
           setPendingDepositReference(storedReference);
           setPaymentSessionActive(true);
           setDepositVerifyPhase('checking');
+          setPaymentModalDismissed(true);
         }
     } catch (error: any) {
       if (error instanceof AuthError) {
@@ -337,7 +351,12 @@ export default function TopUpScreen() {
         setIsVerifyingDeposit(true);
       }
 
-      const verification = await walletService.verifyDeposit(reference);
+      const verification = await Promise.race([
+        walletService.verifyDeposit(reference),
+        new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('Verification timed out')), 28000);
+        }),
+      ]);
 
       if (verification.status === 'completed') {
         depositCompletedRef.current = true;
@@ -389,7 +408,12 @@ export default function TopUpScreen() {
           pollCountRef.current += 1;
           if (pollCountRef.current >= DEPOSIT_MAX_POLL_ATTEMPTS) {
             setPaymentModalDismissed(true);
-            showInfo('Still confirming your payment. Your balance will update automatically.');
+            setIsVerifyingDeposit(false);
+            setIsProcessingCard(false);
+            verificationInFlightRef.current = false;
+            setPaymentSessionActive(false);
+            setDepositVerifyPhase('idle');
+            showInfo('Still confirming your payment. Pull to refresh your wallet or reopen Top Up.');
             return;
           }
           setDepositVerifyPhase((prev) => (prev === 'checkout' ? 'checking' : 'processing'));
@@ -413,12 +437,25 @@ export default function TopUpScreen() {
       }
     } catch (error: any) {
       const errorText = String(error?.message ?? '').toLowerCase();
+      if (errorText.includes('timed out')) {
+        verificationInFlightRef.current = false;
+        if (!background) {
+          setIsVerifyingDeposit(false);
+          pollCountRef.current += 1;
+        }
+        return;
+      }
       if (errorText.includes('processing') || errorText.includes('pending')) {
         if (!background) {
           pollCountRef.current += 1;
           if (pollCountRef.current >= DEPOSIT_MAX_POLL_ATTEMPTS) {
             setPaymentModalDismissed(true);
-            showInfo('Still confirming your payment. Your balance will update automatically.');
+            setIsVerifyingDeposit(false);
+            setIsProcessingCard(false);
+            verificationInFlightRef.current = false;
+            setPaymentSessionActive(false);
+            setDepositVerifyPhase('idle');
+            showInfo('Still confirming your payment. Pull to refresh your wallet or reopen Top Up.');
             return;
           }
           setDepositVerifyPhase((prev) => (prev === 'checkout' ? 'checking' : 'processing'));
@@ -483,6 +520,7 @@ export default function TopUpScreen() {
           setDepositVerifyPhase((prev) =>
             prev === 'idle' || prev === 'failed' || prev === 'checkout' ? 'checking' : prev,
           );
+          setPaymentModalDismissed(true);
           void verifyPendingDeposit(storedReference, { silent: true, background: true });
         }
       })();
@@ -519,13 +557,17 @@ export default function TopUpScreen() {
     if (!pendingDepositReference || depositCompletedRef.current) return;
 
     const subscription = AppState.addEventListener('change', (nextState) => {
-      if (nextState === 'active' && pendingDepositReference && !depositCompletedRef.current) {
-        void verifyPendingDeposit(pendingDepositReference, { silent: true });
+      if (nextState !== 'active' || depositCompletedRef.current) return;
+
+      unblockUiAfterGatewayReturn();
+
+      if (pendingDepositReference) {
+        void verifyPendingDeposit(pendingDepositReference, { silent: true, background: true });
       }
     });
 
     return () => subscription.remove();
-  }, [pendingDepositReference, verifyPendingDeposit]);
+  }, [pendingDepositReference, verifyPendingDeposit, unblockUiAfterGatewayReturn]);
 
   useEffect(() => {
     if (
@@ -548,16 +590,19 @@ export default function TopUpScreen() {
   }, []);
 
   const handlePaymentModalClose = useCallback(() => {
-    if (depositVerifyPhase === 'checking' || depositVerifyPhase === 'processing') {
-      hidePaymentModal();
-      return;
-    }
     hidePaymentModal();
-  }, [depositVerifyPhase, hidePaymentModal]);
+    setIsProcessingCard(false);
+    setIsVerifyingDeposit(false);
+    verificationInFlightRef.current = false;
+  }, [hidePaymentModal]);
 
   const handleExplicitCancelPayment = useCallback(() => {
     if (depositVerifyPhase === 'checking' || depositVerifyPhase === 'processing') {
       hidePaymentModal();
+      setIsProcessingCard(false);
+      setIsVerifyingDeposit(false);
+      verificationInFlightRef.current = false;
+      showInfo('We’ll keep checking in the background. You can leave this screen.');
       return;
     }
 
@@ -575,7 +620,7 @@ export default function TopUpScreen() {
         },
       ],
     );
-  }, [depositVerifyPhase, hidePaymentModal, cancelPaymentFlow]);
+  }, [depositVerifyPhase, hidePaymentModal, cancelPaymentFlow, showInfo]);
 
   const dismissPaymentModal = useCallback(async () => {
     hidePaymentModal();
@@ -607,7 +652,7 @@ export default function TopUpScreen() {
     }
   };
 
-  // Handle card payment - initialize deposit and redirect to Kora
+  // Open Kora checkout (user picks bank inside Korapay)
   const handleCardPayment = async () => {
     if (!isDepositAmountValid) {
       promptForAmount();
@@ -656,6 +701,8 @@ export default function TopUpScreen() {
     // Proceed with payment using available email
     await processCardPayment(emailToUse, amount);
   };
+
+  const handlePayWithKora = handleCardPayment;
 
   // Separate function to process card payment with email
   const processCardPayment = async (email: string, amount: number) => {
@@ -724,6 +771,7 @@ export default function TopUpScreen() {
           depositCallbackUrl
         );
         applyDefaultStatusBar();
+        unblockUiAfterGatewayReturn();
 
         if (authResult.type === 'cancel' || authResult.type === 'dismiss') {
           pollCountRef.current = 0;
@@ -769,9 +817,10 @@ export default function TopUpScreen() {
       }
 
       if (usedSystemBrowser) {
+        unblockUiAfterGatewayReturn();
         pollCountRef.current = 0;
         setDepositVerifyPhase('checking');
-        await verifyPendingDeposit(depositResponse.reference, { silent: true });
+        await verifyPendingDeposit(depositResponse.reference, { silent: true, background: true });
       }
     } catch (error: any) {
       haptics.error();
@@ -794,7 +843,7 @@ export default function TopUpScreen() {
           errorMsg = 'Invalid amount. Minimum deposit is ₦100.';
         } else if (msgLower.includes('kora') || msgLower.includes('no authorization token') || msgLower.includes('authorization token found')) {
           // Backend called Kora without API key – payment provider not configured on server
-          errorMsg = 'Card payments are temporarily unavailable. Please try bank transfer or contact support.';
+          errorMsg = 'Online payments are temporarily unavailable. Please try again later or contact support.';
         } else if (error?.status === 400) {
           errorMsg = 'Invalid payment information. Please check your details and try again.';
         } else if (error?.status === 500) {
@@ -809,50 +858,26 @@ export default function TopUpScreen() {
         setPendingAmount(amount);
         setEmailInput(email);
       }
+    } finally {
+      setIsProcessingCard(false);
     }
   };
 
-  // Handle bank transfer confirmation
-  const handleBankTransferConfirm = () => {
-    Alert.alert(
-      'Bank Transfer Initiated',
-      'Please complete the transfer using the account details shown. Your wallet will be credited once we verify your payment (usually within 24 hours).',
-      [
-        {
-          text: 'I\'ve Completed Transfer',
-          onPress: () => {
-            showSuccess('Your transfer is being processed. You will receive a confirmation once verified.');
-            setShowBankTransferModal(false);
-            
-            // Return to previous screen if specified
-            if (params.returnTo) {
-              setTimeout(() => {
-                try {
-                  const returnParams = params.returnParams 
-                    ? JSON.parse(params.returnParams) 
-                    : {};
-                  router.replace({
-                    pathname: params.returnTo as any,
-                    params: returnParams,
-                  } as any);
-                } catch {
-                  router.replace(params.returnTo as any);
-                }
-              }, 2000);
-            }
-          },
-        },
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-      ]
-    );
-  };
+  const handleTopUpBack = useCallback(() => {
+    if (paymentSessionActive && depositVerifyPhase !== 'idle') {
+      unblockUiAfterGatewayReturn();
+    }
+    router.back();
+  }, [paymentSessionActive, depositVerifyPhase, unblockUiAfterGatewayReturn, router]);
+
+  const showBackgroundConfirmBanner =
+    paymentSessionActive &&
+    paymentModalDismissed &&
+    (depositVerifyPhase === 'checking' || depositVerifyPhase === 'processing');
 
   return (
     <SafeAreaWrapper backgroundColor={Colors.backgroundLight}>
-        <ScreenHeader title="Top Up" onBack={() => router.back()} backgroundColor={Colors.backgroundLight} />
+        <ScreenHeader title="Top Up" onBack={handleTopUpBack} backgroundColor={Colors.backgroundLight} />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
@@ -860,6 +885,34 @@ export default function TopUpScreen() {
           paddingBottom: 100,
         }}
       >
+        {showBackgroundConfirmBanner ? (
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 10,
+              backgroundColor: Colors.sageTint,
+              borderRadius: 12,
+              padding: 14,
+              marginBottom: 16,
+              borderWidth: 1,
+              borderColor: Colors.border,
+            }}
+          >
+            <ActivityIndicator size="small" color={Colors.accent} />
+            <Text
+              style={{
+                flex: 1,
+                fontSize: 13,
+                fontFamily: 'Poppins-Medium',
+                color: Colors.textPrimary,
+                lineHeight: 18,
+              }}
+            >
+              Confirming your payment with Kora… You can use the app; balance updates when it clears.
+            </Text>
+          </View>
+        ) : null}
         {/* Current Balance Section */}
         <View
           style={{
@@ -1064,7 +1117,7 @@ export default function TopUpScreen() {
           )}
         </View>
 
-        {/* Select Payment Method Section */}
+        {/* Pay — Korapay handles bank selection in checkout */}
         <View style={{ marginBottom: 32, opacity: isDepositAmountValid ? 1 : 0.72 }}>
           <Text
             style={{
@@ -1075,124 +1128,58 @@ export default function TopUpScreen() {
               letterSpacing: -0.2,
             }}
           >
-            Select Payment Method
+            Pay
           </Text>
           <Text
             style={{
               fontSize: 13,
               fontFamily: 'Poppins-Regular',
               color: Colors.textSecondaryDark,
-              marginBottom: 14,
+              marginBottom: 16,
+              lineHeight: 20,
             }}
           >
             {isDepositAmountValid
-              ? `Pay ${formattedDepositAmount} with one of the options below.`
-              : 'Choose an amount first, then pick how you want to pay.'}
+              ? `You’ll continue to Kora’s secure checkout to pay ${formattedDepositAmount}. Choose your bank there — no extra steps in the app.`
+              : 'Choose an amount above, then tap Pay to open Kora checkout.'}
           </Text>
 
-          {/* Bank Transfer Option */}
-          <TouchableOpacity
-            onPress={() => {
-              if (!isDepositAmountValid) {
-                promptForAmount();
-                return;
-              }
-              if (!bankTransferAccount) {
-                showError('Bank transfer is unavailable. Please use card payment or contact support.');
-                return;
-              }
-              setShowBankTransferModal(true);
-            }}
-            style={{
-              backgroundColor: Colors.backgroundGray,
-              borderRadius: 14,
-              padding: 16,
-              marginBottom: 12,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              borderWidth: 1,
-              borderColor: Colors.border,
-            }}
-            activeOpacity={0.7}
-          >
-            <View style={{ flex: 1 }}>
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontFamily: 'Poppins-SemiBold',
-                  color: Colors.textPrimary,
-                }}
-              >
-                Bank Transfer
-              </Text>
-              <Text
-                style={{
-                  fontSize: 12,
-                  fontFamily: 'Poppins-Regular',
-                  color: Colors.textMuted,
-                  marginTop: 2,
-                }}
-              >
-                Manual transfer · verified within 24 hours
-              </Text>
-            </View>
-            <ChevronRight size={18} color={Colors.textSecondaryDark} />
-          </TouchableOpacity>
+          <Button
+            title={
+              isProcessingCard || isVerifyingDeposit
+                ? 'Opening checkout…'
+                : isDepositAmountValid
+                  ? `Pay ${formattedDepositAmount}`
+                  : 'Pay'
+            }
+            onPress={handlePayWithKora}
+            variant="primary"
+            size="large"
+            fullWidth
+            disabled={!isDepositAmountValid || isProcessingCard || isVerifyingDeposit}
+            loading={isProcessingCard || isVerifyingDeposit}
+          />
 
-          {/* Card Option */}
-          <TouchableOpacity
-            onPress={handleCardPayment}
-            disabled={isProcessingCard || isVerifyingDeposit}
+          <View
             style={{
-              backgroundColor: isDepositAmountValid ? Colors.white : Colors.backgroundGray,
-              borderRadius: 14,
-              padding: 16,
               flexDirection: 'row',
               alignItems: 'center',
-              justifyContent: 'space-between',
-              borderWidth: 1,
-              borderColor: isDepositAmountValid ? Colors.accent : Colors.border,
-              opacity: (isProcessingCard || isVerifyingDeposit) ? 0.6 : 1,
+              justifyContent: 'center',
+              marginTop: 14,
+              gap: 6,
             }}
-            activeOpacity={0.7}
           >
-            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-              {(isProcessingCard || isVerifyingDeposit) && (
-                <ActivityIndicator 
-                  size="small" 
-                  color={Colors.accent} 
-                  style={{ marginRight: 8 }} 
-                />
-              )}
-              <View style={{ flex: 1 }}>
-                <Text
-                  style={{
-                    fontSize: 14,
-                    fontFamily: 'Poppins-SemiBold',
-                    color: Colors.textPrimary,
-                  }}
-                >
-                  {isProcessingCard || isVerifyingDeposit ? 'Opening checkout…' : 'Card Payment'}
-                </Text>
-                <Text
-                  style={{
-                    fontSize: 12,
-                    fontFamily: 'Poppins-Regular',
-                    color: Colors.textMuted,
-                    marginTop: 2,
-                  }}
-                >
-                  {isDepositAmountValid
-                    ? 'Secure checkout via Kora · usually instant'
-                    : 'Select an amount above to continue'}
-                </Text>
-              </View>
-            </View>
-            {!isProcessingCard && !isVerifyingDeposit && (
-              <ChevronRight size={18} color={isDepositAmountValid ? Colors.accent : Colors.textSecondaryDark} />
-            )}
-          </TouchableOpacity>
+            <ExternalLink size={14} color={Colors.textMuted} />
+            <Text
+              style={{
+                fontSize: 12,
+                fontFamily: 'Poppins-Regular',
+                color: Colors.textMuted,
+              }}
+            >
+              Secured by Kora · bank transfer, USSD, or card in checkout
+            </Text>
+          </View>
         </View>
       </ScrollView>
 
@@ -1393,7 +1380,9 @@ export default function TopUpScreen() {
                     color: Colors.textSecondaryDark,
                   }}
                 >
-                  Cancel payment
+                  {depositVerifyPhase === 'checking' || depositVerifyPhase === 'processing'
+                    ? 'Continue in app'
+                    : 'Cancel payment'}
                 </Text>
               </TouchableOpacity>
             </>
@@ -1401,231 +1390,6 @@ export default function TopUpScreen() {
         </View>
       </AnimatedModal>
       ) : null}
-
-      {/* Bank Transfer Modal */}
-      <AnimatedModal
-        visible={showBankTransferModal}
-        onClose={() => setShowBankTransferModal(false)}
-        animationType="slide"
-      >
-        <View>
-          {/* Modal Header */}
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: 24,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 18,
-                fontFamily: 'Poppins-Bold',
-                color: Colors.textPrimary,
-                flex: 1,
-                textAlign: 'center',
-                letterSpacing: -0.3,
-              }}
-            >
-              Account details
-            </Text>
-            <TouchableOpacity
-              onPress={() => setShowBankTransferModal(false)}
-              style={{
-                width: 32,
-                height: 32,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-              activeOpacity={0.7}
-            >
-              <Text
-                style={{
-                  fontSize: 20,
-                  fontFamily: 'Poppins-Regular',
-                  color: Colors.textSecondaryDark,
-                }}
-              >
-                ×
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Account Number */}
-          <View style={{ marginBottom: 16 }}>
-            <Text
-              style={{
-                fontSize: 14,
-                fontFamily: 'Poppins-Medium',
-                color: Colors.textSecondaryDark,
-                marginBottom: 8,
-              }}
-            >
-              Account Number
-            </Text>
-            <View
-              style={{
-                backgroundColor: Colors.backgroundGray,
-                borderRadius: BorderRadius.lg,
-                paddingHorizontal: 16,
-                paddingVertical: 16,
-                borderWidth: 1,
-                borderColor: Colors.border,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 16,
-                  fontFamily: 'Poppins-SemiBold',
-                  color: Colors.textPrimary,
-                }}
-              >
-                {bankTransferAccount?.number ?? NOT_SET_LABEL}
-              </Text>
-            </View>
-          </View>
-
-          {/* Amount Due */}
-          <View style={{ marginBottom: 16 }}>
-            <Text
-              style={{
-                fontSize: 14,
-                fontFamily: 'Poppins-Medium',
-                color: Colors.textSecondaryDark,
-                marginBottom: 8,
-              }}
-            >
-              Amount Due
-            </Text>
-            <View
-              style={{
-                backgroundColor: Colors.backgroundGray,
-                borderRadius: BorderRadius.lg,
-                paddingHorizontal: 16,
-                paddingVertical: 16,
-                borderWidth: 1,
-                borderColor: Colors.border,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 16,
-                  fontFamily: 'Poppins-SemiBold',
-                  color: Colors.textPrimary,
-                }}
-              >
-                ₦{parseFloat(customAmount || selectedAmount.toString()).toLocaleString('en-US', {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </Text>
-            </View>
-          </View>
-
-          {/* Account Name */}
-          <View style={{ marginBottom: 16 }}>
-            <Text
-              style={{
-                fontSize: 14,
-                fontFamily: 'Poppins-Medium',
-                color: Colors.textSecondaryDark,
-                marginBottom: 8,
-              }}
-            >
-              Account Name
-            </Text>
-            <View
-              style={{
-                backgroundColor: Colors.backgroundGray,
-                borderRadius: BorderRadius.lg,
-                paddingHorizontal: 16,
-                paddingVertical: 16,
-                borderWidth: 1,
-                borderColor: Colors.border,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 16,
-                  fontFamily: 'Poppins-SemiBold',
-                  color: Colors.textPrimary,
-                }}
-              >
-                {bankTransferAccount?.name ?? NOT_SET_LABEL}
-              </Text>
-            </View>
-          </View>
-
-          {/* Payment Method */}
-          <View style={{ marginBottom: 24 }}>
-            <Text
-              style={{
-                fontSize: 14,
-                fontFamily: 'Poppins-Medium',
-                color: Colors.textSecondaryDark,
-                marginBottom: 8,
-              }}
-            >
-              Payment method
-            </Text>
-            <View
-              style={{
-                backgroundColor: Colors.backgroundGray,
-                borderRadius: BorderRadius.lg,
-                paddingHorizontal: 16,
-                paddingVertical: 16,
-                borderWidth: 1,
-                borderColor: Colors.border,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 16,
-                  fontFamily: 'Poppins-SemiBold',
-                  color: Colors.textPrimary,
-                }}
-              >
-                Transfer
-              </Text>
-            </View>
-          </View>
-
-          {/* Secure Payment */}
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: 24,
-            }}
-          >
-            <Lock size={16} color={Colors.textSecondaryDark} />
-            <Text
-              style={{
-                fontSize: 14,
-                fontFamily: 'Poppins-Medium',
-                color: Colors.textSecondaryDark,
-                marginLeft: 8,
-              }}
-            >
-              Secure Payment
-            </Text>
-          </View>
-
-          {/* I have paid Button */}
-          <Button
-            title="I have paid"
-            onPress={handleBankTransferConfirm}
-            variant="secondary"
-            size="large"
-            fullWidth
-            style={{
-              backgroundColor: Colors.black,
-            }}
-          />
-        </View>
-      </AnimatedModal>
 
       {/* Email — bottom sheet lifted above keyboard (same pattern as PIN modal) */}
       <Modal

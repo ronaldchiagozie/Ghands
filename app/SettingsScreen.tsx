@@ -2,7 +2,7 @@ import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Colors, Spacing } from '@/lib/designSystem';
 import { useRouter } from 'expo-router';
-import { ChevronRight, CreditCard, HelpCircle, Key, Scale, User } from 'lucide-react-native';
+import { ChevronRight, HelpCircle, Key, Scale, User } from 'lucide-react-native';
 import React from 'react';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
@@ -28,17 +28,6 @@ export default function SettingsScreen() {
       onPress: () => {
         // Navigate to account settings
         router.push('/AccountInformationScreen' as any);
-      },
-    },
-    {
-      id: '2',
-      title: 'Billing and payment',
-      subtitle: 'Transaction history, payment methods',
-      icon: CreditCard,
-      iconBgColor: '#F5F5F5',
-      onPress: () => {
-        // Navigate to billing/payment
-        router.push('/PaymentMethodsScreen' as any);
       },
     },
     {

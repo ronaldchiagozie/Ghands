@@ -6,6 +6,7 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, ScrollView, Text, View } from 'react-native';
 import { AccountTypeCard } from '../components/AccountTypeCard';
 import { haptics } from '@/hooks/useHaptics';
+import { setClientAccountType } from '@/utils/clientAccountType';
 
 export default function ClientTypeSelectionScreen() {
   const router = useRouter();
@@ -27,16 +28,16 @@ export default function ClientTypeSelectionScreen() {
     ]).start();
   }, []);
 
-  const handleIndividualClient = () => {
+  const handleIndividualClient = async () => {
     haptics.selection();
-    // Navigate to individual client signup
+    await setClientAccountType('individual');
     router.push('/SignupScreen');
   };
 
-  const handleCompanyClient = () => {
+  const handleCompanyClient = async () => {
     haptics.selection();
-    // Navigate to company client signup
-    router.push('/SignupScreen');
+    await setClientAccountType('company');
+    router.push('/CompanySignupScreen');
   };
 
   const animatedStyle = {

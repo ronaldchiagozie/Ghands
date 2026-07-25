@@ -10,9 +10,9 @@ export const PHONE_LANE_MAX_WIDTH = 520;
 
 export const PHONE_LANE_MIN_HEIGHT = 600;
 /** Upper cap (pt) for the framed app height on tablets (large iPads can approach this) */
-export const PHONE_LANE_MAX_HEIGHT = 1180;
-/** Share of available height (between safe insets) used for the phone lane — higher = taller app frame */
-export const PHONE_LANE_HEIGHT_FRACTION = 0.998;
+export const PHONE_LANE_MAX_HEIGHT = 960;
+/** Share of available height (between safe insets) used for the phone lane — keep below 1 so UI doesn’t feel oversized on iPad */
+export const PHONE_LANE_HEIGHT_FRACTION = 0.94;
 
 /** Space from top of lane to content after skipping device top safe inset (tab shell). */
 export const PHONE_LANE_OUTER_TOP = 14;
@@ -118,7 +118,7 @@ export function useSageHeroPanelMetrics() {
       paddingV: isTablet ? Math.max(18, Math.round(windowHeight * 0.022)) : 17,
       paddingH: isTablet ? Math.max(16, Math.round(windowWidth * 0.036)) : 15,
       amountFontSize: isTablet
-        ? Math.min(34, Math.max(28, Math.round(windowHeight * 0.032)))
+        ? Math.min(30, Math.max(26, Math.round(windowHeight * 0.028)))
         : 27,
     }),
     [isTablet, windowHeight, windowWidth]

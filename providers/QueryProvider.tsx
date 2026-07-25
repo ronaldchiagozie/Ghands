@@ -34,7 +34,6 @@ function handleQueryAuthError(error: unknown) {
   void expireAuthSession();
 }
 
-// Create a client with sensible defaults
 const queryClient = new QueryClient({
   queryCache: new QueryCache({
     onError: handleQueryAuthError,
@@ -60,6 +59,11 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+/** Clear cached user data after sign-out. */
+export function clearAppQueryCache(): void {
+  queryClient.clear();
+}
 
 interface QueryProviderProps {
   children: React.ReactNode;

@@ -15,9 +15,8 @@ import { analytics } from '@/services/analytics';
 import { performance } from '@/services/performance';
 import { crashReporting } from '@/services/crashReporting';
 import { isAuthError } from '@/utils/errors';
-import { isInAuthTransition } from '@/utils/authNavigationGuard';
+import { isInAuthTransition, redirectToAuthScreen } from '@/utils/authNavigationGuard';
 import { expireAuthSession } from '@/utils/enforceAuthSession';
-import { redirectToAuthScreen } from '@/utils/authNavigationGuard';
 import { subscribeToSessionExpired } from '@/utils/sessionExpiredEvents';
 import { resolvePushNotificationRoute } from '@/utils/notificationNavigation';
 import { installAuthRejectionHandler } from '@/utils/installAuthRejectionHandler';
@@ -27,8 +26,9 @@ import { UserLocationProvider } from '@/hooks/useUserLocation';
 import { NetworkProvider } from '@/hooks/useNetworkConnectivity';
 import GlobalOfflineOverlay from '@/components/GlobalOfflineOverlay';
 import AppStatusBar from '@/components/AppStatusBar';
-import { installStatusBarRestore } from '@/utils/statusBar';
+import { installStatusBarRestore, applyDefaultStatusBar, applyHandyAiStatusBar, isHandyAiRoute } from '@/utils/statusBar';
 import { registerWebRtcGlobalsIfAvailable } from '@/utils/webrtcAvailability';
+import { installTypographyDefaults } from '@/lib/typographyDefaults';
 import { Platform, View } from 'react-native';
 import { ScreenBootLoader } from '@/components/ScreenBootLoader';
 import { isRoleSwitchInProgress } from '@/hooks/useRoleSwitching';
@@ -36,6 +36,8 @@ import { isRoleSwitchInProgress } from '@/hooks/useRoleSwitching';
 if (Platform.OS === 'ios' || Platform.OS === 'android') {
   registerWebRtcGlobalsIfAvailable();
 }
+
+installTypographyDefaults();
 
 // ErrorUtils is a global in React Native, not exported from react-native
 declare const ErrorUtils: {
@@ -79,8 +81,16 @@ export default function RootLayout() {
   }, [fontsLoaded]);
 
   useEffect(() => {
-    return installStatusBarRestore();
+    return installStatusBarRestore(() => pathnameRef.current);
   }, []);
+
+  useEffect(() => {
+    if (isHandyAiRoute(pathname)) {
+      applyHandyAiStatusBar();
+    } else {
+      applyDefaultStatusBar();
+    }
+  }, [pathname]);
 
   useEffect(() => {
     const configureAndroidNav = async () => {
@@ -124,6 +134,11 @@ export default function RootLayout() {
       if (await isRoleSwitchInProgress()) return;
       if (isInAuthTransition()) return;
       await expireAuthSession();
+      await redirectToAuthScreen(router, {
+        pathname: pathnameRef.current,
+        clearSession: false,
+        force: true,
+      });
     };
 
     // Global error handler for AuthError (catches sync errors that React error boundaries can't)
@@ -139,7 +154,7 @@ export default function RootLayout() {
       });
     }
 
-    const uninstallRejectionHandler = installAuthRejectionHandler();
+    const uninstallRejectionHandler = installAuthRejectionHandler(router);
 
     return () => {
       performance.measure('app_init', 'app_init_start');
@@ -190,7 +205,15 @@ export default function RootLayout() {
             <AuthErrorBoundary router={router}>
               <AppStatusBar />
               <TabletRootFrame>
-                <Stack screenOptions={{ headerShown: false }} />
+                <Stack screenOptions={{ headerShown: false }}>
+                  <Stack.Screen
+                    name="(tabs)"
+                    options={{
+                      /** Tabs are the app shell — back swipe must not reveal booking screens below. */
+                      gestureEnabled: false,
+                    }}
+                  />
+                </Stack>
               </TabletRootFrame>
             </AuthErrorBoundary>
             </UserLocationProvider>

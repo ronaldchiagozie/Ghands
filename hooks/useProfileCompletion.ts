@@ -1,12 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { InteractionManager } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const PROFILE_COMPLETE_KEY = '@ghands:profile_complete';
+import { authService } from '@/services/authService';
+import {
+  resolveClientProfileComplete,
+  writeProfileCompleteFlag,
+} from '@/utils/profileCompletion';
 
 /**
  * Tracks whether the user has completed the first-time profile modal (name, phone, gender)
- * during the booking flow. Strictly first-time only - once marked complete, modal never shows again.
+ * during the booking flow. Once complete (local flag or server profile), modal stays hidden.
  */
 export function useProfileCompletion() {
   const [isProfileComplete, setIsProfileComplete] = useState<boolean | null>(null);
@@ -15,8 +18,7 @@ export function useProfileCompletion() {
   const checkProfileComplete = useCallback(async (): Promise<boolean> => {
     try {
       setIsLoading(true);
-      const value = await AsyncStorage.getItem(PROFILE_COMPLETE_KEY);
-      const complete = value === 'true';
+      const complete = await resolveClientProfileComplete();
       setIsProfileComplete(complete);
       return complete;
     } catch (error) {
@@ -35,22 +37,13 @@ export function useProfileCompletion() {
     return () => task.cancel();
   }, [checkProfileComplete]);
 
-
   const markProfileComplete = async () => {
     try {
-      await AsyncStorage.setItem(PROFILE_COMPLETE_KEY, 'true');
+      const userId = await authService.getUserId();
+      await writeProfileCompleteFlag(userId);
       setIsProfileComplete(true);
     } catch (error) {
       console.error('Error marking profile complete:', error);
-    }
-  };
-
-  const markProfileIncomplete = async () => {
-    try {
-      await AsyncStorage.setItem(PROFILE_COMPLETE_KEY, 'false');
-      setIsProfileComplete(false);
-    } catch (error) {
-      console.error('Error marking profile incomplete:', error);
     }
   };
 
@@ -59,6 +52,5 @@ export function useProfileCompletion() {
     isLoading,
     checkProfileComplete,
     markProfileComplete,
-    markProfileIncomplete,
   };
 }

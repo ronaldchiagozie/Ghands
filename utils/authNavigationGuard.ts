@@ -56,7 +56,7 @@ export async function redirectToAuthScreen(
     return false;
   }
 
-  if (redirectInFlight) return false;
+  if (redirectInFlight && !force) return false;
   if (!force && now - lastRedirectAt < REDIRECT_COOLDOWN_MS) return false;
 
   redirectInFlight = true;
@@ -70,7 +70,7 @@ export async function redirectToAuthScreen(
       return false;
     }
 
-    if (lastRedirectRoute === normalizedRoute && now - lastRedirectAt < REDIRECT_COOLDOWN_MS) {
+    if (lastRedirectRoute === normalizedRoute && !force && now - lastRedirectAt < REDIRECT_COOLDOWN_MS) {
       return false;
     }
 

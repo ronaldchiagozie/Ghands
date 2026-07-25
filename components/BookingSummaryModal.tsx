@@ -312,13 +312,13 @@ export default function BookingSummaryModal({
       </View>
 
       {/* Profile Completion Modal - Lazy mount to reduce nested modal jank */}
-      {showProfileModal && isProfileComplete === false && (
+      {showProfileModal && isProfileComplete !== true ? (
         <ProfileCompletionModal
-          visible={true}
+          visible={showProfileModal}
           onClose={() => setShowProfileModal(false)}
           onComplete={handleProfileComplete}
         />
-      )}
+      ) : null}
     </AnimatedModal>
   );
 }

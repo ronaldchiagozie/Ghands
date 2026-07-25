@@ -1,12 +1,16 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { Button } from '@/components/ui/Button';
 import { Colors } from '@/lib/designSystem';
-import { useRouter } from 'expo-router';
+import { passwordResetService } from '@/services/api';
+import { getSpecificErrorMessage } from '@/utils/errorMessages';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function OtpScreen() {
   const router = useRouter();
+  const { email: emailParam } = useLocalSearchParams<{ email?: string }>();
+  const email = typeof emailParam === 'string' ? emailParam.trim().toLowerCase() : '';
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [isVerifying, setIsVerifying] = useState(false);
   const [resendTimer, setResendTimer] = useState(30);
@@ -63,25 +67,22 @@ export default function OtpScreen() {
     setIsVerifying(true);
     
     try {
-      if (!__DEV__) {
-        Alert.alert(
-          'Verification unavailable',
-          'Email verification is not enabled in this build. Please contact support if you need help signing in.'
-        );
+      if (!email) {
+        Alert.alert('Missing email', 'Go back and enter your email again.');
+        router.replace('/ResetPassword');
         return;
       }
 
-      // Development-only stub until backend OTP is wired
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // For demo purposes, accept any 6-digit code
-      if (code.length === 6) {
-        router.push('/PasswordConfirmation');
-      } else {
-        Alert.alert('Invalid Code', 'The verification code you entered is incorrect. Please try again.');
-      }
+      await passwordResetService.verifyResetOtp(email, code);
+      router.push({
+        pathname: '/PasswordConfirmation',
+        params: { email, otp: code },
+      });
     } catch (error) {
-      Alert.alert('Error', 'Failed to verify code. Please try again.');
+      Alert.alert(
+        'Invalid Code',
+        getSpecificErrorMessage(error, 'The verification code is incorrect. Please try again.'),
+      );
     } finally {
       setIsVerifying(false);
     }
@@ -92,16 +93,28 @@ export default function OtpScreen() {
     // router.back();
   };
 
-  const handleResendCode = () => {
+  const handleResendCode = async () => {
     if (!canResend) return;
+    if (!email) {
+      Alert.alert('Missing email', 'Go back and enter your email again.');
+      return;
+    }
     
     setCanResend(false);
     setResendTimer(30);
     setOtp(['', '', '', '', '', '']);
     inputRefs.current[0]?.focus();
     
-    // Simulate resend API call
-    Alert.alert('Code Sent', 'A new verification code has been sent to your email.');
+    try {
+      await passwordResetService.forgotPassword(email);
+      Alert.alert('Code Sent', 'A new verification code has been sent to your email.');
+    } catch (error) {
+      Alert.alert(
+        'Could not resend',
+        getSpecificErrorMessage(error, 'Failed to resend code. Please try again.'),
+      );
+      setCanResend(true);
+    }
   };
 
   const isCodeComplete = otp.join('').length === 6;
@@ -199,7 +212,7 @@ export default function OtpScreen() {
           <Button
             title={isVerifying ? 'Verifying...' : 'Verify Code'}
             onPress={handleVerifyCode}
-            variant="secondary"
+            variant="primary"
             size="large"
             fullWidth
             disabled={!isCodeComplete || isVerifying}

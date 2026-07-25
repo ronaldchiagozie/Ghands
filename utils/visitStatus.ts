@@ -98,8 +98,8 @@ export function healJobStatusAfterVisitDecline<T extends { status?: string; visi
     return request;
   }
   const status = (request.status || '').toString().toLowerCase();
-  if (status === 'cancelled' || status === 'inspecting') {
-    return { ...request, status: 'accepted' as T['status'] };
+  if (status === 'cancelled' || status === 'inspecting' || status === 'accepted') {
+    return { ...request, status: 'quoting' as T['status'] };
   }
   return request;
 }
@@ -190,25 +190,40 @@ export function isVisitPaid(visitRequest?: Record<string, unknown> | null): bool
   return getVisitLogisticsStatus(visitRequest) === 'paid';
 }
 
+const PROVIDER_VISIT_REQUEST_STATUSES = [
+  'pending',
+  'pending_payment',
+  'awaiting_payment',
+  'payment_pending',
+  'requested',
+  'visit_requested',
+  'awaiting_client',
+  'awaiting_confirmation',
+  'sent',
+];
+
+function parseVisitMoneyForGate(value: unknown): number | undefined {
+  if (value == null || value === '') return undefined;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : undefined;
+  if (typeof value === 'string') {
+    const parsed = Number(value.replace(/[₦,\s]/g, ''));
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
+}
+
 /** Provider sent a visit request the client can respond to (pay or decline). */
 export function isProviderVisitRequestSent(visitRequest?: Record<string, unknown> | null): boolean {
   if (!visitRequest || isVisitDeclined(visitRequest)) return false;
   if (isVisitPaid(visitRequest) || isVisitCompletedOrPaid(visitRequest)) return false;
 
-  const hasSchedule = !!(
-    visitRequest.scheduledDate ||
-    visitRequest.scheduled_date ||
-    visitRequest.scheduledTime ||
-    visitRequest.scheduled_time
-  );
-  const hasFee =
-    visitRequest.logisticsCost != null ||
-    visitRequest.logistics_cost != null ||
-    visitRequest.logisticsFee != null ||
-    visitRequest.logistics_fee != null;
   const hasRequestedAt = !!(visitRequest.requestedAt || visitRequest.requested_at);
-
-  if (!hasSchedule && !hasFee && !hasRequestedAt) return false;
+  const visitCost =
+    parseVisitMoneyForGate(visitRequest.logisticsCost) ??
+    parseVisitMoneyForGate(visitRequest.logistics_cost) ??
+    parseVisitMoneyForGate(visitRequest.logisticsFee) ??
+    parseVisitMoneyForGate(visitRequest.logistics_fee);
+  const hasFee = typeof visitCost === 'number' && visitCost > 0;
 
   const status = getVisitLogisticsStatus(visitRequest);
   if (status === 'paid') return false;
@@ -216,7 +231,23 @@ export function isProviderVisitRequestSent(visitRequest?: Record<string, unknown
     return false;
   }
 
-  return true;
+  if (hasRequestedAt) return true;
+  if (hasFee) return true;
+
+  if (
+    status &&
+    PROVIDER_VISIT_REQUEST_STATUSES.some((token) => status === token || status.includes(token))
+  ) {
+    return true;
+  }
+
+  // Client job date/time alone is not a provider visit request — backend decline-visit will 400.
+  return false;
+}
+
+/** Client may pay visit fee under the same conditions as decline (provider-initiated visit, unpaid). */
+export function canClientPayVisitFee(input: Parameters<typeof canClientDeclineVisit>[0]): boolean {
+  return canClientDeclineVisit(input);
 }
 
 /**

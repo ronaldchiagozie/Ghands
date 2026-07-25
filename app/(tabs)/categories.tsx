@@ -1,6 +1,7 @@
 import { CategorySkeleton } from '@/components/LoadingSkeleton';
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import Toast from '@/components/Toast';
+import { Button } from '@/components/ui/Button';
 import { useToast } from '@/hooks/useToast';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
@@ -15,6 +16,7 @@ import { getSpecificErrorMessage } from '@/utils/errorMessages';
 import { isConnectivityOrNetworkError } from '@/utils/isNetworkFailure';
 import { extractUserIdFromToken } from '@/utils/tokenUtils';
 import { Colors, MIN_TOUCH_TARGET, Spacing, SHADOWS, useTabScrollContentPaddingTop, useTabScreenScrollBottomPadding } from '@/lib/designSystem';
+import { navigateToClientHomeTab } from '@/utils/navigation';
 
 interface CategoryData extends ServiceCategory {
   IconComponent: React.ComponentType;
@@ -453,7 +455,7 @@ export default function CategoryPage() {
                   if (isFromStackScreen || isFromServiceMapEdit) {
                     routes.back();
                   } else {
-                    routes.replace('/(tabs)/home');
+                    navigateToClientHomeTab(routes);
                   }
                 }}
                 className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-gray-100"
@@ -737,32 +739,18 @@ export default function CategoryPage() {
               )}
             </View>
           </ScrollView>
-          <TouchableOpacity
-            disabled={!isToggle || isCreatingRequest}
-            className={`bg-black mt-8 mb-24 flex items-center justify-center mx-auto w-[90%] h-14 rounded-xl ${!isToggle || isCreatingRequest ? 'bg-gray-400' : 'bg-black'}`}
+          <Button
+            title={isCreatingRequest ? 'Creating…' : isFromServiceMapEdit ? 'Continue' : 'Add Details'}
             onPress={handleNextJobsScreen}
-            activeOpacity={!isToggle || isCreatingRequest ? 0.5 : 0.85}
-          >
-            <View className='flex flex-row items-center gap-3'>
-              {isCreatingRequest ? (
-                <>
-                  <ActivityIndicator size="small" color="#D7FF6B" />
-                  <Text className='text-[#D7FF6B]' style={{
-                    fontFamily: 'Poppins-Bold'
-                  }}>Creating...</Text>
-                </>
-              ) : (
-                <>
-              <Text className='text-[#D7FF6B]' style={{
-                fontFamily: 'Poppins-Bold'
-              }}>{isFromServiceMapEdit ? 'Continue' : 'Add Details'}</Text>
-              <Text>
-                <Ionicons name='arrow-forward' size={18} color={'#D7FF6B'} />
-              </Text>
-                </>
-              )}
-            </View>
-          </TouchableOpacity>
+            variant="secondary"
+            size="large"
+            fullWidth
+            disabled={!isToggle || isCreatingRequest}
+            loading={isCreatingRequest}
+            icon={<Ionicons name="arrow-forward" size={18} color={Colors.white} />}
+            iconPosition="right"
+            style={{ marginTop: Spacing.xxxl, marginBottom: 96, width: '90%', alignSelf: 'center' }}
+          />
         <Toast
           message={toast.message}
           type={toast.type}

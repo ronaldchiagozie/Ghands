@@ -1,11 +1,19 @@
 import React from 'react';
-import { TouchableOpacity, Text, ActivityIndicator, ViewStyle, TextStyle } from 'react-native';
-import { Colors, Spacing, BorderRadius, BUTTON_HEIGHTS, OPACITY } from '@/lib/designSystem';
+import {
+  TouchableOpacity,
+  Text,
+  ActivityIndicator,
+  View,
+  ViewStyle,
+  TextStyle,
+} from 'react-native';
+import { BorderRadius, BUTTON_HEIGHTS, OPACITY, Spacing } from '@/lib/designSystem';
+import { ButtonVariant, getButtonVariantStyles } from '@/lib/buttonTheme';
 
 export interface ButtonProps {
   title: string;
   onPress: () => void;
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+  variant?: ButtonVariant;
   size?: 'small' | 'medium' | 'large';
   disabled?: boolean;
   loading?: boolean;
@@ -36,61 +44,7 @@ export const Button: React.FC<ButtonProps> = ({
 }) => {
   const height = BUTTON_HEIGHTS[size];
   const isDisabled = disabled || loading;
-
-  const getVariantStyles = () => {
-    switch (variant) {
-      case 'primary':
-        return {
-          backgroundColor: Colors.accent,
-          borderWidth: 0,
-          borderColor: 'transparent',
-        };
-      case 'secondary':
-        return {
-          backgroundColor: Colors.black,
-          borderWidth: 0,
-          borderColor: 'transparent',
-        };
-      case 'outline':
-        return {
-          backgroundColor: 'transparent',
-          borderWidth: 2,
-          borderColor: Colors.accent,
-        };
-      case 'ghost':
-        return {
-          backgroundColor: 'transparent',
-          borderWidth: 0,
-          borderColor: 'transparent',
-        };
-      case 'danger':
-        return {
-          backgroundColor: Colors.error,
-          borderWidth: 0,
-          borderColor: 'transparent',
-        };
-      default:
-        return {
-          backgroundColor: Colors.accent,
-          borderWidth: 0,
-          borderColor: 'transparent',
-        };
-    }
-  };
-
-  const getTextColor = () => {
-    switch (variant) {
-      case 'primary':
-      case 'secondary':
-      case 'danger':
-        return Colors.white;
-      case 'outline':
-      case 'ghost':
-        return Colors.accent;
-      default:
-        return Colors.white;
-    }
-  };
+  const variantStyles = getButtonVariantStyles(variant, isDisabled);
 
   const getFontSize = () => {
     switch (size) {
@@ -118,6 +72,8 @@ export const Button: React.FC<ButtonProps> = ({
     }
   };
 
+  const labelColor = variantStyles.label;
+
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -131,29 +87,24 @@ export const Button: React.FC<ButtonProps> = ({
         {
           height,
           borderRadius: BorderRadius.default,
-          ...getVariantStyles(),
+          ...variantStyles.container,
           ...getPadding(),
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
-          opacity: isDisabled ? OPACITY.disabled : 1,
           width: fullWidth ? '100%' : 'auto',
         },
         style,
       ]}
     >
       {loading ? (
-        <ActivityIndicator size="small" color={getTextColor()} />
-      ) : (
         <>
-          {icon && iconPosition === 'left' && (
-            <Text style={{ marginRight: Spacing.sm }}>{icon}</Text>
-          )}
+          <ActivityIndicator size="small" color={variantStyles.spinner} style={{ marginRight: Spacing.sm }} />
           <Text
             numberOfLines={1}
             style={[
               {
-                color: getTextColor(),
+                color: labelColor,
                 fontSize: getFontSize(),
                 fontFamily: 'Poppins-SemiBold',
                 textAlign: 'center',
@@ -164,12 +115,32 @@ export const Button: React.FC<ButtonProps> = ({
           >
             {title}
           </Text>
-          {icon && iconPosition === 'right' && (
-            <Text style={{ marginLeft: Spacing.sm }}>{icon}</Text>
-          )}
+        </>
+      ) : (
+        <>
+          {icon && iconPosition === 'left' ? (
+            <View style={{ marginRight: Spacing.sm }}>{icon}</View>
+          ) : null}
+          <Text
+            numberOfLines={1}
+            style={[
+              {
+                color: labelColor,
+                fontSize: getFontSize(),
+                fontFamily: 'Poppins-SemiBold',
+                textAlign: 'center',
+                flexShrink: 1,
+              },
+              textStyle,
+            ]}
+          >
+            {title}
+          </Text>
+          {icon && iconPosition === 'right' ? (
+            <View style={{ marginLeft: Spacing.sm }}>{icon}</View>
+          ) : null}
         </>
       )}
     </TouchableOpacity>
   );
 };
-

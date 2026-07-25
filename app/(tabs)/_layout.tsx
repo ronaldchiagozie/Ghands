@@ -9,6 +9,7 @@ import {
 } from '@/lib/tabletLayout';
 import { Colors, runParallel, useReducedMotion } from '@/lib/designSystem';
 import { surfaceElevation } from '@/lib/surfaceStyles';
+import { navigateToClientHomeTab, resetToClientTab, NAV_FALLBACK } from '@/utils/navigation';
 
 type IconName = keyof typeof MaterialIcons.glyphMap;
 
@@ -167,6 +168,11 @@ export default function TabLayout() {
             <AnimatedIcon iconName="home" color={color} focused={focused} />
           ),
         }}
+        listeners={{
+          tabPress: () => {
+            navigateToClientHomeTab(router);
+          },
+        }}
       />
       <Tabs.Screen
         name="discover"
@@ -200,6 +206,11 @@ export default function TabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <AnimatedIcon iconName="assignment" color={color} focused={focused} />
           ),
+        }}
+        listeners={{
+          tabPress: () => {
+            resetToClientTab(router, NAV_FALLBACK.clientJobs);
+          },
         }}
       />
       <Tabs.Screen

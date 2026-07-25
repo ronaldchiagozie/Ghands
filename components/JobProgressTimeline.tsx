@@ -4,6 +4,7 @@ import { useReducedMotion } from '@/hooks/useReducedMotion';
 import {
   JOB_TIMELINE,
   JOB_TIMELINE_LAYOUT,
+  timelineAccentBg,
   timelineBadgeForStep,
   timelineConnectorColor,
   timelineDotFill,
@@ -152,11 +153,21 @@ export function JobProgressTimeline({ steps, renderStepActions }: JobProgressTim
         const rowAnim = rowAnims.current[index] ?? new Animated.Value(1);
         const railAnim = railAnims.current[index] ?? new Animated.Value(1);
 
+        const isDeclined = phase === 'declined';
         const isMutedDot = phase === 'pending' || phase === 'skipped';
         const iconColor = isMutedDot ? JOB_TIMELINE.iconMuted : '#FFFFFF';
         const iconSize = isMutedDot ? layout.dotIconPending : layout.dotIconActive;
-        const titleColor = phase === 'skipped' ? JOB_TIMELINE.pendingChipText : JOB_TIMELINE.titleText;
-        const descriptionColor = phase === 'skipped' ? JOB_TIMELINE.timestampSkipped : JOB_TIMELINE.metaText;
+        const titleColor = isDeclined
+          ? JOB_TIMELINE.declinedChipText
+          : phase === 'skipped'
+            ? JOB_TIMELINE.pendingChipText
+            : JOB_TIMELINE.titleText;
+        const descriptionColor = isDeclined
+          ? JOB_TIMELINE.timestampDeclined
+          : phase === 'skipped'
+            ? JOB_TIMELINE.timestampSkipped
+            : JOB_TIMELINE.metaText;
+        const rowAccentBg = isDeclined ? timelineAccentBg(step) : undefined;
 
         return (
           <Animated.View
@@ -222,9 +233,12 @@ export function JobProgressTimeline({ steps, renderStepActions }: JobProgressTim
             <View
               style={{
                 flex: 1,
-                paddingVertical: 2,
-                paddingBottom: isLast ? 0 : 8,
-                borderBottomWidth: isLast ? 0 : 1,
+                paddingVertical: rowAccentBg ? 8 : 2,
+                paddingHorizontal: rowAccentBg ? 10 : 0,
+                paddingBottom: isLast ? (rowAccentBg ? 8 : 0) : rowAccentBg ? 10 : 8,
+                borderRadius: rowAccentBg ? 10 : 0,
+                backgroundColor: rowAccentBg,
+                borderBottomWidth: isLast || rowAccentBg ? 0 : 1,
                 borderBottomColor: JOB_TIMELINE.panelDivider,
               }}
             >
@@ -268,7 +282,7 @@ export function JobProgressTimeline({ steps, renderStepActions }: JobProgressTim
                     lineHeight: 17,
                     marginRight: 12,
                   }}
-                  numberOfLines={1}
+                  numberOfLines={isDeclined ? 3 : 1}
                   ellipsizeMode="tail"
                 >
                   {step.description}

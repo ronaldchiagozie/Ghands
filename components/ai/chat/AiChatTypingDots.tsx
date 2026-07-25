@@ -1,70 +1,68 @@
-import { AI_COLORS } from '@/components/ai/aiAssistantTheme';
+import { AI_CHAT_UI } from '@/components/ai/aiAssistantTheme';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import React, { useEffect, useRef } from 'react';
 import { Animated, View } from 'react-native';
 
+const DOT_SIZE = 8;
+const DOT_GAP = 9;
+
 export default function AiChatTypingDots() {
   const reducedMotion = useReducedMotion();
-  const dot1 = useRef(new Animated.Value(0)).current;
-  const dot2 = useRef(new Animated.Value(0)).current;
-  const dot3 = useRef(new Animated.Value(0)).current;
+  const pulse = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (reducedMotion) {
-      dot1.setValue(0);
-      dot2.setValue(0);
-      dot3.setValue(0);
+      pulse.setValue(0);
       return;
     }
 
-    const animateDot = (value: Animated.Value, delay: number) =>
-      Animated.loop(
-        Animated.sequence([
-          Animated.delay(delay),
-          Animated.timing(value, {
-            toValue: -3,
-            duration: 320,
-            useNativeDriver: true,
-          }),
-          Animated.timing(value, {
-            toValue: 0,
-            duration: 320,
-            useNativeDriver: true,
-          }),
-        ])
-      );
+    const loop = Animated.loop(
+      Animated.timing(pulse, {
+        toValue: 1,
+        duration: 900,
+        useNativeDriver: true,
+      }),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulse, reducedMotion]);
 
-    const a1 = animateDot(dot1, 0);
-    const a2 = animateDot(dot2, 120);
-    const a3 = animateDot(dot3, 240);
-    a1.start();
-    a2.start();
-    a3.start();
-
-    return () => {
-      a1.stop();
-      a2.stop();
-      a3.stop();
-    };
-  }, [dot1, dot2, dot3, reducedMotion]);
-
-  const dots = [dot1, dot2, dot3];
+  const colors = AI_CHAT_UI.typingDots;
 
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'flex-end', paddingVertical: 4, height: 18 }}>
-      {dots.map((translateY, index) => (
-        <Animated.View
-          key={index}
-          style={{
-            width: 7,
-            height: 7,
-            borderRadius: 3.5,
-            backgroundColor: AI_COLORS.accent,
-            transform: [{ translateY }],
-            marginRight: index < dots.length - 1 ? 6 : 0,
-          }}
-        />
-      ))}
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: DOT_SIZE,
+      }}
+    >
+      {colors.map((baseColor, index) => {
+        const opacity = pulse.interpolate({
+          inputRange: [0, 0.33, 0.66, 1],
+          outputRange:
+            index === 0
+              ? [1, 0.55, 0.55, 1]
+              : index === 1
+                ? [0.55, 1, 0.55, 0.55]
+                : [0.55, 0.55, 1, 0.55],
+        });
+
+        return (
+          <Animated.View
+            key={baseColor}
+            style={{
+              width: DOT_SIZE,
+              height: DOT_SIZE,
+              borderRadius: DOT_SIZE / 2,
+              backgroundColor: baseColor,
+              opacity: reducedMotion ? 1 : opacity,
+              marginRight: index < colors.length - 1 ? DOT_GAP : 0,
+            }}
+          />
+        );
+      })}
     </View>
   );
 }

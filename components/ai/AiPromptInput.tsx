@@ -122,7 +122,7 @@ export default function AiPromptInput({
             justifyContent: 'center',
           }}
         >
-          <Send size={18} color={canSend ? AI_COLORS.drawerPanel : AI_ASSISTANT_TEXT.primary} />
+          <Send size={18} color={canSend ? AI_COLORS.accentInk : AI_ASSISTANT_TEXT.primary} />
         </Pressable>
       </Animated.View>
     </View>

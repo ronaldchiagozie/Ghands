@@ -260,7 +260,11 @@ export const getSpecificErrorMessage = (error: ApiError | Error | any, context?:
     'request_visit': 'Failed to request visit. Please try again.',
     'request_visit_must_accept': 'Please accept the request first, then request a visit.',
     'pay_logistics_fee': 'Failed to pay logistics fee. Please try again.',
+    'pay_logistics_fee_not_requested':
+      'The provider has not requested a site visit yet. You can pay the visit fee once they send a visit request.',
     'decline_visit': 'Failed to decline visit. Please try again.',
+    'decline_visit_not_requested':
+      'The provider has not requested a site visit yet. You can decline once they send a visit request.',
     'accept_quotation': 'Failed to accept quotation. Please try again.',
     'create_request': 'Failed to create service request. Please try again.',
     'update_job_details': 'Failed to update job details. Please check your information and try again.',
@@ -294,5 +298,36 @@ export const getSpecificErrorMessage = (error: ApiError | Error | any, context?:
   };
 
   const defaultMessage = context ? defaultMessages[context] || 'Something went wrong. Please try again.' : 'Something went wrong. Please try again.';
+
+  if (context === 'decline_visit') {
+    const raw = (
+      error?.details?.data?.error ||
+      error?.details?.data?.message ||
+      error?.details?.error ||
+      error?.message ||
+      ''
+    )
+      .toString()
+      .toLowerCase();
+    if (raw.includes('no visit') && raw.includes('requested')) {
+      return defaultMessages.decline_visit_not_requested;
+    }
+  }
+
+  if (context === 'pay_logistics_fee') {
+    const raw = (
+      error?.details?.data?.error ||
+      error?.details?.data?.message ||
+      error?.details?.error ||
+      error?.message ||
+      ''
+    )
+      .toString()
+      .toLowerCase();
+    if (raw.includes('no visit') && raw.includes('requested')) {
+      return defaultMessages.pay_logistics_fee_not_requested;
+    }
+  }
+
   return getErrorMessage(error, defaultMessage);
 };

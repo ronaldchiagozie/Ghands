@@ -15,13 +15,15 @@ import {
 import { providerListCard } from '@/lib/providerSurfaceStyles';
 import { CLIENT_HOME_SCROLL_GUTTER } from '@/lib/tabletLayout';
 import { handleAuthErrorRedirect } from '@/utils/authRedirect';
+import { haptics } from '@/hooks/useHaptics';
 import { AuthError } from '@/utils/errors';
 import { NOT_SET_LABEL } from '@/utils/copy';
+import { logClientProfilePhoto } from '@/utils/clientProfilePhoto';
+import { shareReferral } from '@/utils/referral';
 import { useFocusEffect, usePathname, useRouter } from 'expo-router';
 import {
   Bell,
   ChevronRight,
-  CreditCard,
   HelpCircle,
   LogOut,
   MapPin,
@@ -33,8 +35,10 @@ import {
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert,
+  ActivityIndicator,
   Image,
+  Modal,
+  Pressable,
   RefreshControl,
   ScrollView,
   Text,
@@ -43,6 +47,198 @@ import {
 } from 'react-native';
 
 const DEFAULT_AVATAR = require('../../assets/images/userimg.jpg');
+
+const MODAL_ACTION_BTN = {
+  flex: 1,
+  minHeight: 48,
+  paddingVertical: 14,
+  paddingHorizontal: 12,
+  borderRadius: BorderRadius.default,
+  alignItems: 'center' as const,
+  justifyContent: 'center' as const,
+};
+
+type ProfileConfirmModalProps = {
+  visible: boolean;
+  title: string;
+  message: string;
+  cancelLabel?: string;
+  confirmLabel: string;
+  confirmBackgroundColor?: string;
+  confirmTextColor?: string;
+  loading?: boolean;
+  /** Single full-width button (e.g. “OK” on info dialogs) */
+  singleAction?: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+};
+
+function ProfileConfirmModal({
+  visible,
+  title,
+  message,
+  cancelLabel = 'Cancel',
+  confirmLabel,
+  confirmBackgroundColor = Colors.accent,
+  confirmTextColor = '#FFFFFF',
+  loading = false,
+  singleAction = false,
+  onCancel,
+  onConfirm,
+}: ProfileConfirmModalProps) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+      <Pressable
+        style={{
+          flex: 1,
+          backgroundColor: 'rgba(0,0,0,0.45)',
+          justifyContent: 'center',
+          paddingHorizontal: 28,
+        }}
+        onPress={onCancel}
+      >
+        <Pressable
+          onPress={(e) => e.stopPropagation()}
+          style={{
+            backgroundColor: Colors.white,
+            borderRadius: BorderRadius.lg,
+            padding: 24,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 18,
+              fontFamily: 'Poppins-Bold',
+              color: Colors.textPrimary,
+              marginBottom: 8,
+            }}
+          >
+            {title}
+          </Text>
+          <Text
+            style={{
+              fontSize: 14,
+              fontFamily: 'Poppins-Regular',
+              color: Colors.textSecondaryDark,
+              lineHeight: 20,
+              marginBottom: 24,
+            }}
+          >
+            {message}
+          </Text>
+          <View
+            style={
+              singleAction
+                ? { width: '100%' }
+                : { flexDirection: 'row', alignItems: 'stretch', gap: 12 }
+            }
+          >
+            {!singleAction ? (
+              <TouchableOpacity
+                onPress={onCancel}
+                disabled={loading}
+                style={[MODAL_ACTION_BTN, { backgroundColor: '#F3F4F6' }]}
+                activeOpacity={0.8}
+              >
+                <Text style={{ fontFamily: 'Poppins-SemiBold', color: Colors.textPrimary }}>{cancelLabel}</Text>
+              </TouchableOpacity>
+            ) : null}
+            <TouchableOpacity
+              onPress={onConfirm}
+              disabled={loading && !singleAction}
+              style={[
+                MODAL_ACTION_BTN,
+                { backgroundColor: confirmBackgroundColor },
+                singleAction ? null : { flex: 1 },
+              ]}
+              activeOpacity={0.8}
+            >
+              {loading && !singleAction ? (
+                <ActivityIndicator color={confirmTextColor} size="small" />
+              ) : (
+                <Text style={{ fontFamily: 'Poppins-SemiBold', color: confirmTextColor }}>{confirmLabel}</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+type ProfileMenuRowProps = {
+  title: string;
+  subtitle?: string;
+  icon: React.ReactNode;
+  iconBackgroundColor: string;
+  onPress: () => void;
+  titleColor?: string;
+  showBorderBottom?: boolean;
+};
+
+/** Same row pattern as Account settings — one list language across Profile. */
+function ProfileMenuRow({
+  title,
+  subtitle,
+  icon,
+  iconBackgroundColor,
+  onPress,
+  titleColor = Colors.textPrimary,
+  showBorderBottom = true,
+}: ProfileMenuRowProps) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.7}
+      style={{
+        padding: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderBottomWidth: showBorderBottom ? 1 : 0,
+        borderBottomColor: 'rgba(17, 24, 39, 0.06)',
+      }}
+    >
+      <View
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: 20,
+          backgroundColor: iconBackgroundColor,
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginRight: 12,
+          flexShrink: 0,
+        }}
+      >
+        {icon}
+      </View>
+      <View style={{ flex: 1, minWidth: 0, paddingRight: 4 }}>
+        <Text
+          style={{
+            fontSize: 15,
+            fontFamily: 'Poppins-SemiBold',
+            color: titleColor,
+            marginBottom: subtitle ? 2 : 0,
+          }}
+        >
+          {title}
+        </Text>
+        {subtitle ? (
+          <Text
+            style={{
+              fontSize: 12,
+              fontFamily: 'Poppins-Regular',
+              color: Colors.textSecondaryDark,
+            }}
+          >
+            {subtitle}
+          </Text>
+        ) : null}
+      </View>
+      <ChevronRight size={18} color={Colors.textSecondaryDark} />
+    </TouchableOpacity>
+  );
+}
 
 const formatNaira = (amount: number): string =>
   `₦${amount.toLocaleString('en-NG', { maximumFractionDigits: 0 })}`;
@@ -70,10 +266,14 @@ function ClientProfileHeroSkeleton({ marginTop }: { marginTop: number }) {
 const ProfileScreen = () => {
   const headerTopPad = useTabScrollContentPaddingTop(16);
   const scrollBodyTopPad = useTabScrollContentPaddingTop(20);
-  const scrollBottomPad = useTabScreenScrollBottomPadding(16);
+  const scrollBottomPad = useTabScreenScrollBottomPadding(32);
   const router = useRouter();
   const pathname = usePathname();
   const { logout } = useAuthRole();
+  const [signOutVisible, setSignOutVisible] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
+  const [deleteInfoVisible, setDeleteInfoVisible] = useState(false);
   const { location } = useUserLocation();
   const profileReadyRef = useRef(false);
   const [isUserRefreshing, setIsUserRefreshing] = useState(false);
@@ -117,6 +317,16 @@ const ProfileScreen = () => {
     ? { uri: profile.profileImageUri }
     : DEFAULT_AVATAR;
 
+  useEffect(() => {
+    logClientProfilePhoto('profile_tab_avatar', {
+      usingDefaultAsset: !profile?.profileImageUri,
+      profileImageUriPreview: profile?.profileImageUri
+        ? `${profile.profileImageUri.slice(0, 48)}…`
+        : null,
+      displayName: displayName.slice(0, 24),
+    });
+  }, [profile?.profileImageUri, displayName]);
+
   const accountSettings = useMemo(
     () => [
       {
@@ -137,14 +347,6 @@ const ProfileScreen = () => {
         icon: Wallet,
         bg: '#FAF4E8',
         color: '#8F5C12',
-      },
-      {
-        id: 'billing',
-        title: 'Payment methods',
-        subtitle: 'Cards, banks & receipts',
-        icon: CreditCard,
-        bg: '#F7F8FA',
-        color: Colors.textPrimary,
       },
       {
         id: 'support',
@@ -176,9 +378,6 @@ const ProfileScreen = () => {
         case 'wallet':
           router.push('/WalletScreen' as never);
           break;
-        case 'billing':
-          router.push('/PaymentMethodsScreen' as never);
-          break;
         case 'support':
           router.push('/HelpSupportScreen' as never);
           break;
@@ -193,40 +392,47 @@ const ProfileScreen = () => {
     await shareReferral({ role: 'client', code: profile?.referralCode ?? null });
   }, [profile?.referralCode]);
 
-  const handleSignOut = useCallback(() => {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign Out',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await logout();
-          } catch {
-            Alert.alert('Error', 'Failed to sign out. Please try again.');
-          }
-        },
-      },
-    ]);
-  }, [logout]);
-
-  const handleDeleteAccount = useCallback(() => {
-    Alert.alert(
-      'Delete Account',
-      'Are you sure you want to delete your account? This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            Alert.alert('Account Deletion', 'Account deletion feature coming soon.');
-          },
-        },
-      ]
-    );
+  const handleSignOutPress = useCallback(() => {
+    haptics.light();
+    setSignOutVisible(true);
   }, []);
 
+  const handleSignOutCancel = useCallback(() => {
+    if (isSigningOut) return;
+    setSignOutVisible(false);
+  }, [isSigningOut]);
+
+  const handleSignOutConfirm = useCallback(async () => {
+    if (isSigningOut) return;
+    setIsSigningOut(true);
+    haptics.selection();
+    try {
+      await logout();
+      setSignOutVisible(false);
+    } catch {
+      setIsSigningOut(false);
+      setSignOutVisible(false);
+    }
+  }, [isSigningOut, logout]);
+
+  const handleDeletePress = useCallback(() => {
+    haptics.light();
+    setDeleteConfirmVisible(true);
+  }, []);
+
+  const handleDeleteCancel = useCallback(() => {
+    setDeleteConfirmVisible(false);
+  }, []);
+
+  const handleDeleteConfirm = useCallback(() => {
+    haptics.warning();
+    setDeleteConfirmVisible(false);
+    setDeleteInfoVisible(true);
+  }, []);
+
+  const handleDeleteInfoDismiss = useCallback(() => {
+    setDeleteInfoVisible(false);
+  }, []);
 
   const openEditProfile = useCallback(() => {
     router.push('/EditProfileScreen' as never);
@@ -427,56 +633,15 @@ const ProfileScreen = () => {
             {accountSettings.map((setting, index) => {
               const IconComponent = setting.icon;
               return (
-                <TouchableOpacity
+                <ProfileMenuRow
                   key={setting.id}
+                  title={setting.title}
+                  subtitle={setting.subtitle}
+                  icon={<IconComponent size={20} color={setting.color} />}
+                  iconBackgroundColor={setting.bg}
                   onPress={() => handleOptionPress(setting.id)}
-                  style={{
-                    padding: 16,
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    borderBottomWidth: index === accountSettings.length - 1 ? 0 : 1,
-                    borderBottomColor: 'rgba(17, 24, 39, 0.06)',
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <View
-                    style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 20,
-                      backgroundColor: setting.bg,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginRight: 12,
-                    }}
-                  >
-                    <IconComponent size={20} color={setting.color} />
-                  </View>
-
-                  <View style={{ flex: 1 }}>
-                    <Text
-                      style={{
-                        fontSize: 15,
-                        fontFamily: 'Poppins-SemiBold',
-                        color: Colors.textPrimary,
-                        marginBottom: 2,
-                      }}
-                    >
-                      {setting.title}
-                    </Text>
-                    <Text
-                      style={{
-                        fontSize: 12,
-                        fontFamily: 'Poppins-Regular',
-                        color: Colors.textSecondaryDark,
-                      }}
-                    >
-                      {setting.subtitle}
-                    </Text>
-                  </View>
-
-                  <ChevronRight size={18} color={Colors.textSecondaryDark} />
-                </TouchableOpacity>
+                  showBorderBottom={index < accountSettings.length - 1}
+                />
               );
             })}
           </View>
@@ -488,27 +653,17 @@ const ProfileScreen = () => {
               fontSize: 18,
               fontFamily: 'Poppins-Bold',
               color: Colors.textPrimary,
-              marginBottom: 6,
-            }}
-          >
-            Refer Friends
-          </Text>
-          <Text
-            style={{
-              fontSize: 13,
-              fontFamily: 'Poppins-Regular',
-              color: Colors.textSecondaryDark,
               marginBottom: 12,
             }}
           >
-            Get rewards for each referral
+            Refer friends
           </Text>
           <View
             style={{
               ...providerListCard,
+              padding: 16,
               flexDirection: 'row',
               alignItems: 'center',
-              justifyContent: 'space-between',
             }}
           >
             <View style={{ flex: 1, marginRight: 12 }}>
@@ -556,132 +711,69 @@ const ProfileScreen = () => {
         </View>
 
         <View style={{ marginBottom: 24 }}>
+          <Text
+            style={{
+              fontSize: 18,
+              fontFamily: 'Poppins-Bold',
+              color: Colors.textPrimary,
+              marginBottom: 12,
+            }}
+          >
+            Session & account
+          </Text>
           <View style={{ ...providerListCard, padding: 0, overflow: 'hidden' }}>
-            <View style={{ paddingHorizontal: 18, paddingTop: 18, paddingBottom: 10 }}>
-              <Text
-                style={{
-                  fontSize: 13,
-                  fontFamily: 'Poppins-SemiBold',
-                  color: Colors.textPrimary,
-                }}
-              >
-                Account access
-              </Text>
-              <Text
-                style={{
-                  fontSize: 12,
-                  fontFamily: 'Poppins-Regular',
-                  color: Colors.textSecondaryDark,
-                  marginTop: 2,
-                }}
-              >
-                Manage your session and account security.
-              </Text>
-            </View>
-
-            <TouchableOpacity
-              onPress={handleSignOut}
-              style={{
-                minHeight: 92,
-                paddingHorizontal: 18,
-                paddingVertical: 16,
-                flexDirection: 'row',
-                alignItems: 'center',
-              }}
-              activeOpacity={0.72}
-            >
-              <View
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 16,
-                  backgroundColor: '#FFF4ED',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginRight: 15,
-                }}
-              >
-                <LogOut size={20} color="#C2413D" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text
-                  style={{
-                    fontSize: 15,
-                    fontFamily: 'Poppins-SemiBold',
-                    color: Colors.textPrimary,
-                  }}
-                >
-                  Sign out
-                </Text>
-                <Text
-                  style={{
-                    fontSize: 12,
-                    fontFamily: 'Poppins-Regular',
-                    color: Colors.textSecondaryDark,
-                    marginTop: 5,
-                    lineHeight: 18,
-                  }}
-                >
-                  End this session and return to login.
-                </Text>
-              </View>
-              <ChevronRight size={21} color="rgba(17, 24, 39, 0.28)" />
-            </TouchableOpacity>
-
-            <View style={{ height: 1, backgroundColor: '#EEF1E8', marginLeft: 78, marginRight: 18 }} />
-
-            <TouchableOpacity
-              onPress={handleDeleteAccount}
-              style={{
-                minHeight: 94,
-                paddingHorizontal: 18,
-                paddingVertical: 16,
-                flexDirection: 'row',
-                alignItems: 'center',
-                backgroundColor: '#FFFBFA',
-              }}
-              activeOpacity={0.72}
-            >
-              <View
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 16,
-                  backgroundColor: Colors.errorBorder,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginRight: 15,
-                }}
-              >
-                <Trash2 size={20} color="#B42318" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text
-                  style={{
-                    fontSize: 15,
-                    fontFamily: 'Poppins-SemiBold',
-                    color: '#B42318',
-                  }}
-                >
-                  Delete account
-                </Text>
-                <Text
-                  style={{
-                    fontSize: 12,
-                    fontFamily: 'Poppins-Regular',
-                    color: '#7F1D1D',
-                    marginTop: 5,
-                    lineHeight: 18,
-                  }}
-                >
-                  Permanently remove your profile and data.
-                </Text>
-              </View>
-              <ChevronRight size={21} color="rgba(180, 35, 24, 0.35)" />
-            </TouchableOpacity>
+            <ProfileMenuRow
+              title="Sign out"
+              subtitle="Return to the login screen"
+              icon={<LogOut size={20} color={Colors.accent} />}
+              iconBackgroundColor={Colors.sageTint}
+              onPress={handleSignOutPress}
+              showBorderBottom
+            />
+            <ProfileMenuRow
+              title="Delete account"
+              subtitle="Remove your profile and data"
+              icon={<Trash2 size={20} color="#B42318" />}
+              iconBackgroundColor="#F7F8FA"
+              onPress={handleDeletePress}
+              titleColor="#B42318"
+              showBorderBottom={false}
+            />
           </View>
         </View>
       </ScrollView>
+
+      <ProfileConfirmModal
+        visible={signOutVisible}
+        title="Sign out?"
+        message="You will need to sign in again to access your jobs and wallet."
+        confirmLabel="Sign out"
+        confirmBackgroundColor={Colors.accent}
+        loading={isSigningOut}
+        onCancel={handleSignOutCancel}
+        onConfirm={() => void handleSignOutConfirm()}
+      />
+
+      <ProfileConfirmModal
+        visible={deleteConfirmVisible}
+        title="Delete account?"
+        message="This permanently removes your profile and data. This action cannot be undone."
+        confirmLabel="Delete"
+        confirmBackgroundColor="#B42318"
+        onCancel={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+      />
+
+      <ProfileConfirmModal
+        visible={deleteInfoVisible}
+        title="Account deletion"
+        message="Account deletion is not available yet. Contact support if you need help closing your account."
+        confirmLabel="OK"
+        confirmBackgroundColor={Colors.accent}
+        singleAction
+        onCancel={handleDeleteInfoDismiss}
+        onConfirm={handleDeleteInfoDismiss}
+      />
     </SafeAreaWrapper>
   );
 };

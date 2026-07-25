@@ -6,6 +6,7 @@ const PUBLIC_UNAUTHENTICATED_PREFIXES = [
   '/LoginScreen',
   '/ProviderSignInScreen',
   '/SignupScreen',
+  '/CompanySignupScreen',
   '/ProviderSignUpScreen',
   '/ProviderSignupScreen',
   '/SelectAccountTypeScreen',
@@ -41,11 +42,12 @@ export function isAppEntryRoute(pathname: string | null | undefined): boolean {
 
 /**
  * True if user may view this path without a stored access token (login/signup/onboarding).
+ * Does NOT include `/` or `/index` — those are entry routes only (see isAppEntryRoute).
  */
 export function isPublicUnauthenticatedRoute(pathname: string | null | undefined): boolean {
-  if (pathname == null || pathname === '') return true;
+  if (pathname == null || pathname === '') return false;
   const p = normalizePath(pathname);
-  if (p === '/' || p === '/index') return true;
+  if (p === '/' || p === '/index') return false;
 
   return PUBLIC_UNAUTHENTICATED_PREFIXES.some(
     (prefix) => p === prefix || p.startsWith(`${prefix}/`)

@@ -131,16 +131,16 @@ export function resolveJobDisplayStatus(
     return 'Quoting';
   }
 
+  if (isVisitDeclined(visitRequest)) {
+    return 'Quoting';
+  }
+
   if (
     mapped === 'Inspecting' ||
     normalized === 'inspecting' ||
     isProviderVisitRequestSent(visitRequest)
   ) {
     return 'Inspecting';
-  }
-
-  if (isVisitDeclined(visitRequest)) {
-    return 'Accepted';
   }
 
   return mapped;

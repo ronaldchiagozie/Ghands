@@ -7,7 +7,7 @@ import { AuthError } from '@/utils/errors';
 import { handleAuthErrorRedirect } from '@/utils/authRedirect';
 import { formatTimeAgo } from '@/utils/dateFormatting';
 import { formatSkillLabel } from '@/utils/formatSkillLabel';
-import { navigateToJob } from '@/utils/navigation';
+import { navigateToJob, navigateToJobsPendingTab, resetToClientTab, NAV_FALLBACK } from '@/utils/navigation';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowRight, CalendarDays, CheckCircle2, Clock3, FileText, Wrench, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -48,7 +48,7 @@ export default function BookingConfirmationScreen() {
 
   const exitToJobs = useCallback(() => {
     haptics.light();
-    router.replace('/(tabs)/jobs' as any);
+    navigateToJobsPendingTab(router);
   }, [router]);
 
   useEffect(() => {
@@ -179,7 +179,8 @@ export default function BookingConfirmationScreen() {
   const handleContinue = () => {
     haptics.selection();
     if (params.requestId) {
-      navigateToJob(router, { requestId: params.requestId, fromBooking: true, replace: true });
+      resetToClientTab(router, NAV_FALLBACK.clientJobs, { initialTab: 'Pending' });
+      navigateToJob(router, { requestId: params.requestId, fromBooking: true });
     } else {
       exitToJobs();
     }

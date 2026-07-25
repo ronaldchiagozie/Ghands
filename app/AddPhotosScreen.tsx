@@ -1,12 +1,13 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { Button } from '@/components/ui/Button';
 import Toast from '@/components/Toast';
 import { useToast } from '@/hooks/useToast';
 import { Colors } from '@/lib/designSystem';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Camera, Plus, X } from 'lucide-react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { navigateBookingStepBack } from '@/utils/bookingFlowNavigation';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Dimensions, Image, Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
@@ -25,7 +26,7 @@ export default function AddPhotosScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ 
     requestId?: string;
-    categoryName?: string; // Add categoryName support
+    categoryName?: string;
     selectedDateTime?: string; 
     selectedDate?: string; 
     selectedTime?: string;
@@ -33,6 +34,9 @@ export default function AddPhotosScreen() {
     location?: string;
     photoCount?: string;
     preserveData?: string;
+    fromAiAssistant?: string;
+    bookingOrigin?: string;
+    conversationId?: string;
   }>();
   const { toast, showError, showWarning, hideToast } = useToast();
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
@@ -227,56 +231,46 @@ export default function AddPhotosScreen() {
           selectedDateTime: params.selectedDateTime,
           selectedDate: params.selectedDate,
           selectedTime: params.selectedTime,
-          photoCount: selectedPhotos.size.toString(), // Will be 0 if no photos selected
-          location: params.location, // Preserve location
+          photoCount: selectedPhotos.size.toString(),
+          location: params.location,
+          fromAiAssistant: params.fromAiAssistant,
+          bookingOrigin: params.bookingOrigin,
+          conversationId: params.conversationId,
         },
       } as any);
-    }, 1800);
+    }, 500);
   }, [isFindingProviders, selectedPhotos, photos, router, params]);
 
-  const handleCancel = useCallback(() => {
-    if (router.canGoBack()) {
-      router.back();
+  const goBackToDateTime = useCallback(() => {
+    if (!params.requestId) {
+      navigateBookingStepBack(router, params);
       return;
     }
-    if (params.requestId) {
-      router.replace({
-        pathname: '/DateTimeScreen' as any,
-        params: {
-          requestId: params.requestId,
-          categoryName: params.categoryName,
-          selectedDate: params.selectedDate,
-          selectedTime: params.selectedTime,
-          serviceType: params.serviceType,
-          location: params.location,
-        },
-      } as any);
-    } else {
-      router.replace('/(tabs)/categories' as any);
-    }
-  }, [router, params]);
+    router.replace({
+      pathname: '/DateTimeScreen' as any,
+      params: {
+        requestId: params.requestId,
+        categoryName: params.categoryName,
+        selectedDate: params.selectedDate,
+        selectedTime: params.selectedTime,
+        selectedDateTime: params.selectedDateTime,
+        serviceType: params.serviceType,
+        location: params.location,
+        photoCount: params.photoCount,
+        fromAiAssistant: params.fromAiAssistant,
+        bookingOrigin: params.bookingOrigin,
+        conversationId: params.conversationId,
+      },
+    } as any);
+  }, [params, router]);
+
+  const handleCancel = useCallback(() => {
+    goBackToDateTime();
+  }, [goBackToDateTime]);
 
   const handleBack = useCallback(() => {
-    if (router.canGoBack()) {
-      router.back();
-      return;
-    }
-    if (params.requestId) {
-      router.replace({
-        pathname: '/DateTimeScreen' as any,
-        params: {
-          requestId: params.requestId,
-          categoryName: params.categoryName,
-          selectedDate: params.selectedDate,
-          selectedTime: params.selectedTime,
-          serviceType: params.serviceType,
-          location: params.location,
-        },
-      } as any);
-    } else {
-      router.replace('/(tabs)/categories' as any);
-    }
-  }, [router, params]);
+    goBackToDateTime();
+  }, [goBackToDateTime]);
 
   const animatedStyles = useRef({
     opacity: fadeAnim,
@@ -449,31 +443,23 @@ export default function AddPhotosScreen() {
             borderTopColor: 'rgba(17,24,39,0.06)',
           }}
         >
-          <TouchableOpacity
+          <Button
+            title={
+              isFindingProviders
+                ? 'Matching…'
+                : selectedPhotos.size > 0
+                  ? 'Continue'
+                  : 'Skip & Continue'
+            }
             onPress={handleDone}
-            activeOpacity={0.85}
+            variant="secondary"
+            size="large"
+            fullWidth
             disabled={!canProceed || isFindingProviders}
-            className={`rounded-2xl py-4 items-center justify-center ${
-              !canProceed || isFindingProviders ? 'bg-gray-300' : 'bg-black'
-            }`}
-          >
-            <Text
-              className={`text-base ${!canProceed || isFindingProviders ? 'text-gray-500' : 'text-white'}`}
-              style={{ fontFamily: 'Poppins-SemiBold' }}
-            >
-              {isFindingProviders ? 'Matching…' : selectedPhotos.size > 0 ? 'Continue' : 'Skip & Continue'}
-            </Text>
-          </TouchableOpacity>
+            loading={isFindingProviders}
+          />
 
-          <TouchableOpacity
-            onPress={handleCancel}
-            activeOpacity={0.7}
-            className="bg-white rounded-2xl py-4 items-center justify-center"
-          >
-            <Text className="text-black text-base" style={{ fontFamily: 'Poppins-SemiBold' }}>
-              Cancel request
-            </Text>
-          </TouchableOpacity>
+          <Button title="Cancel request" onPress={handleCancel} variant="outline" size="large" fullWidth />
         </View>
       </Animated.View>
 

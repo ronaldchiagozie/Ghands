@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Activity, ChevronDown, ChevronUp, MessageCircle, Phone } from 'lucide-react-native';
+import { Activity, ChevronDown, ChevronUp, MessageCircle } from 'lucide-react-native';
+import { CallIconOutline } from '@/components/call/CallIcons';
 import React, { useState } from 'react';
 import { Image, Text, TouchableOpacity, View } from 'react-native';
 
@@ -16,12 +17,15 @@ import {
   providerPanelDivider,
   providerStackGapMd,
 } from '@/lib/providerSurfaceStyles';
+import { buildChatScreenParams } from '@/utils/navigation';
 import { formatProviderProximitySubtitle } from '@/utils/navigationUtils';
 
 type TimelineHeaderData = {
   title: string;
   subtitle?: string;
   statusPill?: string;
+  pillBg?: string;
+  pillText?: string;
   timestamp?: string | null;
   provider?: {
     id?: number;
@@ -98,15 +102,16 @@ export function ClientJobUpdatesPanel({
   };
 
   const handlePressChat = () => {
-    if (!provider) return;
+    if (!provider || !normalizedRequestId) return;
     haptics.light();
     router.push({
       pathname: '/ChatScreen',
-      params: {
+      params: buildChatScreenParams({
         providerName: provider.name,
         providerId: provider.id?.toString(),
         requestId: normalizedRequestId,
-      },
+        fromJobHub: true,
+      }),
     } as any);
   };
 
@@ -206,7 +211,7 @@ export function ClientJobUpdatesPanel({
                   onPress={handlePressCall}
                   style={[providerHeaderActionButton, { marginLeft: 6 }]}
                 >
-                  <Phone size={16} color={JOB_TIMELINE.sage} />
+                  <CallIconOutline size={16} color={JOB_TIMELINE.sage} />
                 </TouchableOpacity>
               ) : null}
               <TouchableOpacity
@@ -283,23 +288,55 @@ export function ClientJobUpdatesPanel({
                 style={{ flexDirection: 'row', alignItems: 'flex-start' }}
               >
                 <View style={{ flex: 1, paddingRight: 8 }}>
-                  <Text
+                  <View
                     style={{
-                      fontSize: 10,
-                      fontFamily: 'Poppins-SemiBold',
-                      color: JOB_TIMELINE.roleText,
-                      textTransform: 'uppercase',
-                      letterSpacing: 0.4,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
                       marginBottom: 4,
+                      gap: 8,
                     }}
                   >
-                    CURRENT STATUS
-                  </Text>
+                    <Text
+                      style={{
+                        fontSize: 10,
+                        fontFamily: 'Poppins-SemiBold',
+                        color: JOB_TIMELINE.roleText,
+                        textTransform: 'uppercase',
+                        letterSpacing: 0.4,
+                      }}
+                    >
+                      CURRENT STATUS
+                    </Text>
+                    {header?.statusPill ? (
+                      <View
+                        style={{
+                          backgroundColor: header.pillBg ?? JOB_TIMELINE.pendingSoft,
+                          paddingHorizontal: 10,
+                          paddingVertical: 4,
+                          borderRadius: 20,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 11,
+                            fontFamily: 'Poppins-SemiBold',
+                            color: header.pillText ?? JOB_TIMELINE.pendingChipText,
+                          }}
+                        >
+                          {header.statusPill}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
                   <Text
                     style={{
                       fontSize: 15,
                       fontFamily: 'Poppins-SemiBold',
-                      color: JOB_TIMELINE.titleText,
+                      color:
+                        header?.statusPill === 'Declined'
+                          ? JOB_TIMELINE.declinedChipText
+                          : JOB_TIMELINE.titleText,
                       lineHeight: 20,
                     }}
                     numberOfLines={statusExpanded ? 2 : 2}

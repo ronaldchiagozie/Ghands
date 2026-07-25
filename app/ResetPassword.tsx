@@ -9,10 +9,12 @@ import { InputField } from '../components/InputField';
 import { Colors, Spacing } from '@/lib/designSystem';
 import { useToast } from '../hooks/useToast';
 import Toast from '../components/Toast';
+import { passwordResetService } from '@/services/api';
+import { getSpecificErrorMessage } from '@/utils/errorMessages';
 
 export default function ResetPasswordScreen() {
   const router = useRouter();
-  const { toast, showError, hideToast } = useToast();
+  const { toast, showError, showSuccess, hideToast } = useToast();
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -32,13 +34,15 @@ export default function ResetPasswordScreen() {
     setIsLoading(true);
 
     try {
-      // Simulate API call to send reset code
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      // Navigate to OTP screen
-      router.push('/OtpScreen');
+      const normalized = email.trim().toLowerCase();
+      await passwordResetService.forgotPassword(normalized);
+      showSuccess('Verification code sent to your email.');
+      router.push({
+        pathname: '/OtpScreen',
+        params: { email: normalized },
+      });
     } catch (error) {
-      showError('Failed to send reset code. Please try again.');
+      showError(getSpecificErrorMessage(error, 'Failed to send reset code. Please try again.'));
     } finally {
       setIsLoading(false);
     }
@@ -88,7 +92,7 @@ export default function ResetPasswordScreen() {
 
         {/* Email Input */}
         <InputField
-          placeholder="Company email"
+          placeholder="Email address"
           icon={<Mail size={20} color={'white'}/>}
           keyboardType="email-address"
           value={email}

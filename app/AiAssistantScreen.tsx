@@ -9,6 +9,7 @@ import AiChatMessageList from '@/components/ai/chat/AiChatMessageList';
 import type { AiSuggestion } from '@/components/ai/chat/types';
 import {
   AI_ANIMATION,
+  AI_CHAT_UI,
   AI_COLORS,
   AI_ASSISTANT_TEXT,
   buildAiGreeting,
@@ -21,11 +22,12 @@ import { useToast } from '@/hooks/useToast';
 import { useTypewriterText } from '@/hooks/useTypewriterText';
 import { haptics } from '@/hooks/useHaptics';
 import { runParallel, useReducedMotion } from '@/lib/designSystem';
+import { applyDefaultStatusBar, applyHandyAiStatusBar, HANDY_AI_STATUS_BAR_BACKGROUND } from '@/utils/statusBar';
 import { startAiAssistedBooking } from '@/utils/aiBookingFlow';
 import { getSpecificErrorMessage } from '@/utils/errorMessages';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -110,6 +112,15 @@ export default function AiAssistantScreen() {
   useEffect(() => {
     void checkAvailability();
   }, [checkAvailability]);
+
+  useFocusEffect(
+    useCallback(() => {
+      applyHandyAiStatusBar();
+      return () => {
+        applyDefaultStatusBar();
+      };
+    }, []),
+  );
 
   useEffect(() => {
     if (params.newChat === 'true') {
@@ -231,8 +242,6 @@ export default function AiAssistantScreen() {
           haptics.error();
           return;
         }
-
-        applySuggestionDraft(draft);
         return;
       }
 
@@ -256,7 +265,11 @@ export default function AiAssistantScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: AI_COLORS.screenBase }}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor={HANDY_AI_STATUS_BAR_BACKGROUND}
+        translucent={false}
+      />
       <AiAssistantBackground />
 
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
@@ -278,7 +291,7 @@ export default function AiAssistantScreen() {
             <AiBotUnavailableView />
           ) : isCheckingStatus ? (
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14 }}>
-              <ActivityIndicator size="large" color={AI_COLORS.accent} />
+              <ActivityIndicator size="large" color={AI_CHAT_UI.spinnerOnGradient} />
               <Text
                 style={{
                   fontFamily: 'Poppins-Regular',
@@ -402,7 +415,19 @@ export default function AiAssistantScreen() {
             zIndex: 50,
           }}
         >
-          <ActivityIndicator size="large" color={AI_COLORS.accent} />
+          <ActivityIndicator size="large" color={AI_CHAT_UI.spinnerOnGradient} />
+          {isStartingBooking ? (
+            <Text
+              style={{
+                marginTop: 12,
+                fontFamily: 'Poppins-Medium',
+                fontSize: 14,
+                color: AI_COLORS.primary,
+              }}
+            >
+              Starting your booking…
+            </Text>
+          ) : null}
         </View>
       ) : null}
 

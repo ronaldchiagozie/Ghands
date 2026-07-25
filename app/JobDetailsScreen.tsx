@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ActivityIndicator, Animated, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { Button } from '@/components/ui/Button';
 import { Colors } from '@/lib/designSystem';
 import Toast from '@/components/Toast';
 import { useToast } from '@/hooks/useToast';
@@ -239,9 +240,10 @@ export default function JobDetailsScreen() {
           params: {
             requestId: params.requestId,
             categoryName: params.categoryName,
+            bookingOrigin: 'jobDetails',
           },
         } as any);
-      }, 1000);
+      }, 300);
     } catch (error: any) {
       if (__DEV__) {
         console.error('❌ Error in handleNext (updateJobDetails):', {
@@ -348,21 +350,22 @@ export default function JobDetailsScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 32, paddingTop: 8 }}
         >
-          <View className="mb-8 rounded-2xl bg-gray-100 px-5 py-5 border border-[#D7FF6B]/30">
+          <View className="mb-8 rounded-2xl bg-gray-100 px-5 py-5 border border-[rgba(79,103,57,0.25)]">
             <View className="flex-row items-center justify-between mb-4">
               <View className="flex-row items-center">
                 <View className="w-8 h-8 rounded-full bg-[#000] items-center justify-center mr-2">
-                  <MapPin size={16} color="#81b60eff" />
+                  <MapPin size={16} color={Colors.accent} />
                 </View>
                 <Text className="text-base text-black" style={{ fontFamily: 'Poppins-SemiBold' }}>
                   Current Location
                 </Text>
               </View>
-              <TouchableOpacity onPress={handleChangeLocation} className='bg-black px-4 py-2  rounded-md' activeOpacity={0.7}>
-                <Text className="text-sm text-[#81b60eff]" style={{ fontFamily: 'Poppins-SemiBold' }}>
-                  Change
-                </Text>
-              </TouchableOpacity>
+              <Button
+                title="Change"
+                onPress={handleChangeLocation}
+                variant="secondary"
+                size="small"
+              />
             </View>
 
             <Text className="text-base text-black mb-1" style={{ fontFamily: 'Poppins-Bold' }}>
@@ -458,39 +461,22 @@ export default function JobDetailsScreen() {
         </ScrollView>
 
         <View className="px-4 pb-5">
-          <TouchableOpacity
+          <Button
+            title={isUpdating ? 'Updating…' : 'Next'}
             onPress={handleNext}
-            disabled={!canProceed}
-            activeOpacity={canProceed ? 0.85 : 1}
-            className={`rounded-xl py-4 items-center justify-center flex-row ${
-              canProceed ? 'bg-black' : 'bg-gray-200'
-            }`}
-            style={{
-              opacity: canProceed ? 1 : 0.6,
-            }}
-          >
-            {isUpdating ? (
-              <>
-                <ActivityIndicator size="small" color="#D7FF6B" style={{ marginRight: 8 }} />
-                <Text
-                  className="text-base text-[#D7FF6B]"
-                  style={{ fontFamily: 'Poppins-SemiBold' }}
-                >
-                  Updating...
-                </Text>
-              </>
-            ) : (
-              <>
-                <Text
-                  className={`text-base mr-2 ${canProceed ? 'text-[#D7FF6B]' : 'text-gray-400'}`}
-                  style={{ fontFamily: 'Poppins-SemiBold' }}
-                >
-                  Next
-                </Text>
-                <ArrowRight size={18} color={canProceed ? '#D7FF6B' : '#9CA3AF'} />
-              </>
-            )}
-          </TouchableOpacity>
+            variant="secondary"
+            size="large"
+            fullWidth
+            disabled={!canProceed || isUpdating}
+            loading={isUpdating}
+            icon={
+              <ArrowRight
+                size={18}
+                color={!canProceed || isUpdating ? Colors.textTertiary : Colors.white}
+              />
+            }
+            iconPosition="right"
+          />
         </View>
       </Animated.View>
 

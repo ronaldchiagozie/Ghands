@@ -1,94 +1,127 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { Ionicons } from '@expo/vector-icons';
+import { Colors, BorderRadius } from '@/lib/designSystem';
+import { providerListCard } from '@/lib/providerSurfaceStyles';
+import { CLIENT_HOME_SCROLL_GUTTER } from '@/lib/tabletLayout';
 import { useRouter } from 'expo-router';
-import { HelpCircle, User } from 'lucide-react-native';
+import { BookOpen, ChevronRight, MessageCircle } from 'lucide-react-native';
 import React from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import { Colors } from '@/lib/designSystem';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-const helpOptions = [
+const OPTIONS = [
   {
-    id: '1',
-    title: 'FAQ & Help center',
-    subtitle: '24/7 live chat and phone support',
-    icon: User,
-    iconBgColor: '#F5F5F5',
-    route: '/SupportScreen',
+    id: 'faq',
+    title: 'Help centre',
+    subtitle: 'FAQs, contact options, and live chat',
+    route: '/SupportScreen' as const,
+    icon: MessageCircle,
+    iconBg: Colors.sageTint,
+    iconColor: Colors.accent,
   },
   {
-    id: '2',
+    id: 'guide',
     title: 'User guide',
-    subtitle: 'How it works',
-    icon: HelpCircle,
-    iconBgColor: '#F5F5F5',
-    route: null, // Placeholder for later
+    subtitle: 'Step-by-step booking walkthrough',
+    route: '/UserGuideScreen' as const,
+    icon: BookOpen,
+    iconBg: '#F7F8FA',
+    iconColor: Colors.textPrimary,
   },
 ];
 
 export default function HelpSupportScreen() {
   const router = useRouter();
 
-  const handleOptionPress = (route: string | null) => {
-    if (route) {
-      router.push(route as any);
-    } else {
-      // Navigate to User Guide
-      router.push('/UserGuideScreen' as any);
-    }
-  };
-
   return (
-    <SafeAreaWrapper>
-      <ScreenHeader title="Help & Support" onBack={() => router.back()} />
+    <SafeAreaWrapper backgroundColor={Colors.backgroundLight}>
+      <ScreenHeader title="Help & support" onBack={() => router.back()} />
 
-      {/* Content */}
-      <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
-        <View className="px-4 pt-6">
-          {helpOptions.map((option) => {
-            const IconComponent = option.icon;
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}
+      >
+        <Text style={styles.lead}>
+          Get answers, talk to support, or follow the guide to book your first service.
+        </Text>
+
+        <View style={[styles.card, providerListCard]}>
+          {OPTIONS.map((option, index) => {
+            const Icon = option.icon;
             return (
               <TouchableOpacity
                 key={option.id}
-                onPress={() => handleOptionPress(option.route)}
-                activeOpacity={0.85}
-                className="bg-white rounded-2xl px-4 py-5 mb-4 flex-row items-center border border-gray-200"
+                onPress={() => router.push(option.route as never)}
+                activeOpacity={0.7}
+                style={[
+                  styles.row,
+                  index < OPTIONS.length - 1 && styles.rowBorder,
+                ]}
               >
-                <View
-                  style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 12,
-                    backgroundColor: option.iconBgColor,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginRight: 16,
-                  }}
-                >
-                  <IconComponent size={24} color="#666" />
+                <View style={[styles.iconWrap, { backgroundColor: option.iconBg }]}>
+                  <Icon size={20} color={option.iconColor} />
                 </View>
-
-                <View className="flex-1">
-                  <Text className="text-base font-bold text-black mb-1" style={{ fontFamily: 'Poppins-Bold' }}>
-                    {option.title}
-                  </Text>
-                  <Text
-                    className={`text-sm ${option.id === '2' ? 'text-[#4F6739]' : 'text-gray-500'}`}
-                    style={{ fontFamily: 'Poppins-Medium' }}
-                  >
-                    {option.subtitle}
-                  </Text>
+                <View style={styles.rowText}>
+                  <Text style={styles.rowTitle}>{option.title}</Text>
+                  <Text style={styles.rowSubtitle}>{option.subtitle}</Text>
                 </View>
-
-                <Ionicons name="chevron-forward" size={24} color="#000" />
+                <ChevronRight size={18} color={Colors.textSecondaryDark} />
               </TouchableOpacity>
             );
           })}
         </View>
-
-        <View style={{ height: 100 }} />
       </ScrollView>
     </SafeAreaWrapper>
   );
 }
 
+const styles = StyleSheet.create({
+  scroll: {
+    paddingHorizontal: CLIENT_HOME_SCROLL_GUTTER,
+    paddingTop: 20,
+    paddingBottom: 40,
+  },
+  lead: {
+    fontSize: 14,
+    fontFamily: 'Poppins-Regular',
+    color: Colors.textSecondaryDark,
+    lineHeight: 21,
+    marginBottom: 20,
+  },
+  card: {
+    padding: 0,
+    overflow: 'hidden',
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  rowBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(17, 24, 39, 0.06)',
+  },
+  iconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  rowText: {
+    flex: 1,
+    minWidth: 0,
+    paddingRight: 8,
+  },
+  rowTitle: {
+    fontSize: 15,
+    fontFamily: 'Poppins-SemiBold',
+    color: Colors.textPrimary,
+    marginBottom: 2,
+  },
+  rowSubtitle: {
+    fontSize: 12,
+    fontFamily: 'Poppins-Regular',
+    color: Colors.textSecondaryDark,
+  },
+});

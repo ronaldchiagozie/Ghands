@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { ArrowLeft } from 'lucide-react-native';
 import React from 'react';
 import { Text, TouchableOpacity, View, ViewStyle } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { navigateBack } from '@/utils/navigation';
 
 interface ScreenHeaderProps {
@@ -13,14 +14,25 @@ interface ScreenHeaderProps {
   rightElement?: React.ReactNode;
   backgroundColor?: string;
   style?: ViewStyle;
+  /** Hairline under header when body uses a different background */
+  showBottomBorder?: boolean;
 }
 
 /**
  * Shared screen header for consistent layout and styling across the app.
  * Back button meets 44pt minimum touch target. Use rightElement for actions like Bell or Clear all.
  */
-export function ScreenHeader({ title, onBack, backFallback, rightElement, backgroundColor = Colors.white, style }: ScreenHeaderProps) {
+export function ScreenHeader({
+  title,
+  onBack,
+  backFallback,
+  rightElement,
+  backgroundColor = Colors.white,
+  style,
+  showBottomBorder = false,
+}: ScreenHeaderProps) {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const handleBack = onBack ?? (backFallback ? () => navigateBack(router, backFallback) : undefined);
   return (
@@ -31,10 +43,14 @@ export function ScreenHeader({ title, onBack, backFallback, rightElement, backgr
           alignItems: 'center',
           justifyContent: 'space-between',
           paddingHorizontal: SPACING.xl,
-          paddingTop: SPACING.md,
+          paddingTop: insets.top + SPACING.md,
           paddingBottom: SPACING.md,
+          marginTop: -insets.top,
           backgroundColor,
         },
+        showBottomBorder
+          ? { borderBottomWidth: 1, borderBottomColor: Colors.border }
+          : null,
         style,
       ]}
     >

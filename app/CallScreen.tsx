@@ -6,18 +6,20 @@ import {
   CallStatusPill,
   mapCallAudioMessage,
 } from '@/components/call/CallUiParts';
+import {
+  CallIconAnswer,
+  CallIconEnd,
+  CallIconMessage,
+  CallIconMic,
+  CallIconMicOff,
+  CallIconSpeaker,
+} from '@/components/call/CallIcons';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Colors, Spacing } from '@/lib/designSystem';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
-  MessageCircle,
-  Mic,
-  MicOff,
-  Phone,
-  PhoneOff,
   Shield,
   User,
-  Volume2,
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Image, ScrollView, Text, View } from 'react-native';
@@ -29,6 +31,7 @@ import {
   isWebRtcNativeAvailable,
   WEBRTC_UNAVAILABLE_MESSAGE,
 } from '@/utils/webrtcAvailability';
+import { buildChatScreenParams, exitChatToJobHub } from '@/utils/navigation';
 
 export type CallState = 'incoming' | 'outgoing' | 'active' | 'ended';
 
@@ -257,14 +260,16 @@ export default function CallScreen() {
 
   const handleMessage = () => {
     haptics.light();
+    if (!params.requestId) return;
     router.push({
       pathname: '/ChatScreen',
-      params: {
+      params: buildChatScreenParams({
         providerName: isProvider ? undefined : callerName,
         clientName: isProvider ? callerName : undefined,
         providerId: params.callerId,
         requestId: params.requestId,
-      },
+        fromJobHub: true,
+      }),
     } as any);
   };
 
@@ -274,10 +279,11 @@ export default function CallScreen() {
       router.back();
       return;
     }
-    router.push({
-      pathname: isProvider ? '/ProviderJobDetailsScreen' : '/OngoingJobDetails',
-      params: { requestId: params.requestId },
-    } as any);
+    exitChatToJobHub(router, {
+      requestId: params.requestId,
+      isProvider,
+      fromJobHub: '1',
+    });
   };
 
   const showJobSummary = callState === 'ended';
@@ -456,13 +462,13 @@ export default function CallScreen() {
                 label="Decline"
                 variant="danger"
                 onPress={handleDeclineCall}
-                icon={<PhoneOff size={28} color={Colors.white} />}
+                icon={<CallIconEnd size={28} color={Colors.white} />}
               />
               <CallActionButton
                 label="Answer"
                 variant="primary"
                 onPress={handleAcceptCall}
-                icon={<Phone size={28} color={Colors.white} />}
+                icon={<CallIconAnswer size={28} color={Colors.white} />}
               />
             </View>
           ) : null}
@@ -474,14 +480,14 @@ export default function CallScreen() {
                 variant="danger"
                 disabled={isCreatingCall}
                 onPress={handleEndCall}
-                icon={<PhoneOff size={28} color={Colors.white} />}
+                icon={<CallIconEnd size={28} color={Colors.white} />}
               />
               {callSetupError ? (
                 <CallActionButton
                   label="Try again"
                   variant="secondary"
                   onPress={handleCallAgain}
-                  icon={<Phone size={22} color={Colors.accent} />}
+                  icon={<CallIconAnswer size={22} color={Colors.accent} />}
                   style={{ marginTop: 4 }}
                 />
               ) : null}
@@ -499,9 +505,9 @@ export default function CallScreen() {
                 }}
                 icon={
                   isMuted ? (
-                    <MicOff size={22} color={Colors.textPrimary} />
+                    <CallIconMicOff size={22} color={Colors.textPrimary} />
                   ) : (
-                    <Mic size={22} color={Colors.textPrimary} />
+                    <CallIconMic size={22} color={Colors.textPrimary} />
                   )
                 }
               />
@@ -509,7 +515,7 @@ export default function CallScreen() {
                 label="End"
                 variant="danger"
                 onPress={handleEndCall}
-                icon={<PhoneOff size={28} color={Colors.white} />}
+                icon={<CallIconEnd size={28} color={Colors.white} />}
               />
               <CallActionButton
                 label="Speaker"
@@ -519,7 +525,11 @@ export default function CallScreen() {
                   setIsSpeakerOn((prev) => !prev);
                 }}
                 icon={
-                  <Volume2 size={22} color={isSpeakerOn ? Colors.accent : Colors.textPrimary} />
+                  <CallIconSpeaker
+                    size={22}
+                    color={isSpeakerOn ? Colors.accent : Colors.textPrimary}
+                    active={isSpeakerOn}
+                  />
                 }
               />
             </View>
@@ -531,13 +541,13 @@ export default function CallScreen() {
                 label="Message"
                 variant="secondary"
                 onPress={handleMessage}
-                icon={<MessageCircle size={22} color={Colors.accent} />}
+                icon={<CallIconMessage size={22} color={Colors.accent} />}
               />
               <CallActionButton
                 label="Call again"
                 variant="secondary"
                 onPress={handleCallAgain}
-                icon={<Phone size={22} color={Colors.accent} />}
+                icon={<CallIconAnswer size={22} color={Colors.accent} />}
               />
             </View>
           ) : null}

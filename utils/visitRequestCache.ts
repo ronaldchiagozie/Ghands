@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { isTerminalVisitStatus } from './visitStatus';
+import { isTerminalVisitStatus, patchVisitDeclined } from './visitStatus';
 
 const VISIT_REQUEST_CACHE_KEY = '@ghands:visit_request_cache';
 
@@ -59,7 +59,13 @@ export const saveCachedVisitRequest = async (
     scheduledDate: ((visitRequest.scheduledDate ?? visitRequest.scheduled_date) as string | undefined) ?? existing.scheduledDate,
     scheduledTime: ((visitRequest.scheduledTime ?? visitRequest.scheduled_time) as string | undefined) ?? existing.scheduledTime,
     logisticsCost: logisticsCost ?? existing.logisticsCost,
-    logisticsStatus: ((visitRequest.logisticsStatus ?? visitRequest.logistics_status) as string | undefined) ?? existing.logisticsStatus,
+    logisticsStatus:
+      visitRequest.declined === true || visitRequest.cancelled === true
+        ? ((visitRequest.logisticsStatus ?? visitRequest.logistics_status) as string | undefined) ??
+          existing.logisticsStatus ??
+          'client_declined'
+        : ((visitRequest.logisticsStatus ?? visitRequest.logistics_status) as string | undefined) ??
+          existing.logisticsStatus,
     requestedAt: ((visitRequest.requestedAt ?? visitRequest.requested_at) as string | undefined) ?? existing.requestedAt,
     declinedBy: ((visitRequest.declinedBy ?? visitRequest.declined_by) as string | undefined) ?? existing.declinedBy,
     declined:
@@ -93,6 +99,33 @@ export const mergeCachedVisitRequest = async <T extends { visitRequest?: any }>(
   }
 
   const currentVisit = request.visitRequest || {};
+
+  if (cachedVisit.declined === true) {
+    const actor =
+      cachedVisit.declinedBy === 'provider'
+        ? 'provider'
+        : cachedVisit.declinedBy === 'client'
+          ? 'client'
+          : 'client';
+    const patched = patchVisitDeclined(currentVisit, actor);
+    return {
+      ...request,
+      visitRequest: {
+        ...currentVisit,
+        ...patched,
+        scheduledDate: currentVisit.scheduledDate ?? cachedVisit.scheduledDate,
+        scheduledTime: currentVisit.scheduledTime ?? cachedVisit.scheduledTime,
+        logisticsCost: currentVisit.logisticsCost ?? cachedVisit.logisticsCost,
+        logisticsStatus:
+          patched.logisticsStatus ??
+          cachedVisit.logisticsStatus ??
+          currentVisit.logisticsStatus,
+        declinedBy: cachedVisit.declinedBy ?? patched.declinedBy,
+        declined: true,
+      },
+    };
+  }
+
   const hasCurrentCost =
     typeof currentVisit.logisticsCost === 'number' &&
     Number.isFinite(currentVisit.logisticsCost) &&
@@ -121,7 +154,9 @@ export const mergeCachedVisitRequest = async <T extends { visitRequest?: any }>(
         ? currentVisit.requestedAt ?? cachedVisit.requestedAt
         : cachedVisit.requestedAt ?? currentVisit.requestedAt,
       declinedBy: cachedVisit.declinedBy ?? currentVisit.declinedBy,
-      declined: cachedVisit.declined === true || currentVisit.declined === true,
+      declined:
+        cachedVisit.declined === true ||
+        (currentVisit as { declined?: boolean }).declined === true,
     },
   };
 

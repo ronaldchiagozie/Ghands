@@ -1,5 +1,6 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import Toast from '@/components/Toast';
+import { Button } from '@/components/ui/Button';
 import { Colors, MIN_TOUCH_TARGET } from '@/lib/designSystem';
 import { haptics } from '@/hooks/useHaptics';
 import { useToast } from '@/hooks/useToast';
@@ -7,6 +8,7 @@ import { serviceRequestService, authService } from '@/services/api';
 import { AuthError } from '@/utils/errors';
 import { handleAuthErrorRedirect } from '@/utils/authRedirect';
 import { getSpecificErrorMessage } from '@/utils/errorMessages';
+import { navigateBookingStepBack } from '@/utils/bookingFlowNavigation';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -63,6 +65,9 @@ export default function DateTimeScreen() {
     serviceType?: string;
     photoCount?: string;
     location?: string;
+    fromAiAssistant?: string;
+    bookingOrigin?: string;
+    conversationId?: string;
   }>();
   const { toast, showError, showSuccess, hideToast } = useToast();
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -140,21 +145,11 @@ export default function DateTimeScreen() {
 
   const handleBack = useCallback(() => {
     haptics.light();
-    if (router.canGoBack()) {
-      router.back();
-      return;
-    }
-    if (params.requestId) {
-      router.replace({
-        pathname: '/JobDetailsScreen' as any,
-        params: {
-          requestId: params.requestId,
-          categoryName: params.categoryName,
-        },
-      } as any);
-    } else {
-      router.replace('/(tabs)/categories' as any);
-    }
+    navigateBookingStepBack(router, params);
+  }, [router, params]);
+
+  const handleCancel = useCallback(() => {
+    navigateBookingStepBack(router, params);
   }, [router, params]);
 
   // Format date as YYYY-MM-DD
@@ -262,22 +257,22 @@ export default function DateTimeScreen() {
       showSuccess('Date and time updated!');
       haptics.success();
 
-      // Navigate to AddPhotosScreen with requestId
-      setTimeout(() => {
-        router.replace({
-          pathname: '../AddPhotosScreen' as any,
-          params: {
-            requestId: params.requestId,
-            categoryName: params.categoryName,
-            selectedDateTime: formattedDateTime,
-            selectedDate: selectedDate?.toISOString(),
-            selectedTime: selectedTime || '',
-            serviceType: params.serviceType,
-            location: params.location,
-            photoCount: params.photoCount,
-          },
-        } as any);
-      }, 1000);
+      router.replace({
+        pathname: '../AddPhotosScreen' as any,
+        params: {
+          requestId: params.requestId,
+          categoryName: params.categoryName,
+          selectedDateTime: formattedDateTime,
+          selectedDate: selectedDate?.toISOString(),
+          selectedTime: selectedTime || '',
+          serviceType: params.serviceType,
+          location: params.location,
+          photoCount: params.photoCount,
+          fromAiAssistant: params.fromAiAssistant,
+          bookingOrigin: params.bookingOrigin,
+          conversationId: params.conversationId,
+        },
+      } as any);
     } catch (error: any) {
       if (error instanceof AuthError) {
         await handleAuthErrorRedirect(router);
@@ -302,22 +297,6 @@ export default function DateTimeScreen() {
     formatTimeForAPI,
     isSlotInPast,
   ]);
-
-  const handleCancel = useCallback(() => {
-    // Navigate back to JobDetailsScreen explicitly
-    if (params.requestId) {
-      router.replace({
-        pathname: '/JobDetailsScreen' as any,
-        params: {
-          requestId: params.requestId,
-          categoryName: params.categoryName,
-        },
-      } as any);
-    } else {
-      // If no requestId, go to categories
-      router.replace('/(tabs)/categories' as any);
-    }
-  }, [router, params]);
 
   const canGoPreviousMonth = useMemo(() => {
     const viewFirst = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
@@ -659,49 +638,30 @@ export default function DateTimeScreen() {
         </ScrollView>
 
         <View className="px-4 pb-5 gap-3">
-          <TouchableOpacity
+          <Button
+            title={isUpdating ? 'Updating…' : 'Next'}
             onPress={handleNext}
+            variant="secondary"
+            size="large"
+            fullWidth
             disabled={!canProceed || isUpdating}
-            activeOpacity={canProceed && !isUpdating ? 0.85 : 1}
-            className={`rounded-xl py-4 items-center justify-center flex-row ${
-              canProceed && !isUpdating ? 'bg-black' : 'bg-gray-200'
-            }`}
-            style={{
-              opacity: canProceed && !isUpdating ? 1 : 0.6,
-            }}
-          >
-            {isUpdating ? (
-              <>
-                <ActivityIndicator size="small" color="#D7FF6B" style={{ marginRight: 8 }} />
-                <Text
-                  className="text-base text-[#D7FF6B]"
-                  style={{ fontFamily: 'Poppins-SemiBold' }}
-                >
-                  Updating...
-                </Text>
-              </>
-            ) : (
-              <>
-                <Text
-                  className={`text-base mr-2 ${canProceed ? 'text-[#D7FF6B]' : 'text-gray-400'}`}
-                  style={{ fontFamily: 'Poppins-SemiBold' }}
-                >
-                  Next
-                </Text>
-                <ArrowRight size={18} color={canProceed ? '#D7FF6B' : '#9CA3AF'} />
-              </>
-            )}
-          </TouchableOpacity>
+            loading={isUpdating}
+            icon={
+              <ArrowRight
+                size={18}
+                color={!canProceed || isUpdating ? Colors.textTertiary : Colors.white}
+              />
+            }
+            iconPosition="right"
+          />
 
-          <TouchableOpacity
+          <Button
+            title="Cancel request"
             onPress={handleCancel}
-            activeOpacity={0.7}
-            className="rounded-xl py-4 items-center justify-center bg-white border border-gray-200"
-          >
-            <Text className="text-base text-black" style={{ fontFamily: 'Poppins-SemiBold' }}>
-              Cancel request
-            </Text>
-          </TouchableOpacity>
+            variant="outline"
+            size="large"
+            fullWidth
+          />
         </View>
       </Animated.View>
 

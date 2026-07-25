@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { ONBOARDING_STORAGE_KEY } from './useOnboarding';
 import { authService } from '@/services/api';
 import { beginRoleSwitch, endRoleSwitch } from '@/hooks/useRoleSwitching';
-import { markAuthSessionEnded, redirectToAuthScreen } from '@/utils/authNavigationGuard';
+import { markAuthSessionEnded } from '@/utils/authNavigationGuard';
+import { logoutUser } from '@/utils/logoutUser';
 
 export type UserRole = 'client' | 'provider' | null;
 
@@ -107,27 +108,10 @@ export function useAuthRole(): UseAuthRoleReturn {
 
   const logout = useCallback(async () => {
     try {
-      const { unregisterPushOnLogout } = await import('@/utils/pushNotifications');
-      await unregisterPushOnLogout();
-      await authService.clearAuthTokens();
-
-      const providerKeys = [
-        '@ghands:business_name',
-        '@ghands:company_name',
-        '@ghands:provider_id',
-        '@ghands:provider_name',
-        '@ghands:provider_email',
-        '@ghands:company_email',
-        '@ghands:company_phone',
-        '@ghands:profile_complete',
-      ];
-
-      await AsyncStorage.multiRemove(providerKeys);
-
-      await redirectToAuthScreen(router, { clearSession: false, force: true });
+      await logoutUser(router);
     } catch (error) {
       console.error('Error during logout:', error);
-      throw error;
+      router.replace('/LoginScreen' as never);
     }
   }, [router]);
 

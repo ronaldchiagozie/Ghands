@@ -14,7 +14,7 @@ import { AI_QUICK_ACTIONS, type AiQuickAction } from './aiAssistantTheme';
 const HORIZONTAL_GUTTER = 20;
 const CARD_GAP = 12;
 const CARD_WIDTH_RATIO = 0.48;
-const CAROUSEL_HEIGHT = 142;
+const CAROUSEL_HEIGHT = 152;
 
 type AiQuickActionCarouselProps = {
   onActionPress: (action: AiQuickAction) => void;

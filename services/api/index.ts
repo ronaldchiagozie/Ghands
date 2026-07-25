@@ -4,6 +4,7 @@ export { profileService } from './profile';
 export { locationService } from './location';
 export type { LocationSearchResult, LocationDetails, SavedLocation, UpdateLocationPayload } from './location';
 export { authService } from './auth';
+export { passwordResetService } from './passwordReset';
 export type { UserSignupPayload, UserSignupResponse, UserLoginPayload, UserLoginResponse, CompanySignupPayload, CompanySignupResponse } from './auth';
 export { serviceRequestService } from './serviceRequest';
 export type {

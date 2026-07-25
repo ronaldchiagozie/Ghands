@@ -10,6 +10,13 @@ import {
   notificationActionLabel,
   resolveNotificationRoute,
 } from '@/utils/notificationNavigation';
+import {
+  formatMessageNotificationCopy,
+  formatMessageNotificationTitle,
+  isMessageNotificationType,
+  shouldShowMessageNotification,
+} from '@/utils/messageNotificationCopy';
+import { authService } from '@/services/authService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { Archive, Bell, Calendar, CheckCheck, Clock, FileText, Handshake, MessageCircle, Trash2, Wallet, X } from 'lucide-react-native';
@@ -304,6 +311,8 @@ export default function NotificationsScreen() {
   const [filterPill, setFilterPill] = useState<FilterPill>('all');
   const [archivedIds, setArchivedIds] = useState<Set<number>>(new Set());
   const [userRole, setUserRole] = useState<'client' | 'provider'>('client');
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [currentCompanyId, setCurrentCompanyId] = useState<number | null>(null);
   const swipeableRefs = useRef<Map<number, Swipeable | null>>(new Map());
 
   const hasNotifications = notifications.length > 0;
@@ -328,19 +337,23 @@ export default function NotificationsScreen() {
   };
 
   useEffect(() => {
-    const loadRole = async () => {
+    const loadRoleAndIdentity = async () => {
       try {
-        const role = await AsyncStorage.getItem('@ghands:user_role');
-        if (role === 'provider') {
-          setUserRole('provider');
-        } else {
-          setUserRole('client');
-        }
+        const [role, userId, companyId] = await Promise.all([
+          AsyncStorage.getItem('@ghands:user_role'),
+          authService.getUserId(),
+          authService.getCompanyId(),
+        ]);
+        setUserRole(role === 'provider' ? 'provider' : 'client');
+        setCurrentUserId(userId);
+        setCurrentCompanyId(companyId);
       } catch {
         setUserRole('client');
+        setCurrentUserId(null);
+        setCurrentCompanyId(null);
       }
     };
-    loadRole();
+    void loadRoleAndIdentity();
   }, []);
 
   // Map backend notification type to UI presentation
@@ -481,37 +494,26 @@ export default function NotificationsScreen() {
         iconColor = Colors.inkMuted;
         break;
       }
-      default: {
-        // Fallback styling
-        if (notification.type === 'message' || notification.type === 'chat_new') {
-          typeLabel = 'New message';
-          // Keep message notifications backend-driven (no invented text).
-          // Also fix direction wording when sender metadata indicates current side.
-          const senderType = String(
-            notification.metadata?.senderType ??
-            (notification.metadata as any)?.sender_type ??
-            ''
-          ).toLowerCase();
-          if (description) {
-            const fromCurrentSide =
-              (userRole === 'client' &&
-                (senderType === 'user' || senderType === 'client' || senderType === 'customer')) ||
-              (userRole === 'provider' &&
-                (senderType === 'provider' || senderType === 'company'));
-            if (fromCurrentSide) {
-              description = description
-                .replace(/provider sent you a text/gi, 'You sent a message')
-                .replace(/sent you a text/gi, 'You sent a message');
-            }
-          } else {
-            description = '';
-          }
-          IconComponent = MessageCircle;
-          iconBgColor = Colors.border;
-          iconColor = Colors.inkMuted;
-        }
+      default:
         break;
-      }
+    }
+
+    if (isMessageNotificationType(notification.type)) {
+      const messagePerspective = {
+        userRole,
+        currentUserId,
+        currentCompanyId,
+        metadata: (notification.metadata ?? null) as Record<string, unknown> | null,
+        notificationProviderId: notification.providerId,
+        notificationCompanyId: notification.companyId,
+        bodyText: rawBackendDescription,
+      };
+      typeLabel = formatMessageNotificationTitle(notification.title || typeLabel, messagePerspective);
+      description =
+        formatMessageNotificationCopy(description || rawBackendDescription, messagePerspective) || '';
+      IconComponent = MessageCircle;
+      iconBgColor = Colors.border;
+      iconColor = Colors.inkMuted;
     }
 
     return {
@@ -532,10 +534,23 @@ export default function NotificationsScreen() {
     };
   };
 
-  const uiNotifications = useMemo<UINotification[]>(
-    () => notifications.map(mapNotificationToUI),
-    [notifications]
-  );
+  const uiNotifications = useMemo<UINotification[]>(() => {
+    const visible = notifications.filter((notification) => {
+      if (!isMessageNotificationType(notification.type)) {
+        return true;
+      }
+      return shouldShowMessageNotification({
+        userRole,
+        currentUserId,
+        currentCompanyId,
+        metadata: (notification.metadata ?? null) as Record<string, unknown> | null,
+        notificationProviderId: notification.providerId,
+        notificationCompanyId: notification.companyId,
+        bodyText: String(notification.description || notification.message || ''),
+      });
+    });
+    return visible.map(mapNotificationToUI);
+  }, [notifications, userRole, currentUserId, currentCompanyId]);
 
   const filteredNotifications = useMemo(() => {
     if (filterPill === 'archive') {

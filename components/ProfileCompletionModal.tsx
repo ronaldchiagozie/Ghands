@@ -1,11 +1,16 @@
 import { useToast } from '@/hooks/useToast';
 import { haptics } from '@/hooks/useHaptics';
+import { mapApiProfileToUserProfile } from '@/hooks/useProfile';
 import { BorderRadius, Colors, Spacing, MIN_TOUCH_TARGET} from '@/lib/designSystem';
-import { apiClient } from '@/services/api';
+import { profileService } from '@/services/api';
 import { authService } from '@/services/authService';
+import { unwrapProfilePayload } from '@/utils/profilePayload';
+import { writeProfileCompleteFlag } from '@/utils/profileCompletion';
+import { getSpecificErrorMessage } from '@/utils/errorMessages';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useQueryClient } from '@tanstack/react-query';
 import { Phone, User, X } from 'lucide-react-native';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import AnimatedModal from './AnimatedModal';
 import { InputField } from './InputField';
@@ -29,12 +34,75 @@ export default function ProfileCompletionModal({
   onComplete,
 }: ProfileCompletionModalProps) {
   const { showError } = useToast();
+  const queryClient = useQueryClient();
   const [fullName, setFullName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [gender, setGender] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   /** Shown inside the modal — toasts are often hidden behind nested modals */
   const [inlineError, setInlineError] = useState('');
+
+  useEffect(() => {
+    if (!visible) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const [signupPhone, profileRaw] = await Promise.all([
+          AsyncStorage.getItem('@ghands:signup_phone'),
+          profileService.getCurrentUserProfile().catch(() => null),
+        ]);
+        if (cancelled) return;
+        const mapped = profileRaw ? mapApiProfileToUserProfile(profileRaw) : null;
+        if (mapped?.name && mapped.name.trim().length >= 3) {
+          setFullName(mapped.name.trim());
+        }
+        const phoneDigits =
+          mapped?.phone?.replace(/\D/g, '') ||
+          signupPhone?.replace(/\D/g, '') ||
+          '';
+        if (phoneDigits.length >= 10) {
+          setPhoneNumber(phoneDigits);
+        }
+        const genderRaw = String(unwrapProfilePayload(profileRaw).gender ?? '').trim();
+        if (genderRaw) {
+          const normalized =
+            genderRaw.charAt(0).toUpperCase() + genderRaw.slice(1).toLowerCase();
+          if (['Male', 'Female', 'Other'].includes(normalized)) {
+            setGender(normalized);
+          }
+        }
+      } catch {
+        /* optional prefill */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [visible]);
+
+  const persistProfileToBackend = async (
+    name: string,
+    trimmedPhone: string,
+    genderLower: string,
+  ): Promise<void> => {
+    const signupEmail = (await AsyncStorage.getItem('@ghands:signup_email'))?.trim() ?? '';
+    let email = signupEmail;
+    if (!email) {
+      try {
+        const raw = await profileService.getCurrentUserProfile();
+        email = mapApiProfileToUserProfile(raw).email;
+      } catch {
+        email = '';
+      }
+    }
+
+    await profileService.completeClientSignup({
+      fullName: name,
+      phoneNumber: trimmedPhone,
+      gender: genderLower,
+      email: email || undefined,
+    });
+  };
 
   const handleComplete = async () => {
     setInlineError('');
@@ -73,19 +141,11 @@ export default function ProfileCompletionModal({
         throw new Error('User not authenticated');
       }
 
-      // Client (booking) user — POST /api/user/complete-signup (not /api/provider/complete-signup)
-      try {
-        await apiClient.post(`/api/user/complete-signup`, {
-          fullName: name,
-          phoneNumber: trimmedPhone,
-          gender: gender.toLowerCase(),
-        });
-      } catch (apiError: any) {
-        // If API fails, still mark complete locally so user isn't stuck
-        if (__DEV__) console.warn('complete-signup API error:', apiError);
-      }
+      const genderLower = gender.toLowerCase();
+      await persistProfileToBackend(name, trimmedPhone, genderLower);
 
-      await AsyncStorage.setItem('@ghands:profile_complete', 'true');
+      await writeProfileCompleteFlag(userId);
+      await queryClient.invalidateQueries({ queryKey: ['profile', 'current'] });
 
       setFullName('');
       setPhoneNumber('');
@@ -97,12 +157,15 @@ export default function ProfileCompletionModal({
         onComplete({
           fullName: name,
           phoneNumber: trimmedPhone,
-          gender: gender.toLowerCase(),
+          gender: genderLower,
         });
       }, 300);
     } catch (error: any) {
       setIsSubmitting(false);
-      const msg = error.message || 'Failed to complete profile. Please try again.';
+      const msg =
+        error?.message ||
+        getSpecificErrorMessage(error, 'profile') ||
+        'Failed to save your profile. Check your connection and try again.';
       setInlineError(msg);
       haptics.error();
       showError(msg);

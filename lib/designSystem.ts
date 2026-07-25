@@ -12,6 +12,9 @@ export const Colors = DESIGN_TOKENS.colors;
 /** Minimum tappable area per Apple HIG / Material (44×44pt). */
 export const MIN_TOUCH_TARGET = 44;
 
+/** Max system font scale for Text / TextInput (see lib/typographyDefaults.ts). */
+export const MAX_FONT_SIZE_MULTIPLIER = 1.25;
+
 /** Expands a smaller visual control to meet MIN_TOUCH_TARGET without changing layout. */
 export const TOUCH_HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 } as const;
 
@@ -91,6 +94,8 @@ export const REFRESH_CONTROL = {
   tintColor: Colors.accent,
   colors: [Colors.accent] as const,
 } as const;
+
+export { getButtonVariantStyles, type ButtonVariant } from '@/lib/buttonTheme';
 
 /**
  * Legacy scale — kept at zero; use SURFACE_STYLES for UI depth.

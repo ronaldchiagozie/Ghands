@@ -1,22 +1,25 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { haptics } from '@/hooks/useHaptics';
+import appLogo from '@/assets/images/icon.png';
+import { BorderRadius, Colors, MIN_TOUCH_TARGET } from '@/lib/designSystem';
+import { CLIENT_HOME_SCROLL_GUTTER } from '@/lib/tabletLayout';
 import { useRouter } from 'expo-router';
-import { BookOpen, ChevronRight } from 'lucide-react-native';
+import { ChevronRight } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
   Image,
+  ScrollView,
+  StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  ScrollView,
-  StyleSheet,
 } from 'react-native';
-import { Colors, BorderRadius, Spacing } from '@/lib/designSystem';
-import appLogo from '@/assets/images/icon.png';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const STEP_COUNT = 10;
 
 interface GuideStep {
   id: number;
@@ -115,12 +118,9 @@ export default function UserGuideScreen() {
   const imageSlideAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Fade animation for all content
     fadeAnim.setValue(0);
-    
-    // Slide up animation for image only
     imageSlideAnim.setValue(50);
-    
+
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -137,18 +137,20 @@ export default function UserGuideScreen() {
 
   const handleNext = () => {
     if (currentStep < GUIDE_STEPS.length - 1) {
+      haptics.light();
       setCurrentStep(currentStep + 1);
     }
   };
 
   const handlePrevious = () => {
     if (currentStep > 0) {
+      haptics.light();
       setCurrentStep(currentStep - 1);
     }
   };
 
   const handleContinue = () => {
-    // Skip intro and go to first step
+    haptics.light();
     if (currentStep === 0) {
       setCurrentStep(1);
     } else {
@@ -156,46 +158,40 @@ export default function UserGuideScreen() {
     }
   };
 
+  const handleDone = () => {
+    haptics.light();
+    router.back();
+  };
+
   const currentStepData = GUIDE_STEPS[currentStep];
   const isIntro = currentStepData.isIntro;
   const isLastStep = currentStep === GUIDE_STEPS.length - 1;
-  const isFirstStep = currentStep === 0;
+  const stepProgressLabel = isIntro ? null : `Step ${currentStepData.id} of ${STEP_COUNT}`;
 
   return (
-    <SafeAreaWrapper>
+    <SafeAreaWrapper backgroundColor={Colors.backgroundLight}>
       <ScreenHeader title="User Guide" onBack={() => router.back()} />
 
       <View style={styles.container}>
-        <Animated.View
-          style={{
-            flex: 1,
-            opacity: fadeAnim,
-          }}
-        >
+        <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
           {isIntro ? (
-            // Intro Page
             <View style={styles.introContainer}>
-              <View style={styles.introContent}>
-                {/* App logo in circular container */}
+              <ScrollView
+                style={styles.introScroll}
+                contentContainerStyle={styles.introScrollContent}
+                showsVerticalScrollIndicator={false}
+              >
                 <View style={styles.bookIconContainer}>
-                  <Image
-                    source={appLogo}
-                    style={{ width: 80, height: 80, resizeMode: 'contain' }}
-                  />
+                  <Image source={appLogo} style={styles.appLogo} />
                 </View>
 
-                {/* Title */}
                 <Text style={styles.introTitle}>{currentStepData.title}</Text>
 
-                {/* Description */}
                 <View style={styles.descriptionContainer}>
-                  <Text style={styles.descriptionText} numberOfLines={10}>
-                    {currentStepData.description}
-                  </Text>
-                  </View>
+                  <Text style={styles.descriptionText}>{currentStepData.description}</Text>
                 </View>
+              </ScrollView>
 
-              {/* Continue Button */}
               <View style={styles.introButtonContainer}>
                 <TouchableOpacity
                   onPress={handleContinue}
@@ -205,93 +201,92 @@ export default function UserGuideScreen() {
                   <Text style={styles.continueButtonText}>Continue</Text>
                   <ChevronRight size={18} color={Colors.white} style={{ marginLeft: 8 }} />
                 </TouchableOpacity>
-                          </View>
-                        </View>
+              </View>
+            </View>
           ) : (
-            // Step Pages with Images - No scrolling, all visible
             <View style={styles.stepContainer}>
-              {/* Step Number and Title */}
               <View style={styles.stepHeader}>
                 <View style={styles.stepNumberBadge}>
                   <Text style={styles.stepNumberText}>{currentStepData.id}</Text>
                 </View>
-                <Text style={styles.stepTitle}>{currentStepData.title}</Text>
+                <View style={styles.stepTitleWrap}>
+                  <Text style={styles.stepTitle}>{currentStepData.title}</Text>
+                  {stepProgressLabel ? (
+                    <Text style={styles.stepProgress}>{stepProgressLabel}</Text>
+                  ) : null}
+                </View>
               </View>
 
-              {/* Phone Mockup Image - Shorter to fit on screen with slide animation */}
-              <Animated.View
-                style={[
-                  styles.imageContainer,
-                  {
-                    opacity: fadeAnim,
-                    transform: [{ translateY: imageSlideAnim }],
-                  },
-                ]}
+              <ScrollView
+                style={styles.stepScroll}
+                contentContainerStyle={styles.stepScrollContent}
+                showsVerticalScrollIndicator={false}
               >
-                <Image
-                  source={currentStepData.image}
-                  style={styles.mockupImage}
-                  resizeMode="contain"
-                />
-              </Animated.View>
+                <Animated.View
+                  style={[
+                    styles.imageContainer,
+                    {
+                      opacity: fadeAnim,
+                      transform: [{ translateY: imageSlideAnim }],
+                    },
+                  ]}
+                >
+                  <Image
+                    source={currentStepData.image}
+                    style={styles.mockupImage}
+                    resizeMode="contain"
+                  />
+                </Animated.View>
 
-          {/* Description */}
-              <View style={styles.descriptionWrapper}>
-                <Text style={styles.stepDescription} numberOfLines={3}>
-              {currentStepData.description}
-            </Text>
-          </View>
+                <View style={styles.descriptionWrapper}>
+                  <Text style={styles.stepDescription}>{currentStepData.description}</Text>
+                </View>
+              </ScrollView>
 
-              {/* Navigation Buttons - At the bottom */}
               <View style={styles.navigationContainer}>
-            <TouchableOpacity
-              onPress={handlePrevious}
+                <TouchableOpacity
+                  onPress={handlePrevious}
                   disabled={currentStep === 1}
-              activeOpacity={0.85}
-                  style={[styles.navButton, currentStep === 1 && styles.navButtonDisabled]}
-            >
-              <Text
+                  activeOpacity={0.85}
+                  style={[styles.navBtnSecondary, currentStep === 1 && styles.navBtnDisabled]}
+                >
+                  <Text
                     style={[
-                      styles.navButtonText,
-                      currentStep === 1 && styles.navButtonTextDisabled,
+                      styles.navBtnSecondaryText,
+                      currentStep === 1 && styles.navBtnTextDisabled,
                     ]}
-              >
-                Previous
-              </Text>
-            </TouchableOpacity>
+                  >
+                    Previous
+                  </Text>
+                </TouchableOpacity>
 
-                <View style={styles.bookIcon}>
-                  <BookOpen size={18} color={Colors.textPrimary} />
-            </View>
+                {isLastStep ? (
+                  <TouchableOpacity
+                    onPress={handleDone}
+                    activeOpacity={0.85}
+                    style={styles.navBtnPrimary}
+                  >
+                    <Text style={styles.navBtnPrimaryText}>Done</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity onPress={handleNext} activeOpacity={0.85} style={styles.navBtnPrimary}>
+                    <Text style={styles.navBtnPrimaryText}>Next</Text>
+                    <ChevronRight size={16} color={Colors.white} style={{ marginLeft: 4 }} />
+                  </TouchableOpacity>
+                )}
+              </View>
 
-            <TouchableOpacity
-              onPress={handleNext}
-                  disabled={isLastStep}
-              activeOpacity={0.85}
-                  style={[styles.navButton, isLastStep && styles.navButtonDisabled]}
-            >
-              <Text
-                    style={[styles.navButtonText, isLastStep && styles.navButtonTextDisabled]}
-              >
-                Next
-              </Text>
-              <ChevronRight
-                size={16}
-                    color={isLastStep ? Colors.textSecondaryDark : Colors.textPrimary}
-                    style={{ marginLeft: 4 }}
-              />
-            </TouchableOpacity>
-          </View>
-
-              {/* Back to Top Link */}
               <TouchableOpacity
-                onPress={() => setCurrentStep(0)}
-                activeOpacity={0.85}
+                onPress={() => {
+                  haptics.light();
+                  setCurrentStep(0);
+                }}
+                activeOpacity={0.7}
                 style={styles.backToTopContainer}
               >
-                <Text style={styles.backToTopText}>Back to Top</Text>
+                <Text style={styles.backToTopText}>Back to intro</Text>
               </TouchableOpacity>
-          </View>
+            </View>
           )}
         </Animated.View>
       </View>
@@ -300,41 +295,22 @@ export default function UserGuideScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    paddingTop: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  backArrow: {
-    fontSize: 24,
-    color: Colors.textPrimary,
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: 20,
-    fontFamily: 'Poppins-Bold',
-    color: Colors.textPrimary,
-    textAlign: 'center',
-  },
   container: {
     flex: 1,
     overflow: 'hidden',
   },
   introContainer: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 24,
+    paddingHorizontal: CLIENT_HOME_SCROLL_GUTTER,
     paddingBottom: 20,
-    justifyContent: 'space-between',
   },
-  introContent: {
+  introScroll: {
     flex: 1,
+  },
+  introScrollContent: {
+    paddingTop: 24,
+    paddingBottom: 16,
     alignItems: 'center',
-    justifyContent: 'center',
   },
   bookIconContainer: {
     width: 120,
@@ -344,6 +320,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
+  },
+  appLogo: {
+    width: 80,
+    height: 80,
+    resizeMode: 'contain',
   },
   introTitle: {
     fontSize: 22,
@@ -366,12 +347,13 @@ const styles = StyleSheet.create({
     textAlign: 'left',
   },
   introButtonContainer: {
-    paddingTop: 16,
+    paddingTop: 12,
   },
   continueButton: {
     backgroundColor: Colors.accent,
     borderRadius: BorderRadius.xl,
-    paddingVertical: 16,
+    minHeight: MIN_TOUCH_TARGET,
+    paddingVertical: 14,
     paddingHorizontal: 24,
     flexDirection: 'row',
     alignItems: 'center',
@@ -384,15 +366,14 @@ const styles = StyleSheet.create({
   },
   stepContainer: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
-    overflow: 'hidden',
+    paddingHorizontal: CLIENT_HOME_SCROLL_GUTTER,
+    paddingTop: 16,
+    paddingBottom: 12,
   },
   stepHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   stepNumberBadge: {
     width: 32,
@@ -408,73 +389,96 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins-Bold',
     color: Colors.white,
   },
-  stepTitle: {
+  stepTitleWrap: {
     flex: 1,
+  },
+  stepTitle: {
     fontSize: 18,
     fontFamily: 'Poppins-Bold',
     color: Colors.textPrimary,
+  },
+  stepProgress: {
+    fontSize: 12,
+    fontFamily: 'Poppins-Regular',
+    color: Colors.textSecondaryDark,
+    marginTop: 2,
+  },
+  stepScroll: {
+    flex: 1,
+  },
+  stepScrollContent: {
+    paddingBottom: 8,
   },
   imageContainer: {
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
     width: '100%',
-    flex: 1,
-    overflow: 'hidden',
+    minHeight: SCREEN_WIDTH * 0.55,
   },
   mockupImage: {
     width: SCREEN_WIDTH * 0.85,
-    height: '100%',
-    maxHeight: SCREEN_WIDTH * 0.9,
+    height: SCREEN_WIDTH * 0.72,
     backgroundColor: 'transparent',
   },
   descriptionWrapper: {
-    marginBottom: 12,
+    marginBottom: 8,
   },
   stepDescription: {
-    fontSize: 13,
+    fontSize: 14,
     fontFamily: 'Poppins-Regular',
     color: Colors.textPrimary,
-    lineHeight: 18,
+    lineHeight: 21,
   },
   navigationContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
+    gap: 12,
+    marginTop: 8,
+    marginBottom: 4,
   },
-  navButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-  },
-  navButtonDisabled: {
-    opacity: 0.4,
-  },
-  navButtonText: {
-    fontSize: 14,
-    fontFamily: 'Poppins-SemiBold',
-    color: Colors.textPrimary,
-    textDecorationLine: 'underline',
-  },
-  navButtonTextDisabled: {
-    color: Colors.textSecondaryDark,
-  },
-  bookIcon: {
-    width: 32,
-    height: 32,
+  navBtnSecondary: {
+    flex: 1,
+    minHeight: MIN_TOUCH_TARGET,
+    borderRadius: BorderRadius.default,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.white,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  navBtnSecondaryText: {
+    fontSize: 15,
+    fontFamily: 'Poppins-SemiBold',
+    color: Colors.textPrimary,
+  },
+  navBtnPrimary: {
+    flex: 1,
+    minHeight: MIN_TOUCH_TARGET,
+    borderRadius: BorderRadius.default,
+    backgroundColor: Colors.accent,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  navBtnPrimaryText: {
+    fontSize: 15,
+    fontFamily: 'Poppins-SemiBold',
+    color: Colors.white,
+  },
+  navBtnDisabled: {
+    opacity: 0.45,
+  },
+  navBtnTextDisabled: {
+    color: Colors.textSecondaryDark,
+  },
   backToTopContainer: {
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 10,
   },
   backToTopText: {
     fontSize: 13,
     fontFamily: 'Poppins-Medium',
-    color: Colors.textSecondaryDark,
-    textDecorationLine: 'underline',
+    color: Colors.accent,
   },
 });

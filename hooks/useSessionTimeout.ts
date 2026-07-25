@@ -8,7 +8,7 @@ import { expireAuthSessionIfInvalid } from '@/utils/enforceAuthSession';
 import { notifySessionExpired } from '@/utils/sessionExpiredEvents';
 
 /** How often to re-check JWT expiry while the app is open */
-const SESSION_POLL_MS = 5_000;
+const SESSION_POLL_MS = 2_000;
 /** Delay only the first cold-start check so SecureStore can hydrate */
 const SESSION_BOOT_DELAY_MS = 200;
 
@@ -29,13 +29,13 @@ export function useSessionTimeout(_router: unknown, pathname?: string | null) {
         const path = pathnameRef.current;
         if (path && isPublicUnauthenticatedRoute(path)) return;
 
+        const expired = await expireAuthSessionIfInvalid();
+        if (expired) return;
+
         const token = await authService.getAuthToken();
         if (!token) {
           notifySessionExpired();
-          return;
         }
-
-        await expireAuthSessionIfInvalid();
       } catch {
         /* ignore */
       }
@@ -44,6 +44,8 @@ export function useSessionTimeout(_router: unknown, pathname?: string | null) {
     const bootTimer = setTimeout(() => {
       void enforceAuth();
     }, SESSION_BOOT_DELAY_MS);
+
+    void enforceAuth();
 
     const pollId = setInterval(() => {
       void enforceAuth();
@@ -58,5 +60,5 @@ export function useSessionTimeout(_router: unknown, pathname?: string | null) {
       clearInterval(pollId);
       appStateSub.remove();
     };
-  }, []);
+  }, [pathname]);
 }

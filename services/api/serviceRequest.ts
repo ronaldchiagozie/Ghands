@@ -122,47 +122,6 @@ function parseCategoriesResponse(response: unknown): ServiceCategory[] {
   return Array.isArray(nestedData) ? nestedData : [];
 }
 
-function logCategoriesResponse(source: string, response: unknown, categories: ServiceCategory[]) {
-  if (!__DEV__) return;
-  const raw = response as Record<string, unknown> | null;
-  const topKeys = raw && typeof raw === 'object' ? Object.keys(raw) : [];
-  const dataLayer = raw?.data;
-  const dataKeys =
-    dataLayer && typeof dataLayer === 'object' && !Array.isArray(dataLayer)
-      ? Object.keys(dataLayer as object)
-      : Array.isArray(dataLayer)
-        ? ['array']
-        : [];
-  const sample = categories.slice(0, 5).map((cat) => {
-    const row = cat as ServiceCategory & { provider_count?: number };
-    return {
-      name: row.name,
-      displayName: row.displayName,
-      providerCount: row.providerCount,
-      provider_count: row.provider_count,
-    };
-  });
-  const zeroCount = categories.filter((c) => !c.providerCount || c.providerCount === 0).length;
-  console.log(
-    `[CategoriesDebug][${source}]`,
-    JSON.stringify(
-      {
-        endpoint:
-          source === 'search'
-            ? '/api/request-service/categories/search'
-            : '/api/request-service/categories',
-        topLevelKeys: topKeys,
-        dataLayerKeys: dataKeys,
-        categoryCount: categories.length,
-        zeroProviderCount: zeroCount,
-        sample,
-      },
-      null,
-      2,
-    ),
-  );
-}
-
 export const serviceRequestService = {
   getCategories: async (): Promise<ServiceCategory[]> => {
     try {
@@ -171,7 +130,6 @@ export const serviceRequestService = {
         { skipAuth: true }
       );
       const categories = parseCategoriesResponse(response);
-      logCategoriesResponse('list', response, categories);
       return categories;
     } catch (error: any) {
       throw error;
@@ -186,7 +144,6 @@ export const serviceRequestService = {
         { skipAuth: true }
       );
       const categories = parseCategoriesResponse(response);
-      logCategoriesResponse('search', response, categories);
       return categories;
     } catch (error: any) {
       throw error;

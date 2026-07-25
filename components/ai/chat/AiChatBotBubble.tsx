@@ -1,4 +1,4 @@
-import { AI_ANIMATION, AI_COLORS } from '@/components/ai/aiAssistantTheme';
+import { AI_ANIMATION, AI_CHAT_UI, AI_COLORS } from '@/components/ai/aiAssistantTheme';
 import { useRevealText } from '@/hooks/useRevealText';
 import { haptics } from '@/hooks/useHaptics';
 import { useToast } from '@/hooks/useToast';
@@ -64,17 +64,19 @@ export default function AiChatBotBubble({
 
   return (
     <View style={{ marginBottom: 20, alignItems: 'flex-start' }}>
-      <Text
-        style={{
-          fontFamily: 'Poppins-Regular',
-          fontSize: 11,
-          color: AI_COLORS.subtle,
-          marginBottom: 6,
-          marginLeft: 46,
-        }}
-      >
-        {message.time}
-      </Text>
+      {isTypingPlaceholder ? null : (
+        <Text
+          style={{
+            fontFamily: 'Poppins-Regular',
+            fontSize: 11,
+            color: AI_COLORS.subtle,
+            marginBottom: 6,
+            marginLeft: 46,
+          }}
+        >
+          {message.time}
+        </Text>
+      )}
 
       <View style={{ flexDirection: 'row', alignItems: 'flex-end', maxWidth: '90%' }}>
         <View
@@ -94,15 +96,25 @@ export default function AiChatBotBubble({
 
         <View style={{ flex: 1 }}>
           <View
-            style={{
-              backgroundColor: '#FFFFFF',
-              borderRadius: 20,
-              borderBottomLeftRadius: 6,
-              paddingHorizontal: 16,
-              paddingVertical: isTypingPlaceholder ? 12 : 13,
-              minWidth: isTypingPlaceholder ? 76 : undefined,
-              ...BOT_BUBBLE_SHADOW,
-            }}
+            style={
+              isTypingPlaceholder
+                ? {
+                    backgroundColor: AI_CHAT_UI.typingBubble.background,
+                    borderRadius: AI_CHAT_UI.typingBubble.borderRadius,
+                    paddingHorizontal: AI_CHAT_UI.typingBubble.paddingHorizontal,
+                    paddingVertical: AI_CHAT_UI.typingBubble.paddingVertical,
+                    minWidth: AI_CHAT_UI.typingBubble.minWidth,
+                    ...BOT_BUBBLE_SHADOW,
+                  }
+                : {
+                    backgroundColor: '#FFFFFF',
+                    borderRadius: 20,
+                    borderBottomLeftRadius: 6,
+                    paddingHorizontal: 16,
+                    paddingVertical: 13,
+                    ...BOT_BUBBLE_SHADOW,
+                  }
+            }
           >
             {isTypingPlaceholder ? (
               <AiChatTypingDots />

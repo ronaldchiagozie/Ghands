@@ -3,7 +3,7 @@ import { haptics } from '@/hooks/useHaptics';
 import { authService } from '@/services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import { Lock, Mail, Phone } from 'lucide-react-native';
+import { Lock, Mail } from 'lucide-react-native';
 import React, { useState, useCallback, useRef } from 'react';
 import { ScrollView, Text, TouchableOpacity, View, TextInput } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
@@ -12,8 +12,9 @@ import { InputField } from '../components/InputField';
 import { SocialButton } from '../components/SocialButton';
 import Toast from '../components/Toast';
 import { useToast } from '../hooks/useToast';
-import { formatPhoneNumber, isValidEmail, getPasswordStrength, isValidPhoneNumber } from '@/utils/inputFormatting';
+import { isValidEmail, getPasswordStrength } from '@/utils/inputFormatting';
 import { Colors } from '@/lib/designSystem';
+import { setClientAccountType } from '@/utils/clientAccountType';
 
 export default function SignupScreen() {
   const router = useRouter();
@@ -21,19 +22,16 @@ export default function SignupScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Real-time validation states
   const [emailError, setEmailError] = useState('');
-  const [phoneError, setPhoneError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [confirmPasswordError, setConfirmPasswordError] = useState('');
   const [passwordStrength, setPasswordStrength] = useState<{ strength: 'weak' | 'medium' | 'strong'; message: string; score: number } | null>(null);
   
   // Refs for auto-focus
-  const phoneInputRef = useRef<TextInput>(null);
   const passwordInputRef = useRef<TextInput>(null);
   const confirmPasswordInputRef = useRef<TextInput>(null);
 
@@ -44,21 +42,6 @@ export default function SignupScreen() {
       setEmailError('Please enter a valid email address');
     } else {
       setEmailError('');
-    }
-  }, []);
-
-  // Real-time phone validation with formatting
-  const handlePhoneChange = useCallback((text: string) => {
-    const digits = text.replace(/\D/g, '').slice(0, 11);
-    const formatted = formatPhoneNumber(digits);
-    setPhoneNumber(formatted);
-    
-    if (digits.length > 0 && digits.length !== 11) {
-      setPhoneError('Phone number must be 11 digits');
-    } else if (digits.length === 11 && !isValidPhoneNumber(digits)) {
-      setPhoneError('Invalid phone number format');
-    } else {
-      setPhoneError('');
     }
   }, []);
 
@@ -117,11 +100,6 @@ export default function SignupScreen() {
       hasErrors = true;
     }
     
-    if (phoneNumber.trim() && !isValidPhoneNumber(phoneNumber.replace(/\s/g, ''))) {
-      setPhoneError('Phone number must be 11 digits');
-      hasErrors = true;
-    }
-    
     if (!password.trim()) {
       setPasswordError('Password is required');
       hasErrors = true;
@@ -148,31 +126,24 @@ export default function SignupScreen() {
     haptics.light();
 
     try {
-      // Build signup payload with only email, password, and phoneNumber
-      const phoneDigits = phoneNumber.replace(/\s/g, '');
       const signupPayload = {
         email: email.trim().toLowerCase(), // Normalize email to lowercase
         password: password.trim(),
-        ...(phoneDigits && phoneDigits.length === 11 ? { phoneNumber: phoneDigits } : {}),
       };
 
       await authService.userSignup(signupPayload);
       
+      await setClientAccountType('individual');
       // CRITICAL: Set role so index.tsx routes correctly (client came from SelectAccountTypeScreen)
       await AsyncStorage.setItem('@ghands:user_role', 'client');
       
-      // Save email and phone for profile completion later
       await AsyncStorage.setItem('@ghands:signup_email', email.trim());
-      if (phoneNumber.trim()) {
-        await AsyncStorage.setItem('@ghands:signup_phone', phoneNumber.trim());
-      }
-      
+      await AsyncStorage.removeItem('@ghands:signup_phone');
       await AsyncStorage.setItem('@ghands:profile_complete', 'false');
       
       haptics.success();
       showSuccess('Signup successful!');
       
-      // Navigate immediately – no delay so user doesn't get redirected back
       router.replace('/(tabs)/home');
     } catch (error: any) {
       haptics.error();
@@ -268,24 +239,8 @@ export default function SignupScreen() {
           error={!!emailError}
           errorMessage={emailError}
           returnKeyType="next"
-          onSubmitEditing={() => phoneInputRef.current?.focus()}
-          autoFocus={true}
-        />
-
-        {/* Phone Number Input */}
-        <InputField
-          placeholder="Phone Number (11 digits)"
-          icon={<Phone size={18} color={'white'}/>}
-          keyboardType="phone-pad"
-          value={phoneNumber}
-          onChangeText={handlePhoneChange}
-          iconPosition="left"
-          autoCapitalize="none"
-          error={!!phoneError}
-          errorMessage={phoneError}
-          maxLength={13} // 4 + space + 3 + space + 4 = 13
-          returnKeyType="next"
           onSubmitEditing={() => passwordInputRef.current?.focus()}
+          autoFocus={true}
         />
 
         {/* Password Input */}

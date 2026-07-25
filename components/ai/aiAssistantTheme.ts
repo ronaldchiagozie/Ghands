@@ -5,6 +5,8 @@ export const AI_COLORS = {
   primary: '#FFFFFF',
   accent: '#E4FF5C',
   accentInk: '#003D4D',
+  /** Teal neon green (gradient end) — use instead of lemon for readable accents on dark. */
+  neonGreen: '#00C996',
   overlay: 'rgba(0, 0, 0, 0.52)',
   drawerBorder: 'rgba(255, 255, 255, 0.1)',
   newChatBg: '#E4FF5C',
@@ -17,6 +19,36 @@ export const AI_COLORS = {
   subtle: 'rgba(255, 255, 255, 0.72)',
   historyOverlay: 'rgba(0, 45, 58, 0.35)',
   iconMuted: 'rgba(255, 255, 255, 0.38)',
+} as const;
+
+/** Chat bubbles, typing indicator, suggestions — no neon/lemon on white surfaces. */
+export const AI_CHAT_UI = {
+  /** Grayscale typing dots (left → right: medium, light, dark) inside white pill bubble. */
+  typingDots: ['#9CA3AF', '#D1D5DB', '#1F2937'] as const,
+  typingBubble: {
+    background: '#FFFFFF',
+    borderRadius: 28,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    minWidth: 80,
+  },
+  /** @deprecated Use typingDots */
+  typingDot: '#9CA3AF',
+  typingDotDim: '#D1D5DB',
+  /** Full-screen / overlay loaders on the teal gradient */
+  spinnerOnGradient: '#FFFFFF',
+  suggestion: {
+    surface: '#FFFFFF',
+    title: '#111827',
+    body: '#374151',
+    previewLabel: '#1F2937',
+    previewBg: '#F8FAF7',
+    previewBorder: '#E5E7EB',
+    /** Black pill + neon green label (not lemon). */
+    ctaBg: '#111827',
+    ctaText: AI_COLORS.neonGreen,
+    footerIcon: 'rgba(255, 255, 255, 0.78)',
+  },
 } as const;
 
 /** Reference-style slide menu (dark charcoal, text header, icon rows). */
@@ -37,7 +69,6 @@ export const AI_DRAWER = {
 
 export const AI_ANIMATION = {
   mascotEntranceMs: 600,
-  mascotSomersaultMs: 500,
   mascotFloatMs: 3000,
   mascotFloatHalfMs: 1500,
   mascotFloatDistance: 6,
@@ -92,9 +123,11 @@ export function buildAiGreeting(botName: string): string {
   return `Hello, how can ${name} help you today?`;
 }
 
+export type AiQuickActionIcon = 'service' | 'describe';
+
 export type AiQuickAction = {
   id: string;
-  emoji: string;
+  icon: AiQuickActionIcon;
   title: string;
   description: string;
   promptSeed: string;
@@ -102,19 +135,18 @@ export type AiQuickAction = {
 
 export const AI_QUICK_ACTIONS: AiQuickAction[] = [
   {
-    id: 'find-artisan',
-    emoji: '💼',
-    title: 'Find an artisan',
-    description:
-      'Explain your problem and I will help you choose the right category and specialist for the job.',
-    promptSeed: 'I need help finding the right artisan for a job. ',
+    id: 'find-service',
+    icon: 'service',
+    title: 'What service do I need?',
+    description: 'Describe your issue and Handy will suggest the right category.',
+    promptSeed: 'I need help figuring out which service category fits my problem. ',
   },
   {
-    id: 'smart-draft',
-    emoji: '📋',
-    title: 'Smart Draft',
-    description: 'Get suggestions for your writeups',
-    promptSeed: 'Help me draft a professional message. ',
+    id: 'describe-job',
+    icon: 'describe',
+    title: 'Help describe my job',
+    description: 'Draft clear details so providers can quote accurately.',
+    promptSeed: 'Help me describe my job clearly for providers. ',
   },
 ];
 
