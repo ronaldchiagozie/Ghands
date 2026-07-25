@@ -254,7 +254,7 @@ export default function DateTimeScreen() {
         scheduledTime,
       });
 
-      showSuccess('Date and time updated!');
+      showSuccess('Date and time updated');
       haptics.success();
 
       router.replace({

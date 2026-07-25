@@ -48,7 +48,7 @@ export default function ProfileSetupScreen() {
   const requestPermissions = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission Required', 'Sorry, we need camera roll permissions to upload images!');
+      Alert.alert('Permission required', 'Photo library access is required to upload images.');
       return false;
     }
     return true;
@@ -81,7 +81,7 @@ export default function ProfileSetupScreen() {
   const openCamera = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission Required', 'Sorry, we need camera permissions to take photos!');
+      Alert.alert('Permission required', 'Camera access is required to take photos.');
       return;
     }
 

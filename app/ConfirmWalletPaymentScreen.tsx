@@ -283,7 +283,7 @@ export default function ConfirmWalletPaymentScreen() {
     processing: { title: 'Processing payment', subtitle: 'Keep this screen open while we debit your wallet securely.' },
     verifying: { title: 'Verifying payment', subtitle: 'Confirming the wallet debit and booking details.' },
     completing: { title: 'Completing transaction', subtitle: 'Finalizing your receipt and job timeline.' },
-    success: { title: 'Payment successful', subtitle: 'Your payment has been processed successfully.' },
+    success: { title: 'Payment successful', subtitle: 'Your payment went through.' },
   };
   const stepMessage = stepMessages[paymentStep];
 

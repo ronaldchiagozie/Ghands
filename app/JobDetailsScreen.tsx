@@ -230,7 +230,7 @@ export default function JobDetailsScreen() {
         location: locationPayload,
       });
 
-      showSuccess('Job details updated!');
+      showSuccess('Job details updated');
       haptics.success();
 
       // Navigate to DateTimeScreen with requestId

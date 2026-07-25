@@ -368,7 +368,7 @@ export default function NotificationsScreen() {
 
     switch (notification.type) {
       case 'deposit_success': {
-        typeLabel = 'Deposit Successful';
+        typeLabel = 'Deposit successful';
         const amount = notification.metadata?.amount ?? notification.metadata?.total;
         const amountText =
           typeof amount === 'number'
@@ -377,8 +377,8 @@ export default function NotificationsScreen() {
         description =
           description ||
           (amountText
-            ? `${amountText} has been successfully deposited to your wallet.`
-            : 'Your deposit has been successfully completed and added to your wallet balance.');
+            ? `${amountText} was added to your wallet.`
+            : 'Your deposit was added to your wallet balance.');
         IconComponent = Wallet;
         iconBgColor = Colors.successLight;
         iconColor = Colors.successIcon;
@@ -487,8 +487,8 @@ export default function NotificationsScreen() {
         description =
           description ||
           (amountText
-            ? `Your withdrawal request of ${amountText} has been processed successfully.`
-            : 'Your withdrawal request has been processed successfully.');
+            ? `Your withdrawal of ${amountText} was processed.`
+            : 'Your withdrawal was processed.');
         IconComponent = Clock;
         iconBgColor = Colors.border;
         iconColor = Colors.inkMuted;

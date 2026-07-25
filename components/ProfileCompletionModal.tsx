@@ -210,7 +210,7 @@ export default function ProfileCompletionModal({
           {/* Title - Shown only for first-time users who haven't completed profile */}
           <Text style={styles.title}>Complete Your Profile</Text>
           <Text style={styles.subtitle}>
-            Just one more step! Add your full name, phone, and gender to continue.
+            Add your full name, phone, and gender to continue.
           </Text>
 
           {inlineError ? (

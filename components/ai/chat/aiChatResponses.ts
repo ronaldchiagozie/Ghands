@@ -8,6 +8,9 @@ const PLUMBER_BOOKING_DRAFT =
 const BOOKING_DRAFT =
   'Bathroom pipe is leaking badly with water gushing out. Main valve is off. Need an urgent plumber visit to inspect and repair the burst section.';
 
+const BOOKING_DETAILS_PROMPT = 'Want me to suggest booking details you can use?';
+const PHOTO_ANALYSIS_PROMPT = 'share photos so I can review the issue';
+
 function lastAssistantMessage(messages: AiMessage[]): AiMessage | undefined {
   return [...messages].reverse().find((m) => m.role === 'assistant');
 }
@@ -61,8 +64,7 @@ export function resolvePostImageAnalysisTurn(messages: AiMessage[]): AiChatTurnR
 
   if (/\bac|air.?condition|1\.5hp|hp\b/.test(context)) {
     return {
-      text:
-        'Great, I can see the photos. This looks like an air conditioner issue. Here are suggested booking details you can use.',
+      text: 'I can see the photos. This looks like an AC issue. Here are booking details you can use.',
       thinkingMs: 1200,
       revealText: true,
       suggestion: {
@@ -79,8 +81,7 @@ export function resolvePostImageAnalysisTurn(messages: AiMessage[]): AiChatTurnR
   }
 
   return {
-    text:
-      'Great, I can see the photos. I will use them to refine the category and share next steps for your booking.',
+    text: 'I can see the photos. I will use them to refine the category and next steps for your booking.',
     thinkingMs: 1200,
     revealText: true,
     suggestion: {
@@ -108,16 +109,13 @@ export function resolveAiChatTurn(
 
   if (mentionsThanks(lower)) {
     return {
-      text: "You're welcome!! Can i help you with anything else?",
+      text: "You're welcome. Anything else I can help with?",
       thinkingMs: 900,
       revealText: true,
     };
   }
 
-  if (
-    isAffirmative(lower) &&
-    prevAssistant?.text.includes('Should i go ahead and suggest details for your booking')
-  ) {
+  if (isAffirmative(lower) && prevAssistant?.text.includes(BOOKING_DETAILS_PROMPT)) {
     return {
       text: '',
       thinkingMs: 1100,
@@ -132,12 +130,9 @@ export function resolveAiChatTurn(
     };
   }
 
-  if (
-    isAffirmative(lower) &&
-    prevAssistant?.text.toLowerCase().includes('images so i can analyse')
-  ) {
+  if (isAffirmative(lower) && prevAssistant?.text.toLowerCase().includes(PHOTO_ANALYSIS_PROMPT)) {
     return {
-      text: 'Great, I can see the photos. I will use them to refine the category and share next steps for your booking.',
+      text: 'I can see the photos. I will use them to refine the category and next steps for your booking.',
       thinkingMs: 1200,
       revealText: true,
     };
@@ -148,7 +143,7 @@ export function resolveAiChatTurn(
       ? PLUMBER_BOOKING_DRAFT
       : BOOKING_DRAFT;
     return {
-      text: "Here's a way to put it!",
+      text: 'Try this wording:',
       thinkingMs: 1000,
       revealText: true,
       suggestion: {
@@ -165,7 +160,7 @@ export function resolveAiChatTurn(
   if (mentionsCost(lower)) {
     return {
       text:
-        'For a standard 1.5HP AC service in Lagos, you can expect roughly between ₦8,000 and ₦12,000 depending on gas level, cleaning depth, and parts. That is an estimate. Your provider quote may vary.',
+        'For a standard 1.5HP AC service in Lagos, expect roughly ₦8,000 to ₦12,000 depending on gas level, cleaning, and parts. This is an estimate. Your provider quote may differ.',
       thinkingMs: 1400,
       revealText: true,
     };
@@ -174,7 +169,7 @@ export function resolveAiChatTurn(
   if (/\b(gush|burst|emergency|flooding)\b/i.test(lower)) {
     return {
       text:
-        'It sounds like you need a plumber!! ⚠️ Quick Tip: Please locate your main water valve and turn it clockwise to shut off the water to prevent further flooding while you wait for a plumber. Should i go ahead and suggest details for your booking?',
+        `This sounds urgent. Turn your main water valve clockwise to limit flooding while you wait. ${BOOKING_DETAILS_PROMPT}`,
       thinkingMs: 1500,
       revealText: true,
     };
@@ -182,8 +177,7 @@ export function resolveAiChatTurn(
 
   if (mentionsBooking(lower)) {
     return {
-      text:
-        'Sure. I can guide you on how to do that. Please describe the issue you are having in detail',
+      text: 'Describe the issue in detail and I will help you book the right service.',
       thinkingMs: 1000,
       revealText: true,
     };
@@ -193,7 +187,7 @@ export function resolveAiChatTurn(
     const label =
       /\bac|air.?condition|1\.5hp\b/i.test(lower) ? 'Air Conditioner' : issueLabel;
     return {
-      text: `Okay it seems you have an ${label} issue. Any images so i can analyse this better?`,
+      text: `Sounds like a ${label} issue. ${PHOTO_ANALYSIS_PROMPT.charAt(0).toUpperCase()}${PHOTO_ANALYSIS_PROMPT.slice(1)}?`,
       thinkingMs: 1100,
       revealText: true,
       showImagePrompt: true,
@@ -202,7 +196,7 @@ export function resolveAiChatTurn(
 
   return {
     text:
-      'I can help with booking guidance, cost estimates, draft messages, and photo analysis. Tell me a bit more about what you need.',
+      'I can help with booking, cost estimates, message drafts, and photo review. Tell me what you need.',
     thinkingMs: 900,
     revealText: true,
   };

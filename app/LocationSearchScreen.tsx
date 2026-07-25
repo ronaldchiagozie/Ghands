@@ -279,7 +279,7 @@ export default function LocationSearchScreen() {
           await setLocation(locationDetails.formattedAddress);
         }
         
-        showSuccess('Current location detected and saved!');
+        showSuccess('Current location saved');
       } catch (error: any) {
         if (__DEV__) {
           console.error('Error getting current location:', error);
@@ -335,7 +335,7 @@ export default function LocationSearchScreen() {
         }
         
         
-        showSuccess('Location selected!');
+        showSuccess('Location selected');
         haptics.success();
         
         setTimeout(() => {
@@ -353,7 +353,7 @@ export default function LocationSearchScreen() {
         if (searchQuery && typeof searchQuery === 'string') {
           await setLocation(searchQuery.trim());
         }
-        showSuccess('Location saved successfully!');
+        showSuccess('Location saved');
         setTimeout(() => {
           handleNavigation();
         }, 1000);
@@ -430,7 +430,7 @@ export default function LocationSearchScreen() {
           }
           
           
-          showSuccess('Location saved successfully!');
+          showSuccess('Location saved');
           haptics.success();
           
           setTimeout(() => {
@@ -449,7 +449,7 @@ export default function LocationSearchScreen() {
               /* ignore */
             }
           }
-          showSuccess('Location saved locally!');
+          showSuccess('Location saved on this device');
           setTimeout(() => {
             handleNavigation();
           }, 1000);
@@ -465,7 +465,7 @@ export default function LocationSearchScreen() {
             /* ignore */
           }
         }
-        showSuccess('Location saved successfully!');
+        showSuccess('Location saved');
         setTimeout(() => {
           handleNavigation();
         }, 1000);

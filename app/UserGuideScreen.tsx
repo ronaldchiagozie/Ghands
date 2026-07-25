@@ -35,7 +35,7 @@ const GUIDE_STEPS: GuideStep[] = [
     id: 0,
     title: 'How to Book a Service',
     description:
-      "This app helps you find trusted service providers for your home or office. Whether you need repairs, installations, or inspections. You can easily request up to three providers, compare their offers, and chat with them right in the app. It's simple, fast, and designed to make getting help easier. You'll also find helpful tips, special offers, and promotions to make your experience even better. Everything you need is right here Just a few taps away!\n\nFollow this step-by-step guide to easily book your desired service through our app",
+      "This app helps you find trusted service providers for your home or office, whether you need repairs, installations, or inspections. Request up to three providers, compare offers, and chat in the app. You'll also see tips and promotions when available. Everything you need is a few taps away.\n\nFollow this guide to book a service step by step.",
     image: null,
     isIntro: true,
   },
@@ -99,7 +99,7 @@ const GUIDE_STEPS: GuideStep[] = [
     id: 9,
     title: 'Booking Complete',
     description:
-      "You'll see a confirmation message showing your booking was successful, along with a job progress tracker. You can manage your booking from the Jobs section.",
+      "You'll see a confirmation when your booking is in, plus a job progress tracker. Manage the job from the Jobs tab.",
     image: require('@/assets/mockups/booking complete.png'),
   },
   {

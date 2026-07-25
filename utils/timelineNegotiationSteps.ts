@@ -225,7 +225,7 @@ export function getQuotationNegotiationStep(input: {
     return activeStep(
       audience === 'client'
         ? 'Waiting for provider to send a quotation.'
-        : 'Send a quote — visit was declined.',
+        : 'Send a quote. The visit was declined.',
     );
   }
 

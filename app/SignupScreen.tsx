@@ -117,7 +117,7 @@ export default function SignupScreen() {
     }
     
     if (hasErrors) {
-      showError('Please fix the errors above');
+      showError('Fix the highlighted fields');
       return;
     }
 
@@ -142,7 +142,7 @@ export default function SignupScreen() {
       await AsyncStorage.setItem('@ghands:profile_complete', 'false');
       
       haptics.success();
-      showSuccess('Signup successful!');
+      showSuccess('Account created');
       
       router.replace('/(tabs)/home');
     } catch (error: any) {

@@ -367,7 +367,7 @@ export default function PaymentMethodsScreen() {
       case 'completing':
         return { title: 'Completing Transaction', subtitle: 'Finalizing your payment...' };
       case 'success':
-        return { title: 'Payment Successful!', subtitle: 'Your payment has been processed successfully' };
+        return { title: 'Payment successful', subtitle: 'Your payment went through' };
       default:
         return { title: 'Processing...', subtitle: 'Please wait' };
     }

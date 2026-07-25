@@ -105,7 +105,7 @@ export default function CompanySignupScreen() {
       hasErrors = true;
     }
     if (hasErrors) {
-      showError('Please fix the errors above');
+      showError('Fix the highlighted fields');
       return;
     }
 
@@ -119,7 +119,7 @@ export default function CompanySignupScreen() {
         companyPassword: password.trim(),
       });
       haptics.success();
-      showSuccess('Company account created!');
+      showSuccess('Company account created');
       router.replace('/(tabs)/home');
     } catch (error: unknown) {
       haptics.error();
@@ -160,7 +160,7 @@ export default function CompanySignupScreen() {
             marginBottom: 28,
           }}
         >
-          Business details are saved now — no extra “complete profile” step for company accounts.
+          Business details are saved now. Company accounts don't need a separate profile step.
         </Text>
 
         <InputField

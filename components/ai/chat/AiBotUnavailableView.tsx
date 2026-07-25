@@ -29,7 +29,7 @@ export default function AiBotUnavailableView() {
           marginBottom: 10,
         }}
       >
-        Bot Unavailable!!
+        Bot Unavailable
       </Text>
       <Text
         style={{
@@ -40,7 +40,7 @@ export default function AiBotUnavailableView() {
           textAlign: 'center',
         }}
       >
-        We are working on making Handy better for you. We'll be back soon!
+        Handy is temporarily unavailable. Try again in a few minutes.
       </Text>
     </View>
   );

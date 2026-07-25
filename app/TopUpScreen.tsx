@@ -1140,7 +1140,7 @@ export default function TopUpScreen() {
             }}
           >
             {isDepositAmountValid
-              ? `You’ll continue to Kora’s secure checkout to pay ${formattedDepositAmount}. Choose your bank there — no extra steps in the app.`
+              ? `You’ll continue to Kora’s secure checkout to pay ${formattedDepositAmount}. Choose your bank there; no extra steps in the app.`
               : 'Choose an amount above, then tap Pay to open Kora checkout.'}
           </Text>
 

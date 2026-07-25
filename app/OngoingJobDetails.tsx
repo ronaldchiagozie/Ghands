@@ -1109,7 +1109,7 @@ export default function OngoingJobDetails() {
       const response = await serviceRequestService.selectProvider(requestId, providerId);
       
       haptics.success();
-      showSuccess(response.message || 'Provider selected! They have 5 minutes to accept.');
+      showSuccess(response.message || 'Provider selected. They have 5 minutes to accept.');
       
       // Reload request data to get updated selection info
       await loadRequestData();
@@ -1361,7 +1361,7 @@ export default function OngoingJobDetails() {
       const response = await serviceRequestService.rejectQuotation(quotationId);
 
       haptics.success();
-      showSuccess(response.message || 'Quotation rejected successfully.');
+      showSuccess(response.message || 'Quotation rejected.');
 
       await loadQuotations();
 
@@ -1422,7 +1422,7 @@ export default function OngoingJobDetails() {
               const response = await serviceRequestService.completeServiceRequest(requestId);
 
               haptics.success();
-              showSuccess(response.message || 'Job completed successfully! Payment has been transferred to the provider.');
+              showSuccess(response.message || 'Job completed. Payment was sent to the provider.');
 
               await loadRequestData();
 

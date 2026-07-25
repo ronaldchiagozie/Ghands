@@ -27,7 +27,7 @@ export default function BankTransferScreen() {
           text: 'Yes, I have paid',
           onPress: () => {
             // Handle payment confirmation
-            Alert.alert('Success', 'Your payment is being processed. You will receive a confirmation shortly.');
+            Alert.alert('Payment received', 'We are processing your transfer. You will get a confirmation soon.');
             router.back();
           },
         },

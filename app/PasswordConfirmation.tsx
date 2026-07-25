@@ -58,7 +58,7 @@ export default function PasswordConfirmationScreen() {
         confirmPassword,
       });
 
-      showSuccess('Password reset successfully! Redirecting to login...');
+      showSuccess('Password updated. Redirecting to sign in…');
 
       // Navigate to login screen after a short delay
       setTimeout(() => {

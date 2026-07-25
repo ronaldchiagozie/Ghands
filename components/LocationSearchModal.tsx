@@ -105,7 +105,7 @@ export default function LocationSearchModal({ visible, onClose, onLocationSelect
       
       setSearchQuery(locationDetails.formattedAddress);
       setSearchResults([]);
-      showSuccess('Current location detected!');
+      showSuccess('Current location detected');
     } catch (error) {
       console.error('Error getting current location:', error);
       showError('Failed to get current location. Please enter manually.');
@@ -201,7 +201,7 @@ export default function LocationSearchModal({ visible, onClose, onLocationSelect
         onLocationSelected(locationText);
       }
       
-      showSuccess('Location saved successfully!');
+      showSuccess('Location saved');
       
       setTimeout(() => {
         onClose();

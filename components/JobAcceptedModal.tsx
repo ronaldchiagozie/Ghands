@@ -69,8 +69,8 @@ export default function JobAcceptedModal({
             <View style={styles.successBadge}>
               <Text style={styles.checkmark}>✓</Text>
             </View>
-            <Text style={styles.title}>Request Accepted!</Text>
-            <Text style={styles.subtitle}>You&apos;ve successfully accepted this job request</Text>
+            <Text style={styles.title}>Request accepted</Text>
+            <Text style={styles.subtitle}>You accepted this job request</Text>
           </View>
 
           {/* Location Info */}

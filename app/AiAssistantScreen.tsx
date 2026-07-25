@@ -425,7 +425,7 @@ export default function AiAssistantScreen() {
                 color: AI_COLORS.primary,
               }}
             >
-              Starting your booking…
+              Starting your booking...
             </Text>
           ) : null}
         </View>

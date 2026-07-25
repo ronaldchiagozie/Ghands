@@ -11,7 +11,7 @@ export const ONBOARDING_SLIDES: SlideData[] = [
   {
     id: 'map',
     title: 'Find Trusted Experts Near You',
-    description: 'Get help anywhere, anytime. Connect instantly with nearby professional',
+    description: 'Get help anywhere, anytime. Connect with nearby professionals.',
     icon: 'location',
     image: require('../assets/images/onboarding1.png')
   },

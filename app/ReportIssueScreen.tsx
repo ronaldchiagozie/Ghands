@@ -132,7 +132,7 @@ export default function ReportIssueScreen() {
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
       haptics.success();
-      showSuccess('Issue reported successfully. Our team will review and respond within 24-48 hours.');
+      showSuccess('Issue reported. We will review it within 24–48 hours.');
 
       // Navigate back after a short delay
       setTimeout(() => {

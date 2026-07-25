@@ -39,7 +39,7 @@ export const getErrorMessage = (error: ApiError | Error | any, defaultMessage: s
       errorMessage.includes('no internet') ||
       errorMessage.includes('offline') ||
       (error?.name === 'TypeError' && errorMessage.includes('fetch'))) {
-    return 'Whoops! No internet connection found. Check your internet connection or try again.';
+    return 'No internet connection. Check your network and try again.';
   }
 
   // 2. Try to extract a clear backend message up front (before generic status-based fallbacks)
@@ -164,10 +164,10 @@ const formatApiErrorMessage = (message: string): string => {
     'Unauthorized': 'Please sign in to continue.',
     'Forbidden': 'You don\'t have permission to perform this action.',
     'Not found': 'The requested item could not be found.',
-    'Network request failed': 'Whoops! No internet connection found. Check your internet connection or try again.',
-    'Network connection failed': 'Whoops! No internet connection found. Check your internet connection or try again.',
-    'Failed to fetch': 'Whoops! No internet connection found. Check your internet connection or try again.',
-    'TypeError: Network request failed': 'Whoops! No internet connection found. Check your internet connection or try again.',
+    'Network request failed': 'No internet connection. Check your network and try again.',
+    'Network connection failed': 'No internet connection. Check your network and try again.',
+    'Failed to fetch': 'No internet connection. Check your network and try again.',
+    'TypeError: Network request failed': 'No internet connection. Check your network and try again.',
     'timeout': 'The request took too long. Please check your connection and try again.',
     'Duplicate categories are not allowed': 'You have selected duplicate categories. Please select each category only once.',
     'You have already accepted this request': 'You have already accepted this request. You can schedule a visit or send a quotation.',
@@ -192,7 +192,7 @@ const formatApiErrorMessage = (message: string): string => {
 
   // If message is too technical, provide a generic friendly message
   if (message.includes('ECONNREFUSED') || message.includes('ENOTFOUND')) {
-    return 'Whoops! No internet connection found. Check your internet connection or try again.';
+    return 'No internet connection. Check your network and try again.';
   }
 
   if (message.includes('500') || message.includes('Internal Server Error')) {

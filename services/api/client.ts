@@ -216,7 +216,7 @@ class ApiClient {
         if (attempt === retries) {
           if (error instanceof AuthError) throw error;
           const errorMessage = isNetworkErr
-            ? 'Whoops! No internet connection found. Check your internet connection or try again.'
+            ? 'No internet connection. Check your network and try again.'
             : (error instanceof Error ? error.message : 'Request failed');
           const statusCode = (error as any)?.status || (error as any)?.response?.status;
           if (isNetworkErr) {

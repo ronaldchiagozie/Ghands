@@ -35,7 +35,7 @@ const INITIAL_MESSAGES: Message[] = [
   },
   {
     id: '2',
-    text: 'Hello! I\'m here to help. What specific issue are you experiencing with your account?',
+    text: 'Hi. What do you need help with on your account?',
     sender: 'support',
     timestamp: new Date(Date.now() - 18 * 60 * 1000).toISOString(),
     time: '2:12pm',
@@ -44,14 +44,14 @@ const INITIAL_MESSAGES: Message[] = [
 
 // Auto-response messages for support chat demo
 const SUPPORT_RESPONSES = [
-  "I understand your concern. Let me help you with that right away.",
-  "Thank you for reaching out! I'm looking into this for you.",
-  "I see the issue. Here's what we can do to resolve it...",
-  "That's a common question. Let me explain...",
-  "I'm here to help! Can you provide a bit more detail?",
-  "Thank you for your patience. I'm working on finding a solution for you.",
-  "I understand. Let me transfer this to our technical team.",
-  "Great question! Here's how we can handle this...",
+  "Got it. Here's what we can do next.",
+  "Thanks for the message. We're looking into it.",
+  "I see the issue. Here's what we can do to resolve it.",
+  "Here's a quick explanation.",
+  "Can you share a bit more detail?",
+  "Still working on this. We'll update you shortly.",
+  "We'll pass this to our technical team.",
+  "Here's how we can handle this.",
 ];
 
 export default function LiveChatScreen() {

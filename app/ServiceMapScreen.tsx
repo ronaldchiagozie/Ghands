@@ -772,7 +772,7 @@ const ServiceMapScreen = () => {
                 await serviceRequestService.selectProvider(requestId, providerId);
                 
                 haptics.success();
-                showSuccess('Provider selected! They have 5 minutes to accept.');
+                showSuccess('Provider selected. They have 5 minutes to accept.');
               }
             } catch (error: any) {
               // Show error but still proceed to confirmation screen

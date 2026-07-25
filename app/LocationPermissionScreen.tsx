@@ -57,7 +57,7 @@ export default function LocationPermissionScreen() {
 
       setIsRequesting(false);
       setIsGettingLocation(true);
-      showSuccess('Location permission granted! Getting your location...');
+      showSuccess('Location access granted. Getting your location…');
 
       // Get current location with highest accuracy and optimal settings
       const location = await Location.getCurrentPositionAsync({
@@ -108,7 +108,7 @@ export default function LocationPermissionScreen() {
         }
       }
       
-      showSuccess('Location saved successfully!');
+      showSuccess('Location saved');
       
       // Navigate to profile setup after a brief delay
       setTimeout(() => {

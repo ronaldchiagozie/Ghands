@@ -252,17 +252,7 @@ export default function CreatePINScreen() {
                   marginBottom: 4,
                 }}
               >
-                Your PIN has been created
-              </Text>
-              <Text
-                style={{
-                  fontSize: 18,
-                  fontFamily: 'Poppins-Bold',
-                  color: Colors.textPrimary,
-                  textAlign: 'center',
-                }}
-              >
-                successfully
+                Your PIN is set
               </Text>
             </View>
           </TouchableOpacity>

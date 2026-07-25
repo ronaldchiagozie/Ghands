@@ -269,7 +269,7 @@ export function mapCallAudioMessage(error: string | null, status: string): strin
     }
     return 'Voice connection unavailable. You can still message your provider.';
   }
-  if (status === 'starting') return 'Connecting secure voice…';
+  if (status === 'starting') return 'Connecting voice...';
   if (status === 'connected') return 'Secure in-app voice';
   return null;
 }

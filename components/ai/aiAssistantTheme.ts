@@ -151,4 +151,4 @@ export const AI_QUICK_ACTIONS: AiQuickAction[] = [
 ];
 
 /** @deprecated Use buildAiGreeting(botName) */
-export const AI_GREETING = 'Hello, How may i help you?';
+export const AI_GREETING = 'Hello, how can Handy help you today?';

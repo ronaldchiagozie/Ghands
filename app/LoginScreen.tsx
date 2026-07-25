@@ -71,7 +71,7 @@ export default function LoginScreen() {
     }
     
     if (hasErrors) {
-      showError('Please fix the errors above');
+      showError('Fix the highlighted fields');
       return;
     }
 
@@ -90,7 +90,7 @@ export default function LoginScreen() {
       await AsyncStorage.setItem('@ghands:user_role', 'client');
       
       haptics.success();
-      showSuccess('Login successful!');
+      showSuccess('Signed in');
       
       router.replace('/(tabs)/home');
     } catch (error: any) {

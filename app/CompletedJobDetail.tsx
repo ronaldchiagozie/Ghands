@@ -274,7 +274,7 @@ export default function CompletedJobDetail() {
       setMyReviewRating(payload.rating);
       setHasSubmittedReview(true);
       setPostReviewThankYou(true);
-      showSuccess('Thank you for your review!');
+      showSuccess('Thanks for your review');
       logRatingDebug('handleSubmitReview: success', { requestId, userId: userId ?? null });
       analytics.track('submit_provider_review', { job_id: requestId, rating });
     } catch (e: any) {
@@ -350,7 +350,7 @@ export default function CompletedJobDetail() {
       {
         id: 'step-4',
         title: 'Complete',
-        description: 'Job completed successfully.',
+        description: 'Job completed.',
         status: formatTimeAgo(updatedAt),
         accent: JOB_TIMELINE.completeSoft,
         dotColor: JOB_TIMELINE.sage,
