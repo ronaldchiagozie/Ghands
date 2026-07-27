@@ -1,10 +1,19 @@
 import { walletService } from '@/services/api';
+import { getErrorMessage } from '@/utils/errorMessages';
+import type { WalletAccountStatus } from '@/utils/walletAccountStatus';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
+
+const DEFAULT_WALLET_STATUS: WalletAccountStatus = {
+  label: 'Active',
+  tone: 'active',
+  fromApi: false,
+};
 
 type WalletBalanceCache = {
   balance: number;
   walletId: string | number | null;
+  accountStatus: WalletAccountStatus;
 };
 
 let cache: WalletBalanceCache | null = null;
@@ -22,6 +31,7 @@ async function fetchWalletBalance(): Promise<WalletBalanceCache> {
     const next: WalletBalanceCache = {
       balance: balanceValue,
       walletId: wallet.id ?? null,
+      accountStatus: wallet.accountStatus ?? DEFAULT_WALLET_STATUS,
     };
     cache = next;
     return next;
@@ -42,7 +52,11 @@ export function useWalletBalance(options?: { refreshOnFocus?: boolean; enabled?:
   const readyRef = useRef(cache !== null);
   const [balance, setBalance] = useState<number | null>(cache?.balance ?? null);
   const [walletId, setWalletId] = useState<string | number | null>(cache?.walletId ?? null);
+  const [accountStatus, setAccountStatus] = useState<WalletAccountStatus>(
+    cache?.accountStatus ?? DEFAULT_WALLET_STATUS,
+  );
   const [isLoading, setIsLoading] = useState(cache === null);
+  const [balanceError, setBalanceError] = useState<string | null>(null);
 
   const refresh = useCallback(async (opts?: { silent?: boolean }) => {
     if (!opts?.silent && !readyRef.current) {
@@ -52,9 +66,11 @@ export function useWalletBalance(options?: { refreshOnFocus?: boolean; enabled?:
       const next = await fetchWalletBalance();
       setBalance(next.balance);
       setWalletId(next.walletId);
+      setAccountStatus(next.accountStatus);
+      setBalanceError(null);
       return next;
     } catch (error) {
-      setBalance((prev) => (prev === null ? 0 : prev));
+      setBalanceError(getErrorMessage(error, 'Could not load wallet balance.'));
       throw error;
     } finally {
       readyRef.current = true;
@@ -76,5 +92,5 @@ export function useWalletBalance(options?: { refreshOnFocus?: boolean; enabled?:
     }, [enabled, refreshOnFocus, refresh])
   );
 
-  return { balance, walletId, isLoading, refresh };
+  return { balance, walletId, accountStatus, isLoading, balanceError, refresh };
 }

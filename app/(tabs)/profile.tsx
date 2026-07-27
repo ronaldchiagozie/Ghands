@@ -2,48 +2,48 @@ import Skeleton from '@/components/LoadingSkeleton';
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { SageHeroPanel } from '@/components/provider/SageHeroPanel';
 import { useAuthRole } from '@/hooks/useAuth';
+import { haptics } from '@/hooks/useHaptics';
 import { useCurrentUserProfile } from '@/hooks/useProfile';
 import { useUserLocation } from '@/hooks/useUserLocation';
 import { useWalletBalance } from '@/hooks/useWalletBalance';
 import {
-  BorderRadius,
-  Colors,
-  REFRESH_CONTROL,
-  useTabScrollContentPaddingTop,
-  useTabScreenScrollBottomPadding,
+    BorderRadius,
+    Colors,
+    REFRESH_CONTROL,
+    useTabScreenScrollBottomPadding,
+    useTabScrollContentPaddingTop,
 } from '@/lib/designSystem';
 import { providerListCard } from '@/lib/providerSurfaceStyles';
 import { CLIENT_HOME_SCROLL_GUTTER } from '@/lib/tabletLayout';
 import { handleAuthErrorRedirect } from '@/utils/authRedirect';
-import { haptics } from '@/hooks/useHaptics';
-import { AuthError } from '@/utils/errors';
-import { NOT_SET_LABEL } from '@/utils/copy';
 import { logClientProfilePhoto } from '@/utils/clientProfilePhoto';
+import { NOT_SET_LABEL } from '@/utils/copy';
+import { AuthError } from '@/utils/errors';
 import { shareReferral } from '@/utils/referral';
 import { useFocusEffect, usePathname, useRouter } from 'expo-router';
 import {
-  Bell,
-  ChevronRight,
-  HelpCircle,
-  LogOut,
-  MapPin,
-  Settings,
-  Star,
-  Trash2,
-  User,
-  Wallet,
+    Bell,
+    ChevronRight,
+    HelpCircle,
+    LogOut,
+    MapPin,
+    Settings,
+    Star,
+    Trash2,
+    User,
+    Wallet,
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Image,
-  Modal,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Image,
+    Modal,
+    Pressable,
+    RefreshControl,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
 const DEFAULT_AVATAR = require('../../assets/images/userimg.jpg');

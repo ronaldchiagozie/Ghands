@@ -3,9 +3,11 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import Toast from '@/components/Toast';
 import { haptics } from '@/hooks/useHaptics';
 import { useToast } from '@/hooks/useToast';
-import { BorderRadius, Colors, MIN_TOUCH_TARGET } from '@/lib/designSystem';
+import { BorderRadius, Colors, MIN_TOUCH_TARGET, useKeyboardAvoidingOffset } from '@/lib/designSystem';
 import { providerListCard } from '@/lib/providerSurfaceStyles';
 import { CLIENT_HOME_SCROLL_GUTTER } from '@/lib/tabletLayout';
+import { supportService } from '@/services/api/support';
+import { getErrorMessage } from '@/utils/errorMessages';
 import { isValidEmail } from '@/utils/inputFormatting';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -70,6 +72,7 @@ const FAQ_ITEMS: FAQItem[] = [
 const MIN_MESSAGE_LENGTH = 10;
 
 export default function SupportScreen() {
+  const keyboardOffset = useKeyboardAvoidingOffset();
   const router = useRouter();
   const { toast, showError, showSuccess, hideToast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
@@ -122,11 +125,22 @@ export default function SupportScreen() {
     haptics.light();
     setIsSubmitting(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 400));
+      await supportService.submitContactMessage({ name, email, message });
       setFormData({ name: '', email: '', message: '' });
+      haptics.success();
       showSuccess('Message sent. We will reply to your email within 1–2 business days.');
-    } catch {
-      showError('Could not send your message. Try again or start live chat.');
+    } catch (error: unknown) {
+      haptics.error();
+      const status = (error as { status?: number })?.status;
+      if (status === 404 || status === 501) {
+        showError(
+          'Contact form submissions are coming soon. Please start live chat or email support@ghands.com.',
+        );
+        return;
+      }
+      showError(
+        getErrorMessage(error, 'Could not send your message. Try again or start live chat.'),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -139,7 +153,7 @@ export default function SupportScreen() {
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
+        keyboardVerticalOffset={keyboardOffset}
       >
       <ScrollView
         showsVerticalScrollIndicator={false}

@@ -1,8 +1,8 @@
-import { AI_ASSISTANT_TEXT } from '@/components/ai/aiAssistantTheme';
+import { AI_ASSISTANT_TEXT, AI_COLORS } from '@/components/ai/aiAssistantTheme';
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { haptics } from '@/hooks/useHaptics';
 import { useToast } from '@/hooks/useToast';
-import { MIN_TOUCH_TARGET } from '@/lib/designSystem';
+import { BorderRadius, MIN_TOUCH_TARGET } from '@/lib/designSystem';
 import { aiService, type AiConversationSummary } from '@/services/api';
 import { formatTimeAgo } from '@/utils/dateFormatting';
 import { handleApiAuthFailure } from '@/utils/authRedirect';
@@ -12,13 +12,13 @@ import { ArrowLeft, MessageSquarePlus, Trash2 } from 'lucide-react-native';
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Pressable,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { showAppAlert } from '@/components/AppAlertHost';
 
 export default function AiConversationsScreen() {
   const router = useRouter();
@@ -68,7 +68,7 @@ export default function AiConversationsScreen() {
 
   const handleDelete = useCallback(
     (conversation: AiConversationSummary) => {
-      Alert.alert(
+      showAppAlert(
         'Delete conversation',
         'This chat will be removed permanently.',
         [
@@ -97,7 +97,7 @@ export default function AiConversationsScreen() {
   );
 
   return (
-    <SafeAreaWrapper backgroundColor="#003D4D">
+    <SafeAreaWrapper backgroundColor={AI_COLORS.screenBase}>
       <View
         style={{
           flexDirection: 'row',
@@ -155,7 +155,7 @@ export default function AiConversationsScreen() {
       <View style={{ flex: 1, paddingHorizontal: 20 }}>
         {isLoading ? (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            <ActivityIndicator size="large" color="#E4FF5C" />
+            <ActivityIndicator size="large" color={AI_COLORS.accent} />
           </View>
         ) : conversations.length === 0 ? (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
@@ -193,7 +193,7 @@ export default function AiConversationsScreen() {
                 onPress={() => handleOpenConversation(item)}
                 style={({ pressed }) => ({
                   backgroundColor: pressed ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.08)',
-                  borderRadius: 16,
+                  borderRadius: BorderRadius.lg,
                   paddingHorizontal: 16,
                   paddingVertical: 14,
                   marginBottom: 10,
@@ -234,9 +234,9 @@ export default function AiConversationsScreen() {
                     style={{ paddingTop: 2 }}
                   >
                     {deletingId === item.id ? (
-                      <ActivityIndicator size="small" color="rgba(255,255,255,0.6)" />
+                      <ActivityIndicator size="small" color={AI_COLORS.muted} />
                     ) : (
-                      <Trash2 size={18} color="rgba(255,255,255,0.55)" />
+                      <Trash2 size={18} color={AI_COLORS.muted} />
                     )}
                   </Pressable>
                 </View>

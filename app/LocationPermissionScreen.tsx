@@ -2,12 +2,13 @@ import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { useRouter } from 'expo-router';
 import { MapPin, Plus } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Text, TouchableOpacity, View, ActivityIndicator, Alert } from 'react-native';
+import { Animated, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
+import { showAppAlert } from '@/components/AppAlertHost';
 import * as Location from 'expo-location';
 import { useUserLocation } from '@/hooks/useUserLocation';
 import { locationService, authService } from '@/services/api';
 import { Button } from '@/components/ui/Button';
-import { Colors, Spacing } from '@/lib/designSystem';
+import { Colors, MIN_TOUCH_TARGET, Spacing, TOUCH_HIT_SLOP } from '@/lib/designSystem';
 import { useToast } from '@/hooks/useToast';
 import Toast from '@/components/Toast';
 
@@ -44,7 +45,7 @@ export default function LocationPermissionScreen() {
       
       if (status !== 'granted') {
         setIsRequesting(false);
-        Alert.alert(
+        showAppAlert(
           'Permission Denied',
           'Location permission is required to find nearby services. You can enter your location manually instead.',
           [
@@ -123,7 +124,7 @@ export default function LocationPermissionScreen() {
       
       // Offer manual entry as fallback
       setTimeout(() => {
-        Alert.alert(
+        showAppAlert(
           'Location Error',
           'We couldn\'t get your location automatically. Would you like to enter it manually?',
           [
@@ -279,8 +280,20 @@ export default function LocationPermissionScreen() {
         {/* I'll do this later Link */}
         {!isRequesting && !isGettingLocation && (
           <Animated.View style={{ opacity: fadeAnim }}>
-            <TouchableOpacity onPress={handleLater} activeOpacity={0.7}>
-              <Text 
+            <TouchableOpacity
+              onPress={handleLater}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Skip setting your location for now"
+              hitSlop={TOUCH_HIT_SLOP}
+              style={{
+                minHeight: MIN_TOUCH_TARGET,
+                paddingHorizontal: Spacing.lg,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Text
                 style={{
                   fontSize: 16,
                   fontFamily: 'Poppins-Medium',

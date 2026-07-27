@@ -4,13 +4,18 @@ import Svg, { G, Path } from 'react-native-svg';
 
 const SPARKLE_LIME = '#E4FF5C';
 const SPARKLE_BLACK = '#101010';
+const SPARKLE_TEAL = '#003D4D';
 
 /** Four-point star — viewBox 0 0 24 24, center at (12, 12). */
 const STAR_PATH =
   'M12 1.5L13.8 10.2L22.5 12L13.8 13.8L12 22.5L10.2 13.8L1.5 12L10.2 10.2Z';
 
 type AiSparkleIconProps = {
-  variant?: 'default' | 'fab' | 'fab-shoulder' | 'lg';
+  variant?: 'default' | 'fab' | 'fab-shoulder' | 'lg' | 'chip';
+  /** `chip` only — rendered edge length. */
+  size?: number;
+  /** `chip` only — overrides the teal fill. */
+  tint?: string;
 };
 
 function SparkleStar({
@@ -67,6 +72,19 @@ function FabCenterSparkleCluster() {
   );
 }
 
+/**
+ * Two stars rather than three — the third star collapses into noise below ~20px,
+ * which is the size this variant is meant for.
+ */
+function ChipSparkleCluster({ size, tint }: { size: number; tint: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 30 30">
+      <CenteredStar x={13} y={17} scale={1} fill={tint} />
+      <CenteredStar x={22} y={8} scale={0.52} fill={tint} />
+    </Svg>
+  );
+}
+
 /** Shoulder variant — kept for reference layouts. */
 export function AiFabShoulderSparkles() {
   return (
@@ -99,9 +117,13 @@ export function AiFabShoulderSparkles() {
   );
 }
 
-export default function AiSparkleIcon({ variant = 'default' }: AiSparkleIconProps) {
+export default function AiSparkleIcon({ variant = 'default', size, tint }: AiSparkleIconProps) {
   if (variant === 'fab' || variant === 'lg') {
     return <FabCenterSparkleCluster />;
+  }
+
+  if (variant === 'chip') {
+    return <ChipSparkleCluster size={size ?? 15} tint={tint ?? SPARKLE_TEAL} />;
   }
 
   if (variant === 'fab-shoulder') {

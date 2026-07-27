@@ -35,7 +35,9 @@ export default function GlobalOfflineOverlay() {
       pointerEvents="auto"
       accessibilityViewIsModal
     >
-      <NoInternetScreen onRetry={recheck} />
+      <View style={styles.content}>
+        <NoInternetScreen onRetry={recheck} />
+      </View>
     </View>
   );
 }
@@ -45,5 +47,8 @@ const styles = StyleSheet.create({
     zIndex: 9999,
     elevation: Platform.OS === 'android' ? 9999 : undefined,
     backgroundColor: '#F9F9F7',
+  },
+  content: {
+    flex: 1,
   },
 });

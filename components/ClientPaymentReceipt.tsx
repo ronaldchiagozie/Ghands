@@ -1,11 +1,15 @@
 import { BorderRadius, Colors } from '@/lib/designSystem';
 import { providerHomeSurface } from '@/lib/providerSurfaceStyles';
-import { CheckCircle, Download, Share2, User } from 'lucide-react-native';
-import React from 'react';
+import { truncateMiddle } from '@/utils/formatReference';
+import { CheckCircle, Clock, Download, Share2, User, XCircle } from 'lucide-react-native';
+import React, { useMemo } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
+
+export type ClientReceiptStatus = 'completed' | 'pending' | 'failed';
 
 export type ClientReceiptData = {
   transactionId: string;
+  reference?: string;
   jobTitle: string;
   providerName: string;
   serviceDate: string;
@@ -16,6 +20,9 @@ export type ClientReceiptData = {
   totalAmount: string;
   paymentMethod: string;
   paymentDate: string;
+  status?: ClientReceiptStatus;
+  /** Shown under “Failed” when provided (API reason). */
+  failureReason?: string;
 };
 
 type ClientPaymentReceiptProps = {
@@ -63,6 +70,59 @@ export function ClientPaymentReceipt({
   onViewJob,
   showViewJob = false,
 }: ClientPaymentReceiptProps) {
+  const status: ClientReceiptStatus = data.status ?? 'completed';
+
+  const referenceDisplay = useMemo(
+    () => (data.reference ? truncateMiddle(data.reference) : ''),
+    [data.reference],
+  );
+
+  const statusPresentation = useMemo(() => {
+    switch (status) {
+      case 'pending':
+        return {
+          title: 'Payment pending',
+          subtitle: 'We’re still confirming this payment. Check back shortly.',
+          iconBg: 'rgba(245, 158, 11, 0.14)',
+          Icon: Clock,
+          iconColor: Colors.warning,
+          badgeBg: Colors.warningBadge ?? 'rgba(245, 158, 11, 0.18)',
+          badgeFg: Colors.warningForeground,
+          badgeLabel: 'Pending',
+          amountLabel: 'Amount',
+        };
+      case 'failed':
+        return {
+          title: 'Failed',
+          subtitle: '',
+          iconBg: Colors.errorBadge ?? 'rgba(239, 68, 68, 0.14)',
+          Icon: XCircle,
+          iconColor: Colors.errorBright,
+          badgeBg: Colors.errorBadge ?? 'rgba(239, 68, 68, 0.14)',
+          badgeFg: Colors.errorForeground,
+          badgeLabel: 'Failed',
+          amountLabel: 'Amount',
+        };
+      default:
+        return {
+          title: 'Payment successful',
+          subtitle: 'Your wallet payment has been recorded.',
+          iconBg: Colors.sageTint,
+          Icon: CheckCircle,
+          iconColor: Colors.accent,
+          badgeBg: Colors.successLight,
+          badgeFg: Colors.successForeground,
+          badgeLabel: 'Completed',
+          amountLabel: 'Total paid',
+        };
+    }
+  }, [status]);
+
+  const { Icon, iconColor, iconBg, title, subtitle, badgeBg, badgeFg, badgeLabel, amountLabel } =
+    statusPresentation;
+
+  const heroSubtitle = status === 'failed' ? '' : subtitle;
+
   return (
     <View style={{ flex: 1 }}>
       <View style={{ alignItems: 'center', marginBottom: 14 }}>
@@ -71,13 +131,13 @@ export function ClientPaymentReceipt({
             width: 56,
             height: 56,
             borderRadius: 28,
-            backgroundColor: Colors.sageTint,
+            backgroundColor: iconBg,
             alignItems: 'center',
             justifyContent: 'center',
             marginBottom: 10,
           }}
         >
-          <CheckCircle size={28} color={Colors.accent} strokeWidth={2.2} />
+          <Icon size={28} color={iconColor} strokeWidth={2.2} />
         </View>
         <Text
           style={{
@@ -88,19 +148,22 @@ export function ClientPaymentReceipt({
             marginBottom: 4,
           }}
         >
-          Payment successful
+          {title}
         </Text>
-        <Text
-          style={{
-            fontSize: 13,
-            fontFamily: 'Poppins-Regular',
-            color: Colors.textSecondaryDark,
-            textAlign: 'center',
-            lineHeight: 18,
-          }}
-        >
-          Your wallet payment has been recorded.
-        </Text>
+        {heroSubtitle ? (
+          <Text
+            style={{
+              fontSize: 13,
+              fontFamily: 'Poppins-Regular',
+              color: Colors.textSecondaryDark,
+              textAlign: 'center',
+              lineHeight: 18,
+              paddingHorizontal: 8,
+            }}
+          >
+            {heroSubtitle}
+          </Text>
+        ) : null}
       </View>
 
       <View
@@ -120,7 +183,7 @@ export function ClientPaymentReceipt({
               marginBottom: 4,
             }}
           >
-            Total paid
+            {amountLabel}
           </Text>
           <Text
             style={{
@@ -213,25 +276,29 @@ export function ClientPaymentReceipt({
         <View>
           <ReceiptRow label="Payment method" value={data.paymentMethod} />
           <ReceiptRow label="Transaction ID" value={data.transactionId} />
+          {referenceDisplay ? <ReceiptRow label="Reference" value={referenceDisplay} /> : null}
+          {status === 'failed' && data.failureReason?.trim() ? (
+            <ReceiptRow label="Reason" value={data.failureReason.trim()} />
+          ) : null}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
             <Text style={{ fontSize: 13, fontFamily: 'Poppins-Medium', color: Colors.textSecondaryDark }}>Status</Text>
             <View
               style={{
-                backgroundColor: Colors.successLight,
+                backgroundColor: badgeBg,
                 paddingHorizontal: 10,
                 paddingVertical: 4,
                 borderRadius: BorderRadius.full,
               }}
             >
-              <Text style={{ fontSize: 11, fontFamily: 'Poppins-SemiBold', color: Colors.successForeground }}>
-                Completed
+              <Text style={{ fontSize: 11, fontFamily: 'Poppins-SemiBold', color: badgeFg }}>
+                {badgeLabel}
               </Text>
             </View>
           </View>
         </View>
       </View>
 
-      <View style={{ paddingTop: 14, gap: 10 }}>
+      <View style={{ paddingTop: 14 }}>
         {showViewJob && onViewJob ? (
           <TouchableOpacity
             onPress={onViewJob}
@@ -240,6 +307,7 @@ export function ClientPaymentReceipt({
               borderRadius: BorderRadius.default,
               paddingVertical: 14,
               alignItems: 'center',
+              marginBottom: 10,
             }}
             activeOpacity={0.85}
           >
@@ -247,7 +315,7 @@ export function ClientPaymentReceipt({
           </TouchableOpacity>
         ) : null}
 
-        <View style={{ flexDirection: 'row', gap: 10 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'stretch', gap: 10 }}>
           <TouchableOpacity
             onPress={onDownload}
             style={{

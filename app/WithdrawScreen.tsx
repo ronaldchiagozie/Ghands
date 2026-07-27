@@ -1,26 +1,32 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { BorderRadius, Colors } from '@/lib/designSystem';
+import { SageHeroPanel } from '@/components/provider/SageHeroPanel';
+import { Button } from '@/components/ui/Button';
 import { haptics } from '@/hooks/useHaptics';
 import { useToast } from '@/hooks/useToast';
+import { BorderRadius, Colors, MIN_TOUCH_TARGET, useSageHeroPanelMetrics, useKeyboardAvoidingOffset } from '@/lib/designSystem';
+import { providerHomeSectionTitle, providerHomeSurface } from '@/lib/providerSurfaceStyles';
 import { walletService, type BankAccount } from '@/services/api';
 import { getSpecificErrorMessage } from '@/utils/errorMessages';
-import { useRouter, useFocusEffect } from 'expo-router';
-import { Building2, ChevronDown, Lock, Wallet } from 'lucide-react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { Building2, ChevronDown, Lock, Plus } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Modal,
-  ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
 const PRESET_AMOUNTS = [5000, 10000, 20000, 50000];
 
 export default function WithdrawScreen() {
+  const keyboardOffset = useKeyboardAvoidingOffset();
   const router = useRouter();
   const { showError, showSuccess } = useToast();
   const [balance, setBalance] = useState<number>(0);
@@ -34,6 +40,7 @@ export default function WithdrawScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const pinRefs = React.useRef<TextInput[]>([]);
+  const { amountFontSize } = useSageHeroPanelMetrics();
 
   const loadData = useCallback(async () => {
     try {
@@ -158,6 +165,23 @@ export default function WithdrawScreen() {
     }
   };
 
+  const linkBankHeaderAction = (
+    <TouchableOpacity
+      onPress={() => router.push('/ProviderLinkBankAccountScreen' as any)}
+      style={{
+        minWidth: MIN_TOUCH_TARGET,
+        minHeight: MIN_TOUCH_TARGET,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+      activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel="Add or replace bank account"
+    >
+      <Plus size={22} color={Colors.accent} strokeWidth={2.5} />
+    </TouchableOpacity>
+  );
+
   if (isLoading) {
     return (
       <SafeAreaWrapper backgroundColor={Colors.backgroundLight}>
@@ -166,7 +190,7 @@ export default function WithdrawScreen() {
             style={{
               width: 72,
               height: 72,
-              borderRadius: 36,
+              borderRadius: BorderRadius.full,
               backgroundColor: Colors.sageTint,
               alignItems: 'center',
               justifyContent: 'center',
@@ -189,18 +213,23 @@ export default function WithdrawScreen() {
   if (bankAccounts.length === 0) {
     return (
       <SafeAreaWrapper backgroundColor={Colors.backgroundLight}>
-        <ScreenHeader title="" onBack={() => router.back()} backgroundColor={Colors.backgroundLight} />
+        <ScreenHeader
+          title=""
+          onBack={() => router.back()}
+          backgroundColor={Colors.backgroundLight}
+          rightElement={linkBankHeaderAction}
+        />
         <View style={{ flex: 1, padding: 24, justifyContent: 'center', alignItems: 'center' }}>
           <View
             style={{
               width: 84,
               height: 84,
-              borderRadius: 42,
+              borderRadius: BorderRadius.full,
               backgroundColor: Colors.white,
               alignItems: 'center',
               justifyContent: 'center',
               borderWidth: 1,
-              borderColor: 'rgba(17, 24, 39, 0.045)',
+              borderColor: Colors.border,
               marginBottom: 18,
             }}
           >
@@ -212,12 +241,14 @@ export default function WithdrawScreen() {
           <Text style={{ fontSize: 14, lineHeight: 20, fontFamily: 'Poppins-Regular', color: Colors.textSecondaryDark, textAlign: 'center', marginBottom: 24 }}>
             Link a verified bank account before withdrawing your earnings.
           </Text>
-          <TouchableOpacity
+          <Button
+            title="Link bank account"
             onPress={() => router.push('/ProviderLinkBankAccountScreen' as any)}
-            style={{ backgroundColor: Colors.accent, paddingVertical: 14, paddingHorizontal: 24, borderRadius: 16 }}
-          >
-            <Text style={{ fontSize: 16, fontFamily: 'Poppins-SemiBold', color: Colors.black }}>Link Bank Account</Text>
-          </TouchableOpacity>
+            variant="primary"
+            size="medium"
+            icon={<Plus size={18} color={Colors.white} strokeWidth={2.5} />}
+            iconPosition="left"
+          />
         </View>
       </SafeAreaWrapper>
     );
@@ -225,54 +256,60 @@ export default function WithdrawScreen() {
 
   return (
     <SafeAreaWrapper backgroundColor={Colors.backgroundLight}>
-      <ScreenHeader title="Withdraw" onBack={() => router.back()} backgroundColor={Colors.backgroundLight} />
+      <ScreenHeader
+        title="Withdraw"
+        onBack={() => router.back()}
+        backgroundColor={Colors.backgroundLight}
+        rightElement={linkBankHeaderAction}
+      />
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
-        <View
-          style={{
-            backgroundColor: '#0a0a0a',
-            borderRadius: 24,
-            padding: 20,
-            marginBottom: 24,
-            overflow: 'hidden',
-            borderWidth: 1,
-            borderColor: 'rgba(255,255,255,0.08)',
-          }}
-        >
-          <View
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={keyboardOffset}
+      >
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
+        <SageHeroPanel style={{ marginBottom: 24 }}>
+          <Text
             style={{
-              position: 'absolute',
-              top: -50,
-              right: -50,
-              width: 150,
-              height: 150,
-              borderRadius: 75,
-              backgroundColor: Colors.accent,
-              opacity: 0.14,
+              fontSize: 14,
+              fontFamily: 'Poppins-Medium',
+              color: Colors.border,
+              marginBottom: 4,
             }}
-          />
-          <Text style={{ fontSize: 12, fontFamily: 'Poppins-Medium', color: 'rgba(255,255,255,0.7)', marginBottom: 4 }}>
-            Available Balance
+          >
+            Available balance
           </Text>
-          <Text style={{ fontSize: 28, fontFamily: 'Poppins-Bold', color: Colors.white }}>
+          <Text
+            style={{
+              fontSize: amountFontSize,
+              lineHeight: amountFontSize + 3,
+              fontFamily: 'Poppins-Bold',
+              color: Colors.white,
+              letterSpacing: -0.8,
+            }}
+          >
             ₦{balance.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </Text>
-        </View>
+        </SageHeroPanel>
 
-        <Text style={{ fontSize: 15, fontFamily: 'Poppins-SemiBold', color: Colors.textPrimary, marginBottom: 12 }}>
-          Bank Account
-        </Text>
+        <Text style={providerHomeSectionTitle}>Bank account</Text>
         <TouchableOpacity
           onPress={() => setShowAccountModal(true)}
           style={{
+            ...providerHomeSurface,
             flexDirection: 'row',
             alignItems: 'center',
-            backgroundColor: Colors.white,
-            borderRadius: 18,
             padding: 16,
-            borderWidth: 1,
-            borderColor: 'rgba(17, 24, 39, 0.045)',
           }}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel="Change bank account"
         >
           <Building2 size={20} color={Colors.textSecondaryDark} style={{ marginRight: 12 }} />
           <View style={{ flex: 1 }}>
@@ -286,9 +323,7 @@ export default function WithdrawScreen() {
           <ChevronDown size={20} color={Colors.textSecondaryDark} />
         </TouchableOpacity>
 
-        <Text style={{ fontSize: 15, fontFamily: 'Poppins-SemiBold', color: Colors.textPrimary, marginTop: 24, marginBottom: 12 }}>
-          Amount
-        </Text>
+        <Text style={{ ...providerHomeSectionTitle, marginTop: 24 }}>Amount</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
           {PRESET_AMOUNTS.map((a) => (
             <TouchableOpacity
@@ -297,13 +332,16 @@ export default function WithdrawScreen() {
               style={{
                 paddingVertical: 12,
                 paddingHorizontal: 16,
-                borderRadius: 14,
+                borderRadius: BorderRadius.full,
                 backgroundColor: selectedAmount === a ? Colors.accent : Colors.white,
                 borderWidth: 1,
-                borderColor: selectedAmount === a ? Colors.accent : 'rgba(17, 24, 39, 0.08)',
+                borderColor: selectedAmount === a ? Colors.accent : Colors.border,
               }}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityState={{ selected: selectedAmount === a }}
             >
-              <Text style={{ fontSize: 14, fontFamily: 'Poppins-SemiBold', color: selectedAmount === a ? Colors.black : Colors.textPrimary }}>
+              <Text style={{ fontSize: 14, fontFamily: 'Poppins-SemiBold', color: selectedAmount === a ? Colors.white : Colors.textPrimary }}>
                 ₦{a.toLocaleString()}
               </Text>
             </TouchableOpacity>
@@ -321,37 +359,27 @@ export default function WithdrawScreen() {
           placeholderTextColor={Colors.placeholder}
           keyboardType="numeric"
           style={{
-            backgroundColor: Colors.white,
-            borderRadius: 18,
+            ...providerHomeSurface,
             padding: 16,
-            borderWidth: 1,
-            borderColor: 'rgba(17, 24, 39, 0.045)',
             fontSize: 16,
             fontFamily: 'Poppins-Medium',
             color: Colors.textPrimary,
           }}
+          accessibilityLabel="Custom withdrawal amount"
         />
 
-        <TouchableOpacity
+        <Button
+          title={`Withdraw ₦${(amount || 0).toLocaleString()}`}
           onPress={handleWithdraw}
-          disabled={!hasEnoughBalance || isWithdrawing}
-          style={{
-            marginTop: 32,
-            backgroundColor: hasEnoughBalance ? Colors.accent : Colors.border,
-            borderRadius: 18,
-            paddingVertical: 16,
-            alignItems: 'center',
-          }}
-        >
-          {isWithdrawing ? (
-            <ActivityIndicator color={Colors.black} />
-          ) : (
-            <Text style={{ fontSize: 16, fontFamily: 'Poppins-SemiBold', color: hasEnoughBalance ? Colors.black : Colors.textSecondaryDark }}>
-              Withdraw ₦{(amount || 0).toLocaleString()}
-            </Text>
-          )}
-        </TouchableOpacity>
+          variant="primary"
+          size="large"
+          fullWidth
+          disabled={!hasEnoughBalance}
+          loading={isWithdrawing}
+          style={{ marginTop: 32 }}
+        />
       </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Account picker modal */}
       <Modal visible={showAccountModal} transparent animationType="slide">
@@ -361,7 +389,13 @@ export default function WithdrawScreen() {
           onPress={() => setShowAccountModal(false)}
         >
           <View
-            style={{ backgroundColor: Colors.white, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '70%', padding: 20 }}
+            style={{
+              backgroundColor: Colors.white,
+              borderTopLeftRadius: BorderRadius.sageHero,
+              borderTopRightRadius: BorderRadius.sageHero,
+              maxHeight: '70%',
+              padding: 20,
+            }}
             onStartShouldSetResponder={() => true}
           >
             <Text style={{ fontSize: 18, fontFamily: 'Poppins-Bold', marginBottom: 16 }}>Select Account</Text>
@@ -378,6 +412,23 @@ export default function WithdrawScreen() {
                   </Text>
                 </TouchableOpacity>
               ))}
+              <TouchableOpacity
+                onPress={() => {
+                  setShowAccountModal(false);
+                  router.push('/ProviderLinkBankAccountScreen' as any);
+                }}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingVertical: 16,
+                  marginTop: 4,
+                }}
+              >
+                <Plus size={18} color={Colors.accent} strokeWidth={2.5} />
+                <Text style={{ marginLeft: 8, fontSize: 15, fontFamily: 'Poppins-SemiBold', color: Colors.accent }}>
+                  Add or replace bank
+                </Text>
+              </TouchableOpacity>
             </ScrollView>
           </View>
         </TouchableOpacity>

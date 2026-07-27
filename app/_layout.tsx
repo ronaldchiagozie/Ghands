@@ -25,6 +25,7 @@ import { useSessionTimeout } from '@/hooks/useSessionTimeout';
 import { UserLocationProvider } from '@/hooks/useUserLocation';
 import { NetworkProvider } from '@/hooks/useNetworkConnectivity';
 import GlobalOfflineOverlay from '@/components/GlobalOfflineOverlay';
+import AppAlertHost from '@/components/AppAlertHost';
 import AppStatusBar from '@/components/AppStatusBar';
 import { installStatusBarRestore, applyDefaultStatusBar, applyHandyAiStatusBar, isHandyAiRoute } from '@/utils/statusBar';
 import { registerWebRtcGlobalsIfAvailable } from '@/utils/webrtcAvailability';
@@ -32,6 +33,7 @@ import { installTypographyDefaults } from '@/lib/typographyDefaults';
 import { Platform, View } from 'react-native';
 import { ScreenBootLoader } from '@/components/ScreenBootLoader';
 import { isRoleSwitchInProgress } from '@/hooks/useRoleSwitching';
+import { setNavigationPath } from '@/utils/authNavigationGuard';
 
 if (Platform.OS === 'ios' || Platform.OS === 'android') {
   registerWebRtcGlobalsIfAvailable();
@@ -52,6 +54,7 @@ export default function RootLayout() {
   const pathname = usePathname();
   const pathnameRef = useRef(pathname);
   pathnameRef.current = pathname;
+  setNavigationPath(pathname);
 
   /** No token on protected routes, or JWT expired → login (same as 401 handling) */
   useSessionTimeout(router, pathname);
@@ -59,12 +62,6 @@ export default function RootLayout() {
   const lastHandledNotificationId = useRef<string | null>(null);
   
   const [fontsLoaded] = useFonts({
-    'Outfit-Regular': require('../assets/fonts/Outfit/static/Outfit-Regular.ttf'),
-    'Outfit-Medium': require('../assets/fonts/Outfit/static/Outfit-Medium.ttf'),
-    'Outfit-SemiBold': require('../assets/fonts/Outfit/static/Outfit-SemiBold.ttf'),
-    'Outfit-Bold': require('../assets/fonts/Outfit/static/Outfit-Bold.ttf'),
-    'Outfit-ExtraBold': require('../assets/fonts/Outfit/static/Outfit-ExtraBold.ttf'),
-    
     'Poppins-Regular': require('../assets/fonts/Poppins/Poppins-Regular.ttf'),
     'Poppins-Medium': require('../assets/fonts/Poppins/Poppins-Medium.ttf'),
     'Poppins-SemiBold': require('../assets/fonts/Poppins/Poppins-SemiBold.ttf'),
@@ -218,6 +215,7 @@ export default function RootLayout() {
             </AuthErrorBoundary>
             </UserLocationProvider>
             <GlobalOfflineOverlay />
+            <AppAlertHost />
             </View>
             </NetworkProvider>
           </QueryProvider>

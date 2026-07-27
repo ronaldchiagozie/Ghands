@@ -1,35 +1,36 @@
 import { CoachMarkTarget } from '@/components/CoachMarkTarget';
-import AiSparkleFab from '@/components/home/AiSparkleFab';
 import { CategoryChipSkeleton, JobCardSkeleton } from '@/components/LoadingSkeleton';
-import { useSkeletonGate } from '@/hooks/useSkeletonGate';
+import { ErrorState } from '@/components/ErrorState';
 import LocationSearchModal from '@/components/LocationSearchModal';
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import AiSparkleFab from '@/components/home/AiSparkleFab';
 import type { JobActivity } from '@/components/home/JobActivityCard';
 import JobActivityCard from '@/components/home/JobActivityCard';
+import { useSkeletonGate } from '@/hooks/useSkeletonGate';
 // import PromoCodeCard from '@/components/home/PromoCodeCard';
 import TodoCard from '@/components/home/TodoCard';
 import { quickActions, todoItems, type QuickAction } from '@/components/home/data';
 import useCoachMarks from '@/hooks/useCoachMarks';
 import { haptics } from '@/hooks/useHaptics';
-import { useTokenGuard } from '@/hooks/useTokenGuard';
 import { useOnNetworkRestore } from '@/hooks/useNetworkConnectivity';
+import { useTokenGuard } from '@/hooks/useTokenGuard';
 import { useUserLocation } from '@/hooks/useUserLocation';
-import { BorderRadius, Colors, MIN_TOUCH_TARGET, useReducedMotion, useTabScrollContentPaddingTop, useTabScreenBottomSpacerHeight } from '@/lib/designSystem';
-import { SURFACE_STYLES, surfaceElevation } from '@/lib/surfaceStyles';
+import { BorderRadius, Colors, MIN_TOUCH_TARGET, useReducedMotion, useTabScreenBottomSpacerHeight, useTabScrollContentPaddingTop } from '@/lib/designSystem';
 import { providerListCard } from '@/lib/providerSurfaceStyles';
+import { SURFACE_STYLES, surfaceElevation } from '@/lib/surfaceStyles';
 import { CLIENT_HOME_SCROLL_GUTTER } from '@/lib/tabletLayout';
 import { ServiceRequest, serviceRequestService } from '@/services/api';
-import { logDevAuthTokens } from '@/utils/devAuthTokens';
 import { handleApiAuthFailure, runAuthSafe } from '@/utils/authRedirect';
 import { getCategoryIcon, resolveCategoryImageSource } from '@/utils/categoryIcons';
+import { getErrorMessage } from '@/utils/errorMessages';
+import { logDevAuthTokens } from '@/utils/devAuthTokens';
 import { isAuthError } from '@/utils/errors';
 import { isConnectivityOrNetworkError } from '@/utils/isNetworkFailure';
 import { resolveJobDisplayStatus } from '@/utils/jobDisplayStatus';
 import { navigateToClientHomeTab } from '@/utils/navigation';
+import { countSentQuotations, jobHasSentQuotation } from '@/utils/quotationStatus';
 import { mergeCachedVisitRequest } from '@/utils/visitRequestCache';
 import { healJobStatusAfterVisitDecline } from '@/utils/visitStatus';
-import { countSentQuotations, jobHasSentQuotation } from '@/utils/quotationStatus';
-import { shareReferral } from '@/utils/referral';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Bell, ChevronDown, MapPin, Search } from 'lucide-react-native';
@@ -47,7 +48,7 @@ const HOME_QUICK_ACTION_LABEL = 'rgba(255, 255, 255, 0.96)';
 /** Vertical gap between major home sections (Popular · Quick actions · Job activity). */
 const HOME_SECTION_VERTICAL_GAP = 24;
 /** Softer mint well for category icons (lighter than accent-tinted gray). */
-const HOME_CATEGORY_ICON_WELL = '#F4F8EF';
+const HOME_CATEGORY_ICON_WELL = Colors.sageTint;
 
 const CategoryItem = React.memo(({
   category,
@@ -72,7 +73,7 @@ const CategoryItem = React.memo(({
         marginRight: 12,
         zIndex: 2,
         backgroundColor: Colors.white,
-        borderRadius: 16,
+        borderRadius: BorderRadius.lg,
         paddingVertical: 12,
         paddingHorizontal: 10,
         alignItems: 'center',
@@ -89,7 +90,7 @@ const CategoryItem = React.memo(({
         style={{
           width: 48,
           height: 48,
-          borderRadius: 14,
+          borderRadius: BorderRadius.default,
           backgroundColor: HOME_CATEGORY_ICON_WELL,
           alignItems: 'center',
           justifyContent: 'center',
@@ -144,6 +145,8 @@ const HomeScreen = React.memo(() => {
   const { location, isLoading, refreshLocation } = useUserLocation();
   const [jobActivities, setJobActivities] = useState<JobActivity[]>([]);
   const [isLoadingJobs, setIsLoadingJobs] = useState(true);
+  const [jobsLoadError, setJobsLoadError] = useState<string | null>(null);
+  const [categoriesLoadError, setCategoriesLoadError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   // Tour disabled - keep hook to avoid runtime errors, use empty steps so tour never shows
@@ -269,6 +272,7 @@ const HomeScreen = React.memo(() => {
       const requests = await serviceRequestService.getUserRequests();
       if (!Array.isArray(requests) || requests.length === 0) {
         setJobActivities([]);
+        setJobsLoadError(null);
         return;
       }
       const confirmedRequests = requests.filter((request) => {
@@ -336,13 +340,18 @@ const HomeScreen = React.memo(() => {
         .slice(0, 2)
         .map((entry) => entry.activity);
       setJobActivities(sortedActivities);
+      setJobsLoadError(null);
     } catch (error: unknown) {
       if (await handleApiAuthFailure(error, router)) {
         return;
       }
       const isNetworkError = isConnectivityOrNetworkError(error);
+      const message = getErrorMessage(
+        error,
+        'Could not load job activity. Check your connection and try again.',
+      );
       if (isNetworkError) {
-        // Global offline overlay handles UI; keep cached list for reconnect.
+        setJobsLoadError((prev) => prev ?? message);
         return;
       }
       const status = (error as { status?: number })?.status;
@@ -351,12 +360,10 @@ const HomeScreen = React.memo(() => {
         return;
       }
       if (status === 500) {
-        // Backend/server issue: keep user on screen and show empty state.
-        // Do not redirect to auth flow for non-auth failures.
         if (__DEV__) console.warn('Job activities API returned 500; skipping redirect.');
       }
       if (__DEV__) console.error('Error loading job activities:', error);
-      setJobActivities([]);
+      setJobsLoadError(message);
     } finally {
       jobsReadyRef.current = true;
       setIsLoadingJobs(false);
@@ -384,7 +391,7 @@ const HomeScreen = React.memo(() => {
   useEffect(() => {
     runAuthSafe(() => loadCategoriesFromAPI(), router);
     runAuthSafe(() => loadJobActivities(), router);
-  }, [loadJobActivities, router]);
+  }, [loadJobActivities, loadCategoriesFromAPI, router]);
 
   // Animate categories when API data loads
   useEffect(() => {
@@ -419,7 +426,7 @@ const HomeScreen = React.memo(() => {
     return shuffled;
   }, []);
 
-  const loadCategoriesFromAPI = async () => {
+  const loadCategoriesFromAPI = useCallback(async () => {
     if (!categoriesReadyRef.current) {
       setIsLoadingCategories(true);
     }
@@ -427,7 +434,8 @@ const HomeScreen = React.memo(() => {
       const categories = await serviceRequestService.getCategories();
 
       if (!Array.isArray(categories) || categories.length === 0) {
-        // If API fails or returns empty, keep dummy data
+        setApiCategories([]);
+        setCategoriesLoadError(null);
         return;
       }
 
@@ -452,27 +460,31 @@ const HomeScreen = React.memo(() => {
       // Limit to 8 for home screen (same as dummy data)
       const limitedCategories = prioritizedCategories.slice(0, 8);
 
-      // Replace dummy data with API data
       setApiCategories(limitedCategories);
+      setCategoriesLoadError(null);
     } catch (error: unknown) {
       if (await handleApiAuthFailure(error, router)) {
         return;
       }
 
-      // On error, keep existing categories — global offline overlay covers connectivity loss.
+      const message = getErrorMessage(
+        error,
+        'Could not load services. Check your connection and try again.',
+      );
       if (isConnectivityOrNetworkError(error)) {
+        setCategoriesLoadError((prev) => prev ?? message);
         return;
       }
 
-      setApiCategories([]);
       if (__DEV__) {
         console.error('Error loading categories from API:', error);
       }
+      setCategoriesLoadError(message);
     } finally {
       categoriesReadyRef.current = true;
       setIsLoadingCategories(false);
     }
-  };
+  }, [router, shuffleArray]);
 
   useOnNetworkRestore(() => {
     refreshLocation();
@@ -482,13 +494,13 @@ const HomeScreen = React.memo(() => {
 
   const handleCategoryPress = useCallback((category: ServiceCategory) => {
     router.push({
-      pathname: '/(tabs)/categories',
-      params: { selectedCategoryId: category.id },
+      pathname: '/request-service',
+      params: { selectedCategoryId: category.id, fromHome: '1' },
     });
   }, [router]);
 
   const handleViewAllCategories = useCallback(() => {
-    router.push('/(tabs)/categories' as any);
+    router.push({ pathname: '/request-service', params: { fromHome: '1' } } as any);
   }, [router]);
 
   const handleSearchQueryChange = useCallback((text: string) => {
@@ -498,8 +510,8 @@ const HomeScreen = React.memo(() => {
   const handleSearch = useCallback(() => {
     if (searchQuery.trim()) {
       router.push({
-        pathname: '/(tabs)/categories',
-        params: { searchQuery: searchQuery.trim() },
+        pathname: '/request-service',
+        params: { searchQuery: searchQuery.trim(), fromHome: '1' },
       });
     }
   }, [searchQuery, router]);
@@ -568,9 +580,9 @@ const HomeScreen = React.memo(() => {
   const tabScrollTop = useTabScrollContentPaddingTop(10);
 
   const { showSkeleton: showCategoriesSkeleton, isLoadingEmpty: isCategoriesLoadingEmpty } =
-    useSkeletonGate(isLoadingCategories, filteredCategories.length === 0);
+    useSkeletonGate(isLoadingCategories, filteredCategories.length === 0 && !categoriesLoadError);
   const { showSkeleton: showJobsSkeleton, isLoadingEmpty: isJobsLoadingEmpty } =
-    useSkeletonGate(isLoadingJobs, jobActivities.length === 0);
+    useSkeletonGate(isLoadingJobs, jobActivities.length === 0 && !jobsLoadError);
 
   return (
     <SafeAreaWrapper tabletShellTop>
@@ -613,7 +625,7 @@ const HomeScreen = React.memo(() => {
                     style={{
                       width: 38,
                       height: 38,
-                      borderRadius: 19,
+                      borderRadius: BorderRadius.full,
                       backgroundColor: HOME_QUICK_ACTIONS_PANEL_BG,
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -625,7 +637,7 @@ const HomeScreen = React.memo(() => {
                       elevation: surfaceElevation(3),
                     }}
                   >
-                    <MapPin size={18} color="#FFFFFF" />
+                    <MapPin size={18} color={Colors.white} />
                   </View>
                   <Text
                     style={{
@@ -665,8 +677,8 @@ const HomeScreen = React.memo(() => {
 
             <CoachMarkTarget name="search-bar">
               <View
-                className="bg-gray-100 rounded-xl px-4 py-0 flex-row items-center"
-                style={[searchBarStyle, SURFACE_STYLES.searchField]}
+                className="rounded-xl px-4 py-0 flex-row items-center"
+                style={[searchBarStyle, SURFACE_STYLES.searchField, { backgroundColor: Colors.backgroundGray }]}
               >
                 <TextInput
                   placeholder="Search for services"
@@ -694,7 +706,7 @@ const HomeScreen = React.memo(() => {
                   activeOpacity={0.8}
                   accessibilityLabel="Search"
                 >
-                  <Search size={18} color="#FFFFFF" />
+                  <Search size={18} color={Colors.white} />
                 </TouchableOpacity>
               </View>
             </CoachMarkTarget>
@@ -730,6 +742,21 @@ const HomeScreen = React.memo(() => {
                       <CategoryChipSkeleton key={i} />
                     ))}
                   </View>
+                ) : categoriesLoadError && filteredCategories.length === 0 ? (
+                  <ErrorState
+                    title="Could not load services"
+                    message={categoriesLoadError}
+                    onRetry={() => {
+                      void loadCategoriesFromAPI();
+                    }}
+                    style={{
+                      flex: 0,
+                      paddingVertical: 20,
+                      paddingHorizontal: 8,
+                      ...providerListCard,
+                    }}
+                    iconSize={32}
+                  />
                 ) : filteredCategories.length === 0 ? null : (
                   <ScrollView
                     horizontal
@@ -780,7 +807,7 @@ const HomeScreen = React.memo(() => {
                       style={{
                         fontFamily: 'Poppins-Bold',
                         letterSpacing: -0.2,
-                        color: '#FFFFFF',
+                        color: Colors.white,
                       }}
                     >
                       Quick actions
@@ -806,8 +833,8 @@ const HomeScreen = React.memo(() => {
                         haptics.light();
                         if (action.id === 'emergency') {
                           router.push({
-                            pathname: '/(tabs)/categories',
-                            params: { emergency: 'true' },
+                            pathname: '/request-service',
+                            params: { emergency: 'true', fromHome: '1' },
                           });
                         } else if (action.id === 'book-again') {
                           router.push('/(tabs)/jobs' as any);
@@ -837,7 +864,7 @@ const HomeScreen = React.memo(() => {
                         style={{
                           width: 36,
                           height: 36,
-                          borderRadius: 18,
+                          borderRadius: BorderRadius.full,
                           backgroundColor: action.backgroundColor,
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -876,7 +903,7 @@ const HomeScreen = React.memo(() => {
             <View
               style={{
                 backgroundColor: Colors.accent,
-                borderRadius: 16,
+                borderRadius: BorderRadius.lg,
                 paddingVertical: 24,
                 paddingHorizontal: 18,
                 shadowColor: '#000',
@@ -927,7 +954,7 @@ const HomeScreen = React.memo(() => {
                       style={{
                         fontSize: 13,
                         fontFamily: 'Poppins-SemiBold',
-                        color: '#FFFFFF',
+                        color: Colors.white,
                         textAlign: 'center',
                       }}
                     >
@@ -940,7 +967,7 @@ const HomeScreen = React.memo(() => {
                     width: 64,
                     height: 64,
                     backgroundColor: 'rgba(0, 0, 0, 0.1)',
-                    borderRadius: 32,
+                    borderRadius: BorderRadius.full,
                     alignItems: 'center',
                     justifyContent: 'center',
                     marginLeft: 14,
@@ -987,7 +1014,7 @@ const HomeScreen = React.memo(() => {
                       backgroundColor: Colors.white,
                       paddingHorizontal: 11,
                       paddingVertical: 7,
-                      borderRadius: 999,
+                      borderRadius: BorderRadius.full,
                       ...SURFACE_STYLES.chipOutline,
                     }}
                   >
@@ -1016,6 +1043,20 @@ const HomeScreen = React.memo(() => {
                   <JobCardSkeleton />
                   <JobCardSkeleton />
                 </>
+              ) : jobsLoadError && jobActivities.length === 0 ? (
+                <ErrorState
+                  title="Could not load job activity"
+                  message={jobsLoadError}
+                  onRetry={() => {
+                    void loadJobActivities();
+                  }}
+                  style={{
+                    flex: 0,
+                    ...providerListCard,
+                    paddingVertical: 24,
+                  }}
+                  iconSize={32}
+                />
               ) : jobActivities.length > 0 ? (
                 jobActivities.map((activity, index) => (
                   <View key={activity.id} style={{ marginBottom: index < jobActivities.length - 1 ? 12 : 0 }}>
@@ -1035,8 +1076,8 @@ const HomeScreen = React.memo(() => {
                     style={{
                       width: 64,
                       height: 64,
-                      borderRadius: 32,
-                      backgroundColor: '#F2F7EC',
+                      borderRadius: BorderRadius.full,
+                      backgroundColor: Colors.sageTint,
                       alignItems: 'center',
                       justifyContent: 'center',
                       marginBottom: 16,

@@ -15,8 +15,8 @@ import { useOnNetworkRestore } from '@/hooks/useNetworkConnectivity';
 import { getSpecificErrorMessage } from '@/utils/errorMessages';
 import { isConnectivityOrNetworkError } from '@/utils/isNetworkFailure';
 import { extractUserIdFromToken } from '@/utils/tokenUtils';
-import { Colors, MIN_TOUCH_TARGET, Spacing, SHADOWS, useTabScrollContentPaddingTop, useTabScreenScrollBottomPadding } from '@/lib/designSystem';
-import { navigateToClientHomeTab } from '@/utils/navigation';
+import { BorderRadius, Colors, MIN_TOUCH_TARGET, Spacing, SHADOWS, useTabScrollContentPaddingTop, useTabScreenScrollBottomPadding } from '@/lib/designSystem';
+import { navigateBack, navigateToClientHomeTab, NAV_FALLBACK } from '@/utils/navigation';
 
 interface CategoryData extends ServiceCategory {
   IconComponent: React.ComponentType;
@@ -28,6 +28,7 @@ export default function CategoryPage() {
     selectedCategoryId?: string;
     searchQuery?: string;
     fromAddButton?: string;
+    fromHome?: string;
     /** When set with requestId, Continue returns to ServiceMapScreen instead of creating a new request */
     returnToServiceMap?: string;
     requestId?: string;
@@ -173,11 +174,11 @@ export default function CategoryPage() {
     useCallback(() => {
       // When screen comes into focus, check if we have searchQuery param
       // If not, we're coming from tab navigation, so clear the flag
-      if (!params.searchQuery && !params.selectedCategoryId) {
+      if (!params.searchQuery && !params.selectedCategoryId && params.fromHome !== '1') {
         setHasNavigatedFromHome(false);
         setSearchQuery('');
       }
-    }, [params.searchQuery, params.selectedCategoryId])
+    }, [params.searchQuery, params.selectedCategoryId, params.fromHome])
   );
 
   useEffect(() => {
@@ -439,10 +440,14 @@ export default function CategoryPage() {
     }
   };
 
-  const isFromStackScreen = !!params.fromAddButton;
+  const isFromStackScreen = !!params.fromAddButton || params.fromHome === '1';
   const isFromServiceMapEdit = params.returnToServiceMap === 'true';
   const isFromNavigation =
-    !!params.selectedCategoryId || hasNavigatedFromHome || isFromStackScreen || isFromServiceMapEdit;
+    !!params.selectedCategoryId ||
+    params.fromHome === '1' ||
+    hasNavigatedFromHome ||
+    isFromStackScreen ||
+    isFromServiceMapEdit;
 
   return (
     <SafeAreaWrapper tabletShellTop>
@@ -453,37 +458,43 @@ export default function CategoryPage() {
                 onPress={() => {
                   haptics.light();
                   if (isFromStackScreen || isFromServiceMapEdit) {
-                    routes.back();
+                    if (routes.canGoBack()) {
+                      routes.back();
+                    } else {
+                      navigateBack(routes, NAV_FALLBACK.clientHome);
+                    }
                   } else {
                     navigateToClientHomeTab(routes);
                   }
                 }}
-                className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-gray-100"
+                className="mr-3 h-10 w-10 items-center justify-center rounded-full"
+                style={{ backgroundColor: Colors.backgroundGray }}
               >
                 <ArrowLeft size={20} color={Colors.surfaceDark} />
               </TouchableOpacity>
               <Text style={{
                 fontSize: 18,
-                fontWeight: 'bold',
-                color: '#000000',
+                fontFamily: 'Poppins-Bold',
+                color: Colors.textPrimary,
+                letterSpacing: -0.3,
                 textAlign: 'center',
               }}>Request Service</Text>
             </View>
           ) : (
             <View className='px-3 mb-6'>
               <Text style={{
-                fontSize: 24,
-                fontWeight: 'bold',
-                color: '#000000',
+                fontSize: 20,
                 fontFamily: 'Poppins-Bold',
+                color: Colors.textPrimary,
+                letterSpacing: -0.3,
               }}>Request Service</Text>
             </View>
           )}
           <View className='pb-6 px-0'>
 
             <View
-              className="bg-gray-100 rounded-xl px-6 py-0 flex-row items-center"
-              style={searchBarStyle}
+              className="rounded-xl px-6 py-0 flex-row items-center"
+              style={[searchBarStyle, { backgroundColor: Colors.backgroundGray }]}
             >
               <TextInput
                 ref={searchInputRef}
@@ -505,14 +516,14 @@ export default function CategoryPage() {
                 </TouchableOpacity>
               )}
               <TouchableOpacity 
-                style={{ width: MIN_TOUCH_TARGET, height: MIN_TOUCH_TARGET, backgroundColor: Colors.black, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginLeft: 8 }}
+                style={{ width: MIN_TOUCH_TARGET, height: MIN_TOUCH_TARGET, backgroundColor: Colors.accent, borderRadius: BorderRadius.default, alignItems: 'center', justifyContent: 'center', marginLeft: 8 }}
                 disabled={isSearching}
                 accessibilityLabel="Search categories"
               >
                 {isSearching ? (
-                  <ActivityIndicator size="small" color="#9bd719ff" />
+                  <ActivityIndicator size="small" color={Colors.white} />
                 ) : (
-                <Search size={18} color="#9bd719ff" />
+                <Search size={18} color={Colors.white} />
                 )}
               </TouchableOpacity>
             </View>
@@ -567,7 +578,7 @@ export default function CategoryPage() {
                   <View style={{
                     width: 80,
                     height: 80,
-                    borderRadius: 40,
+                    borderRadius: BorderRadius.full,
                     backgroundColor: Colors.backgroundGray,
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -667,12 +678,12 @@ export default function CategoryPage() {
                     }}
                     style={{
                       width: '100%',
-                      backgroundColor: isToggle === category.name ? '#F0FDF4' : '#ffffff',
-                      borderRadius: 16,
+                      backgroundColor: isToggle === category.name ? Colors.sageTint : Colors.white,
+                      borderRadius: BorderRadius.lg,
                       padding: 12,
                       marginBottom: 16,
                       borderWidth: isToggle === category.name ? 2 : 1,
-                      borderColor: isToggle === category.name ? Colors.accent : '#e5e5e5',
+                      borderColor: isToggle === category.name ? Colors.accent : Colors.border,
                       flexDirection: 'row',
                       alignItems: 'center'
                     }}
@@ -682,7 +693,7 @@ export default function CategoryPage() {
                       backgroundColor: 'transparent',
                       borderRadius: 12,
                       borderWidth: 1,
-                      borderColor: isToggle === category.name ? Colors.accent : '#e5e5e5',
+                      borderColor: isToggle === category.name ? Colors.accent : Colors.border,
                       padding: 16,
                       marginRight: 16,
                       alignItems: 'center',
@@ -697,7 +708,7 @@ export default function CategoryPage() {
                       <Text style={{
                         fontSize: 16,
                         fontWeight: '600',
-                        color: '#1a1a1a',
+                        color: Colors.textPrimary,
                         marginBottom: 6,
                         fontFamily: 'Poppins-SemiBold'
                       }}>
@@ -706,7 +717,7 @@ export default function CategoryPage() {
                       <Text style={{
                         fontSize: 12,
                         width: '80%',
-                        color: '#666666',
+                        color: Colors.textSecondaryDark,
                         lineHeight: 16,
                         marginBottom: 4,
                         fontFamily: 'Poppins-Regular'
@@ -722,7 +733,7 @@ export default function CategoryPage() {
                           fontSize: 11,
                           fontWeight: '500',
                           fontFamily: 'Poppins-Medium',
-                          color: '#666666'
+                          color: Colors.textSecondaryDark
                         }}>
                           {category.providerCount} {category.providerCount === 1 ? 'provider' : 'providers'}
                         </Text>

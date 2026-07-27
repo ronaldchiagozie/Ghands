@@ -182,10 +182,10 @@ export default function DiscoverScreen() {
           <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8 }}>
             <Text
               style={{
-                fontSize: 24,
+                fontSize: 20,
                 fontFamily: 'Poppins-Bold',
                 color: Colors.textPrimary,
-                letterSpacing: -0.5,
+                letterSpacing: -0.3,
               }}
             >
               Discover
@@ -212,7 +212,7 @@ export default function DiscoverScreen() {
                   style={{
                     width: 44,
                     height: 44,
-                    borderRadius: 22,
+                    borderRadius: BorderRadius.full,
                     backgroundColor: Colors.backgroundGray,
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -224,11 +224,11 @@ export default function DiscoverScreen() {
                 <View style={{ flex: 1 }}>
                   <Text
                     style={{
-                      fontSize: 18,
+                      fontSize: 15,
                       fontFamily: 'Poppins-Bold',
                       color: Colors.textPrimary,
                       marginBottom: 4,
-                      letterSpacing: -0.3,
+                      letterSpacing: -0.2,
                     }}
                   >
                     Featured Deal
@@ -274,10 +274,10 @@ export default function DiscoverScreen() {
               <TrendingUp size={18} color={Colors.textPrimary} style={{ marginRight: 8 }} />
               <Text
                 style={{
-                  fontSize: 18,
-                  fontFamily: 'Poppins-Bold',
+                  fontSize: 16,
+                  fontFamily: 'Poppins-SemiBold',
                   color: Colors.textPrimary,
-                  letterSpacing: -0.3,
+                  letterSpacing: -0.2,
                 }}
               >
                 Trending Services
@@ -377,10 +377,10 @@ export default function DiscoverScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <Text
                 style={{
-                  fontSize: 18,
-                  fontFamily: 'Poppins-Bold',
+                  fontSize: 16,
+                  fontFamily: 'Poppins-SemiBold',
                   color: Colors.textPrimary,
-                  letterSpacing: -0.3,
+                  letterSpacing: -0.2,
                 }}
               >
                 Special Offers
@@ -470,10 +470,10 @@ export default function DiscoverScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <Text
                 style={{
-                  fontSize: 18,
-                  fontFamily: 'Poppins-Bold',
+                  fontSize: 16,
+                  fontFamily: 'Poppins-SemiBold',
                   color: Colors.textPrimary,
-                  letterSpacing: -0.3,
+                  letterSpacing: -0.2,
                 }}
               >
                 Service Tips
@@ -564,10 +564,10 @@ export default function DiscoverScreen() {
               <MapPin size={16} color={Colors.textPrimary} style={{ marginRight: 8 }} />
               <Text
                 style={{
-                  fontSize: 18,
-                  fontFamily: 'Poppins-Bold',
+                  fontSize: 16,
+                  fontFamily: 'Poppins-SemiBold',
                   color: Colors.textPrimary,
-                  letterSpacing: -0.3,
+                  letterSpacing: -0.2,
                 }}
               >
                 Popular Near You

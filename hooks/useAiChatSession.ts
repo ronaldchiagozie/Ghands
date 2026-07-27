@@ -13,6 +13,7 @@ import {
   mapStoredMessageToUi,
   isRenderableUiSuggestion,
 } from '@/utils/aiChatMappers';
+import { botMessageRequestsPhotos } from '@/utils/aiChatPhotoPrompt';
 import { handleApiAuthFailure } from '@/utils/authRedirect';
 import { getSpecificErrorMessage } from '@/utils/errorMessages';
 import { usePathname, useRouter } from 'expo-router';
@@ -44,7 +45,6 @@ export function useAiChatSession() {
   const [imagePromptItems, setImagePromptItems] = useState<AiImageAttachment[]>([]);
   const [hiddenImageCount, setHiddenImageCount] = useState(0);
   const replyTokenRef = useRef(0);
-  const uploadTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const postImageAnalysisTriggeredRef = useRef(false);
   const imageUploadMessageIdRef = useRef<string | null>(null);
   const suggestionMessageIdRef = useRef<string | null>(null);
@@ -228,9 +228,47 @@ export function useAiChatSession() {
     [clearSuggestionState, closeDrawer, pathname, revealSuggestionNow, router]
   );
 
+  const applyAssistantChatResponse = useCallback(
+    (
+      response: Awaited<ReturnType<typeof aiService.sendMessage>>,
+      token: number
+    ) => {
+      if (replyTokenRef.current !== token) return;
+
+      setConversationId(response.conversationId);
+      conversationIdRef.current = response.conversationId;
+
+      const { botMessage, suggestion: mappedSuggestion } = mapChatResponseToUi(response);
+      setMessages((prev) => [...prev, botMessage]);
+
+      if (botMessageRequestsPhotos(botMessage.text)) {
+        postImageAnalysisTriggeredRef.current = false;
+        imageUploadMessageIdRef.current = botMessage.id;
+        setImageUploadMessageId(botMessage.id);
+        setImagePromptItems([]);
+        setHiddenImageCount(0);
+        setImageSlotVisible(false);
+      }
+
+      if (mappedSuggestion) {
+        if (response.responseType === 'suggestion') {
+          revealSuggestionNow(mappedSuggestion);
+          setSuggestionMessageId(botMessage.id);
+          suggestionMessageIdRef.current = botMessage.id;
+        } else {
+          attachSuggestion(
+            botMessage.id,
+            mappedSuggestion,
+            botMessage.text.length * 16 + 160
+          );
+        }
+      }
+    },
+    [attachSuggestion, revealSuggestionNow]
+  );
+
   const runPostImageAnalysis = useCallback(async () => {
     if (postImageAnalysisTriggeredRef.current) return;
-    if (!imageUploadMessageIdRef.current) return;
 
     postImageAnalysisTriggeredRef.current = true;
 
@@ -265,32 +303,54 @@ export function useAiChatSession() {
     }
   }, [attachSuggestion, clearSuggestionState]);
 
-  const simulateUploadComplete = useCallback(
-    (ids: string[], uris: string[]) => {
-      if (ids.length === 0) return;
+  const submitImagesToHandy = useCallback(
+    async (localUris: string[]) => {
+      const token = ++replyTokenRef.current;
+      setIsBotTyping(true);
+      clearSuggestionState();
 
-      const lastId = ids[ids.length - 1];
+      try {
+        const response = await aiService.sendMessageWithImages({
+          message:
+            localUris.length === 1
+              ? 'Here is a photo of the issue.'
+              : `Here are ${localUris.length} photos of the issue.`,
+          ...(conversationIdRef.current != null
+            ? { conversationId: conversationIdRef.current }
+            : {}),
+          localUris,
+        });
 
-      ids.forEach((id, index) => {
-        const timer = setTimeout(() => {
-          setImagePromptItems((prev) => {
-            const next = prev.map((item) =>
-              item.id === id ? { ...item, uri: uris[index], loading: false } : item
-            );
+        setImagePromptItems((prev) =>
+          prev.map((item, index) => ({
+            ...item,
+            loading: false,
+            uri: item.uri || localUris[index] || item.uri,
+          }))
+        );
 
-            if (id === lastId && next.every((item) => !item.loading)) {
-              setTimeout(() => {
-                void runPostImageAnalysis();
-              }, 60);
-            }
+        applyAssistantChatResponse(response, token);
+        void refreshConversations();
+      } catch (error: unknown) {
+        if (replyTokenRef.current !== token) return;
+        if (await handleApiAuthFailure(error, router, pathname)) return;
 
-            return next;
-          });
-        }, 900 + index * 350);
-        uploadTimersRef.current.push(timer);
-      });
+        setImagePromptItems((prev) => prev.map((item) => ({ ...item, loading: false })));
+        await runPostImageAnalysis();
+      } finally {
+        if (replyTokenRef.current === token) {
+          setIsBotTyping(false);
+        }
+      }
     },
-    [runPostImageAnalysis]
+    [
+      applyAssistantChatResponse,
+      clearSuggestionState,
+      pathname,
+      refreshConversations,
+      router,
+      runPostImageAnalysis,
+    ]
   );
 
   const openImageUploadSlot = useCallback((botMessageId: string) => {
@@ -320,6 +380,23 @@ export function useAiChatSession() {
 
       haptics.light();
 
+      let anchorId = imageUploadMessageIdRef.current;
+      if (!anchorId) {
+        anchorId = `user-${Date.now()}`;
+        const userMessage: AiMessage = {
+          id: anchorId,
+          role: 'user',
+          text: uris.length === 1 ? 'Photo attached' : `${uris.length} photos attached`,
+          time: formatAiChatTime(),
+        };
+        setMessages((prev) => [...prev, userMessage]);
+        if (mode === 'home') {
+          setMode('chat');
+        }
+        imageUploadMessageIdRef.current = anchorId;
+        setImageUploadMessageId(anchorId);
+      }
+
       const pending = uris.map((uri, index) => ({
         id: `picked-${Date.now()}-${index}`,
         uri,
@@ -334,12 +411,9 @@ export function useAiChatSession() {
 
       setImageSlotVisible(true);
 
-      simulateUploadComplete(
-        pending.map((item) => item.id),
-        uris
-      );
+      void submitImagesToHandy(uris);
     },
-    [simulateUploadComplete]
+    [mode, submitImagesToHandy]
   );
 
   const sendMessage = useCallback(
@@ -375,25 +449,7 @@ export function useAiChatSession() {
 
         if (replyTokenRef.current !== token) return;
 
-        setConversationId(response.conversationId);
-        conversationIdRef.current = response.conversationId;
-
-        const { botMessage, suggestion: mappedSuggestion } = mapChatResponseToUi(response);
-        setMessages((prev) => [...prev, botMessage]);
-
-        if (mappedSuggestion) {
-          if (response.responseType === 'suggestion') {
-            revealSuggestionNow(mappedSuggestion);
-            setSuggestionMessageId(botMessage.id);
-            suggestionMessageIdRef.current = botMessage.id;
-          } else {
-            attachSuggestion(
-              botMessage.id,
-              mappedSuggestion,
-              botMessage.text.length * 16 + 160
-            );
-          }
-        }
+        applyAssistantChatResponse(response, token);
 
         void refreshConversations();
       } catch (error: unknown) {
@@ -415,13 +471,12 @@ export function useAiChatSession() {
       }
     },
     [
-      attachSuggestion,
+      applyAssistantChatResponse,
       clearSuggestionState,
       isBotTyping,
       mode,
       pathname,
       refreshConversations,
-      revealSuggestionNow,
       router,
     ]
   );

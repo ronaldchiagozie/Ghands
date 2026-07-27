@@ -1,17 +1,20 @@
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
-import { ArrowLeft, ArrowRight, Clock, MapPin } from 'lucide-react-native';
+import { ArrowRight, Clock, MapPin } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Animated, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, View } from 'react-native';
 
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { Button } from '@/components/ui/Button';
-import { Colors } from '@/lib/designSystem';
+import { Colors, useKeyboardAvoidingOffset } from '@/lib/designSystem';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import Toast from '@/components/Toast';
+import HandyDraftChip, { type HandyChipState } from '@/components/ai/HandyDraftChip';
 import { useToast } from '@/hooks/useToast';
 import { useUserLocation } from '@/hooks/useUserLocation';
-import { serviceRequestService, locationService, authService } from '@/services/api';
+import { serviceRequestService, locationService, authService, aiService } from '@/services/api';
 import { haptics } from '@/hooks/useHaptics';
 import { getSpecificErrorMessage } from '@/utils/errorMessages';
+import { generateHandyJobDraft } from '@/utils/handyJobDraft';
 import { navigateBack, NAV_FALLBACK } from '@/utils/navigation';
 
 const MAX_DESCRIPTION_LENGTH = 500;
@@ -24,14 +27,46 @@ export default function JobDetailsScreen() {
   const params = useLocalSearchParams<{ requestId?: string; categoryName?: string }>();
   const { location, refreshLocation } = useUserLocation();
   const { toast, showError, showSuccess, hideToast } = useToast();
+  const keyboardOffset = useKeyboardAvoidingOffset();
   const [jobTitle, setJobTitle] = useState('');
   const [description, setDescription] = useState('');
   const [errors, setErrors] = useState<{ jobTitle?: string; description?: string }>({});
   const [isUpdating, setIsUpdating] = useState(false);
   const [locationData, setLocationData] = useState<any>(null);
+  const [handyAvailable, setHandyAvailable] = useState(false);
+  const [handyState, setHandyState] = useState<HandyChipState>('idle');
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(0)).current;
+  const isMountedRef = useRef(true);
+  const hasSubmittedRef = useRef(false);
+  const handyUndoRef = useRef<{ jobTitle: string; description: string } | null>(null);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  // Hide the chip outright when the assistant is down rather than offering a
+  // control that can only fail.
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const status = await aiService.getStatus();
+        if (!cancelled) setHandyAvailable(Boolean(status?.available));
+      } catch {
+        if (!cancelled) setHandyAvailable(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     Animated.parallel([
@@ -98,7 +133,7 @@ export default function JobDetailsScreen() {
 
   const handleBack = useCallback(() => {
     haptics.light();
-    navigateBack(router, NAV_FALLBACK.clientRequest);
+    navigateBack(router, NAV_FALLBACK.clientHome);
   }, [router]);
 
   const handleChangeLocation = useCallback(() => {
@@ -230,6 +265,7 @@ export default function JobDetailsScreen() {
         location: locationPayload,
       });
 
+      hasSubmittedRef.current = true;
       showSuccess('Job details updated');
       haptics.success();
 
@@ -261,21 +297,79 @@ export default function JobDetailsScreen() {
     }
   }, [jobTitle, description, location, locationData, params, router, showError, showSuccess]);
 
+  // Undo only means "undo the fill". Once the user starts editing, reverting to
+  // the pre-fill snapshot would throw away their own words instead.
+  const dropHandyUndo = useCallback(() => {
+    if (handyUndoRef.current) {
+      handyUndoRef.current = null;
+      setHandyState('idle');
+    }
+  }, []);
+
   const handleJobTitleChange = useCallback((text: string) => {
     setJobTitle(text);
+    dropHandyUndo();
     if (errors.jobTitle) {
       setErrors((prev) => ({ ...prev, jobTitle: undefined }));
     }
-  }, [errors.jobTitle]);
+  }, [dropHandyUndo, errors.jobTitle]);
 
   const handleDescriptionChange = useCallback((text: string) => {
     if (text.length <= MAX_DESCRIPTION_LENGTH) {
       setDescription(text);
+      dropHandyUndo();
       if (errors.description) {
         setErrors((prev) => ({ ...prev, description: undefined }));
       }
     }
-  }, [errors.description]);
+  }, [dropHandyUndo, errors.description]);
+
+  const handleHandyDraft = useCallback(async () => {
+    if (handyState === 'pending') return;
+
+    haptics.light();
+    const snapshot = { jobTitle, description };
+    setHandyState('pending');
+
+    const result = await generateHandyJobDraft({
+      categoryName: params.categoryName,
+      jobTitleHint: jobTitle,
+      descriptionHint: description,
+      minTitleLength: MIN_JOB_TITLE_LENGTH,
+      maxTitleLength: MAX_JOB_TITLE_LENGTH,
+      minDescriptionLength: MIN_DESCRIPTION_LENGTH,
+      maxDescriptionLength: MAX_DESCRIPTION_LENGTH,
+    });
+
+    // The screen stays mounted behind a push, so a late result must not
+    // overwrite fields for a request that has already been submitted.
+    if (!isMountedRef.current || hasSubmittedRef.current) return;
+
+    if (!result.ok) {
+      setHandyState(handyUndoRef.current ? 'filled' : 'idle');
+      showError(result.error);
+      haptics.error();
+      return;
+    }
+
+    handyUndoRef.current = snapshot;
+    setJobTitle(result.draft.jobTitle);
+    setDescription(result.draft.description);
+    setErrors({});
+    setHandyState('filled');
+    haptics.success();
+  }, [description, handyState, jobTitle, params.categoryName, showError]);
+
+  const handleHandyUndo = useCallback(() => {
+    const snapshot = handyUndoRef.current;
+    if (!snapshot) return;
+
+    haptics.light();
+    handyUndoRef.current = null;
+    setJobTitle(snapshot.jobTitle);
+    setDescription(snapshot.description);
+    setHandyState('idle');
+  }, []);
 
   const parsedLocation = useMemo(() => {
     if (locationData?.formattedAddress) {
@@ -331,29 +425,30 @@ export default function JobDetailsScreen() {
   return (
     <SafeAreaWrapper>
       <Animated.View style={[animatedStyles, { flex: 1 }]}>
-        <View className="px-4 pb-2" style={{ paddingTop: 20 }}>
-          <View className="flex-row items-center mb-6">
-            <TouchableOpacity
-              onPress={handleBack}
-              className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-gray-100"
-            >
-              <ArrowLeft size={20} color={Colors.surfaceDark} />
-            </TouchableOpacity>
-            <Text className="text-xl text-black" style={{ fontFamily: 'Poppins-Bold' }}>
-              Job details
-            </Text>
-          </View>
-        </View>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={keyboardOffset}
+        >
+        <ScreenHeader title="Job details" onBack={handleBack} />
 
         <ScrollView
           className="flex-1 px-4"
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           contentContainerStyle={{ paddingBottom: 32, paddingTop: 8 }}
         >
-          <View className="mb-8 rounded-2xl bg-gray-100 px-5 py-5 border border-[rgba(79,103,57,0.25)]">
+          <View
+            className="mb-8 rounded-2xl px-5 py-5 border"
+            style={{ backgroundColor: Colors.sageTint, borderColor: Colors.borderSage }}
+          >
             <View className="flex-row items-center justify-between mb-4">
               <View className="flex-row items-center">
-                <View className="w-8 h-8 rounded-full bg-[#000] items-center justify-center mr-2">
+                <View
+                  className="w-8 h-8 rounded-full items-center justify-center mr-2"
+                  style={{ backgroundColor: Colors.white }}
+                >
                   <MapPin size={16} color={Colors.accent} />
                 </View>
                 <Text className="text-base text-black" style={{ fontFamily: 'Poppins-SemiBold' }}>
@@ -372,7 +467,7 @@ export default function JobDetailsScreen() {
               {parsedLocation.street}
             </Text>
             {parsedLocation.city && (
-              <Text className="text-sm text-gray-600 mb-4" style={{ fontFamily: 'Poppins-Medium' }}>
+              <Text className="text-sm mb-4" style={{ fontFamily: 'Poppins-Medium', color: Colors.textMuted }}>
                 {parsedLocation.city}
               </Text>
             )}
@@ -380,13 +475,13 @@ export default function JobDetailsScreen() {
             <View className="flex-row items-center">
               <View className="flex-row items-center mr-4">
                 <MapPin size={14} color={Colors.accent} />
-                <Text className="text-xs text-gray-600 ml-1" style={{ fontFamily: 'Poppins-Medium' }}>
+                <Text className="text-xs ml-1" style={{ fontFamily: 'Poppins-Medium', color: Colors.textMuted }}>
                   GPS Verified
                 </Text>
               </View>
               <View className="flex-row items-center">
                 <Clock size={14} color={Colors.iconMuted} />
-                <Text className="text-xs text-gray-600 ml-1" style={{ fontFamily: 'Poppins-Medium' }}>
+                <Text className="text-xs ml-1" style={{ fontFamily: 'Poppins-Medium', color: Colors.textMuted }}>
                   2 min ago
                 </Text>
               </View>
@@ -394,26 +489,40 @@ export default function JobDetailsScreen() {
           </View>
 
           <View className="mb-8">
-            <Text className="text-sm text-black mb-3" style={{ fontFamily: 'Poppins-SemiBold' }}>
-              Job Title <Text className="text-[#EF4444]">*</Text>
-            </Text>
+            <View className="flex-row items-center justify-between mb-3">
+              <Text
+                className="text-sm text-black"
+                style={{ fontFamily: 'Poppins-SemiBold', flexShrink: 1 }}
+              >
+                Job Title <Text style={{ color: Colors.error }}>*</Text>
+              </Text>
+              {handyAvailable ? (
+                <HandyDraftChip
+                  state={handyState}
+                  onPress={handleHandyDraft}
+                  onUndo={handleHandyUndo}
+                  disabled={isUpdating}
+                />
+              ) : null}
+            </View>
             <TextInput
               value={jobTitle}
               onChangeText={handleJobTitleChange}
               placeholder="e.g., Kitchen faucet repair, Electrical outlet..."
-              className={`rounded-xl border bg-white px-5 py-4 text-base text-black ${
-                errors.jobTitle ? 'border-[#EF4444]' : 'border-gray-200'
-              }`}
+              className="rounded-xl border bg-white px-5 py-4 text-base text-black"
               placeholderTextColor={Colors.placeholder}
-              style={{ fontFamily: 'Poppins-Medium' }}
+              style={{
+                fontFamily: 'Poppins-Medium',
+                borderColor: errors.jobTitle ? Colors.error : Colors.border,
+              }}
               maxLength={MAX_JOB_TITLE_LENGTH}
             />
             {errors.jobTitle ? (
-              <Text className="text-xs text-[#EF4444] mt-2" style={{ fontFamily: 'Poppins-Medium' }}>
+              <Text className="text-xs mt-2" style={{ fontFamily: 'Poppins-Medium', color: Colors.error }}>
                 {errors.jobTitle}
               </Text>
             ) : (
-              <Text className="text-xs text-gray-500 mt-2" style={{ fontFamily: 'Poppins-Regular' }}>
+              <Text className="text-xs mt-2" style={{ fontFamily: 'Poppins-Regular', color: Colors.iconMuted }}>
                 Be specific about what needs to be done ({jobTitle.length}/{MAX_JOB_TITLE_LENGTH}).
               </Text>
             )}
@@ -421,7 +530,7 @@ export default function JobDetailsScreen() {
 
           <View className="mb-8">
             <Text className="text-sm text-black mb-3" style={{ fontFamily: 'Poppins-SemiBold' }}>
-              Description <Text className="text-[#EF4444]">*</Text>
+              Description <Text style={{ color: Colors.error }}>*</Text>
             </Text>
             <TextInput
               value={description}
@@ -430,29 +539,31 @@ export default function JobDetailsScreen() {
               multiline
               numberOfLines={6}
               maxLength={MAX_DESCRIPTION_LENGTH}
-              className={`rounded-xl border bg-white px-5 py-4 text-base text-black ${
-                errors.description ? 'border-[#EF4444]' : 'border-gray-200'
-              }`}
+              className="rounded-xl border bg-white px-5 py-4 text-base text-black"
               placeholderTextColor={Colors.placeholder}
               style={{
                 fontFamily: 'Poppins-Medium',
+                borderColor: errors.description ? Colors.error : Colors.border,
                 minHeight: 140,
                 textAlignVertical: 'top',
               }}
             />
             <View className="flex-row items-center justify-between mt-3">
               {errors.description ? (
-                <Text className="text-xs text-[#EF4444]" style={{ fontFamily: 'Poppins-Medium' }}>
+                <Text className="text-xs" style={{ fontFamily: 'Poppins-Medium', color: Colors.error }}>
                   {errors.description}
                 </Text>
               ) : (
-                <Text className="text-xs text-gray-500" style={{ fontFamily: 'Poppins-Regular' }}>
+                <Text className="text-xs" style={{ fontFamily: 'Poppins-Regular', color: Colors.iconMuted }}>
                   Describe the issue in detail (min {MIN_DESCRIPTION_LENGTH} characters).
                 </Text>
               )}
               <Text
-                className={`text-xs ${descriptionCount >= MAX_DESCRIPTION_LENGTH ? 'text-[#EF4444]' : 'text-gray-500'}`}
-                style={{ fontFamily: 'Poppins-Medium' }}
+                className="text-xs"
+                style={{
+                  fontFamily: 'Poppins-Medium',
+                  color: descriptionCount >= MAX_DESCRIPTION_LENGTH ? Colors.error : Colors.iconMuted,
+                }}
               >
                 {descriptionCount}/{MAX_DESCRIPTION_LENGTH}
               </Text>
@@ -478,6 +589,7 @@ export default function JobDetailsScreen() {
             iconPosition="right"
           />
         </View>
+        </KeyboardAvoidingView>
       </Animated.View>
 
       <Toast

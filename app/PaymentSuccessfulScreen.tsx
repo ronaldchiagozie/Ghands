@@ -7,7 +7,8 @@ import { serviceRequestService } from '@/services/api';
 import { exitPaymentToJob, navigateBack, NAV_FALLBACK } from '@/utils/navigation';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Share, Text, View } from 'react-native';
+import { ActivityIndicator, Share, Text, View } from 'react-native';
+import { showAppAlert } from '@/components/AppAlertHost';
 
 const formatDate = (date: Date, format: string = 'MMM dd, yyyy'): string => {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -63,22 +64,36 @@ function buildReceiptFromParams(params: {
   providerName?: string;
   serviceName?: string;
   amount?: string;
+  status?: 'completed' | 'pending' | 'failed';
+  serviceDate?: string;
+  serviceTime?: string;
+  paymentDate?: string;
 }): ClientReceiptData {
   const routeAmount = parseMoneyValue(params.amount);
   const now = new Date();
+  const status = params.status ?? 'completed';
+  const serviceDate =
+    params.serviceDate ||
+    now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  const serviceTime =
+    params.serviceTime ||
+    now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  const paymentDate = params.paymentDate || formatDate(now, "MMM dd, yyyy 'at' h:mm a");
 
   return {
     transactionId: params.transactionId || params.reference || `TXN-${Date.now()}`,
+    reference: params.reference,
     jobTitle: params.serviceName || 'Service',
     providerName: params.providerName || 'Provider',
-    serviceDate: now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
-    serviceTime: 'N/A',
+    serviceDate,
+    serviceTime,
     serviceFee: formatMoney(routeAmount),
     platformFee: formatMoney(0),
     tax: formatMoney(0),
     totalAmount: formatMoney(routeAmount),
     paymentMethod: 'Wallet',
-    paymentDate: formatDate(now, "MMM dd, yyyy 'at' h:mm a"),
+    paymentDate,
+    status,
   };
 }
 
@@ -92,6 +107,10 @@ export default function PaymentSuccessfulScreen() {
     requestId?: string;
     amount?: string;
     quotationId?: string;
+    status?: 'completed' | 'pending' | 'failed';
+    serviceDate?: string;
+    serviceTime?: string;
+    paymentDate?: string;
   }>();
 
   const initialReceipt = useMemo(() => buildReceiptFromParams(params), [
@@ -100,6 +119,10 @@ export default function PaymentSuccessfulScreen() {
     params.reference,
     params.serviceName,
     params.transactionId,
+    params.status,
+    params.serviceDate,
+    params.serviceTime,
+    params.paymentDate,
   ]);
 
   const [transactionData, setTransactionData] = useState<ClientReceiptData>(initialReceipt);
@@ -166,7 +189,7 @@ export default function PaymentSuccessfulScreen() {
           : request.createdAt
             ? formatDate(new Date(request.createdAt), 'MMMM dd, yyyy')
             : fallback.serviceDate;
-        serviceTime = request.scheduledTime || 'N/A';
+        serviceTime = request.scheduledTime || fallback.serviceTime;
       }
 
       const acceptedAt = (quotation as { acceptedAt?: string } | null)?.acceptedAt;
@@ -176,6 +199,7 @@ export default function PaymentSuccessfulScreen() {
 
       setTransactionData({
         transactionId: params.transactionId || params.reference || fallback.transactionId,
+        reference: params.reference ?? fallback.reference,
         jobTitle:
           (request && (request.jobTitle || request.description)) ||
           params.serviceName ||
@@ -189,6 +213,7 @@ export default function PaymentSuccessfulScreen() {
         totalAmount: formatMoney(totalAmountNum),
         paymentMethod: 'Wallet',
         paymentDate,
+        status: params.status ?? fallback.status ?? 'completed',
       });
     } catch (error) {
       if (__DEV__) {
@@ -197,24 +222,34 @@ export default function PaymentSuccessfulScreen() {
     } finally {
       setIsEnriching(false);
     }
-  }, [params.amount, params.providerName, params.quotationId, params.reference, params.requestId, params.serviceName, params.transactionId]);
+  }, [params.amount, params.providerName, params.quotationId, params.reference, params.requestId, params.serviceName, params.status, params.transactionId]);
 
   useEffect(() => {
     void enrichReceiptFromRequest();
   }, [enrichReceiptFromRequest]);
 
   const handleDownloadReceipt = () => {
-    Alert.alert('Download', 'Receipt will be downloaded shortly.');
+    // No PDF endpoint exists yet — say so rather than implying a download started.
+    showAppAlert(
+      'Download',
+      'A PDF receipt will be available in a future update. Use Share to send these details for now.',
+    );
   };
 
   const handleShareReceipt = async () => {
+    const statusLabel =
+      transactionData.status === 'failed'
+        ? 'Failed'
+        : transactionData.status === 'pending'
+          ? 'Pending'
+          : 'Completed';
     try {
       await Share.share({
-        message: `Payment Receipt\nTransaction ID: ${transactionData.transactionId}\nAmount: ₦${transactionData.totalAmount}`,
+        message: `Payment Receipt (${statusLabel})\nTransaction ID: ${transactionData.transactionId}\nAmount: ₦${transactionData.totalAmount}\nStatus: ${statusLabel}`,
         title: 'Payment Receipt',
       });
     } catch {
-      Alert.alert('Error', 'Failed to share receipt');
+      showAppAlert('Error', 'Failed to share receipt');
     }
   };
 

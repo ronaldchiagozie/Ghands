@@ -15,7 +15,7 @@ import {
   CallIconSpeaker,
 } from '@/components/call/CallIcons';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { Colors, Spacing } from '@/lib/designSystem';
+import { BorderRadius, Colors, Spacing } from '@/lib/designSystem';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   Shield,
@@ -365,7 +365,7 @@ export default function CallScreen() {
                     style={{
                       width: 72,
                       height: 72,
-                      borderRadius: 36,
+                      borderRadius: BorderRadius.full,
                       backgroundColor: Colors.sageTint,
                       alignItems: 'center',
                       justifyContent: 'center',

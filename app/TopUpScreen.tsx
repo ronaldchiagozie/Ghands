@@ -1,7 +1,8 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import Skeleton from '@/components/LoadingSkeleton';
 import AnimatedModal from '@/components/AnimatedModal';
-import { BorderRadius, Colors, Fonts, Spacing } from '@/lib/designSystem';
+import { BorderRadius, Colors, Spacing, useKeyboardAvoidingOffset } from '@/lib/designSystem';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { ExternalLink, CheckCircle2, XCircle, Wallet } from 'lucide-react-native';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
@@ -11,8 +12,8 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
   Linking,
   AppState,
   Platform,
@@ -22,6 +23,7 @@ import {
   Dimensions,
   KeyboardEvent,
 } from 'react-native';
+import { showAppAlert } from '@/components/AppAlertHost';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as WebBrowser from 'expo-web-browser';
 import * as ExpoLinking from 'expo-linking';
@@ -31,22 +33,34 @@ import { mapApiProfileToUserProfile } from '@/hooks/useProfile';
 import { useToast } from '@/hooks/useToast';
 import { invalidateWalletBalanceCache } from '@/hooks/useWalletBalance';
 import { haptics } from '@/hooks/useHaptics';
-import { EMPTY_LABEL } from '@/utils/copy';
+import { setWalletFlashToast } from '@/utils/walletFlashToast';
+import {
+  clearHandledDepositReference,
+  clearPendingDepositReference,
+  getPendingDepositReference,
+  isDepositReferenceAlreadyHandled,
+  markDepositReferenceHandled,
+  setPendingDepositReference,
+} from '@/utils/walletDepositSession';
 import { getSpecificErrorMessage } from '@/utils/errorMessages';
 import { handleAuthErrorRedirect } from '@/utils/authRedirect';
 import { AuthError } from '@/utils/errors';
 import Toast from '@/components/Toast';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { appendPaymentFlowLog, logWalletDeposit } from '@/utils/paymentFlowLog';
 import { applyDefaultStatusBar } from '@/utils/statusBar';
 
 const PRESET_AMOUNTS = [5000, 10000, 20000, 50000];
-const DEPOSIT_REFERENCE_KEY = '@ghands:pending_deposit_reference';
+/** Long enough to read payment success/failure on Top Up or Wallet. */
+const PAYMENT_TOAST_DURATION_MS = 6500;
+const PAYMENT_ERROR_TOAST_DURATION_MS = 7500;
 const TOPUP_RETURN_CTX_KEY = '@ghands:topup_return_context';
 const DEPOSIT_POLL_MS = 4000;
 const DEPOSIT_MAX_POLL_ATTEMPTS = 15;
 
 export default function TopUpScreen() {
+  const keyboardOffset = useKeyboardAvoidingOffset();
   const router = useRouter();
   const params = useLocalSearchParams<{
     returnTo?: string; // Screen to return to after top-up (e.g., PaymentMethodsScreen)
@@ -62,6 +76,8 @@ export default function TopUpScreen() {
   const [selectedAmount, setSelectedAmount] = useState<number>(0);
   const [customAmount, setCustomAmount] = useState<string>('');
   const [balance, setBalance] = useState<number>(0);
+  /** First load only — later refreshes keep the current figure on screen instead of flashing. */
+  const [isLoadingBalance, setIsLoadingBalance] = useState(true);
   const [isVerifyingDeposit, setIsVerifyingDeposit] = useState(false);
   const [isProcessingCard, setIsProcessingCard] = useState(false);
   const [userEmail, setUserEmail] = useState<string>('');
@@ -77,10 +93,13 @@ export default function TopUpScreen() {
   const verificationInFlightRef = useRef(false);
   const pollCountRef = useRef(0);
   const depositCompletedRef = useRef(false);
+  /** True while Kora auth session / browser is open — suppresses premature “confirming” toast. */
+  const awaitingGatewayReturnRef = useRef(false);
 
   const releasePaymentUi = useCallback(() => {
     pollCountRef.current = 0;
     verificationInFlightRef.current = false;
+    awaitingGatewayReturnRef.current = false;
     setPendingDepositReference(null);
     setPendingDepositAmount(null);
     setDepositVerifyPhase('idle');
@@ -100,7 +119,6 @@ export default function TopUpScreen() {
   const unblockUiAfterGatewayReturn = useCallback(() => {
     setIsProcessingCard(false);
     setIsVerifyingDeposit(false);
-    verificationInFlightRef.current = false;
     setPaymentModalDismissed(true);
     setDepositVerifyPhase((prev) =>
       prev === 'preparing' || prev === 'checkout' ? 'checking' : prev,
@@ -115,7 +133,9 @@ export default function TopUpScreen() {
   const showPaymentStatusModal =
     paymentSessionActive &&
     !paymentModalDismissed &&
-    depositVerifyPhase !== 'idle';
+    depositVerifyPhase !== 'idle' &&
+    depositVerifyPhase !== 'checkout' &&
+    depositVerifyPhase !== 'preparing';
 
   const paymentStatusCopy = useMemo(() => {
     switch (depositVerifyPhase) {
@@ -248,25 +268,80 @@ export default function TopUpScreen() {
         console.error('Error loading wallet balance:', error);
       }
       return 0;
+    } finally {
+      setIsLoadingBalance(false);
     }
   }, [router]);
 
-  const applySuccessfulDeposit = useCallback(async (verification: { amount: number; balance: number }) => {
+  const applySuccessfulDeposit = useCallback(async () => {
     invalidateWalletBalanceCache();
-    let freshBalance = 0;
     try {
-      freshBalance = await loadWalletBalance();
+      return await loadWalletBalance();
     } catch {
-      freshBalance = 0;
+      return 0;
     }
-    const verifiedBalance =
-      typeof verification.balance === 'number'
-        ? verification.balance
-        : parseFloat(String(verification.balance)) || 0;
-    const nextBalance = Math.max(freshBalance, verifiedBalance);
-    setBalance(nextBalance);
-    return nextBalance;
   }, [loadWalletBalance]);
+
+  const navigateAfterSuccessfulTopUp = useCallback(
+    async (successMessage: string) => {
+      let returnTo = params.returnTo;
+      let returnParamsRaw: string | undefined =
+        typeof params.returnParams === 'string' ? params.returnParams : undefined;
+      if (!returnTo) {
+        try {
+          const stored = await AsyncStorage.getItem(TOPUP_RETURN_CTX_KEY);
+          if (stored) {
+            const j = JSON.parse(stored) as { returnTo?: string; returnParams?: string };
+            returnTo = j.returnTo;
+            returnParamsRaw = j.returnParams ?? '';
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+
+      const goToDestination = () => {
+        if (returnTo) {
+          void AsyncStorage.removeItem(TOPUP_RETURN_CTX_KEY);
+          try {
+            const returnParams = returnParamsRaw ? JSON.parse(returnParamsRaw) : {};
+            router.replace({
+              pathname: returnTo as any,
+              params: returnParams,
+            } as any);
+          } catch {
+            router.replace(returnTo as any);
+          }
+          return;
+        }
+        try {
+          if (router.canDismiss?.()) {
+            router.dismissAll();
+          }
+        } catch {
+          /* ignore */
+        }
+        router.replace('/WalletScreen' as any);
+      };
+
+      if (returnTo) {
+        showSuccess(successMessage, PAYMENT_TOAST_DURATION_MS);
+        setTimeout(() => {
+          goToDestination();
+        }, 700);
+        return;
+      }
+
+      await AsyncStorage.removeItem(TOPUP_RETURN_CTX_KEY);
+      await setWalletFlashToast({
+        type: 'success',
+        message: successMessage,
+        durationMs: PAYMENT_TOAST_DURATION_MS,
+      });
+      goToDestination();
+    },
+    [params.returnTo, params.returnParams, router, showSuccess],
+  );
 
   // Load wallet balance and user profile on mount
   useEffect(() => {
@@ -310,8 +385,16 @@ export default function TopUpScreen() {
         
         
         // Reconcile any leftover reference from a previous session
-        const storedReference = await AsyncStorage.getItem(DEPOSIT_REFERENCE_KEY);
+        const storedReference = await getPendingDepositReference();
         if (storedReference) {
+          if (await isDepositReferenceAlreadyHandled(storedReference)) {
+            depositCompletedRef.current = true;
+            setPendingDepositReference(null);
+            setPaymentSessionActive(false);
+            setDepositVerifyPhase('idle');
+            void navigateAfterSuccessfulTopUp('Your wallet has been topped up.');
+            return;
+          }
           setPendingDepositReference(storedReference);
           setPaymentSessionActive(true);
           setDepositVerifyPhase('checking');
@@ -326,11 +409,11 @@ export default function TopUpScreen() {
     }
     };
     loadData();
-  }, [loadWalletBalance]);
+  }, [loadWalletBalance, navigateAfterSuccessfulTopUp]);
 
   const cancelPaymentFlow = useCallback(async (options?: { message?: string; showMessage?: boolean }) => {
     if (depositCompletedRef.current) return;
-    await AsyncStorage.removeItem(DEPOSIT_REFERENCE_KEY);
+    await clearPendingDepositReference();
     releasePaymentUi();
     if (options?.message && options?.showMessage !== false) {
       showInfo(options.message);
@@ -343,13 +426,27 @@ export default function TopUpScreen() {
     options: { silent?: boolean; background?: boolean; showFailedUi?: boolean } = {},
   ) => {
     const { silent = false, background = false, showFailedUi = false } = options;
-    if (depositCompletedRef.current || verificationInFlightRef.current) return;
+    if (depositCompletedRef.current) return;
+
+    if (await isDepositReferenceAlreadyHandled(reference)) {
+      depositCompletedRef.current = true;
+      void logWalletDeposit('Skipping verify — deposit already handled', { reference });
+      releasePaymentUi();
+      invalidateWalletBalanceCache();
+      void loadWalletBalance();
+      void navigateAfterSuccessfulTopUp('Your wallet has been topped up.');
+      return;
+    }
+
+    if (verificationInFlightRef.current) return;
 
     try {
       verificationInFlightRef.current = true;
       if (!background) {
         setIsVerifyingDeposit(true);
       }
+
+      void logWalletDeposit('Verifying deposit', { reference });
 
       const verification = await Promise.race([
         walletService.verifyDeposit(reference),
@@ -359,51 +456,34 @@ export default function TopUpScreen() {
       ]);
 
       if (verification.status === 'completed') {
+        if (depositCompletedRef.current) return;
         depositCompletedRef.current = true;
         pollCountRef.current = 0;
+        await markDepositReferenceHandled(reference);
+        releasePaymentUi();
         haptics.success();
 
-        await AsyncStorage.removeItem(DEPOSIT_REFERENCE_KEY);
-        releasePaymentUi();
-
-        const nextBalance = await applySuccessfulDeposit(verification);
+        const nextBalance = await applySuccessfulDeposit();
 
         const creditedAmount = verification.amount > 0
           ? verification.amount
           : (pendingDepositAmount ?? 0);
-        showSuccess(
-          `Successfully topped up ₦${creditedAmount.toLocaleString()}. Your new balance is ₦${nextBalance.toLocaleString()}`,
-        );
+        const successMessage = `Successfully topped up ₦${creditedAmount.toLocaleString()}. Your new balance is ₦${nextBalance.toLocaleString()}`;
 
-        let returnTo = params.returnTo;
-        let returnParamsRaw: string | undefined = typeof params.returnParams === 'string' ? params.returnParams : undefined;
-        if (!returnTo) {
-          try {
-            const stored = await AsyncStorage.getItem(TOPUP_RETURN_CTX_KEY);
-            if (stored) {
-              const j = JSON.parse(stored) as { returnTo?: string; returnParams?: string };
-              returnTo = j.returnTo;
-              returnParamsRaw = j.returnParams ?? '';
-            }
-          } catch {
-            /* ignore */
-          }
-        }
-        if (returnTo) {
-          await AsyncStorage.removeItem(TOPUP_RETURN_CTX_KEY);
-          setTimeout(() => {
-            try {
-              const returnParams = returnParamsRaw ? JSON.parse(returnParamsRaw) : {};
-              router.replace({
-                pathname: returnTo as any,
-                params: returnParams,
-              } as any);
-            } catch {
-              router.replace(returnTo as any);
-            }
-          }, 600);
-        }
+        void logWalletDeposit('Deposit verified', {
+          reference,
+          detail: `Credited ₦${creditedAmount.toLocaleString()} · Balance ₦${nextBalance.toLocaleString()}`,
+          response: verification,
+        });
+
+        void logWalletDeposit('Navigating after successful top-up', {
+          reference,
+          detail: params.returnTo ? `returnTo=${params.returnTo}` : 'destination=WalletScreen',
+        });
+
+        await navigateAfterSuccessfulTopUp(successMessage);
       } else if (verification.status === 'pending') {
+        void logWalletDeposit('Deposit still pending', { reference, response: verification });
         if (!background) {
           pollCountRef.current += 1;
           if (pollCountRef.current >= DEPOSIT_MAX_POLL_ATTEMPTS) {
@@ -419,13 +499,14 @@ export default function TopUpScreen() {
           setDepositVerifyPhase((prev) => (prev === 'checkout' ? 'checking' : 'processing'));
         }
       } else if (verification.status === 'failed') {
-        await AsyncStorage.removeItem(DEPOSIT_REFERENCE_KEY);
+        void logWalletDeposit('Deposit verification failed', { reference, response: verification });
+        await clearPendingDepositReference();
         if (showFailedUi && !background) {
           setDepositVerifyPhase('failed');
           setPaymentSessionActive(true);
           setPaymentModalDismissed(false);
           if (!silent) {
-            showError('Payment could not be confirmed. Try again or contact support.');
+            showError('Payment could not be confirmed. Try again or contact support.', PAYMENT_ERROR_TOAST_DURATION_MS);
           }
         } else {
           releasePaymentUi();
@@ -438,6 +519,7 @@ export default function TopUpScreen() {
     } catch (error: any) {
       const errorText = String(error?.message ?? '').toLowerCase();
       if (errorText.includes('timed out')) {
+        void logWalletDeposit('Verify timed out (will retry on poll)', { reference, detail: error?.message });
         verificationInFlightRef.current = false;
         if (!background) {
           setIsVerifyingDeposit(false);
@@ -446,6 +528,7 @@ export default function TopUpScreen() {
         return;
       }
       if (errorText.includes('processing') || errorText.includes('pending')) {
+        void logWalletDeposit('Verify still processing (API)', { reference, detail: error?.message });
         if (!background) {
           pollCountRef.current += 1;
           if (pollCountRef.current >= DEPOSIT_MAX_POLL_ATTEMPTS) {
@@ -465,10 +548,11 @@ export default function TopUpScreen() {
 
       const status = error?.status || error?.response?.status;
       if (status === 404) {
-        await AsyncStorage.removeItem(DEPOSIT_REFERENCE_KEY);
+        void logWalletDeposit('Verify reference not found (404)', { reference, response: { status: 404 } });
+        await clearPendingDepositReference();
         releasePaymentUi();
         if (!silent && !background && showFailedUi) {
-          showError('Payment reference not found. If you have already paid, please contact support.');
+          showError('Payment reference not found. If you have already paid, please contact support.', PAYMENT_ERROR_TOAST_DURATION_MS);
         }
         return;
       }
@@ -487,12 +571,20 @@ export default function TopUpScreen() {
       if (__DEV__) {
         console.error('❌ [TopUpScreen] Verification error:', error);
       }
+      void logWalletDeposit('Verify error', {
+        reference,
+        detail: error?.message,
+        response: { status, body: error?.response },
+      });
       if (!silent && !background && showFailedUi) {
         const errorMsg = getSpecificErrorMessage(error, 'verify_deposit');
         if (status === 500) {
-          showError('Server error during verification. Please try again in a moment.');
+          showError('Server error during verification. Please try again in a moment.', PAYMENT_ERROR_TOAST_DURATION_MS);
         } else {
-          showError(errorMsg || 'Failed to verify payment. Please try again or contact support if you have already paid.');
+          showError(
+            errorMsg || 'Failed to verify payment. Please try again or contact support if you have already paid.',
+            PAYMENT_ERROR_TOAST_DURATION_MS,
+          );
         }
       }
     } finally {
@@ -501,36 +593,49 @@ export default function TopUpScreen() {
         setIsVerifyingDeposit(false);
       }
     }
-  }, [params.returnTo, params.returnParams, router, showSuccess, showError, showInfo, releasePaymentUi, applySuccessfulDeposit, pendingDepositAmount]);
+  }, [
+    router,
+    showError,
+    showInfo,
+    releasePaymentUi,
+    applySuccessfulDeposit,
+    pendingDepositAmount,
+    loadWalletBalance,
+    navigateAfterSuccessfulTopUp,
+    params.returnTo,
+  ]);
 
   useFocusEffect(
     useCallback(() => {
       applyDefaultStatusBar();
       invalidateWalletBalanceCache();
       void loadWalletBalance();
-      setIsVerifyingDeposit(false);
-      setIsProcessingCard(false);
-      verificationInFlightRef.current = false;
 
       void (async () => {
-        const storedReference = await AsyncStorage.getItem(DEPOSIT_REFERENCE_KEY);
-        if (storedReference && !depositCompletedRef.current) {
-          setPendingDepositReference(storedReference);
-          setPaymentSessionActive(true);
-          setDepositVerifyPhase((prev) =>
-            prev === 'idle' || prev === 'failed' || prev === 'checkout' ? 'checking' : prev,
-          );
-          setPaymentModalDismissed(true);
-          void verifyPendingDeposit(storedReference, { silent: true, background: true });
+        const storedReference = await getPendingDepositReference();
+        if (!storedReference || depositCompletedRef.current) return;
+
+        if (await isDepositReferenceAlreadyHandled(storedReference)) {
+          depositCompletedRef.current = true;
+          releasePaymentUi();
+          void navigateAfterSuccessfulTopUp('Your wallet has been topped up.');
+          return;
         }
+
+        setPendingDepositReference(storedReference);
+        setPaymentSessionActive(true);
+        setDepositVerifyPhase((prev) =>
+          prev === 'idle' || prev === 'failed' || prev === 'checkout' ? 'checking' : prev,
+        );
+        setPaymentModalDismissed(true);
+        void verifyPendingDeposit(storedReference, { silent: true, background: true });
       })();
 
       return () => {
         setIsVerifyingDeposit(false);
         setIsProcessingCard(false);
-        verificationInFlightRef.current = false;
       };
-    }, [loadWalletBalance, verifyPendingDeposit]),
+    }, [loadWalletBalance, verifyPendingDeposit, navigateAfterSuccessfulTopUp, releasePaymentUi]),
   );
 
   // Auto-poll during an active payment session (continues even if modal is dismissed)
@@ -559,6 +664,7 @@ export default function TopUpScreen() {
     const subscription = AppState.addEventListener('change', (nextState) => {
       if (nextState !== 'active' || depositCompletedRef.current) return;
 
+      awaitingGatewayReturnRef.current = false;
       unblockUiAfterGatewayReturn();
 
       if (pendingDepositReference) {
@@ -606,7 +712,7 @@ export default function TopUpScreen() {
       return;
     }
 
-    Alert.alert(
+    showAppAlert(
       'Cancel payment?',
       'If you already paid in Kora, stay on this screen so we can confirm it.',
       [
@@ -625,7 +731,7 @@ export default function TopUpScreen() {
   const dismissPaymentModal = useCallback(async () => {
     hidePaymentModal();
     if (depositVerifyPhase === 'failed') {
-      await AsyncStorage.removeItem(DEPOSIT_REFERENCE_KEY);
+      await clearPendingDepositReference();
       releasePaymentUi();
     }
   }, [depositVerifyPhase, hidePaymentModal, releasePaymentUi]);
@@ -728,6 +834,7 @@ export default function TopUpScreen() {
     setIsProcessingCard(true);
     haptics.light();
     depositCompletedRef.current = false;
+    void logWalletDeposit('Top-up started', { detail: `Amount ₦${amount.toLocaleString('en-NG')}` });
 
     try {
       const depositCallbackUrl = ExpoLinking.createURL('wallet-deposit-return');
@@ -744,11 +851,17 @@ export default function TopUpScreen() {
       haptics.success();
 
       // Store deposit reference for verification when user returns
-      await AsyncStorage.setItem(DEPOSIT_REFERENCE_KEY, depositResponse.reference);
+      await clearHandledDepositReference();
+      await setPendingDepositReference(depositResponse.reference);
       setPendingDepositReference(depositResponse.reference);
       setPendingDepositAmount(amount);
+      void logWalletDeposit('Deposit initialized', {
+        reference: depositResponse.reference,
+        detail: 'Kora checkout link ready',
+        response: { reference: depositResponse.reference },
+      });
       setDepositVerifyPhase('checkout');
-      setPaymentModalDismissed(false);
+      setPaymentModalDismissed(true);
       setPaymentSessionActive(true);
       depositCompletedRef.current = false;
       pollCountRef.current = 0;
@@ -766,12 +879,19 @@ export default function TopUpScreen() {
 
       try {
         WebBrowser.maybeCompleteAuthSession();
+        awaitingGatewayReturnRef.current = true;
+        void logWalletDeposit('Opening Kora checkout', { reference: depositResponse.reference });
         const authResult = await WebBrowser.openAuthSessionAsync(
           depositResponse.authorizationUrl,
           depositCallbackUrl
         );
+        awaitingGatewayReturnRef.current = false;
         applyDefaultStatusBar();
         unblockUiAfterGatewayReturn();
+        void logWalletDeposit('Returned from checkout', {
+          reference: depositResponse.reference,
+          detail: `Result: ${authResult.type}`,
+        });
 
         if (authResult.type === 'cancel' || authResult.type === 'dismiss') {
           pollCountRef.current = 0;
@@ -793,14 +913,17 @@ export default function TopUpScreen() {
         await verifyPendingDeposit(depositResponse.reference, { silent: true, background: true });
         return;
       } catch (browserErr) {
+        awaitingGatewayReturnRef.current = false;
         if (__DEV__) {
           console.warn('[TopUp] In-app checkout failed, opening system browser', browserErr);
         }
         const canOpen = await Linking.canOpenURL(depositResponse.authorizationUrl);
         if (canOpen) {
           usedSystemBrowser = true;
+          awaitingGatewayReturnRef.current = true;
+          void logWalletDeposit('Opened system browser for Kora', { reference: depositResponse.reference });
           await Linking.openURL(depositResponse.authorizationUrl);
-          Alert.alert(
+          showAppAlert(
             'Finish in browser',
             Platform.OS === 'ios'
               ? 'After you see Success, return to GHands. Your wallet updates automatically.'
@@ -808,7 +931,7 @@ export default function TopUpScreen() {
             [{ text: 'OK' }]
           );
         } else {
-          showError('Unable to open payment gateway. Please try again.');
+          showError('Unable to open payment gateway. Please try again.', PAYMENT_ERROR_TOAST_DURATION_MS);
           await cancelPaymentFlow();
           return;
         }
@@ -824,6 +947,10 @@ export default function TopUpScreen() {
       }
     } catch (error: any) {
       haptics.error();
+      void logWalletDeposit('Top-up initialize or checkout failed', {
+        detail: error?.message,
+        response: { status: error?.status },
+      });
       await cancelPaymentFlow();
       if (error instanceof AuthError) {
         showError('Session expired. Signing you in again…');
@@ -852,7 +979,7 @@ export default function TopUpScreen() {
           errorMsg = errorMessage || 'Failed to initialize payment. Please try again.';
         }
       }
-      showError(errorMsg);
+      showError(errorMsg, PAYMENT_ERROR_TOAST_DURATION_MS);
       if (errorMessage.toLowerCase().includes('email') || error?.status === 400) {
         setShowEmailModal(true);
         setPendingAmount(amount);
@@ -870,54 +997,45 @@ export default function TopUpScreen() {
     router.back();
   }, [paymentSessionActive, depositVerifyPhase, unblockUiAfterGatewayReturn, router]);
 
-  const showBackgroundConfirmBanner =
-    paymentSessionActive &&
-    paymentModalDismissed &&
-    (depositVerifyPhase === 'checking' || depositVerifyPhase === 'processing');
+  const backgroundConfirmToastShownRef = useRef(false);
+  useEffect(() => {
+    const confirmingInBackground =
+      paymentSessionActive &&
+      paymentModalDismissed &&
+      !awaitingGatewayReturnRef.current &&
+      (depositVerifyPhase === 'checking' || depositVerifyPhase === 'processing');
+
+    if (confirmingInBackground && !backgroundConfirmToastShownRef.current) {
+      backgroundConfirmToastShownRef.current = true;
+      showInfo('Confirming your payment… We’ll update your balance when it clears.');
+    }
+    if (depositVerifyPhase === 'idle' || depositVerifyPhase === 'failed') {
+      backgroundConfirmToastShownRef.current = false;
+    }
+  }, [paymentSessionActive, paymentModalDismissed, depositVerifyPhase, showInfo]);
 
   return (
     <SafeAreaWrapper backgroundColor={Colors.backgroundLight}>
         <ScreenHeader title="Top Up" onBack={handleTopUpBack} backgroundColor={Colors.backgroundLight} />
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={keyboardOffset}
+      >
       <ScrollView
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         contentContainerStyle={{
           paddingHorizontal: 20,
           paddingBottom: 100,
         }}
       >
-        {showBackgroundConfirmBanner ? (
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 10,
-              backgroundColor: Colors.sageTint,
-              borderRadius: 12,
-              padding: 14,
-              marginBottom: 16,
-              borderWidth: 1,
-              borderColor: Colors.border,
-            }}
-          >
-            <ActivityIndicator size="small" color={Colors.accent} />
-            <Text
-              style={{
-                flex: 1,
-                fontSize: 13,
-                fontFamily: 'Poppins-Medium',
-                color: Colors.textPrimary,
-                lineHeight: 18,
-              }}
-            >
-              Confirming your payment with Kora… You can use the app; balance updates when it clears.
-            </Text>
-          </View>
-        ) : null}
         {/* Current Balance Section */}
         <View
           style={{
             backgroundColor: Colors.backgroundGray,
-            borderRadius: 14,
+            borderRadius: BorderRadius.default,
             padding: 18,
             marginBottom: 24,
             position: 'relative',
@@ -940,19 +1058,23 @@ export default function TopUpScreen() {
               alignItems: 'center',
             }}
           >
-            <Text
-              style={{
-                fontSize: 20,
-                fontFamily: 'Poppins-Bold',
-                color: Colors.textPrimary,
-                letterSpacing: -0.3,
-              }}
-            >
-              ₦{balance.toLocaleString('en-NG', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
-            </Text>
+            {isLoadingBalance ? (
+              <Skeleton width={148} height={22} borderRadius={8} />
+            ) : (
+              <Text
+                style={{
+                  fontSize: 20,
+                  fontFamily: 'Poppins-Bold',
+                  color: Colors.textPrimary,
+                  letterSpacing: -0.3,
+                }}
+              >
+                ₦{balance.toLocaleString('en-NG', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </Text>
+            )}
             <Wallet size={20} color={Colors.textSecondaryDark} />
           </View>
         </View>
@@ -961,8 +1083,8 @@ export default function TopUpScreen() {
         <View style={{ marginBottom: 32 }}>
           <Text
             style={{
-              fontSize: 17,
-              fontFamily: 'Poppins-Bold',
+              fontSize: 16,
+              fontFamily: 'Poppins-SemiBold',
               color: Colors.textPrimary,
               marginBottom: 14,
               letterSpacing: -0.2,
@@ -990,7 +1112,7 @@ export default function TopUpScreen() {
                   style={{
                     width: '47%',
                     backgroundColor: isSelected ? Colors.accent : Colors.backgroundGray,
-                    borderRadius: 12,
+                    borderRadius: BorderRadius.default,
                     paddingVertical: 14,
                     paddingHorizontal: 12,
                     alignItems: 'center',
@@ -1018,49 +1140,15 @@ export default function TopUpScreen() {
             })}
           </View>
 
-          {formattedDepositAmount ? (
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                backgroundColor: Colors.sageTint,
-                borderRadius: 12,
-                paddingHorizontal: 14,
-                paddingVertical: 12,
-                marginBottom: 12,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 13,
-                  fontFamily: 'Poppins-Medium',
-                  color: Colors.textSecondaryDark,
-                }}
-              >
-                You&apos;re adding
-              </Text>
-              <Text
-                style={{
-                  fontSize: 16,
-                  fontFamily: 'Poppins-Bold',
-                  color: Colors.accent,
-                }}
-              >
-                {formattedDepositAmount}
-              </Text>
-            </View>
-          ) : null}
-
           {/* Custom Amount Input */}
           <View
             style={{
               backgroundColor: Colors.white,
-              borderRadius: 12,
+              borderRadius: BorderRadius.default,
               paddingHorizontal: 16,
               paddingVertical: 14,
               borderWidth: 1,
-              borderColor: amountFieldHint ? '#F59E0B' : Colors.border,
+              borderColor: amountFieldHint ? Colors.warning : Colors.border,
             }}
           >
             <Text
@@ -1097,7 +1185,7 @@ export default function TopUpScreen() {
                 marginTop: 8,
                 fontSize: 13,
                 fontFamily: 'Poppins-Medium',
-                color: '#B45309',
+                color: Colors.warningForeground,
                 lineHeight: 18,
               }}
             >
@@ -1121,8 +1209,8 @@ export default function TopUpScreen() {
         <View style={{ marginBottom: 32, opacity: isDepositAmountValid ? 1 : 0.72 }}>
           <Text
             style={{
-              fontSize: 17,
-              fontFamily: 'Poppins-Bold',
+              fontSize: 16,
+              fontFamily: 'Poppins-SemiBold',
               color: Colors.textPrimary,
               marginBottom: 6,
               letterSpacing: -0.2,
@@ -1182,6 +1270,7 @@ export default function TopUpScreen() {
           </View>
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Payment status — auto-verifies, no manual check */}
       {showPaymentStatusModal ? (
@@ -1210,8 +1299,8 @@ export default function TopUpScreen() {
                 style={{
                   width: 72,
                   height: 72,
-                  borderRadius: 36,
-                  backgroundColor: '#FEF2F2',
+                  borderRadius: BorderRadius.full,
+                  backgroundColor: Colors.errorLight,
                   alignItems: 'center',
                   justifyContent: 'center',
                   marginBottom: 20,
@@ -1271,11 +1360,13 @@ export default function TopUpScreen() {
                 style={{
                   width: 80,
                   height: 80,
-                  borderRadius: 40,
-                  backgroundColor: Colors.sageTint,
+                  borderRadius: BorderRadius.full,
+                  backgroundColor: Colors.backgroundGray,
                   alignItems: 'center',
                   justifyContent: 'center',
                   marginBottom: 22,
+                  borderWidth: 1,
+                  borderColor: Colors.border,
                 }}
               >
                 {depositVerifyPhase === 'checkout' ? (
@@ -1326,7 +1417,7 @@ export default function TopUpScreen() {
                 <View
                   style={{
                     backgroundColor: Colors.backgroundGray,
-                    borderRadius: 12,
+                    borderRadius: BorderRadius.default,
                     paddingHorizontal: 14,
                     paddingVertical: 12,
                     marginBottom: 8,
@@ -1536,6 +1627,7 @@ export default function TopUpScreen() {
         message={toast.message}
         type={toast.type}
         visible={toast.visible}
+        duration={toast.duration ?? 3000}
         onClose={hideToast}
       />
     </SafeAreaWrapper>

@@ -11,50 +11,28 @@ export const ONBOARDING_SLIDES: SlideData[] = [
   {
     id: 'map',
     title: 'Find Trusted Experts Near You',
-    description: 'Get help anywhere, anytime. Connect with nearby professionals.',
+    description: 'Get help fast from professionals a few streets away.',
     icon: 'location',
     image: require('../assets/images/onboarding1.png')
   },
   {
     id: 'tracking',
-    title: 'Fast Response, Real-Time Track',
+    title: 'Fast Response, Real-Time Tracking',
     description: 'Track your provider in real-time and get updates on arrival.',
     icon: 'tracking',
     image: require('../assets/images/onboarding2.png')
   },
   {
     id: 'connect',
-    title: 'Safe Payments',
-    description: 'Pay for rendered services securely through our in-app wallet.',
+    title: 'Escrow Protected Payments',
+    description: 'Your money is held safely until the job is done right.',
     icon: 'booking',
     image: require('../assets/images/onboarding3.png')
   }
 ];
 
-// Provider Onboarding Slides
-export const PROVIDER_ONBOARDING_SLIDES: SlideData[] = [
-  {
-    id: 'provider-demand',
-    title: 'Find people who need your service',
-    description: 'Get alerts customers are looking for your skills anywhere, anytime.',
-    icon: 'location',
-    image: require('../assets/images/Provideronboarding1.png')
-  },
-  {
-    id: 'provider-dashboard',
-    title: 'All jobs, one dashboard',
-    description: 'View, track, and manage every job, past and ongoing, in one place.',
-    icon: 'tracking',
-    image: require('../assets/images/Provideronboarding2.png')
-  },
-  {
-    id: 'provider-payments',
-    title: 'Simple, secure payments',
-    description: 'Get paid with confidence. Our in-app wallet keeps all your payments organized and safe.',
-    icon: 'booking',
-    image: require('../assets/images/Provideronboarding3.png')
-  }
-];
+/** Offline overlay — man with phone, no Wi‑Fi (`assets/images/nointernetimg.png`). */
+export const NO_INTERNET_ILLUSTRATION = require('../assets/images/nointernetimg.png');
 
 export const DESIGN_TOKENS = {
   colors: {
@@ -78,9 +56,15 @@ export const DESIGN_TOKENS = {
     
     // UI colors
     border: '#E5E7EB',
+    /** Second border weight — control rings (radio/checkbox), dashed dropzones, disabled outlines, where `border` is too faint. */
+    borderStrong: '#D1D5DB',
     borderLight: '#F3F4F6',
     backgroundLight: '#FFFFFF',
     backgroundGray: '#F3F4F6',
+    /** Subtle surface fill, one step lighter than backgroundGray — inset rows and placeholder wells. */
+    surfaceSubtle: '#F9FAFB',
+    /** Dimming layer behind centred modals. */
+    overlayScrim: 'rgba(0, 0, 0, 0.45)',
     /** Outer margin on tablet “phone lane” — contrasts with backgroundLight inside the lane */
     tabletBackdrop: '#242420',
     
@@ -171,77 +155,7 @@ export const DESIGN_TOKENS = {
     /** Sage wallet / earnings / profile hero panels — one consistent corner across the app */
     sageHero: 16,
     full: 999
-  },
-  fonts: {
-    // Heading styles
-    h1: {
-      fontSize: 32,
-      fontWeight: 'bold' as const,
-      lineHeight: 38,
-      fontFamily: 'Poppins-Bold'
-    },
-    h2: {
-      fontSize: 20,
-      fontWeight: 'bold' as const,
-      lineHeight: 26,
-      fontFamily: 'Poppins-Bold'
-    },
-    h3: {
-      fontSize: 18,
-      fontWeight: '600' as const,
-      lineHeight: 24,
-      fontFamily: 'Poppins-SemiBold'
-    },
-    h4: {
-      fontSize: 17,
-      fontWeight: '600' as const,
-      lineHeight: 22,
-      fontFamily: 'Poppins-SemiBold'
-    },
-    // Body styles
-    body: {
-      fontSize: 16,
-      fontWeight: '400' as const,
-      lineHeight: 22,
-      fontFamily: 'Poppins-Regular'
-    },
-    bodyMedium: {
-      fontSize: 14,
-      fontWeight: '500' as const,
-      lineHeight: 20,
-      fontFamily: 'Poppins-Medium'
-    },
-    bodySmall: {
-      fontSize: 12,
-      fontWeight: '400' as const,
-      lineHeight: 18,
-      fontFamily: 'Poppins-Regular'
-    },
-    bodyTiny: {
-      fontSize: 11,
-      fontWeight: '400' as const,
-      lineHeight: 16,
-      fontFamily: 'Poppins-Regular'
-    },
-    // Button styles
-    button: {
-      fontSize: 12,
-      fontWeight: '600' as const,
-      lineHeight: 16,
-      fontFamily: 'Poppins-SemiBold'
-    },
-    buttonSmall: {
-      fontSize: 11,
-      fontWeight: '600' as const,
-      lineHeight: 14,
-      fontFamily: 'Poppins-SemiBold'
-    },
-    // Label styles
-    label: {
-      fontSize: 10,
-      fontWeight: '600' as const,
-      lineHeight: 14,
-      fontFamily: 'Poppins-SemiBold'
-    }
   }
+  // No `fonts` scale: type is written inline as fontSize + `Poppins-*`.
+  // See .cursor/rules/ui-scale-and-tablet.mdc for the roles and sizes in use.
 };

@@ -14,7 +14,8 @@ import Toast from '@/components/Toast';
 import { haptics } from '@/hooks/useHaptics';
 import { useCurrentUserProfile } from '@/hooks/useProfile';
 import { useToast } from '@/hooks/useToast';
-import { Colors } from '@/lib/designSystem';
+import { BorderRadius, Colors, Spacing } from '@/lib/designSystem';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import { JOB_TIMELINE } from '@/lib/jobTimelineTheme';
 import { CLIENT_HOME_SCROLL_GUTTER } from '@/lib/tabletLayout';
 import { analytics } from '@/services/analytics';
@@ -52,7 +53,6 @@ import { CheckCircle2, Clock, FileText, MapPinned, Wrench } from 'lucide-react-n
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Animated,
   AppState,
   BackHandler,
@@ -63,6 +63,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { showAppAlert } from '@/components/AppAlertHost';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Generate nice dummy quotations from accepted providers
@@ -1398,7 +1399,7 @@ export default function OngoingJobDetails() {
     const statusNorm = (request.status || '').toString().toLowerCase().replace(/[\s_-]/g, '');
     if (statusNorm !== 'reviewing') return;
 
-    Alert.alert(
+    showAppAlert(
       'Complete Job',
       'Are you sure the service has been completed? This will transfer payment to the provider.',
       [
@@ -1627,19 +1628,19 @@ export default function OngoingJobDetails() {
           borderTopWidth: 1,
           borderTopColor: Colors.border,
           backgroundColor: Colors.white,
-          shadowColor: '#101828',
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.06,
-          shadowRadius: 10,
-          elevation: 6,
         }}
       >
         {canAccept ? (
           <TouchableOpacity
             activeOpacity={0.85}
-            className="bg-black rounded-xl py-4 items-center justify-center mb-3"
+            className="rounded-xl py-4 items-center justify-center mb-3"
+            accessibilityRole="button"
+            accessibilityLabel="Accept quote"
             disabled={isQuotationActionLoading || isLoadingQuotations}
-            style={{ opacity: isQuotationActionLoading || isLoadingQuotations ? 0.5 : 1 }}
+            style={{
+              backgroundColor: Colors.accent,
+              opacity: isQuotationActionLoading || isLoadingQuotations ? 0.5 : 1,
+            }}
             onPress={async () => {
               if (currentQuotation.id) {
                 haptics.light();
@@ -1655,7 +1656,7 @@ export default function OngoingJobDetails() {
             }}
           >
             {isQuotationActionLoading ? (
-              <ActivityIndicator size="small" color="white" />
+              <ActivityIndicator size="small" color={Colors.white} />
             ) : (
               <Text className="text-white text-base" style={{ fontFamily: 'Poppins-SemiBold' }}>
                 Accept Quote
@@ -1667,9 +1668,14 @@ export default function OngoingJobDetails() {
         {canReject ? (
           <TouchableOpacity
             activeOpacity={0.85}
-            className="bg-white rounded-xl py-4 items-center justify-center border-2 border-gray-200 mb-3"
+            className="bg-white rounded-xl py-4 items-center justify-center border-2 mb-3"
+            accessibilityRole="button"
+            accessibilityLabel="Reject quote"
             disabled={isQuotationActionLoading || isLoadingQuotations}
-            style={{ opacity: isQuotationActionLoading || isLoadingQuotations ? 0.5 : 1 }}
+            style={{
+              borderColor: Colors.border,
+              opacity: isQuotationActionLoading || isLoadingQuotations ? 0.5 : 1,
+            }}
             onPress={async () => {
               if (currentQuotation.id) {
                 haptics.light();
@@ -1687,7 +1693,7 @@ export default function OngoingJobDetails() {
             {isQuotationActionLoading ? (
               <ActivityIndicator size="small" color={Colors.error} />
             ) : (
-              <Text className="text-[#DC2626] text-base" style={{ fontFamily: 'Poppins-SemiBold' }}>
+              <Text className="text-base" style={{ fontFamily: 'Poppins-SemiBold', color: Colors.error }}>
                 Reject Quote
               </Text>
             )}
@@ -1695,14 +1701,17 @@ export default function OngoingJobDetails() {
         ) : null}
 
         {isAccepted ? (
-          <View className="bg-[rgba(79, 103, 57, 0.14)] rounded-xl py-3 px-4 items-center justify-center mb-3">
+          <View
+            className="rounded-xl py-3 px-4 items-center justify-center mb-3"
+            style={{ backgroundColor: Colors.successLight }}
+          >
             <View className="flex-row items-center">
-              <Ionicons name="checkmark-circle" size={20} color="#16A34A" style={{ marginRight: 8 }} />
-              <Text className="text-[#16A34A] text-sm" style={{ fontFamily: 'Poppins-SemiBold' }}>
+              <Ionicons name="checkmark-circle" size={20} color={Colors.successIcon} style={{ marginRight: 8 }} />
+              <Text className="text-sm" style={{ fontFamily: 'Poppins-SemiBold', color: Colors.successIcon }}>
                 Quotation Accepted
               </Text>
             </View>
-            <Text className="text-[#16A34A] text-xs mt-1" style={{ fontFamily: 'Poppins-Regular' }}>
+            <Text className="text-xs mt-1" style={{ fontFamily: 'Poppins-Regular', color: Colors.successIcon }}>
               {showPayNow ? 'Complete payment to start the job' : 'Payment completed'}
             </Text>
           </View>
@@ -1711,7 +1720,10 @@ export default function OngoingJobDetails() {
         {showPayNow ? (
           <TouchableOpacity
             activeOpacity={0.85}
-            className="bg-[#4F6739] rounded-xl py-4 items-center justify-center"
+            className="rounded-xl py-4 items-center justify-center"
+            accessibilityRole="button"
+            accessibilityLabel="Pay now"
+            style={{ backgroundColor: Colors.accent }}
             onPress={() => {
               if (currentQuotation.id) {
                 haptics.light();
@@ -1737,10 +1749,13 @@ export default function OngoingJobDetails() {
         ) : null}
 
         {isRejected ? (
-          <View className="bg-[#FEE2E2] rounded-xl py-3 px-4 items-center justify-center">
+          <View
+            className="rounded-xl py-3 px-4 items-center justify-center"
+            style={{ backgroundColor: Colors.errorLight }}
+          >
             <View className="flex-row items-center">
               <Ionicons name="close-circle" size={20} color={Colors.error} style={{ marginRight: 8 }} />
-              <Text className="text-[#DC2626] text-sm" style={{ fontFamily: 'Poppins-SemiBold' }}>
+              <Text className="text-sm" style={{ fontFamily: 'Poppins-SemiBold', color: Colors.error }}>
                 Quotation Rejected
               </Text>
             </View>
@@ -1754,22 +1769,15 @@ export default function OngoingJobDetails() {
   return (
     <SafeAreaWrapper edges={['bottom']}>
       {cameFromBooking ? <Stack.Screen options={{ gestureEnabled: false }} /> : null}
-      <View style={{ flex: 1, paddingHorizontal: CLIENT_HOME_SCROLL_GUTTER, paddingTop: insets.top + 20 }}>
-        <View className="flex-row items-center mb-6">
-          <TouchableOpacity
-            onPress={handleJobDetailsBack}
-            style={{ marginRight: 12, width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="arrow-back" size={24} color="#000000" />
-          </TouchableOpacity>
-          <Text className="text-xl text-black" style={{ fontFamily: 'Poppins-Bold' }}>
-            Job Details
-          </Text>
-        </View>
+      <View style={{ flex: 1, paddingHorizontal: CLIENT_HOME_SCROLL_GUTTER, paddingTop: insets.top }}>
+        <ScreenHeader
+          title="Job Details"
+          onBack={handleJobDetailsBack}
+          style={{ paddingHorizontal: 0, paddingBottom: Spacing.xxl }}
+        />
 
         {/* Full-width tabs with green underline for active tab */}
-        <View className="flex-row border-b border-gray-200" style={{ width: '100%', marginBottom: 4 }}>
+        <View className="flex-row border-b" style={{ width: '100%', marginBottom: 4, borderBottomColor: Colors.border }}>
           {TAB_ITEMS.map((tab) => {
             const isActive = tab === activeTab;
             return (
@@ -1790,7 +1798,7 @@ export default function OngoingJobDetails() {
                   style={{
                     fontSize: 16,
                     fontFamily: isActive ? 'Poppins-Bold' : 'Poppins-Medium',
-                    color: isActive ? '#000000' : '#9CA3AF',
+                    color: isActive ? Colors.textPrimary : Colors.tabInactive,
                   }}
                 >
                   {tab}
@@ -1827,14 +1835,14 @@ export default function OngoingJobDetails() {
           </View>
         ) : !request && (hasAttemptedLoad || !params.requestId) ? (
           <View className="flex-1 items-center justify-center py-20 px-6" style={{ minHeight: 200 }}>
-            <Ionicons name="alert-circle-outline" size={64} color="#9CA3AF" />
-            <Text className="text-gray-600 mt-4 text-center px-4" style={{ fontFamily: 'Poppins-Medium' }}>
+            <Ionicons name="alert-circle-outline" size={64} color={Colors.tabInactive} />
+            <Text className="mt-4 text-center px-4" style={{ fontFamily: 'Poppins-Medium', color: Colors.textMuted }}>
               {params.requestId ? 'Unable to load job details. Please try again.' : 'Invalid job. Please go back and try again.'}
             </Text>
             {params.requestId ? (
               <TouchableOpacity
                 onPress={() => loadRequestData()}
-                className="mt-6 px-6 py-3 bg-[#4F6739] rounded-xl"
+                className="mt-6 px-6 py-3 rounded-xl" style={{ backgroundColor: Colors.accent }}
                 activeOpacity={0.85}
               >
                 <Text className="text-white" style={{ fontFamily: 'Poppins-SemiBold' }}>
@@ -1879,16 +1887,19 @@ export default function OngoingJobDetails() {
               return (
                 <TouchableOpacity
                   disabled={!canMarkComplete}
-                  className={`rounded-xl py-4 items-center justify-center mb-8 ${canMarkComplete ? 'bg-[#4F6739]' : 'bg-gray-200'}`}
+                  className="rounded-xl py-4 items-center justify-center mb-8" style={{ backgroundColor: canMarkComplete ? Colors.accent : Colors.border }}
                   activeOpacity={canMarkComplete ? 0.85 : 1}
                   onPress={handleCompleteJob}
                 >
                   {isLoading && completeJobLockRef.current ? (
-                    <ActivityIndicator size="small" color="white" />
+                    <ActivityIndicator size="small" color={Colors.white} />
                   ) : (
                     <Text
-                      className={`text-sm ${canMarkComplete ? 'text-white' : 'text-gray-500'}`}
-                      style={{ fontFamily: 'Poppins-Medium' }}
+                      className="text-sm"
+                      style={{
+                        fontFamily: 'Poppins-Medium',
+                        color: canMarkComplete ? Colors.white : Colors.iconMuted,
+                      }}
                     >
                       {statusNorm === 'reviewing' ? 'Confirm & release payment' : 'Waiting for provider to finish'}
                     </Text>
@@ -1919,21 +1930,21 @@ export default function OngoingJobDetails() {
                 <View
                   style={{
                     backgroundColor: Colors.white,
-                    borderRadius: 18,
+                    borderRadius: BorderRadius.xl,
                     paddingVertical: 12,
                     paddingHorizontal: 13,
                     marginBottom: 14,
                     flexDirection: 'row',
                     alignItems: 'center',
                     borderWidth: 0.6,
-                    borderColor: 'rgba(17, 24, 39, 0.04)',
+                    borderColor: Colors.borderLight,
                   }}
                 >
                   <View
                     style={{
                       width: 30,
                       height: 30,
-                      borderRadius: 15,
+                      borderRadius: BorderRadius.full,
                       backgroundColor: Colors.sageTint,
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -1976,8 +1987,9 @@ export default function OngoingJobDetails() {
                       }}
                     >
                       <Animated.View
-                        className="rounded-2xl bg-[#E3F4DF] px-4 py-4 mb-4"
+                        className="rounded-2xl px-4 py-4 mb-4"
                         style={{
+                          backgroundColor: Colors.sageTint,
                           opacity: quoteCardAnim,
                           transform: [
                             {
@@ -2004,11 +2016,11 @@ export default function OngoingJobDetails() {
                                 <Ionicons name="checkmark-circle" size={16} color={Colors.accent} style={{ marginLeft: 6 }} />
                               )}
                             </View>
-                              <Text className="text-xs text-gray-500 mt-1" style={{ fontFamily: 'Poppins-Regular' }}>
+                              <Text className="text-xs mt-1" style={{ fontFamily: 'Poppins-Regular', color: Colors.iconMuted }}>
                               {quotations[currentQuoteIndex].provider.phoneNumber}
                               </Text>
                           </View>
-                          <Text className="text-2xl text-black" style={{ fontFamily: 'Poppins-Bold' }}>
+                          <Text className="text-black" style={{ fontFamily: 'Poppins-Bold', fontSize: 20 }}>
                             ₦{new Intl.NumberFormat('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(quotations[currentQuoteIndex].total)}
                           </Text>
                         </View>
@@ -2033,26 +2045,26 @@ export default function OngoingJobDetails() {
                       <Text className="text-base text-black mb-3" style={{ fontFamily: 'Poppins-Bold' }}>
                         Quotation Breakdown
                       </Text>
-                      <View className="bg-white rounded-2xl border border-gray-100 px-4 py-4">
-                        <View className="flex-row items-center justify-between mb-3 pb-3 border-b border-gray-100">
-                            <Text className="text-sm text-gray-700 flex-1" style={{ fontFamily: 'Poppins-Regular' }}>
+                      <View className="bg-white rounded-2xl border px-4 py-4" style={{ borderColor: Colors.borderLight }}>
+                        <View className="flex-row items-center justify-between mb-3 pb-3 border-b" style={{ borderBottomColor: Colors.borderLight }}>
+                            <Text className="text-sm flex-1" style={{ fontFamily: 'Poppins-Regular', color: Colors.textMuted }}>
                             Labor Cost
                             </Text>
-                            <Text className="text-sm text-gray-900 ml-2" style={{ fontFamily: 'Poppins-SemiBold' }}>
+                            <Text className="text-sm ml-2" style={{ fontFamily: 'Poppins-SemiBold', color: Colors.surfaceDark }}>
                             ₦{new Intl.NumberFormat('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(quotations[currentQuoteIndex].laborCost)}
                             </Text>
                           </View>
-                        <View className="flex-row items-center justify-between mb-3 pb-3 border-b border-gray-100">
-                          <Text className="text-sm text-gray-700 flex-1" style={{ fontFamily: 'Poppins-Regular' }}>
+                        <View className="flex-row items-center justify-between mb-3 pb-3 border-b" style={{ borderBottomColor: Colors.borderLight }}>
+                          <Text className="text-sm flex-1" style={{ fontFamily: 'Poppins-Regular', color: Colors.textMuted }}>
                             Logistics Cost
                           </Text>
-                          <Text className="text-sm text-gray-900 ml-2" style={{ fontFamily: 'Poppins-SemiBold' }}>
+                          <Text className="text-sm ml-2" style={{ fontFamily: 'Poppins-SemiBold', color: Colors.surfaceDark }}>
                             ₦{new Intl.NumberFormat('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(quotations[currentQuoteIndex].logisticsCost)}
                           </Text>
                         </View>
                         {quotations[currentQuoteIndex].materials && quotations[currentQuoteIndex].materials.length > 0 && (
-                          <View className="mb-3 pb-3 border-b border-gray-100">
-                            <Text className="text-sm text-gray-700 mb-2" style={{ fontFamily: 'Poppins-Regular' }}>
+                          <View className="mb-3 pb-3 border-b" style={{ borderBottomColor: Colors.borderLight }}>
+                            <Text className="text-sm mb-2" style={{ fontFamily: 'Poppins-Regular', color: Colors.textMuted }}>
                               Materials
                             </Text>
                             {quotations[currentQuoteIndex].materials.map((material, index) => {
@@ -2061,10 +2073,10 @@ export default function OngoingJobDetails() {
                               const total = quantity * unitPrice;
                               return (
                                 <View key={index} className="flex-row items-center justify-between mb-1">
-                                  <Text className="text-xs text-gray-600 flex-1" style={{ fontFamily: 'Poppins-Regular' }}>
+                                  <Text className="text-xs flex-1" style={{ fontFamily: 'Poppins-Regular', color: Colors.textMuted }}>
                                     {material.name} (Qty: {quantity})
                                   </Text>
-                                  <Text className="text-xs text-gray-900 ml-2" style={{ fontFamily: 'Poppins-SemiBold' }}>
+                                  <Text className="text-xs ml-2" style={{ fontFamily: 'Poppins-SemiBold', color: Colors.surfaceDark }}>
                                     ₦{new Intl.NumberFormat('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(total)}
                                   </Text>
                                 </View>
@@ -2073,30 +2085,30 @@ export default function OngoingJobDetails() {
                           </View>
                         )}
                         {quotations[currentQuoteIndex].serviceCharge > 0 && (
-                          <View className="flex-row items-center justify-between mb-3 pb-3 border-b border-gray-100">
-                            <Text className="text-sm text-gray-700 flex-1" style={{ fontFamily: 'Poppins-Regular' }}>
+                          <View className="flex-row items-center justify-between mb-3 pb-3 border-b" style={{ borderBottomColor: Colors.borderLight }}>
+                            <Text className="text-sm flex-1" style={{ fontFamily: 'Poppins-Regular', color: Colors.textMuted }}>
                               Service Charge
                             </Text>
-                            <Text className="text-sm text-gray-900 ml-2" style={{ fontFamily: 'Poppins-SemiBold' }}>
+                            <Text className="text-sm ml-2" style={{ fontFamily: 'Poppins-SemiBold', color: Colors.surfaceDark }}>
                               ₦{new Intl.NumberFormat('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(quotations[currentQuoteIndex].serviceCharge)}
                             </Text>
                           </View>
                         )}
                         {quotations[currentQuoteIndex].tax > 0 && (
-                          <View className="flex-row items-center justify-between mb-3 pb-3 border-b border-gray-100">
-                            <Text className="text-sm text-gray-700 flex-1" style={{ fontFamily: 'Poppins-Regular' }}>
+                          <View className="flex-row items-center justify-between mb-3 pb-3 border-b" style={{ borderBottomColor: Colors.borderLight }}>
+                            <Text className="text-sm flex-1" style={{ fontFamily: 'Poppins-Regular', color: Colors.textMuted }}>
                               Tax
                             </Text>
-                            <Text className="text-sm text-gray-900 ml-2" style={{ fontFamily: 'Poppins-SemiBold' }}>
+                            <Text className="text-sm ml-2" style={{ fontFamily: 'Poppins-SemiBold', color: Colors.surfaceDark }}>
                               ₦{new Intl.NumberFormat('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(quotations[currentQuoteIndex].tax)}
                             </Text>
                           </View>
                         )}
-                        <View className="mt-3 pt-3 border-t border-gray-200 flex-row items-center justify-between">
+                        <View className="mt-3 pt-3 border-t flex-row items-center justify-between" style={{ borderTopColor: Colors.border }}>
                           <Text className="text-base text-black" style={{ fontFamily: 'Poppins-Bold' }}>
                             Total
                           </Text>
-                          <Text className="text-lg text-[#4F6739]" style={{ fontFamily: 'Poppins-Bold' }}>
+                          <Text className="text-lg" style={{ fontFamily: 'Poppins-Bold', color: Colors.accent }}>
                             ₦{new Intl.NumberFormat('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(quotations[currentQuoteIndex].total)}
                           </Text>
                         </View>
@@ -2122,8 +2134,8 @@ export default function OngoingJobDetails() {
                       <Text className="text-base text-black mb-3" style={{ fontFamily: 'Poppins-Bold' }}>
                           Findings & Work Required
                       </Text>
-                      <View className="bg-white rounded-2xl border border-gray-100 px-4 py-4">
-                          <Text className="text-sm text-gray-700" style={{ fontFamily: 'Poppins-Regular', lineHeight: 20 }}>
+                      <View className="bg-white rounded-2xl border px-4 py-4" style={{ borderColor: Colors.borderLight }}>
+                          <Text className="text-sm" style={{ fontFamily: 'Poppins-Regular', color: Colors.textMuted, lineHeight: 20 }}>
                             {quotations[currentQuoteIndex].findingsAndWorkRequired}
                             </Text>
                       </View>
@@ -2146,20 +2158,20 @@ export default function OngoingJobDetails() {
                         <Ionicons
                           name="chevron-back"
                           size={20}
-                          color={currentQuoteIndex === 0 ? '#9CA3AF' : Colors.accent}
+                          color={currentQuoteIndex === 0 ? Colors.tabInactive : Colors.accent}
                         />
                         <Text
                           className="text-sm ml-1"
                           style={{
                             fontFamily: 'Poppins-SemiBold',
-                            color: currentQuoteIndex === 0 ? '#9CA3AF' : Colors.accent,
+                            color: currentQuoteIndex === 0 ? Colors.tabInactive : Colors.accent,
                           }}
                         >
                           Previous
                         </Text>
                       </TouchableOpacity>
 
-                      <Text className="text-sm text-gray-600" style={{ fontFamily: 'Poppins-Medium' }}>
+                      <Text className="text-sm" style={{ fontFamily: 'Poppins-Medium', color: Colors.textMuted }}>
                         {currentQuoteIndex + 1}/{quotations.length}
                       </Text>
 
@@ -2178,7 +2190,7 @@ export default function OngoingJobDetails() {
                           className="text-sm mr-1"
                           style={{
                             fontFamily: 'Poppins-SemiBold',
-                            color: currentQuoteIndex === quotations.length - 1 ? '#9CA3AF' : Colors.accent,
+                            color: currentQuoteIndex === quotations.length - 1 ? Colors.tabInactive : Colors.accent,
                           }}
                         >
                           Next
@@ -2186,18 +2198,18 @@ export default function OngoingJobDetails() {
                         <Ionicons
                           name="chevron-forward"
                           size={20}
-                          color={currentQuoteIndex === quotations.length - 1 ? '#9CA3AF' : Colors.accent}
+                          color={currentQuoteIndex === quotations.length - 1 ? Colors.tabInactive : Colors.accent}
                         />
                       </TouchableOpacity>
                     </View>
                   </>
                 ) : (
                   <View className="items-center justify-center py-12">
-                    <Ionicons name="document-text-outline" size={48} color="#9CA3AF" />
-                    <Text className="text-gray-600 mt-4 text-center" style={{ fontFamily: 'Poppins-Medium' }}>
+                    <Ionicons name="document-text-outline" size={48} color={Colors.tabInactive} />
+                    <Text className="mt-4 text-center" style={{ fontFamily: 'Poppins-Medium', color: Colors.textMuted }}>
                       No quotations available yet.
                     </Text>
-                    <Text className="text-gray-500 mt-2 text-center text-sm" style={{ fontFamily: 'Poppins-Regular' }}>
+                    <Text className="mt-2 text-center text-sm" style={{ fontFamily: 'Poppins-Regular', color: Colors.iconMuted }}>
                       Quotations will appear here once providers submit them.
                     </Text>
                   </View>

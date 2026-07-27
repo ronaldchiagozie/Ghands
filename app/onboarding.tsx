@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import React from 'react';
+import React, { useRef } from 'react';
 import { StatusBar, View } from 'react-native';
 import OnboardingCarousel from '../components/OnboardingCarousel';
 import useOnboarding from '../hooks/useOnboarding';
@@ -16,20 +16,30 @@ export default function OnboardingScreen() {
     completeOnboarding,
   } = useOnboarding();
 
+  /** Guards a double-tap on Get Started / Skip from firing two navigations. */
+  const isLeavingRef = useRef(false);
+
+  const leaveOnboarding = async (finish: () => Promise<void>) => {
+    if (isLeavingRef.current) return;
+    isLeavingRef.current = true;
+    try {
+      await finish();
+    } finally {
+      // Account type is chosen next, which is what routes into the right signup screen.
+      router.replace('/ClientTypeSelectionScreen');
+    }
+  };
+
   const handleNext = async () => {
     if (currentSlideIndex === ONBOARDING_SLIDES.length - 1) {
-      await completeOnboarding();
-      // Navigate to client type selection after onboarding
-      router.replace('/ClientTypeSelectionScreen');
+      await leaveOnboarding(completeOnboarding);
     } else {
       nextSlide();
     }
   };
 
   const handleSkip = async () => {
-    await skipOnboarding();
-    // Navigate to client type selection after skipping
-    router.replace('/ClientTypeSelectionScreen');
+    await leaveOnboarding(skipOnboarding);
   };
 
   const handleSlideChange = (index: number) => {
@@ -42,7 +52,7 @@ export default function OnboardingScreen() {
       backgroundColor: DESIGN_TOKENS.colors.background,
     }}>
       <StatusBar
-        barStyle="default"
+        barStyle="light-content"
         backgroundColor="transparent"
         translucent={true}
         hidden={false}

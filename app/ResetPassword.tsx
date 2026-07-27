@@ -3,16 +3,24 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { useRouter } from 'expo-router';
 import { Mail } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { AuthButton } from '../components/AuthButton';
 import { InputField } from '../components/InputField';
-import { Colors, Spacing } from '@/lib/designSystem';
+import { Colors, Spacing, useKeyboardAvoidingOffset } from '@/lib/designSystem';
 import { useToast } from '../hooks/useToast';
 import Toast from '../components/Toast';
 import { passwordResetService } from '@/services/api';
 import { getSpecificErrorMessage } from '@/utils/errorMessages';
 
 export default function ResetPasswordScreen() {
+  const keyboardOffset = useKeyboardAvoidingOffset();
   const router = useRouter();
   const { toast, showError, showSuccess, hideToast } = useToast();
   const [email, setEmail] = useState('');
@@ -55,84 +63,96 @@ export default function ResetPasswordScreen() {
   return (
     <SafeAreaWrapper>
       <ScreenHeader title="" onBack={handleBackToLogin} />
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{
-          paddingHorizontal: 20,
-          paddingVertical: 24,
-          flexGrow: 1,
-        }}
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={keyboardOffset}
       >
-        {/* Title */}
-        <Text
-          style={{
-            fontSize: 32,
-            fontFamily: 'Poppins-ExtraBold',
-            color: Colors.textPrimary,
-            marginBottom: 16,
-            lineHeight: 40,
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{
+            paddingHorizontal: 20,
+            paddingVertical: 24,
+            flexGrow: 1,
           }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
-          Reset Password
-        </Text>
+          {/* Title */}
+          <Text
+            style={{
+              fontSize: 18,
+              fontFamily: 'Poppins-ExtraBold',
+              color: Colors.textPrimary,
+              letterSpacing: -0.3,
+              marginBottom: 8,
+              lineHeight: 24,
+            }}
+          >
+            Reset Password
+          </Text>
 
-        {/* Description */}
-        <Text
-          style={{
-            fontSize: 16,
-            fontFamily: 'Poppins-Medium',
-            color: Colors.textSecondaryDark,
-            marginBottom: 32,
-            lineHeight: 24,
-          }}
-        >
-          Enter your email address and we&apos;ll send you a verification code to reset your password.
-        </Text>
+          {/* Description */}
+          <Text
+            style={{
+              fontSize: 14,
+              fontFamily: 'Poppins-Regular',
+              color: Colors.textSecondaryDark,
+              marginBottom: 32,
+              lineHeight: 20,
+            }}
+          >
+            Enter your email address and we&apos;ll send you a verification code to reset your
+            password.
+          </Text>
 
-        {/* Email Input */}
-        <InputField
-          placeholder="Email address"
-          icon={<Mail size={20} color={'white'}/>}
-          keyboardType="email-address"
-          value={email}
-          onChangeText={setEmail}
-          iconPosition="left"
-        />
-
-        {/* Send Code Button */}
-        <View style={{ marginTop: 8, marginBottom: 24 }}>
-          <AuthButton
-            title={isLoading ? 'Sending...' : 'Send Reset Code'}
-            onPress={handleSendResetCode}
-            loading={isLoading}
-            disabled={isLoading}
+          {/* Email Input */}
+          <InputField
+            placeholder="Email address"
+            textContentType="emailAddress"
+            autoComplete="email"
+            icon={<Mail size={20} color={'white'} />}
+            keyboardType="email-address"
+            value={email}
+            onChangeText={setEmail}
+            iconPosition="left"
           />
-        </View>
 
-        {/* Back to Login Link */}
-        <View style={{ alignItems: 'center', marginTop: 32 }}>
-          <TouchableOpacity onPress={handleBackToLogin} activeOpacity={0.7}>
-            <Text
-              style={{
-                fontSize: 16,
-                fontFamily: 'Poppins-Medium',
-                color: Colors.textPrimary,
-              }}
-            >
-              Remember your password?{' '}
+          {/* Send Code Button */}
+          <View style={{ marginTop: 8, marginBottom: 24 }}>
+            <AuthButton
+              title={isLoading ? 'Sending...' : 'Send Reset Code'}
+              onPress={handleSendResetCode}
+              loading={isLoading}
+              disabled={isLoading}
+            />
+          </View>
+
+          {/* Back to Login Link */}
+          <View style={{ alignItems: 'center', marginTop: 32 }}>
+            <TouchableOpacity onPress={handleBackToLogin} activeOpacity={0.7}>
               <Text
                 style={{
-                  fontFamily: 'Poppins-Bold',
-                  color: Colors.accent,
+                  fontSize: 16,
+                  fontFamily: 'Poppins-Medium',
+                  color: Colors.textPrimary,
                 }}
               >
-                Back to Login
+                Remember your password?{' '}
+                <Text
+                  style={{
+                    fontFamily: 'Poppins-Bold',
+                    color: Colors.accent,
+                  }}
+                >
+                  Back to Login
+                </Text>
               </Text>
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
       <Toast
         message={toast.message}
         type={toast.type}

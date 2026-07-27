@@ -1,12 +1,10 @@
-import React, { useState } from 'react';
-import { ScrollView, Text, TouchableOpacity, View, Image, StyleSheet, InteractionManager } from 'react-native';
+import React from 'react';
+import { ScrollView, Text, TouchableOpacity, View, Image, StyleSheet } from 'react-native';
 import AnimatedModal from './AnimatedModal';
 import {Colors, BorderRadius, Spacing, MIN_TOUCH_TARGET} from '@/lib/designSystem';
 import { Edit2, Calendar, Clock, MapPin, Image as ImageIcon, Users, ChevronRight, X } from 'lucide-react-native';
 import { Button } from './ui/Button';
 import { haptics } from '@/hooks/useHaptics';
-import ProfileCompletionModal from './ProfileCompletionModal';
-import { useProfileCompletion } from '@/hooks/useProfileCompletion';
 import { formatSkillLabel } from '@/utils/formatSkillLabel';
 
 export interface BookingSummaryData {
@@ -48,9 +46,6 @@ export default function BookingSummaryModal({
   onEditProviders,
   data,
 }: BookingSummaryModalProps) {
-  const { isProfileComplete, checkProfileComplete, markProfileComplete } = useProfileCompletion();
-  const [showProfileModal, setShowProfileModal] = useState(false);
-
   const handleEdit = (callback?: (data: BookingSummaryData) => void) => {
     haptics.light();
     onClose();
@@ -59,50 +54,9 @@ export default function BookingSummaryModal({
     }
   };
 
-  const handleConfirm = async () => {
-    // First check cached state (faster)
-    if (isProfileComplete === true) {
-      // Profile is already complete, proceed with booking
-      haptics.success();
-      onConfirm();
-      return;
-    }
-
-    // Double-check AsyncStorage to be absolutely sure (in case state is stale)
-    const profileComplete = await checkProfileComplete();
-    
-    if (!profileComplete) {
-      // Defer opening nested modal until after animations settle (reduces hang)
-      InteractionManager.runAfterInteractions(() => {
-        setShowProfileModal(true);
-      });
-      return;
-    }
-
-    // Profile is complete, proceed with booking
+  const handleConfirm = () => {
     haptics.success();
     onConfirm();
-  };
-
-  const handleProfileComplete = async (_profileData: {
-    fullName: string;
-    phoneNumber: string;
-    gender: string;
-  }) => {
-    // Mark profile as complete immediately to prevent showing modal again
-    await markProfileComplete();
-    
-    // Close the profile modal
-    setShowProfileModal(false);
-    
-    // Profile completion modal is already closed by ProfileCompletionModal
-    // Now proceed with booking confirmation
-    haptics.success();
-    
-    // Small delay to ensure modal is fully closed
-    setTimeout(() => {
-      onConfirm();
-    }, 300);
   };
 
   return (
@@ -110,7 +64,7 @@ export default function BookingSummaryModal({
       visible={visible}
       onClose={onClose}
       dismissible={true}
-      backdropOpacity={showProfileModal ? 0 : 0.38}
+      backdropOpacity={0.38}
     >
       <View style={styles.container}>
         {/* Header */}
@@ -310,15 +264,6 @@ export default function BookingSummaryModal({
           />
         </View>
       </View>
-
-      {/* Profile Completion Modal - Lazy mount to reduce nested modal jank */}
-      {showProfileModal && isProfileComplete !== true ? (
-        <ProfileCompletionModal
-          visible={showProfileModal}
-          onClose={() => setShowProfileModal(false)}
-          onComplete={handleProfileComplete}
-        />
-      ) : null}
     </AnimatedModal>
   );
 }

@@ -445,9 +445,16 @@ export default function DateTimeScreen() {
           <View className="flex-row items-center mb-4">
             <TouchableOpacity
               onPress={handleBack}
-              className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-gray-100"
+              className="mr-3 items-center justify-center rounded-full"
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
+              style={{
+                width: MIN_TOUCH_TARGET,
+                height: MIN_TOUCH_TARGET,
+                backgroundColor: Colors.backgroundGray,
+              }}
             >
-              <ArrowLeft size={20} color="#111827" />
+              <ArrowLeft size={20} color={Colors.surfaceDark} />
             </TouchableOpacity>
             <Text className="text-xl text-black" style={{ fontFamily: 'Poppins-Bold' }}>
               Date & Time
@@ -464,7 +471,7 @@ export default function DateTimeScreen() {
             <Text className="text-base text-black mb-3" style={{ fontFamily: 'Poppins-SemiBold' }}>
               Select Date
             </Text>
-            <View className="rounded-2xl bg-white border border-gray-200 p-4 shadow-[0_6px_18px_rgba(16,24,40,0.05)]">
+            <View className="rounded-2xl bg-white border p-4" style={{ borderColor: Colors.border }}>
               <View className="flex-row items-center justify-between mb-4">
                 <Text className="text-base text-black" style={{ fontFamily: 'Poppins-SemiBold' }}>
                   {monthYear}
@@ -477,7 +484,7 @@ export default function DateTimeScreen() {
                     activeOpacity={canGoPreviousMonth ? 0.7 : 1}
                     accessibilityLabel="Previous month"
                   >
-                    <ChevronLeft size={16} color={canGoPreviousMonth ? '#111827' : '#9CA3AF'} />
+                    <ChevronLeft size={16} color={canGoPreviousMonth ? Colors.surfaceDark : Colors.tabInactive} />
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={handleNextMonth}
@@ -485,7 +492,7 @@ export default function DateTimeScreen() {
                     activeOpacity={0.7}
                     accessibilityLabel="Next month"
                   >
-                    <ChevronRight size={16} color="#111827" />
+                    <ChevronRight size={16} color={Colors.surfaceDark} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -493,7 +500,7 @@ export default function DateTimeScreen() {
               <View className="flex-row mb-2">
                 {DAYS.map((day) => (
                   <View key={day} className="flex-1 items-center py-2">
-                    <Text className="text-xs text-gray-500" style={{ fontFamily: 'Poppins-Medium' }}>
+                    <Text className="text-xs" style={{ fontFamily: 'Poppins-Medium', color: Colors.iconMuted }}>
                       {day}
                     </Text>
                   </View>
@@ -518,28 +525,30 @@ export default function DateTimeScreen() {
                       style={{ opacity: !isCurrentMonth ? 0.35 : isPastDay ? 0.4 : 1 }}
                     >
                       <View
-                        className={`flex-1 items-center justify-center rounded-full ${
-                          selected
-                            ? 'bg-[#4F6739]'
+                        className="flex-1 items-center justify-center rounded-full"
+                        style={{
+                          backgroundColor: selected
+                            ? Colors.accent
                             : today && !isPastDay
-                              ? 'bg-gray-100 border border-gray-300'
-                              : 'bg-transparent'
-                        }`}
+                              ? Colors.backgroundGray
+                              : 'transparent',
+                          borderWidth: !selected && today && !isPastDay ? 1 : 0,
+                          borderColor: Colors.borderStrong,
+                        }}
                       >
                         <Text
-                          className={`text-sm ${
-                            selected
-                              ? 'text-white'
-                              : isCurrentMonth
-                                ? isPastDay
-                                  ? 'text-gray-400'
-                                  : today
-                                    ? 'text-black'
-                                    : 'text-gray-700'
-                                : 'text-gray-300'
-                          }`}
+                          className="text-sm"
                           style={{
                             fontFamily: selected ? 'Poppins-SemiBold' : 'Poppins-Medium',
+                            color: selected
+                              ? Colors.white
+                              : !isCurrentMonth
+                                ? Colors.textTertiary
+                                : isPastDay
+                                  ? Colors.tabInactive
+                                  : today
+                                    ? Colors.textPrimary
+                                    : Colors.textMuted,
                           }}
                         >
                           {day}
@@ -558,7 +567,7 @@ export default function DateTimeScreen() {
             </Text>
 
             <View className="mb-4">
-              <Text className="text-sm text-gray-600 mb-2" style={{ fontFamily: 'Poppins-Medium' }}>
+              <Text className="text-sm mb-2" style={{ fontFamily: 'Poppins-Medium', color: Colors.textMuted }}>
                 AM
               </Text>
               <View className="flex-row flex-wrap gap-2">
@@ -573,20 +582,19 @@ export default function DateTimeScreen() {
                       onPress={() => handleTimeSelect(hour)}
                       disabled={disabled}
                       activeOpacity={disabled ? 1 : 0.7}
-                      className={`rounded-xl px-4 py-3 border ${
-                        isSelected
-                          ? 'bg-[#4F6739] border-[#4F6739]'
-                          : disabled
-                            ? 'bg-gray-50 border-gray-100'
-                            : 'bg-white border-gray-200'
-                      }`}
-                      style={{ opacity: disabled && !isSelected ? 0.45 : 1 }}
+                      className="rounded-xl px-4 py-3 border"
+                      style={{
+                        backgroundColor: isSelected ? Colors.accent : disabled ? Colors.surfaceSubtle : Colors.white,
+                        borderColor: isSelected ? Colors.accent : disabled ? Colors.borderLight : Colors.border,
+                        opacity: disabled && !isSelected ? 0.45 : 1,
+                      }}
                     >
                       <Text
-                        className={`text-sm ${
-                          isSelected ? 'text-white' : disabled ? 'text-gray-400' : 'text-[#4F6739]'
-                        }`}
-                        style={{ fontFamily: 'Poppins-SemiBold' }}
+                        className="text-sm"
+                        style={{
+                          fontFamily: 'Poppins-SemiBold',
+                          color: isSelected ? Colors.white : disabled ? Colors.tabInactive : Colors.accent,
+                        }}
                       >
                         {hour}
                       </Text>
@@ -597,7 +605,7 @@ export default function DateTimeScreen() {
             </View>
 
             <View>
-              <Text className="text-sm text-gray-600 mb-2" style={{ fontFamily: 'Poppins-Medium' }}>
+              <Text className="text-sm mb-2" style={{ fontFamily: 'Poppins-Medium', color: Colors.textMuted }}>
                 PM
               </Text>
               <View className="flex-row flex-wrap gap-2">
@@ -612,20 +620,19 @@ export default function DateTimeScreen() {
                       onPress={() => handleTimeSelect(hour)}
                       disabled={disabled}
                       activeOpacity={disabled ? 1 : 0.7}
-                      className={`rounded-xl px-4 py-3 border ${
-                        isSelected
-                          ? 'bg-[#4F6739] border-[#4F6739]'
-                          : disabled
-                            ? 'bg-gray-50 border-gray-100'
-                            : 'bg-white border-gray-200'
-                      }`}
-                      style={{ opacity: disabled && !isSelected ? 0.45 : 1 }}
+                      className="rounded-xl px-4 py-3 border"
+                      style={{
+                        backgroundColor: isSelected ? Colors.accent : disabled ? Colors.surfaceSubtle : Colors.white,
+                        borderColor: isSelected ? Colors.accent : disabled ? Colors.borderLight : Colors.border,
+                        opacity: disabled && !isSelected ? 0.45 : 1,
+                      }}
                     >
                       <Text
-                        className={`text-sm ${
-                          isSelected ? 'text-white' : disabled ? 'text-gray-400' : 'text-[#4F6739]'
-                        }`}
-                        style={{ fontFamily: 'Poppins-SemiBold' }}
+                        className="text-sm"
+                        style={{
+                          fontFamily: 'Poppins-SemiBold',
+                          color: isSelected ? Colors.white : disabled ? Colors.tabInactive : Colors.accent,
+                        }}
                       >
                         {hour}
                       </Text>

@@ -1,5 +1,5 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
-import { Colors, Fonts } from '@/lib/designSystem';
+import { Colors } from '@/lib/designSystem';
 import { useRouter } from 'expo-router';
 import { Building2, User, Users } from 'lucide-react-native';
 import React, { useEffect, useRef } from 'react';
@@ -95,7 +95,8 @@ export default function ClientTypeSelectionScreen() {
           >
             <Text
               style={{
-                ...Fonts.h3,
+                fontSize: 18,
+                lineHeight: 24,
                 textAlign: 'left',
                 marginBottom: 24,
                 color: Colors.textPrimary,

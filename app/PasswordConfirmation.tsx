@@ -1,18 +1,26 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { Spacing, Colors } from '@/lib/designSystem';
+import { Spacing, Colors, useKeyboardAvoidingOffset } from '@/lib/designSystem';
 import { passwordResetService } from '@/services/api';
 import { getSpecificErrorMessage } from '@/utils/errorMessages';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Lock } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { AuthButton } from '../components/AuthButton';
 import { InputField } from '../components/InputField';
 import { useToast } from '../hooks/useToast';
 import Toast from '../components/Toast';
 
 export default function PasswordConfirmationScreen() {
+  const keyboardOffset = useKeyboardAvoidingOffset();
   const router = useRouter();
   const { email: emailParam, otp: otpParam } = useLocalSearchParams<{
     email?: string;
@@ -78,98 +86,111 @@ export default function PasswordConfirmationScreen() {
   return (
     <SafeAreaWrapper>
       <ScreenHeader title="" onBack={handleBackToOtp} />
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{
-          paddingHorizontal: 20,
-          paddingVertical: 24,
-          flexGrow: 1,
-        }}
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={keyboardOffset}
       >
-        {/* Title */}
-        <Text
-          style={{
-            fontSize: 32,
-            fontFamily: 'Poppins-ExtraBold',
-            color: Colors.textPrimary,
-            marginBottom: 16,
-            lineHeight: 40,
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{
+            paddingHorizontal: 20,
+            paddingVertical: 24,
+            flexGrow: 1,
           }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
-          Create New Password
-        </Text>
+          {/* Title */}
+          <Text
+            style={{
+              fontSize: 18,
+              fontFamily: 'Poppins-ExtraBold',
+              color: Colors.textPrimary,
+              letterSpacing: -0.3,
+              marginBottom: 8,
+              lineHeight: 24,
+            }}
+          >
+            Create New Password
+          </Text>
 
-        {/* Description */}
-        <Text
-          style={{
-            fontSize: 16,
-            fontFamily: 'Poppins-Medium',
-            color: Colors.textSecondaryDark,
-            marginBottom: 32,
-            lineHeight: 24,
-          }}
-        >
-          Your new password must be different from your previous password.
-        </Text>
+          {/* Description */}
+          <Text
+            style={{
+              fontSize: 14,
+              fontFamily: 'Poppins-Regular',
+              color: Colors.textSecondaryDark,
+              marginBottom: 32,
+              lineHeight: 20,
+            }}
+          >
+            Your new password must be different from your previous password.
+          </Text>
 
-        {/* New Password Input */}
-        <View style={{ marginBottom: 16 }}>
-          <InputField
-            placeholder="New password"
-            icon={<Lock size={18} color="white" />}
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-            iconPosition="left"
-          />
-        </View>
+          {/* New Password Input */}
+          <View style={{ marginBottom: 16 }}>
+            <InputField
+              placeholder="New password"
+              textContentType="newPassword"
+              autoComplete="new-password"
+              icon={<Lock size={18} color="white" />}
+              secureTextEntry
+              value={password}
+              onChangeText={setPassword}
+              iconPosition="left"
+            />
+          </View>
 
-        {/* Confirm Password Input */}
-        <View style={{ marginBottom: 32 }}>
-          <InputField
-            placeholder="Confirm new password"
-            icon={<Lock size={18} color="white" />}
-            secureTextEntry
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            iconPosition="left"
-          />
-        </View>
+          {/* Confirm Password Input */}
+          <View style={{ marginBottom: 32 }}>
+            <InputField
+              placeholder="Confirm new password"
+              textContentType="newPassword"
+              autoComplete="new-password"
+              icon={<Lock size={18} color="white" />}
+              secureTextEntry
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              iconPosition="left"
+            />
+          </View>
 
-        {/* Reset Password Button */}
-        <View style={{ marginTop: 8, marginBottom: 24 }}>
-          <AuthButton
-            title={isLoading ? 'Resetting...' : 'Reset Password'}
-            onPress={handleResetPassword}
-            loading={isLoading}
-            disabled={isLoading}
-          />
-        </View>
+          {/* Reset Password Button */}
+          <View style={{ marginTop: 8, marginBottom: 24 }}>
+            <AuthButton
+              title={isLoading ? 'Resetting...' : 'Reset Password'}
+              onPress={handleResetPassword}
+              loading={isLoading}
+              disabled={isLoading}
+            />
+          </View>
 
-        {/* Back to Login Link */}
-        <View style={{ alignItems: 'center', marginTop: 32 }}>
-          <TouchableOpacity onPress={() => router.push('/LoginScreen')} activeOpacity={0.7}>
-            <Text
-              style={{
-                fontSize: 16,
-                fontFamily: 'Poppins-Medium',
-                color: Colors.textPrimary,
-              }}
-            >
-              Remember your password?{' '}
+          {/* Back to Login Link */}
+          <View style={{ alignItems: 'center', marginTop: 32 }}>
+            <TouchableOpacity onPress={() => router.push('/LoginScreen')} activeOpacity={0.7}>
               <Text
                 style={{
-                  fontFamily: 'Poppins-Bold',
-                  color: Colors.accent,
+                  fontSize: 16,
+                  fontFamily: 'Poppins-Medium',
+                  color: Colors.textPrimary,
                 }}
               >
-                Back to Login
+                Remember your password?{' '}
+                <Text
+                  style={{
+                    fontFamily: 'Poppins-Bold',
+                    color: Colors.accent,
+                  }}
+                >
+                  Back to Login
+                </Text>
               </Text>
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
       <Toast
         message={toast.message}
         type={toast.type}

@@ -9,7 +9,6 @@ import { MessageSquare, Plus } from 'lucide-react-native';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Animated,
   Easing,
   Modal,
@@ -21,6 +20,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { showAppAlert } from '@/components/AppAlertHost';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type AiConversationDrawerProps = {
@@ -185,7 +185,7 @@ export default function AiConversationDrawer({
 
   const handleDelete = (conversation: AiConversationSummary) => {
     haptics.light();
-    Alert.alert(
+    showAppAlert(
       'Delete conversation',
       'This chat will be removed permanently.',
       [

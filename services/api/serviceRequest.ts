@@ -249,8 +249,16 @@ export const serviceRequestService = {
     }
   },
 
-  cancelRequest: async (requestId: number): Promise<{ requestId: number; status: string; message: string }> => {
-    const response = await apiClient.delete<any>(`/api/request-service/requests/${requestId}`);
+  cancelRequest: async (
+    requestId: number,
+    feedback?: { reason?: string; note?: string },
+  ): Promise<{ requestId: number; status: string; message: string }> => {
+    const response = await apiClient.delete<any>(
+      `/api/request-service/requests/${requestId}`,
+      feedback?.reason || feedback?.note
+        ? { body: JSON.stringify({ reason: feedback.reason, note: feedback.note }) }
+        : undefined,
+    );
     const data = extractResponseData<any>(response);
     const inner = data?.data?.data ?? data?.data ?? data ?? {};
     return {

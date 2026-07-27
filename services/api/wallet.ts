@@ -1,5 +1,8 @@
 import { apiClient, extractResponseData } from './client';
 import type { PayForServicePayload, PayForServiceResponse } from './types';
+import { logWalletApiError, logWalletApiResponse } from '@/utils/paymentFlowLog';
+import { summarizeTransactionRows } from '@/utils/logSanitize';
+import { mapWalletAccountStatus, type WalletAccountStatus } from '@/utils/walletAccountStatus';
 
 export type { PayForServicePayload, PayForServiceResponse };
 
@@ -57,6 +60,77 @@ function normalizeDepositStatus(raw: unknown): 'completed' | 'pending' | 'failed
   return 'pending';
 }
 
+function readBankCode(raw: Record<string, unknown>): string {
+  const value =
+    raw.code ??
+    raw.bankCode ??
+    raw.bank_code ??
+    raw.nipCode ??
+    raw.nip_code ??
+    raw.bank_code_nibss;
+  if (value === null || value === undefined) return '';
+  const s = String(value).trim();
+  if (/^\d{1,3}$/.test(s)) return s.padStart(3, '0');
+  return s;
+}
+
+function readBankName(raw: Record<string, unknown>): string {
+  const value = raw.name ?? raw.bankName ?? raw.bank_name ?? raw.label ?? raw.title;
+  if (value === null || value === undefined) return '';
+  return String(value).trim();
+}
+
+function extractRawBankRows(payload: unknown): unknown[] {
+  if (Array.isArray(payload)) return payload;
+  if (!payload || typeof payload !== 'object') return [];
+  const obj = payload as Record<string, unknown>;
+
+  const fromObject = (source: Record<string, unknown>): unknown[] => {
+    if (Array.isArray(source.banks)) return source.banks;
+    if (Array.isArray(source.data)) return source.data;
+    if (Array.isArray(source.items)) return source.items;
+    if (Array.isArray(source.results)) return source.results;
+    if (Array.isArray(source.list)) return source.list;
+    return [];
+  };
+
+  let rows = fromObject(obj);
+  if (rows.length > 0) return rows;
+
+  const nested = obj.data;
+  if (Array.isArray(nested)) return nested;
+  if (nested && typeof nested === 'object') {
+    rows = fromObject(nested as Record<string, unknown>);
+    if (rows.length > 0) return rows;
+    const deep = (nested as Record<string, unknown>).data;
+    if (Array.isArray(deep)) return deep;
+  }
+
+  return [];
+}
+
+function normalizeBanksFromApiResponse(response: unknown): Bank[] {
+  const layers = [
+    extractResponseData<any>(response),
+    (response as any)?.data,
+    response,
+  ];
+
+  let rawList: unknown[] = [];
+  for (const layer of layers) {
+    rawList = extractRawBankRows(layer);
+    if (rawList.length > 0) break;
+  }
+
+  return rawList
+    .map((row) => {
+      const record = row && typeof row === 'object' ? (row as Record<string, unknown>) : {};
+      return { code: readBankCode(record), name: readBankName(record) };
+    })
+    .filter((bank) => bank.code && bank.name)
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
 function mapDepositVerification(reference: string, verificationData: Record<string, unknown>): DepositVerification {
   const wallet =
     verificationData.wallet && typeof verificationData.wallet === 'object'
@@ -83,18 +157,30 @@ function mapDepositVerification(reference: string, verificationData: Record<stri
 }
 
 export const walletService = {
-  getWallet: async (): Promise<{ id: number; balance: number; currency: string; isPinSet: boolean }> => {
+  getWallet: async (): Promise<{
+    id: number;
+    balance: number;
+    currency: string;
+    isPinSet: boolean;
+    accountStatus: WalletAccountStatus;
+  }> => {
     const response = await apiClient.get<any>('/api/wallet');
     const responseData = extractResponseData<any>(response);
     const walletData = responseData?.data || responseData;
     if (!walletData) throw new Error('Invalid response from wallet API.');
     const balance = typeof walletData.balance === 'number' ? walletData.balance : parseFloat(walletData.balance) || 0;
-    return {
+    const accountStatus = mapWalletAccountStatus(
+      typeof walletData === 'object' && walletData !== null ? (walletData as Record<string, unknown>) : {},
+    );
+    const result = {
       id: walletData.id || 0,
       balance,
       currency: walletData.currency || 'NGN',
       isPinSet: walletData.isPinSet || false,
+      accountStatus,
     };
+    void logWalletApiResponse('API GET /api/wallet', {}, { wallet: result, raw: walletData });
+    return result;
   },
 
   setPin: async (payload: { pin: string; confirmPin: string }): Promise<{ message: string }> => {
@@ -128,7 +214,13 @@ export const walletService = {
     if (!depositData?.authorizationUrl || !depositData?.reference) {
       throw new Error('Invalid response from deposit API. Missing authorizationUrl or reference.');
     }
-    return { authorizationUrl: depositData.authorizationUrl, reference: depositData.reference };
+    const result = { authorizationUrl: depositData.authorizationUrl, reference: depositData.reference };
+    void logWalletApiResponse(
+      'API POST /api/wallet/deposit',
+      { reference: result.reference, detail: `amount=${apiPayload.amount}` },
+      depositData,
+    );
+    return result;
   },
 
   verifyDeposit: async (reference: string): Promise<DepositVerification> => {
@@ -140,24 +232,66 @@ export const walletService = {
         throw new Error('Invalid response from verification API.');
       }
 
-      return mapDepositVerification(reference, verificationData);
+      const mapped = mapDepositVerification(reference, verificationData);
+      void logWalletApiResponse(
+        'API GET /api/wallet/deposit/verify',
+        { reference, detail: `mappedStatus=${mapped.status}` },
+        { raw: verificationData, mapped },
+      );
+      return mapped;
     } catch (error: unknown) {
       const msg = String((error as Error)?.message ?? '').toLowerCase();
       if (msg.includes('processing') || msg.includes('pending')) {
+        void logWalletApiResponse(
+          'API GET /api/wallet/deposit/verify (pending)',
+          { reference },
+          { status: 'pending', message: (error as Error)?.message },
+        );
         return { reference, status: 'pending', amount: 0, balance: 0 };
       }
+      void logWalletApiError('API GET /api/wallet/deposit/verify (error)', { reference }, error);
       throw error;
     }
   },
 
   payForService: async (payload: PayForServicePayload): Promise<PayForServiceResponse> => {
-    const response = await apiClient.post<any>('/api/wallet/pay', payload);
-    return (response as any).data;
+    try {
+      const response = await apiClient.post<any>('/api/wallet/pay', payload);
+      const data = (response as any).data;
+      void logWalletApiResponse(
+        'API POST /api/wallet/pay',
+        { detail: `requestId=${payload.requestId}`, transactionId: String(payload.requestId) },
+        data,
+      );
+      return data;
+    } catch (error) {
+      void logWalletApiError(
+        'API POST /api/wallet/pay (error)',
+        { detail: `requestId=${payload.requestId}` },
+        error,
+      );
+      throw error;
+    }
   },
 
   payLogisticsFee: async (payload: { requestId: number; amount: number; pin: string }): Promise<PayForServiceResponse> => {
-    const response = await apiClient.post<any>('/api/wallet/pay-logistics-fee', payload);
-    return (response as any)?.data?.data ?? (response as any)?.data;
+    try {
+      const response = await apiClient.post<any>('/api/wallet/pay-logistics-fee', payload);
+      const data = (response as any)?.data?.data ?? (response as any)?.data;
+      void logWalletApiResponse(
+        'API POST /api/wallet/pay-logistics-fee',
+        { detail: `requestId=${payload.requestId}` },
+        data,
+      );
+      return data;
+    } catch (error) {
+      void logWalletApiError(
+        'API POST /api/wallet/pay-logistics-fee (error)',
+        { detail: `requestId=${payload.requestId}` },
+        error,
+      );
+      throw error;
+    }
   },
 
   withdraw: async (payload: { bankAccountId: number; amount: number; pin: string; narration?: string }): Promise<{
@@ -177,18 +311,30 @@ export const walletService = {
   },
 
   getBanks: async (countryCode: string = 'NG'): Promise<Bank[]> => {
-    const response = await apiClient.get<any>(`/api/wallet/banks?countryCode=${encodeURIComponent(countryCode)}`);
-    const data = extractResponseData<any>(response);
-    const list = Array.isArray(data) ? data : (data?.data || []);
-    return list.map((b: any) => ({ code: b.code || b.bankCode || '', name: b.name || b.bankName || '' }));
+    const response = await apiClient.get<any>(
+      `/api/wallet/banks?countryCode=${encodeURIComponent(countryCode)}`,
+    );
+    const banks = normalizeBanksFromApiResponse(response);
+    if (__DEV__ && banks.length === 0) {
+      console.log(
+        '[WalletActivity] GET /api/wallet/banks parsed 0 rows; raw keys:',
+        response && typeof response === 'object' ? Object.keys(response as object) : typeof response,
+      );
+    }
+    void logWalletApiResponse(
+      'API GET /api/wallet/banks',
+      { countryCode },
+      { count: banks.length, sample: banks.slice(0, 3) },
+    );
+    return banks;
   },
 
   resolveBankAccount: async (bankCode: string, accountNumber: string): Promise<ResolveAccountResponse> => {
     const response = await apiClient.post<any>('/api/wallet/banks/resolve', { bankCode, accountNumber });
     const data = extractResponseData<any>(response)?.data || extractResponseData<any>(response);
     return {
-      accountName: data?.accountName || '',
-      accountNumber: data?.accountNumber || accountNumber,
+      accountName: String(data?.accountName ?? data?.account_name ?? '').trim(),
+      accountNumber: String(data?.accountNumber ?? data?.account_number ?? accountNumber).trim(),
     };
   },
 
@@ -253,11 +399,23 @@ export const walletService = {
     const response = await apiClient.get<any>(`/api/wallet/transactions${query}`);
     const responseData = extractResponseData<any>(response);
     const inner = responseData?.data?.data || responseData?.data || responseData;
-    return {
-      transactions: inner?.transactions || [],
-      total: inner?.total ?? (inner?.transactions || []).length,
+    const transactions = inner?.transactions || [];
+    const result = {
+      transactions,
+      total: inner?.total ?? transactions.length,
       limit: inner?.limit ?? limit,
       offset: inner?.offset ?? offset,
     };
+    void logWalletApiResponse(
+      'API GET /api/wallet/transactions',
+      { detail: `count=${transactions.length} total=${result.total}` },
+      {
+        total: result.total,
+        limit: result.limit,
+        offset: result.offset,
+        transactions: summarizeTransactionRows(transactions as Array<Record<string, unknown>>),
+      },
+    );
+    return result;
   },
 };

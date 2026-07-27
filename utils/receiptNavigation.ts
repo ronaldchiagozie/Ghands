@@ -8,6 +8,12 @@ type ClientReceiptParams = {
   amount?: string;
   reference?: string;
   quotationId?: string;
+  /** From wallet transaction row — defaults to completed when omitted (post-payment flow). */
+  status?: 'completed' | 'pending' | 'failed';
+  serviceDate?: string;
+  serviceTime?: string;
+  paymentDate?: string;
+  failureReason?: string;
 };
 
 type ProviderReceiptParams = {

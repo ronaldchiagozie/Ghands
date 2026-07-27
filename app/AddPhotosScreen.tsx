@@ -3,18 +3,16 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/ui/Button';
 import Toast from '@/components/Toast';
 import { useToast } from '@/hooks/useToast';
-import { Colors } from '@/lib/designSystem';
+import { BorderRadius, Colors, Spacing } from '@/lib/designSystem';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Camera, Plus, X } from 'lucide-react-native';
 import { navigateBookingStepBack } from '@/utils/bookingFlowNavigation';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Dimensions, Image, Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Animated, Image, Modal, ScrollView, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 
 const BOOKING_PHOTO_URIS_KEY = '@ghands:booking_photo_uris';
-
-const { width: screenWidth } = Dimensions.get('window');
-const IMAGE_SIZE = (screenWidth - 48) / 3 - 8;
 
 interface PhotoItem {
   id: string;
@@ -24,6 +22,8 @@ interface PhotoItem {
 
 export default function AddPhotosScreen() {
   const router = useRouter();
+  const { width: screenWidth } = useWindowDimensions();
+  const IMAGE_SIZE = (screenWidth - 48) / 3 - 8;
   const params = useLocalSearchParams<{ 
     requestId?: string;
     categoryName?: string;
@@ -51,6 +51,33 @@ export default function AddPhotosScreen() {
       // For now, we just ensure the count is preserved
     }
   }, [params]);
+
+  useEffect(() => {
+    if (params.fromAiAssistant !== 'true') return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(BOOKING_PHOTO_URIS_KEY);
+        if (!raw || cancelled) return;
+        const uris = JSON.parse(raw) as unknown;
+        if (!Array.isArray(uris)) return;
+        const valid = uris.filter((u): u is string => typeof u === 'string' && u.length > 0);
+        if (valid.length === 0) return;
+        const imported = valid.map((uri) => ({
+          id: `photo-ai-${Date.now()}-${Math.random()}`,
+          uri,
+          selected: true,
+        }));
+        setPhotos(imported);
+        setSelectedPhotos(new Set(imported.map((p) => p.id)));
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [params.fromAiAssistant]);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -298,45 +325,38 @@ export default function AddPhotosScreen() {
           <View
             className="items-center mb-6"
             style={{
-              backgroundColor: '#0a0a0a',
-              borderRadius: 24,
-              padding: 22,
-              overflow: 'hidden',
+              backgroundColor: Colors.sageSurface,
+              borderRadius: BorderRadius.sageHero,
+              borderWidth: 1,
+              borderColor: Colors.borderSage,
+              padding: Spacing.xl,
             }}
           >
             <View
-              style={{
-                position: 'absolute',
-                top: -50,
-                right: -50,
-                width: 150,
-                height: 150,
-                borderRadius: 75,
-                backgroundColor: Colors.accent,
-                opacity: 0.14,
-              }}
-            />
-            <View className="w-20 h-20 rounded-full items-center justify-center mb-4" style={{ backgroundColor: 'rgba(202,255,51,0.18)' }}>
+              className="w-20 h-20 rounded-full items-center justify-center mb-4"
+              style={{ backgroundColor: Colors.sageTint }}
+            >
               <Camera size={34} color={Colors.accent} />
             </View>
-            <Text className="text-lg text-white mb-2 text-center" style={{ fontFamily: 'Poppins-Bold' }}>
+            <Text className="text-lg mb-2 text-center" style={{ fontFamily: 'Poppins-Bold', color: Colors.textPrimary }}>
               Add photos of the issue
             </Text>
-            <Text className="text-sm text-center" style={{ fontFamily: 'Poppins-Medium', color: 'rgba(255,255,255,0.68)', lineHeight: 20 }}>
+            <Text className="text-sm text-center" style={{ fontFamily: 'Poppins-Medium', color: Colors.textMuted, lineHeight: 20 }}>
               Help providers understand the problem better. You can skip this step if you don&apos;t have photos.
             </Text>
           </View>
 
-          <TouchableOpacity
-            onPress={handleUploadPhotos}
-            activeOpacity={0.85}
-            className="bg-[#4F6739] rounded-2xl py-4 px-6 items-center justify-center flex-row mb-6"
-          >
-            <Plus size={20} color="#FFFFFF" />
-            <Text className="text-white text-base ml-2" style={{ fontFamily: 'Poppins-SemiBold' }}>
-              Upload Photos
-            </Text>
-          </TouchableOpacity>
+          <View className="mb-6">
+            <Button
+              title="Upload Photos"
+              onPress={handleUploadPhotos}
+              variant="primary"
+              size="large"
+              fullWidth
+              icon={<Plus size={20} color={Colors.white} />}
+              iconPosition="left"
+            />
+          </View>
 
           {photos.length > 0 && (
             <View className="mb-6">
@@ -360,12 +380,17 @@ export default function AddPhotosScreen() {
                         resizeMode="cover"
                       />
                       <View
-                        className={`absolute inset-0 rounded-xl border-2 ${
-                          isSelected ? 'border-[#4F6739] bg-[#4F6739]/20' : 'border-transparent'
-                        }`}
+                        className="absolute inset-0 rounded-xl border-2"
+                        style={{
+                          borderColor: isSelected ? Colors.accent : 'transparent',
+                          backgroundColor: isSelected ? Colors.successLight : 'transparent',
+                        }}
                       >
                         {isSelected && (
-                          <View className="absolute top-2 right-2 w-6 h-6 rounded-full bg-[#4F6739] items-center justify-center">
+                          <View
+                            className="absolute top-2 right-2 w-6 h-6 rounded-full items-center justify-center"
+                            style={{ backgroundColor: Colors.accent }}
+                          >
                             <View className="w-3 h-3 rounded-full bg-white" />
                           </View>
                         )}
@@ -376,8 +401,11 @@ export default function AddPhotosScreen() {
                           handleRemovePhoto(photo.id);
                         }}
                         className="absolute top-1 left-1 w-6 h-6 rounded-full bg-black/50 items-center justify-center"
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        accessibilityRole="button"
+                        accessibilityLabel="Remove photo"
                       >
-                        <X size={14} color="#FFFFFF" />
+                        <X size={14} color={Colors.white} />
                       </TouchableOpacity>
                     </TouchableOpacity>
                   );
@@ -391,10 +419,10 @@ export default function AddPhotosScreen() {
               className="mb-6"
               style={{
                 backgroundColor: Colors.white,
-                borderRadius: 20,
-                padding: 16,
+                borderRadius: BorderRadius.lg,
+                padding: Spacing.lg,
                 borderWidth: 1,
-                borderColor: 'rgba(17, 24, 39, 0.045)',
+                borderColor: Colors.border,
               }}
             >
               <Text className="text-black mb-3" style={{ fontFamily: 'Poppins-Bold', fontSize: 15 }}>
@@ -404,31 +432,43 @@ export default function AddPhotosScreen() {
               {[1, 2, 3].map((index) => (
                 <View
                   key={index}
-                  className="rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 items-center justify-center"
-                  style={{ width: IMAGE_SIZE, height: IMAGE_SIZE }}
+                  className="rounded-xl border-2 border-dashed items-center justify-center"
+                  style={{
+                    width: IMAGE_SIZE,
+                    height: IMAGE_SIZE,
+                    borderColor: Colors.borderStrong,
+                    backgroundColor: Colors.surfaceSubtle,
+                  }}
                 >
-                  <Camera size={24} color="#9CA3AF" />
+                  <Camera size={24} color={Colors.tabInactive} />
                 </View>
               ))}
               </View>
             </View>
           )}
 
-          <View className="rounded-2xl bg-[#FFF7DF] border border-[#F59E0B]/20 px-4 py-4 mb-6">
+          <View
+            className="rounded-2xl px-4 py-4 mb-6"
+            style={{
+              backgroundColor: Colors.warningLight,
+              borderWidth: 1,
+              borderColor: Colors.warning,
+            }}
+          >
             <View className="flex-row items-center mb-2">
-              <Camera size={18} color="#D97706" />
-              <Text className="text-sm text-[#D97706] ml-2" style={{ fontFamily: 'Poppins-SemiBold' }}>
+              <Camera size={18} color={Colors.warningForeground} />
+              <Text className="text-sm ml-2" style={{ fontFamily: 'Poppins-SemiBold', color: Colors.warningForeground }}>
                 Photo Tips
               </Text>
             </View>
             <View className="ml-6">
-              <Text className="text-xs text-[#D97706] mb-1" style={{ fontFamily: 'Poppins-Medium' }}>
+              <Text className="text-xs mb-1" style={{ fontFamily: 'Poppins-Medium', color: Colors.warningForeground }}>
                 • Take clear, well-lit photos
               </Text>
-              <Text className="text-xs text-[#D97706] mb-1" style={{ fontFamily: 'Poppins-Medium' }}>
+              <Text className="text-xs mb-1" style={{ fontFamily: 'Poppins-Medium', color: Colors.warningForeground }}>
                 • Include surrounding area for context
               </Text>
-              <Text className="text-xs text-[#D97706]" style={{ fontFamily: 'Poppins-Medium' }}>
+              <Text className="text-xs" style={{ fontFamily: 'Poppins-Medium', color: Colors.warningForeground }}>
                 • Show the problem from multiple angles
               </Text>
             </View>
@@ -482,8 +522,8 @@ export default function AddPhotosScreen() {
           <View
             style={{
               backgroundColor: Colors.white,
-              borderRadius: 20,
-              padding: 32,
+              borderRadius: BorderRadius.lg,
+              padding: Spacing.xxxl,
               alignItems: 'center',
               minWidth: 280,
               marginHorizontal: 40,
@@ -493,8 +533,8 @@ export default function AddPhotosScreen() {
               style={{
                 width: 76,
                 height: 76,
-                borderRadius: 38,
-                backgroundColor: '#E6F4D7',
+                borderRadius: BorderRadius.full,
+                backgroundColor: Colors.sageTint,
                 alignItems: 'center',
                 justifyContent: 'center',
                 transform: [{ rotate: spin }],

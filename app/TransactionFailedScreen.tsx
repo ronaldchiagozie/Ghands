@@ -1,405 +1,112 @@
+import { ClientPaymentReceipt, type ClientReceiptData } from '@/components/ClientPaymentReceipt';
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { BorderRadius, Colors, Spacing, SHADOWS } from '@/lib/designSystem';
+import { Colors } from '@/lib/designSystem';
+import { CLIENT_HOME_SCROLL_GUTTER } from '@/lib/tabletLayout';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { User, XCircle } from 'lucide-react-native';
-import React from 'react';
-import { ScrollView, Text, TouchableOpacity, View, Image } from 'react-native';
-import { Button } from '@/components/ui/Button';
-import { haptics } from '@/hooks/useHaptics';
+import React, { useCallback, useMemo } from 'react';
+import { Share, View } from 'react-native';
+import { showAppAlert } from '@/components/AppAlertHost';
+
+function formatNairaAmount(raw: string | undefined): string {
+  if (!raw) return '0.00';
+  const cleaned = raw.replace(/[^\d.-]/g, '');
+  const n = Number(cleaned);
+  if (!Number.isFinite(n)) return '0.00';
+  return n.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
 
 export default function TransactionFailedScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{
     transactionId?: string;
+    reference?: string;
     amount?: string;
     providerName?: string;
-    serviceFee?: string;
-    platformFee?: string;
+    serviceName?: string;
     totalAmount?: string;
     paymentMethod?: string;
     initiatedDate?: string;
+    serviceDate?: string;
+    serviceTime?: string;
+    failureReason?: string;
   }>();
 
-  const transactionData = {
-    transactionId: params.transactionId || 'TXN-2024-001547',
-    totalPayment: params.amount || '125,000',
-    initiatedDate: params.initiatedDate || 'May 2025',
-    providerName: params.providerName || "John's Plumbing",
-    serviceFee: params.serviceFee || '450.00',
-    platformFee: params.platformFee || '25.00',
-    totalAmount: params.totalAmount || '485.00',
-    paymentMethod: params.paymentMethod || '**** **** **** 4532',
-  };
+  const receiptData = useMemo((): ClientReceiptData => {
+    const serviceDate = params.serviceDate || params.initiatedDate?.split('·')[0]?.trim() || '—';
+    const serviceTime = params.serviceTime || params.initiatedDate?.split('·')[1]?.trim() || '—';
+    const amount = formatNairaAmount(params.totalAmount || params.amount);
+    const title = params.serviceName || params.providerName || 'Wallet transaction';
+    const providerName = params.providerName || 'GHands Wallet';
 
-  const failureReasons = [
-    'Insufficient wallet balance',
-    'Payment failed due to poor network',
-    'Bank declined the transaction',
-    'Provider unavailable',
-    'Payment verification not completed',
-  ];
+    return {
+      transactionId: params.transactionId || '—',
+      reference: params.reference,
+      jobTitle: title,
+      providerName,
+      serviceDate,
+      serviceTime,
+      serviceFee: amount,
+      platformFee: formatNairaAmount('0'),
+      tax: formatNairaAmount('0'),
+      totalAmount: amount,
+      paymentMethod: params.paymentMethod || 'Wallet',
+      paymentDate: `${serviceDate} at ${serviceTime}`,
+      status: 'failed',
+      failureReason: params.failureReason?.trim() || undefined,
+    };
+  }, [params]);
+
+  const sharePayload = useMemo(
+    () =>
+      [
+        'GHands — Receipt (Failed)',
+        `Description: ${receiptData.jobTitle}`,
+        `Amount: ₦${receiptData.totalAmount}`,
+        `Transaction ID: ${receiptData.transactionId}`,
+        receiptData.reference ? `Reference: ${receiptData.reference}` : '',
+        `Date: ${receiptData.serviceDate}`,
+        `Time: ${receiptData.serviceTime}`,
+        receiptData.failureReason ? `Reason: ${receiptData.failureReason}` : '',
+        'Status: Failed',
+      ]
+        .filter(Boolean)
+        .join('\n'),
+    [receiptData],
+  );
+
+  const handleShare = useCallback(async () => {
+    try {
+      await Share.share({ message: sharePayload, title: 'Receipt' });
+    } catch {
+      showAppAlert('Unable to share', 'Please try again.');
+    }
+  }, [sharePayload]);
+
+  const handleDownload = useCallback(() => {
+    showAppAlert(
+      'Download',
+      'A PDF receipt for failed transactions will be available in a future update. Use Share to send these details to support.',
+    );
+  }, []);
 
   return (
     <SafeAreaWrapper backgroundColor={Colors.backgroundLight}>
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: Spacing.xxl }}
-        showsVerticalScrollIndicator={false}
+      <ScreenHeader title="Receipt" onBack={() => router.back()} backgroundColor={Colors.backgroundLight} />
+
+      <View
+        style={{
+          flex: 1,
+          paddingHorizontal: CLIENT_HOME_SCROLL_GUTTER,
+          paddingBottom: 16,
+        }}
       >
-        <ScreenHeader title="Transaction Failed" onBack={() => router.back()} backgroundColor={Colors.white} />
-        {/* Main Transaction Card */}
-        <View
-          style={{
-            backgroundColor: Colors.white,
-            marginHorizontal: Spacing.lg,
-            marginTop: Spacing.lg,
-            borderRadius: BorderRadius.xl,
-            padding: Spacing.xl,
-            ...SHADOWS.md,
-          }}
-        >
-          {/* Total Payment Section */}
-          <View style={{ marginBottom: Spacing.xl }}>
-            <Text
-              style={{
-                fontSize: 14,
-                fontFamily: 'Poppins-Medium',
-                color: Colors.textSecondaryDark,
-                marginBottom: Spacing.xs,
-              }}
-            >
-              Total Payment
-            </Text>
-            <Text
-              style={{
-                fontSize: 36,
-                fontFamily: 'Poppins-Bold',
-                color: Colors.textPrimary,
-                marginBottom: Spacing.xs,
-              }}
-            >
-              ${transactionData.totalPayment}
-            </Text>
-            <Text
-              style={{
-                fontSize: 13,
-                fontFamily: 'Poppins-Regular',
-                color: Colors.textSecondaryDark,
-              }}
-            >
-              Initiated on {transactionData.initiatedDate}
-            </Text>
-          </View>
-
-          {/* Service Provider Section */}
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              marginBottom: Spacing.xl,
-              paddingBottom: Spacing.xl,
-              borderBottomWidth: 1,
-              borderBottomColor: Colors.border,
-            }}
-          >
-            <View
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: 24,
-                backgroundColor: Colors.textPrimary,
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginRight: Spacing.md,
-              }}
-            >
-              <View
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  backgroundColor: '#3B82F6',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <User size={20} color={Colors.white} />
-              </View>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text
-                style={{
-                  fontSize: 16,
-                  fontFamily: 'Poppins-SemiBold',
-                  color: Colors.textPrimary,
-                  marginBottom: 2,
-                }}
-              >
-                {transactionData.providerName}
-              </Text>
-              <Text
-                style={{
-                  fontSize: 13,
-                  fontFamily: 'Poppins-Regular',
-                  color: Colors.textSecondaryDark,
-                }}
-              >
-                Service Provider
-              </Text>
-            </View>
-          </View>
-
-          {/* Transaction Breakdown */}
-          <View style={{ marginBottom: Spacing.lg }}>
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: Spacing.md,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontFamily: 'Poppins-Regular',
-                  color: Colors.textSecondaryDark,
-                }}
-              >
-                Service Fee
-              </Text>
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontFamily: 'Poppins-Medium',
-                  color: Colors.textPrimary,
-                }}
-              >
-                ${transactionData.serviceFee}
-              </Text>
-            </View>
-
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: Spacing.md,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontFamily: 'Poppins-Regular',
-                  color: Colors.textSecondaryDark,
-                }}
-              >
-                Platform Fee
-              </Text>
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontFamily: 'Poppins-Medium',
-                  color: Colors.textPrimary,
-                }}
-              >
-                ${transactionData.platformFee}
-              </Text>
-            </View>
-
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginTop: Spacing.md,
-                paddingTop: Spacing.md,
-                borderTopWidth: 1,
-                borderTopColor: Colors.border,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 16,
-                  fontFamily: 'Poppins-Bold',
-                  color: Colors.textPrimary,
-                }}
-              >
-                Total Amount
-              </Text>
-              <Text
-                style={{
-                  fontSize: 16,
-                  fontFamily: 'Poppins-Bold',
-                  color: Colors.textPrimary,
-                }}
-              >
-                ${transactionData.totalAmount}
-              </Text>
-            </View>
-          </View>
-
-          {/* Payment Method */}
-          <View
-            style={{
-              marginBottom: Spacing.md,
-              paddingBottom: Spacing.md,
-              borderBottomWidth: 1,
-              borderBottomColor: Colors.border,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 13,
-                fontFamily: 'Poppins-Medium',
-                color: Colors.textSecondaryDark,
-                marginBottom: Spacing.xs,
-              }}
-            >
-              Payment Method
-            </Text>
-            <Text
-              style={{
-                fontSize: 14,
-                fontFamily: 'Poppins-Regular',
-                color: Colors.textPrimary,
-              }}
-            >
-              {transactionData.paymentMethod}
-            </Text>
-          </View>
-
-          {/* Transaction ID */}
-          <View>
-            <Text
-              style={{
-                fontSize: 13,
-                fontFamily: 'Poppins-Medium',
-                color: Colors.textSecondaryDark,
-                marginBottom: Spacing.xs,
-              }}
-            >
-              Transaction ID
-            </Text>
-            <Text
-              style={{
-                fontSize: 14,
-                fontFamily: 'Poppins-Regular',
-                color: Colors.textPrimary,
-              }}
-            >
-              {transactionData.transactionId}
-            </Text>
-          </View>
-        </View>
-
-        {/* Reasons Section */}
-        <View
-          style={{
-            marginHorizontal: Spacing.lg,
-            marginTop: Spacing.xl,
-          }}
-        >
-          <Text
-            style={{
-              fontSize: 18,
-              fontFamily: 'Poppins-Bold',
-              color: Colors.textPrimary,
-              marginBottom: Spacing.sm,
-            }}
-          >
-            Reasons
-          </Text>
-          <Text
-            style={{
-              fontSize: 14,
-              fontFamily: 'Poppins-Regular',
-              color: Colors.textSecondaryDark,
-              marginBottom: Spacing.lg,
-              lineHeight: 20,
-            }}
-          >
-            Here are a few reasons why your transaction failed.
-          </Text>
-
-          {/* Reasons List */}
-          <View
-            style={{
-              backgroundColor: Colors.white,
-              borderRadius: BorderRadius.lg,
-              padding: Spacing.lg,
-              ...SHADOWS.sm,
-            }}
-          >
-            {failureReasons.map((reason, index) => (
-              <View
-                key={index}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'flex-start',
-                  marginBottom: index < failureReasons.length - 1 ? Spacing.md : 0,
-                }}
-              >
-                <View
-                  style={{
-                    width: 24,
-                    height: 24,
-                    borderRadius: 12,
-                    backgroundColor: Colors.errorBorder,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginRight: Spacing.sm,
-                    marginTop: 2,
-                  }}
-                >
-                  <XCircle size={14} color={Colors.errorBright} />
-                </View>
-                <Text
-                  style={{
-                    flex: 1,
-                    fontSize: 14,
-                    fontFamily: 'Poppins-Regular',
-                    color: Colors.textPrimary,
-                    lineHeight: 20,
-                  }}
-                >
-                  {reason}
-                </Text>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        {/* Action Buttons */}
-        <View
-          style={{
-            marginHorizontal: Spacing.lg,
-            marginTop: Spacing.xl,
-            gap: Spacing.md,
-          }}
-        >
-          <Button
-            title="Try Again"
-            onPress={() => {
-              haptics.light();
-              // Navigate back to payment screen or retry payment
-              router.back();
-            }}
-            variant="primary"
-            size="large"
-          />
-          <Button
-            title="Contact Support"
-            onPress={() => {
-              haptics.light();
-              router.push('/SupportScreen' as any);
-            }}
-            variant="secondary"
-            size="large"
-          />
-        </View>
-      </ScrollView>
+        <ClientPaymentReceipt
+          data={receiptData}
+          onShare={handleShare}
+          onDownload={handleDownload}
+        />
+      </View>
     </SafeAreaWrapper>
   );
 }

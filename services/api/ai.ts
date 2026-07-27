@@ -1,5 +1,8 @@
 import { apiClient, extractResponseData } from './client';
 import type { LocationData } from './types';
+import { authService } from '@/services/authService';
+import { API_BASE_URL } from '@/lib/apiConfig';
+import { guessMimeAndName, uploadImageUris } from '@/utils/aiImageUpload';
 
 export type AiResponseType = 'text' | 'estimate' | 'suggestion';
 
@@ -25,6 +28,8 @@ export type AiStatus = {
 export type AiChatRequest = {
   message: string;
   conversationId?: number;
+  /** Public URLs after upload — sent when the chat API accepts image references. */
+  imageUrls?: string[];
 };
 
 export type AiChatResponse = {
@@ -114,6 +119,55 @@ export const aiService = {
   sendMessage: async (payload: AiChatRequest): Promise<AiChatResponse> => {
     const response = await apiClient.post<any>('/api/ai/chat', payload);
     return unwrapAiData<AiChatResponse>(response);
+  },
+
+  /**
+   * Sends chat with local images: tries multipart on `/api/ai/chat`, then uploaded URLs in JSON.
+   */
+  sendMessageWithImages: async (payload: {
+    message: string;
+    conversationId?: number;
+    localUris: string[];
+  }): Promise<AiChatResponse> => {
+    const token = await authService.getAuthToken();
+    if (!token) {
+      throw new Error('Please sign in to send photos to Handy.');
+    }
+
+    if (payload.localUris.length > 0) {
+      const formData = new FormData();
+      formData.append('message', payload.message);
+      if (payload.conversationId != null) {
+        formData.append('conversationId', String(payload.conversationId));
+      }
+      payload.localUris.forEach((uri, index) => {
+        const { name, type } = guessMimeAndName(uri, index);
+        formData.append('images', { uri, name, type } as unknown as Blob);
+      });
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/ai/chat`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        });
+        if (response.ok) {
+          const json = await response.json();
+          return unwrapAiData<AiChatResponse>(json);
+        }
+      } catch {
+        /* multipart not supported — fall back below */
+      }
+    }
+
+    const imageUrls =
+      payload.localUris.length > 0 ? await uploadImageUris(payload.localUris) : undefined;
+
+    return aiService.sendMessage({
+      message: payload.message,
+      conversationId: payload.conversationId,
+      ...(imageUrls?.length ? { imageUrls } : {}),
+    });
   },
 
   listConversations: async (limit = 20): Promise<AiConversationSummary[]> => {

@@ -1,10 +1,12 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { BorderRadius, Colors, Spacing, MIN_TOUCH_TARGET} from '@/lib/designSystem';
+import { BorderRadius, Colors, Spacing, MIN_TOUCH_TARGET, useKeyboardAvoidingOffset } from '@/lib/designSystem';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Upload, X, AlertCircle } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   Text,
   TextInput,
@@ -42,6 +44,7 @@ export default function ReportIssueScreen() {
     completionDate?: string;
   }>();
   const { toast, showError, showSuccess, hideToast } = useToast();
+  const keyboardOffset = useKeyboardAvoidingOffset();
 
   const [selectedIssue, setSelectedIssue] = useState<string>('');
   const [description, setDescription] = useState('');
@@ -149,14 +152,20 @@ export default function ReportIssueScreen() {
 
   return (
     <SafeAreaWrapper backgroundColor={Colors.white}>
-      <View style={{ flex: 1 }}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={keyboardOffset}
+      >
         <ScreenHeader title="Report Issue" onBack={() => router.back()} backgroundColor={Colors.white} />
         <ScrollView
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           contentContainerStyle={{
             paddingHorizontal: 20,
             paddingTop: 16,
-            paddingBottom: 100,
+            paddingBottom: 24,
           }}
         >
           {/* Introduction */}
@@ -508,13 +517,9 @@ height: MIN_TOUCH_TARGET,
           </View>
         </ScrollView>
 
-        {/* Submit Button - Fixed at bottom */}
+        {/* Submit button — a flex sibling, not absolute, so the keyboard lifts it */}
         <View
           style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
             paddingHorizontal: 20,
             paddingTop: 16,
             paddingBottom: 32,
@@ -551,7 +556,7 @@ height: MIN_TOUCH_TARGET,
             )}
           </TouchableOpacity>
         </View>
-      </View>
+      </KeyboardAvoidingView>
       <Toast
         message={toast.message}
         type={toast.type}

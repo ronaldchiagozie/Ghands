@@ -2,6 +2,7 @@ import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { JobProgressTimeline, type JobProgressStep } from '@/components/JobProgressTimeline';
 import Demcatorline from "@/components/Demacator";
 import { ScreenHeader } from "@/components/ScreenHeader";
+import { ErrorState } from '@/components/ErrorState';
 import { haptics } from '@/hooks/useHaptics';
 import { authService, serviceRequestService, ServiceRequest } from '@/services/api';
 import { useToast } from '@/hooks/useToast';
@@ -55,7 +56,9 @@ export default function CompletedJobDetail() {
   
   const [request, setRequest] = useState<ServiceRequest | null>(null);
   const [selectedProvider, setSelectedProvider] = useState<any | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  // Start loading when a requestId is present so the first paint is the skeleton, not the
+  // "unable to load" error state that only becomes true after the fetch actually fails.
+  const [isLoading, setIsLoading] = useState(Boolean(params.requestId));
   const [rating, setRating] = useState<number>(0);
   const [comment, setComment] = useState<string>('');
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
@@ -369,12 +372,12 @@ export default function CompletedJobDetail() {
       {
         name: "Scheduled Date",
         subtitle: formatDate(request.scheduledDate, request.scheduledTime),
-        icon: <Ionicons name="calendar" color={'#9CA3AF'} size={18}/>
+        icon: <Ionicons name="calendar" color={Colors.tabInactive} size={18}/>
       },
       {
         name: "Location",
         subtitle: request.location?.formattedAddress || request.location?.address || 'Location not specified',
-        icon: <Ionicons name="location" color={'#9CA3AF'} size={18}/>
+        icon: <Ionicons name="location" color={Colors.tabInactive} size={18}/>
       },
       {
         name: 'Total Cost',
@@ -384,7 +387,7 @@ export default function CompletedJobDetail() {
               maximumFractionDigits: 2,
             })}`
           : '₦0.00',
-        icon: <Ionicons name="cash" color={'#9CA3AF'} size={18}/>
+        icon: <Ionicons name="cash" color={Colors.tabInactive} size={18}/>
       }
     ];
   }, [request]);
@@ -403,7 +406,7 @@ export default function CompletedJobDetail() {
       <SafeAreaWrapper>
         <View className="flex-1 items-center justify-center py-20">
           <ActivityIndicator size="large" color={Colors.accent} />
-          <Text className="text-gray-600 mt-4" style={{ fontFamily: 'Poppins-Medium' }}>
+          <Text className="mt-4" style={{ fontFamily: 'Poppins-Medium', color: Colors.textMuted }}>
             Loading job details...
           </Text>
         </View>
@@ -414,20 +417,12 @@ export default function CompletedJobDetail() {
   if (!request) {
     return (
       <SafeAreaWrapper>
-        <View className="flex-1 items-center justify-center py-20 px-8">
-          <Ionicons name="alert-circle-outline" size={64} color="#9CA3AF" />
-          <Text className="text-gray-600 mt-4 text-center" style={{ fontFamily: 'Poppins-Medium' }}>
-            Unable to load job details. Please try again.
-          </Text>
-          <TouchableOpacity
-            onPress={loadRequestDetails}
-            className="mt-6 px-6 py-3 bg-[#4F6739] rounded-xl"
-            activeOpacity={0.85}
-          >
-            <Text className="text-white" style={{ fontFamily: 'Poppins-SemiBold' }}>
-              Retry
-            </Text>
-          </TouchableOpacity>
+        <View className="flex-1 items-center justify-center px-8">
+          <ErrorState
+            message="Unable to load job details. Please try again."
+            onRetry={loadRequestDetails}
+            retryLabel="Retry"
+          />
         </View>
       </SafeAreaWrapper>
     );
@@ -450,7 +445,7 @@ export default function CompletedJobDetail() {
                 Service Provider
               </Text>
               <TouchableOpacity
-                className="flex flex-row items-center justify-between px-5 py-5 bg-white rounded-2xl border border-gray-100"
+                className="flex flex-row items-center justify-between px-5 py-5 bg-white rounded-2xl border" style={{ borderColor: Colors.borderLight }}
                 activeOpacity={0.7}
                 onPress={() => {
                   if (selectedProvider) {
@@ -466,7 +461,7 @@ export default function CompletedJobDetail() {
                 }}
               >
                 <View className="flex flex-row items-center gap-5">
-                  <View className="w-14 h-14 rounded-full overflow-hidden bg-gray-200">
+                  <View className="w-14 h-14 rounded-full overflow-hidden" style={{ backgroundColor: Colors.border }}>
                     <Image
                       source={
                         providerAvatarUri
@@ -503,9 +498,10 @@ export default function CompletedJobDetail() {
                         })}
                       </View>
                       <Text
-                        className="text-sm text-gray-600"
+                        className="text-sm"
                         style={{
                           fontFamily: 'Poppins-Regular',
+                          color: Colors.textMuted,
                         }}
                       >
                         {(selectedProvider as any)?.rating != null || (selectedProvider as any)?.totalReviews != null
@@ -517,8 +513,8 @@ export default function CompletedJobDetail() {
                     {myReviewRating != null && myReviewRating >= 1 && (
                       <View className="flex-row items-center gap-2 mt-2">
                         <Text
-                          className="text-xs text-gray-500"
-                          style={{ fontFamily: 'Poppins-Medium' }}
+                          className="text-xs"
+                          style={{ fontFamily: 'Poppins-Medium', color: Colors.iconMuted }}
                         >
                           Your rating
                         </Text>
@@ -533,8 +529,8 @@ export default function CompletedJobDetail() {
                           ))}
                         </View>
                         <Text
-                          className="text-xs text-[#166534]"
-                          style={{ fontFamily: 'Poppins-SemiBold' }}
+                          className="text-xs"
+                          style={{ fontFamily: 'Poppins-SemiBold', color: Colors.success }}
                         >
                           {myReviewRating}/5
                         </Text>
@@ -546,7 +542,7 @@ export default function CompletedJobDetail() {
               <View
                 className="mt-3 px-1"
                 style={{
-                  backgroundColor: '#F9FAFB',
+                  backgroundColor: Colors.surfaceSubtle,
                   borderRadius: BorderRadius.default,
                   paddingVertical: 10,
                   paddingHorizontal: 12,
@@ -555,8 +551,8 @@ export default function CompletedJobDetail() {
                 }}
               >
                 <Text
-                  className="text-xs text-gray-600"
-                  style={{ fontFamily: 'Poppins-Regular', lineHeight: 18 }}
+                  className="text-xs"
+                  style={{ fontFamily: 'Poppins-Regular', color: Colors.textMuted, lineHeight: 18 }}
                 >
                   Chat and voice calls are closed once a job is completed. If you need help with this job, go to{' '}
                   <Text style={{ fontFamily: 'Poppins-SemiBold', color: Colors.success }}>Help & Support</Text> in the app
@@ -590,9 +586,10 @@ export default function CompletedJobDetail() {
                 Job Description
               </Text>
               <Text
-                className="text-sm text-[#4B5563] leading-6"
+                className="text-sm leading-6"
                 style={{
                   fontFamily: 'Poppins-Regular',
+                  color: Colors.textMuted,
                 }}
               >
                 {request.description || request.jobTitle || 'No description provided'}
@@ -605,9 +602,10 @@ export default function CompletedJobDetail() {
                   <View className="mt-1">{items.icon}</View>
                   <View className="flex-1">
                     <Text
-                      className="text-sm text-gray-500 mb-1"
+                      className="text-sm mb-1"
                       style={{
                         fontFamily: 'Poppins-Medium',
+                        color: Colors.iconMuted,
                       }}
                     >
                       {items.name}
@@ -624,7 +622,7 @@ export default function CompletedJobDetail() {
                 </View>
               ))}
               <TouchableOpacity
-                className="flex gap-3 flex-row mt-4 py-4 rounded-xl items-center justify-center bg-[#4F6739]"
+                className="flex gap-3 flex-row mt-4 py-4 rounded-xl items-center justify-center" style={{ backgroundColor: Colors.accent }}
                 activeOpacity={0.85}
                 onPress={() => {
                   haptics.selection();
@@ -656,12 +654,12 @@ export default function CompletedJobDetail() {
             {hasSubmittedReview && !showRatingModal && (
               <View
                 style={{
-                  backgroundColor: '#ECFDF5',
+                  backgroundColor: Colors.successLight,
                   borderRadius: BorderRadius.default,
                   padding: 14,
                   marginBottom: 16,
                   borderWidth: 1,
-                  borderColor: '#BBF7D0',
+                  borderColor: Colors.borderSage,
                 }}
               >
                 <Text
@@ -696,7 +694,7 @@ export default function CompletedJobDetail() {
               onPress={() => Keyboard.dismiss()}
               style={{
                 flex: 1,
-                backgroundColor: 'rgba(0,0,0,0.45)',
+                backgroundColor: Colors.overlayScrim,
                 justifyContent: 'center',
                 paddingHorizontal: CLIENT_HOME_SCROLL_GUTTER,
               }}
@@ -816,7 +814,7 @@ export default function CompletedJobDetail() {
                           <Ionicons
                             name={filled ? 'star' : 'star-outline'}
                             size={28}
-                            color={filled ? Colors.star : '#CBD5E1'}
+                            color={filled ? Colors.star : Colors.borderStrong}
                           />
                         </TouchableOpacity>
                       );

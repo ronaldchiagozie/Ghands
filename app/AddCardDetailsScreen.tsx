@@ -1,5 +1,5 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
-import { Colors } from '@/lib/designSystem';
+import { Colors, useKeyboardAvoidingOffset } from '@/lib/designSystem';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Camera, Info } from 'lucide-react-native';
@@ -14,6 +14,7 @@ interface ValidationState {
 }
 
 export default function AddCardDetailsScreen() {
+  const keyboardOffset = useKeyboardAvoidingOffset();
   const router = useRouter();
   const [cardNumber, setCardNumber] = useState('');
   const [expiration, setExpiration] = useState('');
@@ -135,7 +136,8 @@ export default function AddCardDetailsScreen() {
   return (
     <SafeAreaWrapper>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={keyboardOffset}
         className="flex-1"
       >
         <View style={{ paddingTop: 20, paddingHorizontal: 16, paddingBottom: 12 }}>

@@ -1,24 +1,36 @@
 import { BorderRadius, Colors } from '@/lib/designSystem';
 import { haptics } from '@/hooks/useHaptics';
-import { Image } from 'expo-image';
 import { RefreshCw } from 'lucide-react-native';
-import React, { useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
-/** Bundled illustration — man with phone, no Wi‑Fi (386×357). */
+/** Same file path as `lib/assets` — require here so Metro always bundles it for this screen. */
 const NO_INTERNET_IMG = require('../assets/images/nointernetimg.png');
-const ILLUSTRATION_WIDTH = 300;
-const ILLUSTRATION_HEIGHT = 278;
+
+const BG = '#F9F9F7';
 
 type NoInternetScreenProps = {
   onRetry: () => void | Promise<void | boolean>;
 };
 
-/**
- * Full-screen offline state (provider home & similar). Does not clear auth.
- */
 export default function NoInternetScreen({ onRetry }: NoInternetScreenProps) {
   const [busy, setBusy] = useState(false);
+  const { width: windowWidth } = useWindowDimensions();
+
+  const heroHeight = useMemo(() => {
+    if (windowWidth < 375) return 260;
+    if (windowWidth < 414) return 280;
+    return 300;
+  }, [windowWidth]);
 
   const handlePress = async () => {
     haptics.light();
@@ -31,66 +43,75 @@ export default function NoInternetScreen({ onRetry }: NoInternetScreenProps) {
   };
 
   return (
-    <View style={styles.root} accessibilityRole="none">
-      <View style={styles.illustrationFrame}>
-        <Image
-          source={NO_INTERNET_IMG}
-          style={styles.illustration}
-          contentFit="contain"
-          cachePolicy="memory-disk"
-          accessibilityLabel="No internet connection illustration"
-          onError={(error) => {
-            if (__DEV__) {
-              console.warn('[NoInternetScreen] illustration failed to load', error);
-            }
-          }}
-        />
-      </View>
-      <Text style={styles.title}>No connection</Text>
-      <Text style={styles.body}>
-        You're offline. Check your connection and try again.
-      </Text>
-      <TouchableOpacity
-        style={styles.button}
-        onPress={handlePress}
-        disabled={busy}
-        activeOpacity={0.85}
-        accessibilityRole="button"
-        accessibilityLabel="Try again"
+    <View style={styles.root}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        bounces={false}
+        showsVerticalScrollIndicator={false}
       >
-        {busy ? (
-          <ActivityIndicator size="small" color={Colors.textPrimary} style={{ marginRight: 8 }} />
-        ) : (
-          <RefreshCw size={20} color={Colors.textPrimary} style={{ marginRight: 8 }} />
-        )}
-        <Text style={styles.buttonText}>Try again</Text>
-      </TouchableOpacity>
+        {/* Same layout as onboarding hero illustrations */}
+        <View style={[styles.heroZone, { height: heroHeight }]}>
+          <Image
+            source={NO_INTERNET_IMG}
+            style={{
+              width: windowWidth * 0.78,
+              height: heroHeight,
+            }}
+            resizeMode="contain"
+            fadeDuration={0}
+            accessible
+            accessibilityLabel="No internet connection illustration"
+          />
+        </View>
+
+        <Text style={styles.title}>No connection</Text>
+        <Text style={styles.body}>
+          You're offline. Check your connection and try again.
+        </Text>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={handlePress}
+          disabled={busy}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel="Try again"
+        >
+          {busy ? (
+            <ActivityIndicator size="small" color={Colors.textPrimary} style={{ marginRight: 8 }} />
+          ) : (
+            <RefreshCw size={20} color={Colors.textPrimary} style={{ marginRight: 8 }} />
+          )}
+          <Text style={styles.buttonText}>Try again</Text>
+        </TouchableOpacity>
+      </ScrollView>
     </View>
   );
 }
-
-const BG = '#F9F9F7';
 
 const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: BG,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 32,
-    paddingVertical: 24,
   },
-  illustrationFrame: {
-    width: ILLUSTRATION_WIDTH,
-    height: ILLUSTRATION_HEIGHT,
-    marginBottom: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
+  scroll: {
+    flex: 1,
     backgroundColor: BG,
   },
-  illustration: {
-    width: ILLUSTRATION_WIDTH,
-    height: ILLUSTRATION_HEIGHT,
+  scrollContent: {
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 32,
+    paddingBottom: 48,
+    backgroundColor: BG,
+  },
+  heroZone: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 28,
+    backgroundColor: BG,
   },
   title: {
     fontSize: 22,

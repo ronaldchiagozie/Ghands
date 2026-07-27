@@ -2,6 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { useCallback, useEffect, useState } from 'react';
 
+import { ONBOARDING_SLIDES } from '@/lib/assets';
+
 export const ONBOARDING_STORAGE_KEY = '@app:onboarding_complete';
 
 interface UseOnboardingReturn {
@@ -16,7 +18,8 @@ interface UseOnboardingReturn {
   resetOnboarding: () => Promise<void>;
 }
 
-const TOTAL_SLIDES = 3;
+/** Derived, not hardcoded: a mismatch with ONBOARDING_SLIDES strands the user on the last slide. */
+const TOTAL_SLIDES = ONBOARDING_SLIDES.length;
 
 export default function useOnboarding(): UseOnboardingReturn {
   const [isOnboardingComplete, setIsOnboardingComplete] = useState(false);

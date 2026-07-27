@@ -1,8 +1,13 @@
 import { EmptyState } from '@/components/EmptyState';
-import FilterTransactionsModal from '@/components/FilterTransactionsModal';
+import { ErrorState } from '@/components/ErrorState';
+import FilterTransactionsModal, {
+  DEFAULT_TRANSACTION_FILTERS,
+  type FilterState,
+} from '@/components/FilterTransactionsModal';
 import { TransactionCardSkeleton } from '@/components/LoadingSkeleton';
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { useSkeletonGate } from '@/hooks/useSkeletonGate';
 import { BorderRadius, Colors, MIN_TOUCH_TARGET, REFRESH_CONTROL } from '@/lib/designSystem';
 import { CLIENT_HOME_SCROLL_GUTTER } from '@/lib/tabletLayout';
 import {
@@ -10,13 +15,17 @@ import {
   providerHomeActionLabel,
   providerHomeSurface,
   providerHomeSurfacePadding,
+  providerUnderlineTabItem,
+  providerUnderlineTabLabel,
+  providerUnderlineTabRow,
 } from '@/lib/providerSurfaceStyles';
 import { walletService } from '@/services/api';
+import { getErrorMessage } from '@/utils/errorMessages';
 import { openClientReceipt } from '@/utils/receiptNavigation';
-import { isCancelledWalletTransaction, mapWalletTransactionStatus } from '@/utils/walletTransactions';
+import { isCancelledWalletTransaction, extractWalletTransactionFailureReason, mapWalletTransactionStatus, walletTransactionTimestamp } from '@/utils/walletTransactions';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { CheckCircle, Clock, Filter, Receipt, XCircle } from 'lucide-react-native';
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { FlatList, Platform, RefreshControl, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface Transaction {
@@ -25,10 +34,13 @@ interface Transaction {
   serviceDescription: string;
   date: string;
   time: string;
+  /** Raw ISO timestamp — `date`/`time` are display strings and can't be compared. */
+  timestamp: string;
   amount: number;
   status: 'completed' | 'pending' | 'failed';
   requestId?: string;
   reference?: string;
+  failureReason?: string;
 }
 
 type TransactionRowProps = {
@@ -168,7 +180,15 @@ const TransactionRow = React.memo(function TransactionRow({
         >
           <Text style={providerHomeActionLabel}>View details</Text>
         </TouchableOpacity>
-      ) : null}
+      ) : (
+        <TouchableOpacity
+          onPress={() => onViewDetails(transaction)}
+          style={{ ...providerHomeActionButton, width: '100%' }}
+          activeOpacity={0.85}
+        >
+          <Text style={providerHomeActionLabel}>View details</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 });
@@ -178,9 +198,13 @@ export default function ActivityScreen() {
   const [selectedTab, setSelectedTab] = useState<'completed' | 'pending' | 'failed'>('completed');
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilterModal, setShowFilterModal] = useState(false);
+  const [appliedFilters, setAppliedFilters] = useState<FilterState>(DEFAULT_TRANSACTION_FILTERS);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [transactionsError, setTransactionsError] = useState<string | null>(null);
+  /** Keeps loaded rows on screen when the tab is revisited — only the first load shows skeletons. */
+  const transactionsReadyRef = useRef(false);
 
   // Helper function to format date
   const formatDate = useCallback((dateString: string): { date: string; time: string } => {
@@ -226,19 +250,22 @@ export default function ActivityScreen() {
         }
       }
 
-      const { date, time } = formatDate(apiTransaction.createdAt || apiTransaction.completedAt || new Date().toISOString());
       const status = mapWalletTransactionStatus(apiTransaction);
-      
+      const timestamp = walletTransactionTimestamp(apiTransaction);
+      const { date, time } = formatDate(timestamp);
+
       return {
         id: String(apiTransaction.id || apiTransaction.reference || Math.random()),
         serviceName,
         serviceDescription,
         date,
         time,
+        timestamp,
         amount: Math.abs(apiTransaction.amount || 0), // Use absolute value for display
         status,
         requestId: apiTransaction.requestId != null ? String(apiTransaction.requestId) : undefined,
         reference: apiTransaction.reference ? String(apiTransaction.reference) : undefined,
+        failureReason: status === 'failed' ? extractWalletTransactionFailureReason(apiTransaction) : undefined,
       };
     } catch (error) {
       if (__DEV__) {
@@ -251,18 +278,24 @@ export default function ActivityScreen() {
   // Load transactions
   const loadTransactions = useCallback(async () => {
     try {
-      setIsLoading(true);
+      if (!transactionsReadyRef.current) {
+        setIsLoading(true);
+      }
       const result = await walletService.getTransactions({ limit: 100, offset: 0 });
       const mappedTransactions = result.transactions
         .map(mapTransactionToUI)
         .filter((t): t is Transaction => t !== null);
       setTransactions(mappedTransactions);
+      setTransactionsError(null);
     } catch (error) {
       if (__DEV__) {
         console.error('Error loading transactions:', error);
       }
-      setTransactions([]);
+      setTransactionsError(
+        getErrorMessage(error, 'Could not load transactions. Check your connection and try again.'),
+      );
     } finally {
+      transactionsReadyRef.current = true;
       setIsLoading(false);
     }
   }, [mapTransactionToUI]);
@@ -293,14 +326,62 @@ export default function ActivityScreen() {
   const pendingCount = transactions.filter(t => t.status === 'pending').length;
   const failedCount = transactions.filter(t => t.status === 'failed').length;
 
-  // Filter transactions by selected tab and search query
-  const filteredTransactions = transactions.filter((transaction) => {
-    const matchesTab = transaction.status === selectedTab;
-    const matchesSearch = searchQuery.trim() === '' || 
-      transaction.serviceName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      transaction.serviceDescription.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesTab && matchesSearch;
-  });
+  const hasActiveFilters =
+    appliedFilters.dateRange !== null ||
+    appliedFilters.sortBy !== DEFAULT_TRANSACTION_FILTERS.sortBy;
+
+  /** Inclusive lower bound for the selected range, or null when unfiltered. */
+  const dateRangeStart = useMemo(() => {
+    if (!appliedFilters.dateRange) return null;
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    if (appliedFilters.dateRange === 'thisWeek') {
+      // Week starts Sunday, matching the en-US formatting used on the rows.
+      start.setDate(start.getDate() - start.getDay());
+    } else if (appliedFilters.dateRange === 'thisMonth') {
+      start.setDate(1);
+    }
+    return start.getTime();
+  }, [appliedFilters.dateRange]);
+
+  // Filter by tab, search and applied date range, then apply the chosen sort.
+  const filteredTransactions = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    const matched = transactions.filter((transaction) => {
+      if (transaction.status !== selectedTab) return false;
+
+      if (
+        query !== '' &&
+        !transaction.serviceName.toLowerCase().includes(query) &&
+        !transaction.serviceDescription.toLowerCase().includes(query)
+      ) {
+        return false;
+      }
+
+      if (dateRangeStart !== null) {
+        const time = new Date(transaction.timestamp).getTime();
+        // An unparseable timestamp shouldn't silently drop the row from an
+        // otherwise valid date window.
+        if (Number.isFinite(time) && time < dateRangeStart) return false;
+      }
+
+      return true;
+    });
+
+    const byTime = (t: Transaction) => new Date(t.timestamp).getTime() || 0;
+    return matched.sort((a, b) => {
+      switch (appliedFilters.sortBy) {
+        case 'oldest':
+          return byTime(a) - byTime(b);
+        case 'highToLow':
+          return b.amount - a.amount;
+        case 'lowToHigh':
+          return a.amount - b.amount;
+        default:
+          return byTime(b) - byTime(a);
+      }
+    });
+  }, [transactions, selectedTab, searchQuery, dateRangeStart, appliedFilters.sortBy]);
 
   const handleViewDetails = (transaction: Transaction) => {
     if (transaction.status === 'pending') {
@@ -317,11 +398,16 @@ export default function ActivityScreen() {
         pathname: '/TransactionFailedScreen',
         params: {
           transactionId: transaction.id,
+          reference: transaction.reference,
           amount: transaction.amount.toString(),
           providerName: transaction.serviceName,
-          serviceFee: (transaction.amount * 0.93).toFixed(2), // Approximate service fee
-          platformFee: (transaction.amount * 0.07).toFixed(2), // Approximate platform fee
+          serviceName: transaction.serviceDescription,
           totalAmount: transaction.amount.toFixed(2),
+          paymentMethod: 'Wallet',
+          serviceDate: transaction.date,
+          serviceTime: transaction.time,
+          initiatedDate: `${transaction.date} · ${transaction.time}`,
+          failureReason: transaction.failureReason,
         },
       } as any);
     }
@@ -499,23 +585,19 @@ export default function ActivityScreen() {
               ...providerHomeSurface,
               alignItems: 'center',
               justifyContent: 'center',
+              ...(hasActiveFilters
+                ? { borderColor: Colors.accent, backgroundColor: Colors.sageTint }
+                : null),
             }}
             activeOpacity={0.85}
-            accessibilityLabel="Filter transactions"
+            accessibilityLabel={hasActiveFilters ? 'Filter transactions, filters active' : 'Filter transactions'}
             accessibilityHint="Opens filter options"
           >
-            <Filter size={18} color={Colors.textPrimary} />
+            <Filter size={18} color={hasActiveFilters ? Colors.accent : Colors.textPrimary} />
           </TouchableOpacity>
         </View>
 
-        <View
-          style={{
-            flexDirection: 'row',
-            marginBottom: 16,
-            borderBottomWidth: 1,
-            borderBottomColor: Colors.border,
-          }}
-        >
+        <View style={{ ...providerUnderlineTabRow, marginBottom: 16 }}>
           {(['completed', 'pending', 'failed'] as const).map((tab) => (
             <TouchableOpacity
               key={tab}
@@ -523,23 +605,10 @@ export default function ActivityScreen() {
               accessibilityRole="tab"
               accessibilityState={{ selected: selectedTab === tab }}
               accessibilityLabel={`${tab} transactions`}
-              style={{
-                flex: 1,
-                paddingBottom: 12,
-                alignItems: 'center',
-                borderBottomWidth: selectedTab === tab ? 3 : 0,
-                borderBottomColor: selectedTab === tab ? Colors.accent : 'transparent',
-              }}
+              style={providerUnderlineTabItem(selectedTab === tab)}
               activeOpacity={0.7}
             >
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontFamily: selectedTab === tab ? 'Poppins-SemiBold' : 'Poppins-Regular',
-                  color: selectedTab === tab ? Colors.textPrimary : Colors.textSecondaryDark,
-                  textTransform: 'capitalize',
-                }}
-              >
+              <Text style={{ ...providerUnderlineTabLabel(selectedTab === tab), textTransform: 'capitalize' }}>
                 {tab}
               </Text>
             </TouchableOpacity>
@@ -550,12 +619,18 @@ export default function ActivityScreen() {
     [
       completedCount,
       failedCount,
+      hasActiveFilters,
       pendingCount,
       searchQuery,
       selectedTab,
       totalSpent,
       totalTransactions,
     ]
+  );
+
+  const { showSkeleton, isLoadingEmpty } = useSkeletonGate(
+    isLoading,
+    transactions.length === 0 && !transactionsError
   );
 
   const renderTransaction = useCallback(
@@ -570,7 +645,7 @@ export default function ActivityScreen() {
   );
 
   const listEmpty = useMemo(() => {
-    if (isLoading) {
+    if (showSkeleton || isLoadingEmpty) {
       return (
         <>
           <TransactionCardSkeleton />
@@ -579,14 +654,39 @@ export default function ActivityScreen() {
         </>
       );
     }
+    if (transactionsError && transactions.length === 0) {
+      return (
+        <ErrorState
+          title="Could not load transactions"
+          message={transactionsError}
+          onRetry={() => {
+            void loadTransactions();
+          }}
+          style={{
+            flex: 0,
+            ...providerHomeSurface,
+            padding: providerHomeSurfacePadding + 18,
+          }}
+          iconSize={36}
+        />
+      );
+    }
+    // A date filter hiding every row must not read as "you have none".
+    const filteredEverythingOut = hasActiveFilters && transactions.length > 0;
     return (
       <EmptyState
         icon={<Receipt size={40} color={Colors.textSecondaryDark} />}
-        title={`No ${selectedTab} transactions`}
+        title={
+          searchQuery || filteredEverythingOut
+            ? 'No matching transactions'
+            : `No ${selectedTab} transactions`
+        }
         description={
           searchQuery
             ? 'No transactions match your search'
-            : `You don't have any ${selectedTab} transactions yet`
+            : filteredEverythingOut
+              ? 'No transactions match the filters you applied. Try a wider date range.'
+              : `You don't have any ${selectedTab} transactions yet`
         }
         style={{
           flex: 0,
@@ -595,18 +695,20 @@ export default function ActivityScreen() {
         }}
       />
     );
-  }, [isLoading, searchQuery, selectedTab]);
+  }, [showSkeleton, isLoadingEmpty, hasActiveFilters, loadTransactions, searchQuery, selectedTab, transactions.length, transactionsError]);
 
   return (
     <SafeAreaWrapper backgroundColor={Colors.backgroundLight}>
         <ScreenHeader title="Activity" onBack={() => router.back()} backgroundColor={Colors.backgroundLight} />
       <FlatList
-        data={isLoading ? [] : filteredTransactions}
+        data={showSkeleton || isLoadingEmpty ? [] : filteredTransactions}
         keyExtractor={(item) => item.id}
         renderItem={renderTransaction}
         ListHeaderComponent={listHeader}
         ListEmptyComponent={listEmpty}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -630,11 +732,9 @@ export default function ActivityScreen() {
       {/* Filter Modal */}
       <FilterTransactionsModal
         visible={showFilterModal}
+        appliedFilters={appliedFilters}
         onClose={() => setShowFilterModal(false)}
-        onApply={(filters) => {
-          // Handle filter application
-          if (__DEV__) console.log('Filters applied');
-        }}
+        onApply={setAppliedFilters}
       />
     </SafeAreaWrapper>
   );

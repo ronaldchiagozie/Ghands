@@ -7,6 +7,10 @@ import { Animated, ImageBackground, StatusBar, StyleSheet, Text, TouchableOpacit
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthRole } from '../hooks/useAuth';
 
+/**
+ * Client-only entry: provider signup/onboarding was split out of this app and
+ * those routes no longer exist here. Do not reintroduce a provider CTA.
+ */
 export default function SelectAccountTypeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -32,25 +36,14 @@ export default function SelectAccountTypeScreen() {
     ]).start();
   }, []);
 
-  const handleRoleSelect = async (role: 'client' | 'provider') => {
+  const handleClientSignup = async () => {
     haptics.selection();
-    // Persist chosen role
-    await setRole(role);
-    
-    if (role === 'client') {
-      // First time: show client onboarding. Afterwards, go straight to signup.
-      if (isOnboardingComplete) {
-        router.replace('/SignupScreen');
-      } else {
-        router.replace('/onboarding');
-      }
+    await setRole('client');
+
+    if (isOnboardingComplete) {
+      router.replace('/SignupScreen');
     } else {
-      // First time: show provider onboarding. Afterwards, go straight to provider signup.
-      if (isOnboardingComplete) {
-        router.replace('/ProviderSignUpScreen');
-      } else {
-        router.replace('/provider-onboarding');
-      }
+      router.replace('/onboarding');
     }
   };
 
@@ -62,46 +55,36 @@ export default function SelectAccountTypeScreen() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      
-      {/* Background Image */}
+
       <ImageBackground
         source={require('../assets/images/introimage.png')}
         style={styles.backgroundImage}
         resizeMode="cover"
       >
-        {/* Dark overlay for better text readability */}
         <View style={styles.overlay} />
 
-        {/* Content */}
         <View style={[styles.content, { paddingBottom: Math.max(insets.bottom, 20) + 16 }]}>
-          {/* Buttons Container — max width keeps text from clipping in tablet phone lane */}
           <Animated.View style={[styles.buttonsContainer, buttonStyle]}>
-            {/* Sign Up as a Client Button - Green */}
             <TouchableOpacity
               style={styles.clientButton}
-              onPress={() => handleRoleSelect('client')}
+              onPress={handleClientSignup}
               activeOpacity={0.9}
+              accessibilityRole="button"
+              accessibilityLabel="Sign up as a client"
             >
               <Text style={styles.clientButtonText}>Sign Up as a Client</Text>
             </TouchableOpacity>
 
-            {/* Sign Up as a Provider Button - Dark with Green Border */}
-            <TouchableOpacity
-              style={styles.providerButton}
-              onPress={() => handleRoleSelect('provider')}
-              activeOpacity={0.9}
-            >
-              <Text style={styles.providerButtonText}>Sign Up as a Provider</Text>
-            </TouchableOpacity>
-
-            {/* Already have an account - Log in */}
             <TouchableOpacity
               style={styles.loginLink}
-              onPress={() => {
+              onPress={async () => {
                 haptics.selection();
+                await setRole('client');
                 router.replace('/LoginScreen');
               }}
               activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Log in to an existing account"
             >
               <Text style={styles.loginLinkText}>Already have an account? Log in</Text>
             </TouchableOpacity>
@@ -146,38 +129,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: StyleSheet.hairlineWidth * 2,
     borderColor: 'rgba(255, 255, 255, 0.55)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 0,
   },
   clientButtonText: {
     fontSize: 15,
     fontFamily: 'Poppins-SemiBold',
     color: Colors.accent,
     letterSpacing: 0.3,
-  },
-  providerButton: {
-    width: '100%',
-    height: 48,
-    backgroundColor: 'rgba(18, 18, 18, 0.85)',
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: 'rgba(79, 103, 57, 0.65)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 0.76,
-  },
-  providerButtonText: {
-    fontSize: 15,
-    fontFamily: 'Poppins-SemiBold',
-    color: '#FFFFFF',
-    letterSpacing: 0.2,
   },
   loginLink: {
     marginTop: 12,

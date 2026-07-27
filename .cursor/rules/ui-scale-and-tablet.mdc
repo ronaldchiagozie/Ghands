@@ -1,0 +1,83 @@
+---
+description: Keep GHands screens from feeling oversized on phones, tablets, and large accessibility text
+globs: app/**/*.tsx, components/**/*.tsx
+alwaysApply: true
+---
+
+# UI scale and tablet layout
+
+Do not make screens feel enlarged or “blown up.” Match existing phone-first sizing unless a spec says otherwise.
+
+Reference screens for sizing and rhythm: `app/WalletScreen.tsx` and `app/(tabs)/profile.tsx`.
+
+## Where the tokens actually live
+
+- `lib/assets.ts` — `DESIGN_TOKENS` holds the raw values (`colors`, `spacing`, `borderRadius`).
+- `lib/designSystem.ts` — the barrel everything imports from: `Colors`, `Spacing`, `BorderRadius`, `MIN_TOUCH_TARGET`, plus re-exports of the tablet hooks.
+- `lib/providerSurfaceStyles.ts` — the card/button vocabulary (`providerHomeSurface`, `providerListCard`, `providerHomeActionButton`, `providerHomeSectionTitle`). Compose from these instead of rebuilding a card.
+- `lib/tabletLayout.ts` — every breakpoint hook.
+- `lib/surfaceStyles.ts` — `SURFACE_STYLES` and the elevation helpers.
+
+There is no `Typography` export. There is no `Fonts` export either — the old
+`DESIGN_TOKENS.fonts` scale was removed because it had drifted from what screens
+actually render. Type is written inline (see below).
+
+## System text scaling
+
+- Global cap is installed in `app/_layout.tsx` via `installTypographyDefaults()` (`lib/typographyDefaults.ts`, default `maxFontSizeMultiplier: 1.25`).
+- Do not remove that cap without an explicit product decision.
+- Avoid overriding with uncapped `allowFontScaling` on whole screens. If one line needs a different cap, set `maxFontSizeMultiplier` on that `Text` only (see `OnboardingSlide.tsx`, `Toast.tsx`).
+- Never put a fixed height on a container that holds text — it has to grow at 1.25×.
+
+## Tablets
+
+- Root content is wrapped in `TabletRootFrame` — do not bypass it for full-bleed “stretch everything” layouts on iPad.
+- Use `lib/tabletLayout.ts`: `PHONE_LANE_MAX_WIDTH` (520), `PHONE_LANE_MAX_HEIGHT` (960), `PHONE_LANE_HEIGHT_FRACTION` (0.94).
+- Overlays/toasts: `useNarrowOverlayMaxWidth()` so banners don’t span the full tablet width.
+- Tab scroll padding: `useTabScrollContentPaddingTop()` instead of doubling padding on tablet ad hoc.
+- Sage hero panels: `useSageHeroPanelMetrics()` for padding and amount size — it already caps the hero number at 30 on tablet.
+- Breakpoints come from `useWindowDimensions()` via these hooks, never `Dimensions.get()` at import time.
+
+## Typography — the scale in use
+
+Poppins only, in four weights: `Poppins-Regular`, `Poppins-Medium`, `Poppins-SemiBold`,
+`Poppins-Bold`. (`Poppins-ExtraBold` exists but is confined to auth screens — don’t
+introduce it elsewhere.) Write `fontSize` and `fontFamily` inline; that is the
+established convention, not a shortcut.
+
+| Role | Size | Family |
+| --- | --- | --- |
+| Eyebrow / overline | 10 | Medium, uppercase, `letterSpacing: 0.6` |
+| Meta, timestamps | 11 | Regular |
+| Card body, subtitles | 12–13 | Regular / Medium, `Colors.textSecondaryDark` |
+| Default body, list labels | 14 | Regular / Medium |
+| Card / row title | 13–15 | Bold |
+| Section title | 16 | SemiBold (or use `providerHomeSectionTitle`) |
+| Screen title | 18 | Bold, `letterSpacing: -0.3` (or use `ScreenHeader`) |
+| Tab screen title | 20 | Bold |
+| Hero money | 27–28 | Bold, `letterSpacing: -0.8` |
+
+- **Body copy is 12–14.** 16 is a primary button label or a form input, not paragraph text.
+- Hero money is the only display size; it caps at 30 on tablet via `useSageHeroPanelMetrics()`.
+- Bold text carries negative tracking (−0.2 section heads, −0.3 titles, −0.8 money).
+- Set an explicit `lineHeight` on anything that can wrap — usually `fontSize + 5` or `+ 6`.
+- No raw 28–40px titles, and no `scale = width / 375` layout multipliers.
+
+## Spacing, radius, elevation
+
+- Scale is 4 / 8 / 12 / 16 / 20 / 24 / 32 / 48 via `Spacing`. Card internals are the
+  documented exceptions: `providerHomeSurfacePadding` (14) and 10pt inline gaps.
+- Gutters: `CLIENT_HOME_SCROLL_GUTTER` (16) on tab screens, `SCREEN_PADDING.horizontal` (20) on stack screens.
+- Radius: `BorderRadius.default` (12) for cards, buttons, and icon wells;
+  `BorderRadius.sageHero` (16) for hero panels only; `BorderRadius.full` for pills and badges.
+  18 / 20 / 24 are drift — don’t add more.
+- **Depth is a 1px `Colors.border` hairline, not a shadow.** `SHADOWS` is intentionally
+  zeroed and `surfaceElevation()` returns 0 on Android. Only `SageHeroPanel` and the home
+  search field carry real shadow.
+- Touch targets: `MIN_TOUCH_TARGET` (44) with `TOUCH_HIT_SLOP` for smaller visual controls.
+
+## Before merging UI changes
+
+- Check on a small phone and tablet simulator: no single element dominates the viewport.
+- Check at 1.25× text scale with genuinely long content (long provider name, long bank name), not placeholder text.
+- If accessibility needs a higher global cap, change `MAX_FONT_SIZE_MULTIPLIER` in `lib/typographyDefaults.ts` once — not per screen.

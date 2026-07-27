@@ -6,7 +6,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { Camera, MapPin, Plus, User } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Animated, Dimensions, Image, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Animated, Dimensions, Image, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { showAppAlert } from '@/components/AppAlertHost';
 import { logClientProfilePhoto, writeLocalClientProfileImageUri } from '@/utils/clientProfilePhoto';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -48,7 +49,7 @@ export default function ProfileSetupScreen() {
   const requestPermissions = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission required', 'Photo library access is required to upload images.');
+      showAppAlert('Permission required', 'Photo library access is required to upload images.');
       return false;
     }
     return true;
@@ -58,7 +59,7 @@ export default function ProfileSetupScreen() {
     const hasPermission = await requestPermissions();
     if (!hasPermission) return;
 
-    Alert.alert(
+    showAppAlert(
       'Select Image',
       'Choose an option',
       [
@@ -81,7 +82,7 @@ export default function ProfileSetupScreen() {
   const openCamera = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission required', 'Camera access is required to take photos.');
+      showAppAlert('Permission required', 'Camera access is required to take photos.');
       return;
     }
 

@@ -12,7 +12,6 @@ import { CallIconOutline } from '@/components/call/CallIcons';
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import {
   FlatList,
-  Alert,
   Image,
   Keyboard,
   type KeyboardEvent,
@@ -29,6 +28,7 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import { showAppAlert } from '@/components/AppAlertHost';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { haptics } from '@/hooks/useHaptics';
 import { useToast } from '@/hooks/useToast';
@@ -591,7 +591,7 @@ export default function ChatScreen() {
 
   const handleDeleteMessageForMe = useCallback(
     (msg: UIMessage) => {
-      Alert.alert('Delete message?', 'This will remove the message from your view only.', [
+      showAppAlert('Delete message?', 'This will remove the message from your view only.', [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
@@ -1026,7 +1026,7 @@ export default function ChatScreen() {
             paddingTop: Spacing.md,
             paddingBottom: 12,
             borderBottomWidth: 1,
-            borderBottomColor: '#EEF1E8',
+            borderBottomColor: Colors.borderSage,
             backgroundColor: Colors.white,
           }}
         >
@@ -1041,8 +1041,8 @@ export default function ChatScreen() {
 height: MIN_TOUCH_TARGET,
               alignItems: 'center',
               justifyContent: 'center',
-              borderRadius: 19,
-              backgroundColor: '#F6F8F1',
+              borderRadius: BorderRadius.full,
+              backgroundColor: Colors.sageTint,
             }}
           >
             <ArrowLeft size={22} color={Colors.textPrimary} />
@@ -1053,8 +1053,8 @@ height: MIN_TOUCH_TARGET,
               style={{
                 width: 42,
                 height: 42,
-                borderRadius: 21,
-                backgroundColor: '#F6F8F1',
+                borderRadius: BorderRadius.full,
+                backgroundColor: Colors.sageTint,
                 alignItems: 'center',
                 justifyContent: 'center',
                 marginRight: 10,
@@ -1068,7 +1068,7 @@ height: MIN_TOUCH_TARGET,
                 style={{
                   width: 42,
                   height: 42,
-                  borderRadius: 21,
+                  borderRadius: BorderRadius.full,
                 }}
                 resizeMode="cover"
               />
@@ -1080,8 +1080,8 @@ height: MIN_TOUCH_TARGET,
                     bottom: 1,
                     width: 11,
                     height: 11,
-                    borderRadius: 6,
-                    backgroundColor: '#22C55E',
+                    borderRadius: BorderRadius.full,
+                    backgroundColor: Colors.successIcon,
                     borderWidth: 2,
                     borderColor: Colors.white,
                   }}
@@ -1100,9 +1100,9 @@ height: MIN_TOUCH_TARGET,
           </Text>
               <Text
                 style={{
-                  fontSize: 11.5,
+                  fontSize: 11,
                   fontFamily: 'Poppins-Regular',
-                  color: showActiveDot ? '#16A34A' : Colors.textSecondaryDark,
+                  color: showActiveDot ? Colors.successIcon : Colors.textSecondaryDark,
                   marginTop: 2,
                 }}
               >
@@ -1148,7 +1148,7 @@ height: MIN_TOUCH_TARGET,
 height: MIN_TOUCH_TARGET,
                 alignItems: 'center',
                 justifyContent: 'center',
-                borderRadius: 19,
+                borderRadius: BorderRadius.full,
                 backgroundColor: Colors.sageTint,
               }}
             >
@@ -1165,8 +1165,8 @@ height: MIN_TOUCH_TARGET,
 height: MIN_TOUCH_TARGET,
                 alignItems: 'center',
                 justifyContent: 'center',
-                borderRadius: 19,
-                backgroundColor: '#F6F8F1',
+                borderRadius: BorderRadius.full,
+                backgroundColor: Colors.sageTint,
               }}
             >
               <MoreVertical size={19} color={Colors.textPrimary} />
@@ -1178,9 +1178,9 @@ height: MIN_TOUCH_TARGET,
         {isSyncDegraded && (
           <View
             style={{
-              backgroundColor: '#FFFBEB',
+              backgroundColor: Colors.warningLight,
               borderBottomWidth: 1,
-              borderBottomColor: '#FDE68A',
+              borderBottomColor: Colors.warningBadge,
               paddingHorizontal: Spacing.lg,
               paddingVertical: 9,
               flexDirection: 'row',
@@ -1220,7 +1220,7 @@ height: MIN_TOUCH_TARGET,
           showsVerticalScrollIndicator={false}
           onScroll={handleScroll}
           scrollEventThrottle={16}
-            style={{ flex: 1, backgroundColor: '#F7F8F5' }}
+            style={{ flex: 1, backgroundColor: Colors.sageSurface }}
             ListFooterComponent={
               isPeerTyping ? <ChatTypingBubble isProviderView={isProviderView} /> : null
             }
@@ -1260,7 +1260,7 @@ height: MIN_TOUCH_TARGET,
         >
         {/* Send Quotation Button - Only show for providers if quotation hasn't been sent yet */}
         {isProviderView && !hasQuotation && !isCheckingQuotation && (
-          <View style={{ paddingHorizontal: Spacing.lg, paddingBottom: 8, backgroundColor: '#F7F8F5' }}>
+          <View style={{ paddingHorizontal: Spacing.lg, paddingBottom: 8, backgroundColor: Colors.sageSurface }}>
             <TouchableOpacity
               onPress={() => {
                 haptics.light();
@@ -1273,9 +1273,9 @@ height: MIN_TOUCH_TARGET,
               }}
               style={{
                 backgroundColor: Colors.white,
-                borderRadius: 18,
+                borderRadius: BorderRadius.lg,
                 borderWidth: 1,
-                borderColor: '#DCE8C9',
+                borderColor: Colors.borderSage,
                 paddingVertical: 11,
                 paddingHorizontal: 13,
                 flexDirection: 'row',
@@ -1296,7 +1296,7 @@ height: MIN_TOUCH_TARGET,
                   style={{
                     width: 34,
                     height: 34,
-                    borderRadius: 17,
+                    borderRadius: BorderRadius.full,
                     backgroundColor: Colors.sageTint,
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -1308,7 +1308,7 @@ height: MIN_TOUCH_TARGET,
                 <View style={{ flex: 1 }}>
                   <Text
                     style={{
-                      fontSize: 13.5,
+                      fontSize: 13,
                       fontFamily: 'Poppins-SemiBold',
                       color: Colors.textPrimary,
                     }}
@@ -1340,7 +1340,7 @@ height: MIN_TOUCH_TARGET,
             paddingBottom: keyboardInset > 0 ? 6 : Math.max(insets.bottom, 8),
             paddingTop: 8,
             borderTopWidth: 1,
-            borderTopColor: '#EEF1E8',
+            borderTopColor: Colors.borderSage,
             backgroundColor: Colors.white,
           }}
         >
@@ -1348,10 +1348,10 @@ height: MIN_TOUCH_TARGET,
             style={{
               flexDirection: 'row',
               alignItems: 'center',
-              backgroundColor: '#F7F8F5',
-              borderRadius: 26,
+              backgroundColor: Colors.sageSurface,
+              borderRadius: BorderRadius.full,
               borderWidth: 1,
-              borderColor: '#E1E8D6',
+              borderColor: Colors.borderSage,
               paddingHorizontal: 12,
               paddingVertical: 6,
               minHeight: 52,
@@ -1390,7 +1390,7 @@ height: MIN_TOUCH_TARGET,
                   style={{
                     width: MIN_TOUCH_TARGET,
 height: MIN_TOUCH_TARGET,
-                    borderRadius: 19,
+                    borderRadius: BorderRadius.full,
                     alignItems: 'center',
                     justifyContent: 'center',
                     marginLeft: 4,
@@ -1404,7 +1404,7 @@ height: MIN_TOUCH_TARGET,
                 style={{
                   width: MIN_TOUCH_TARGET,
 height: MIN_TOUCH_TARGET,
-                  borderRadius: 19,
+                  borderRadius: BorderRadius.full,
                   alignItems: 'center',
                   justifyContent: 'center',
                   marginLeft: 4,

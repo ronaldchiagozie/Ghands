@@ -198,7 +198,10 @@ export default function AiAssistantScreen() {
 
   const handleAttachPress = useCallback(async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) return;
+    if (!permission.granted) {
+      showError('Photo library access is required to add images.');
+      return;
+    }
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
@@ -211,11 +214,7 @@ export default function AiAssistantScreen() {
 
     const uris = result.assets.map((asset) => asset.uri);
     addImagesFromPicker(uris);
-
-    if (mode === 'home') {
-      await sendMessage('Yes');
-    }
-  }, [addImagesFromPicker, mode, sendMessage]);
+  }, [addImagesFromPicker, showError]);
 
   const handleUseDraft = useCallback(
     async (draft: AiSuggestion) => {

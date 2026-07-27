@@ -1,6 +1,7 @@
+import { ErrorState } from '@/components/ErrorState';
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { haptics } from '@/hooks/useHaptics';
-import { BorderRadius, Colors } from '@/lib/designSystem';
+import { BorderRadius, Colors, MIN_TOUCH_TARGET } from '@/lib/designSystem';
 import { JOB_TIMELINE } from '@/lib/jobTimelineTheme';
 import { serviceRequestService, profileService, authService } from '@/services/api';
 import { AuthError } from '@/utils/errors';
@@ -45,6 +46,7 @@ export default function BookingConfirmationScreen() {
   const [acceptedProviders, setAcceptedProviders] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   const exitToJobs = useCallback(() => {
     haptics.light();
@@ -70,6 +72,7 @@ export default function BookingConfirmationScreen() {
       return;
     }
     try {
+      setLoadFailed(false);
       const [req, provs, quots] = await Promise.all([
         serviceRequestService.getRequestDetails(requestId),
         serviceRequestService.getAcceptedProviders(requestId),
@@ -83,6 +86,7 @@ export default function BookingConfirmationScreen() {
         await handleAuthErrorRedirect(router);
         return;
       }
+      setLoadFailed(true);
       setRequest(null);
       setAcceptedProviders([]);
       setQuotations([]);
@@ -109,6 +113,13 @@ export default function BookingConfirmationScreen() {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
+    loadData();
+  }, [loadData]);
+
+  const handleRetryLoad = useCallback(() => {
+    haptics.light();
+    setIsLoading(true);
+    setLoadFailed(false);
     loadData();
   }, [loadData]);
 
@@ -234,9 +245,46 @@ export default function BookingConfirmationScreen() {
       <SafeAreaWrapper className="flex-1 bg-white">
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color={Colors.accent} />
-          <Text className="text-gray-500 mt-4" style={{ fontFamily: 'Poppins-Medium' }}>
+          <Text className="mt-4" style={{ fontFamily: 'Poppins-Medium', color: Colors.iconMuted }}>
             Loading…
           </Text>
+        </View>
+      </SafeAreaWrapper>
+    );
+  }
+
+  if (params.requestId && loadFailed) {
+    return (
+      <SafeAreaWrapper className="flex-1 bg-white">
+        <Stack.Screen options={{ gestureEnabled: false }} />
+        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 20, paddingTop: 8 }}>
+          <TouchableOpacity
+            onPress={exitToJobs}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            style={{ width: MIN_TOUCH_TARGET, height: MIN_TOUCH_TARGET, alignItems: 'center', justifyContent: 'center' }}
+            activeOpacity={0.7}
+          >
+            <X size={22} color={Colors.textSecondaryDark} />
+          </TouchableOpacity>
+        </View>
+        <ErrorState
+          title="Couldn't load booking"
+          message="We couldn't load your booking details. Check your connection and try again."
+          onRetry={handleRetryLoad}
+        />
+        <View style={{ paddingHorizontal: 20, paddingBottom: 24 }}>
+          <TouchableOpacity onPress={exitToJobs} activeOpacity={0.85}>
+            <Text
+              style={{
+                fontFamily: 'Poppins-SemiBold',
+                fontSize: 15,
+                color: Colors.accent,
+                textAlign: 'center',
+              }}
+            >
+              Go to jobs
+            </Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaWrapper>
     );
@@ -250,7 +298,7 @@ export default function BookingConfirmationScreen() {
         <TouchableOpacity
           onPress={exitToJobs}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}
+          style={{ width: MIN_TOUCH_TARGET, height: MIN_TOUCH_TARGET, alignItems: 'center', justifyContent: 'center' }}
           activeOpacity={0.7}
         >
           <X size={22} color={Colors.textSecondaryDark} />
@@ -272,7 +320,7 @@ export default function BookingConfirmationScreen() {
             style={{
               width: 72,
               height: 72,
-              borderRadius: 36,
+              borderRadius: BorderRadius.full,
               backgroundColor: JOB_TIMELINE.completeSoft,
               alignItems: 'center',
               justifyContent: 'center',
@@ -283,7 +331,7 @@ export default function BookingConfirmationScreen() {
           </View>
           <Text
             style={{
-              fontSize: 26,
+              fontSize: 20,
               lineHeight: 32,
               fontFamily: 'Poppins-Bold',
               color: Colors.textPrimary,
@@ -357,7 +405,7 @@ export default function BookingConfirmationScreen() {
                       justifyContent: 'center',
                     }}
                   >
-                    <Icon size={15} color={step.status === 'pending' ? JOB_TIMELINE.pendingChipText : '#FFFFFF'} />
+                    <Icon size={15} color={step.status === 'pending' ? JOB_TIMELINE.pendingChipText : Colors.white} />
                   </View>
                   {!isLast ? (
                     <View

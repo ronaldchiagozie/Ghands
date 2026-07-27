@@ -1,34 +1,40 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { ErrorState } from '@/components/ErrorState';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import Toast from '@/components/Toast';
 import { WalletPinInput } from '@/components/WalletPinInput';
-import { useWalletBalance } from '@/hooks/useWalletBalance';
 import { haptics } from '@/hooks/useHaptics';
 import { useToast } from '@/hooks/useToast';
-import { BorderRadius, Colors, MIN_TOUCH_TARGET} from '@/lib/designSystem';
-import { providerListCard } from '@/lib/providerSurfaceStyles';
+import { useWalletBalance } from '@/hooks/useWalletBalance';
+import { BorderRadius, Colors, MIN_TOUCH_TARGET } from '@/lib/designSystem';
+import { providerHomeSurface, providerListCard } from '@/lib/providerSurfaceStyles';
 import { CLIENT_HOME_SCROLL_GUTTER } from '@/lib/tabletLayout';
 import { walletService, type BankAccount } from '@/services/api';
-import { getSpecificErrorMessage } from '@/utils/errorMessages';
-import { Ionicons } from '@expo/vector-icons';
+import { getErrorMessage, getSpecificErrorMessage } from '@/utils/errorMessages';
+import {
+  extractWalletTransactionFailureReason,
+  isCancelledWalletTransaction,
+  mapWalletTransactionStatus,
+} from '@/utils/walletTransactions';
+import { Button } from '@/components/ui/Button';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { Building2, CheckCircle, ChevronRight, Lock, Plus, Receipt, RefreshCw, Wallet, X } from 'lucide-react-native';
+import { Building2, CheckCircle, ChevronRight, Clock, Lock, Plus, Receipt, RefreshCw, Wallet, X, XCircle } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Animated,
-  Dimensions,
-  Keyboard,
-  type KeyboardEvent,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Animated,
+    Dimensions,
+    Keyboard,
+    Modal,
+    Platform,
+    Pressable,
+    ScrollView,
+    Text,
+    TouchableOpacity,
+    View,
+    type KeyboardEvent,
 } from 'react-native';
+import { showAppAlert } from '@/components/AppAlertHost';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const WALLET_METHOD = {
@@ -39,7 +45,18 @@ const WALLET_METHOD = {
   lastUsed: '',
 };
 
-type PaymentStep = 'processing' | 'verifying' | 'completing' | 'success';
+/**
+ * Reflects the real state of the wallet debit — never advanced on a timer.
+ * `verifying` is only entered when the API answers `pending` and we are polling
+ * the ledger for settlement; `timedOut` means the poll ran out without a verdict.
+ */
+type PaymentStep = 'processing' | 'verifying' | 'success' | 'failed' | 'timedOut';
+
+/** Ledger poll cadence while a payment sits in `pending`. */
+const SETTLEMENT_POLL_MS = 3000;
+const SETTLEMENT_MAX_ATTEMPTS = 10;
+/** Time the success tick stays up before handing off to the receipt. */
+const SUCCESS_HANDOFF_MS = 900;
 
 export default function PaymentMethodsScreen() {
   const router = useRouter();
@@ -64,11 +81,18 @@ export default function PaymentMethodsScreen() {
     return Number.isFinite(rid) && rid > 0 && Number.isFinite(amt) && amt > 0;
   }, [params.requestId, params.amount]);
 
-  const { balance: walletBalanceRaw } = useWalletBalance({
+  const { balance: walletBalanceRaw, isLoading: isWalletBalanceLoading, balanceError } = useWalletBalance({
     enabled: isCheckout,
     refreshOnFocus: isCheckout,
   });
-  const walletBalance = walletBalanceRaw ?? 0;
+  const walletBalanceDisplay =
+    walletBalanceRaw != null
+      ? walletBalanceRaw.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      : balanceError
+        ? 'Unavailable'
+        : isWalletBalanceLoading
+          ? '…'
+          : '—';
 
   const [showProcessingModal, setShowProcessingModal] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
@@ -82,19 +106,37 @@ export default function PaymentMethodsScreen() {
     message: string;
     isInsufficientBalance: boolean;
   } | null>(null);
+  /** Message shown by the modal's terminal `failed` / `timedOut` states. */
+  const [settlementMessage, setSettlementMessage] = useState<string | null>(null);
+  /** Reference of the in-flight payment, so `timedOut` can re-check the same one. */
+  const settlementRefRef = useRef<string | null>(null);
+  /** Set on unmount so in-flight polling stops touching state. */
+  const unmountedRef = useRef(false);
   const spinAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(
+    () => () => {
+      unmountedRef.current = true;
+    },
+    []
+  );
   const timeoutRefs = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [isLoadingBilling, setIsLoadingBilling] = useState(true);
+  const [billingLoadError, setBillingLoadError] = useState<string | null>(null);
 
   const loadBillingData = useCallback(async () => {
     try {
       setIsLoadingBilling(true);
+      setBillingLoadError(null);
       const banks = await walletService.getBankAccounts();
       setBankAccounts(Array.isArray(banks) ? banks : []);
-    } catch {
-      setBankAccounts([]);
+      setBillingLoadError(null);
+    } catch (error) {
+      setBillingLoadError(
+        getErrorMessage(error, 'Could not load bank accounts. Check your connection and try again.'),
+      );
     } finally {
       setIsLoadingBilling(false);
     }
@@ -120,7 +162,7 @@ export default function PaymentMethodsScreen() {
   };
 
   const handleRemoveBank = (account: BankAccount) => {
-    Alert.alert(
+    showAppAlert(
       'Remove bank account?',
       `${account.bankName} ••••${account.accountNumber.slice(-4)} will be removed.`,
       [
@@ -147,9 +189,101 @@ export default function PaymentMethodsScreen() {
     haptics.selection();
     setSelectedMethod(WALLET_METHOD);
     setPaymentError(null);
+    setSettlementMessage(null);
     setPin('');
     setShowPinModal(true);
   };
+
+  const goToReceipt = useCallback(
+    (reference: string | undefined) => {
+      router.replace({
+        pathname: '/PaymentSuccessfulScreen' as any,
+        params: {
+          transactionId: reference,
+          providerName: params.providerName || 'Service Provider',
+          serviceName: params.serviceName || 'Service Request',
+          amount: params.amount,
+          requestId: params.requestId,
+        },
+      });
+    },
+    [router, params.providerName, params.serviceName, params.amount, params.requestId]
+  );
+
+  /**
+   * Polls the wallet ledger until the payment reference settles.
+   * Uses `mapWalletTransactionStatus` so this screen reads status exactly the
+   * same way Wallet and Activity do.
+   */
+  const waitForSettlement = useCallback(
+    async (reference: string): Promise<'completed' | 'failed' | 'timedOut'> => {
+      for (let attempt = 0; attempt < SETTLEMENT_MAX_ATTEMPTS; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, SETTLEMENT_POLL_MS));
+        if (unmountedRef.current) return 'timedOut';
+
+        try {
+          const { transactions } = await walletService.getTransactions({ limit: 25, offset: 0 });
+          const row = transactions.find(
+            (t) => String(t.reference ?? '') === String(reference)
+          );
+          if (!row) continue;
+          if (isCancelledWalletTransaction(row)) return 'failed';
+
+          const status = mapWalletTransactionStatus(row);
+          if (status === 'completed') return 'completed';
+          if (status === 'failed') {
+            setSettlementMessage(
+              extractWalletTransactionFailureReason(row) ??
+                'The payment did not go through. Your wallet has not been debited.'
+            );
+            return 'failed';
+          }
+        } catch {
+          // A single failed poll is not a verdict — keep trying until attempts run out.
+        }
+      }
+      return 'timedOut';
+    },
+    []
+  );
+
+  /** Re-checks a payment that was still pending when the poll gave up. */
+  const handleRecheckSettlement = useCallback(async () => {
+    const reference = settlementRefRef.current;
+    if (!reference) return;
+    setSettlementMessage(null);
+    setPaymentStep('verifying');
+
+    const outcome = await waitForSettlement(reference);
+    if (unmountedRef.current) return;
+
+    if (outcome === 'completed') {
+      setPaymentStep('success');
+      haptics.success();
+      setTimeout(() => {
+        if (!unmountedRef.current) goToReceipt(reference);
+      }, SUCCESS_HANDOFF_MS);
+      return;
+    }
+    setPaymentStep(outcome === 'failed' ? 'failed' : 'timedOut');
+    haptics.error();
+  }, [waitForSettlement, goToReceipt]);
+
+  /** Leaves the modal from a terminal state without pretending the payment succeeded. */
+  const handleDismissSettlement = useCallback(() => {
+    setShowProcessingModal(false);
+    setIsProcessingPayment(false);
+    setSettlementMessage(null);
+  }, []);
+
+  /** Terminal-state retry: back to the PIN sheet for a fresh attempt. */
+  const handleRetryPayment = useCallback(() => {
+    setShowProcessingModal(false);
+    setIsProcessingPayment(false);
+    setSettlementMessage(null);
+    setPin('');
+    setShowPinModal(true);
+  }, []);
 
   const handleProcessPayment = async (pinValue: string) => {
     // Validate PIN first - must be exactly 4 digits
@@ -191,36 +325,49 @@ export default function PaymentMethodsScreen() {
         pin: pinValue,
       });
 
-      // Payment successful - show success animation
-      setTimeout(() => {
+      settlementRefRef.current = response?.reference ?? null;
+
+      // A 2xx with an explicit `failed` is a real failure — it used to render as success.
+      const reportedStatus = String(response?.status ?? '').toLowerCase();
+
+      if (reportedStatus === 'failed') {
+        setIsProcessingPayment(false);
+        setSettlementMessage(
+          'The payment did not go through. Your wallet has not been debited.'
+        );
+        setPaymentStep('failed');
+        haptics.error();
+        return;
+      }
+
+      if (reportedStatus === 'pending') {
         setPaymentStep('verifying');
-        haptics.light();
-      }, 1500);
+        const outcome = await waitForSettlement(String(response?.reference ?? ''));
+        if (unmountedRef.current) return;
 
-      setTimeout(() => {
-        setPaymentStep('completing');
-        haptics.light();
-      }, 3000);
+        setIsProcessingPayment(false);
 
-      setTimeout(() => {
-        setPaymentStep('success');
-        haptics.success();
-      }, 4000);
+        if (outcome === 'completed') {
+          setPaymentStep('success');
+          haptics.success();
+          setTimeout(() => {
+            if (!unmountedRef.current) goToReceipt(response?.reference);
+          }, SUCCESS_HANDOFF_MS);
+          return;
+        }
 
-      // Navigate to success screen
+        setPaymentStep(outcome === 'failed' ? 'failed' : 'timedOut');
+        haptics.error();
+        return;
+      }
+
+      // `completed` (or a 2xx with no status field) — the debit is done.
+      setIsProcessingPayment(false);
+      setPaymentStep('success');
+      haptics.success();
       setTimeout(() => {
-        setShowProcessingModal(false);
-        router.replace({
-          pathname: '/PaymentSuccessfulScreen' as any,
-          params: {
-            transactionId: response.reference,
-            providerName: params.providerName || 'Service Provider',
-            serviceName: params.serviceName || 'Service Request',
-            amount: params.amount,
-            requestId: params.requestId,
-          },
-        });
-      }, 5500);
+        if (!unmountedRef.current) goToReceipt(response?.reference);
+      }, SUCCESS_HANDOFF_MS);
     } catch (error: any) {
       console.error('Error processing payment:', error);
       
@@ -338,9 +485,11 @@ export default function PaymentMethodsScreen() {
     };
   }, []);
 
+  const isSettling = paymentStep === 'processing' || paymentStep === 'verifying';
+
   // Spinning animation for loader
   useEffect(() => {
-    if (showProcessingModal && paymentStep !== 'success') {
+    if (showProcessingModal && isSettling) {
       const spin = Animated.loop(
         Animated.timing(spinAnim, {
           toValue: 1,
@@ -351,7 +500,7 @@ export default function PaymentMethodsScreen() {
       spin.start();
       return () => spin.stop();
     }
-  }, [showProcessingModal, paymentStep]);
+  }, [showProcessingModal, isSettling]);
 
   const spin = spinAnim.interpolate({
     inputRange: [0, 1],
@@ -363,11 +512,21 @@ export default function PaymentMethodsScreen() {
       case 'processing':
         return { title: 'Processing Payment', subtitle: 'Please wait while we process your payment...' };
       case 'verifying':
-        return { title: 'Verifying Payment', subtitle: 'Confirming transaction details...' };
-      case 'completing':
-        return { title: 'Completing Transaction', subtitle: 'Finalizing your payment...' };
+        return { title: 'Verifying Payment', subtitle: 'Waiting for your bank ledger to confirm the debit.' };
       case 'success':
         return { title: 'Payment successful', subtitle: 'Your payment went through' };
+      case 'failed':
+        return {
+          title: 'Payment failed',
+          subtitle:
+            settlementMessage ?? 'The payment did not go through. Your wallet has not been debited.',
+        };
+      case 'timedOut':
+        return {
+          title: 'Still confirming',
+          subtitle:
+            'Your payment is taking longer than usual to confirm. It has not failed — you can check again, or close this and view it in your wallet activity.',
+        };
       default:
         return { title: 'Processing...', subtitle: 'Please wait' };
     }
@@ -378,24 +537,14 @@ export default function PaymentMethodsScreen() {
   if (!isCheckout) {
     return (
       <SafeAreaWrapper backgroundColor={Colors.backgroundLight}>
-        <View className="flex-row items-center px-4 py-3" style={{ paddingTop: 20 }}>
-          <TouchableOpacity
-            onPress={() => {
-              haptics.light();
-              router.back();
-            }}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="arrow-back" size={24} color="#000000" />
-          </TouchableOpacity>
-          <Text
-            className="text-lg font-bold text-black flex-1 text-center"
-            style={{ fontFamily: 'Poppins-Bold', letterSpacing: -0.3 }}
-          >
-            Billing & payment
-          </Text>
-          <View style={{ width: 24 }} />
-        </View>
+        <ScreenHeader
+          title="Billing & payment"
+          onBack={() => {
+            haptics.light();
+            router.back();
+          }}
+          backgroundColor={Colors.backgroundLight}
+        />
 
         {isLoadingBilling ? (
           <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 }}>
@@ -403,7 +552,7 @@ export default function PaymentMethodsScreen() {
               style={{
                 width: 72,
                 height: 72,
-                borderRadius: 36,
+                borderRadius: BorderRadius.full,
                 backgroundColor: Colors.sageTint,
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -440,7 +589,7 @@ export default function PaymentMethodsScreen() {
                 style={{
                   width: 40,
                   height: 40,
-                  borderRadius: 20,
+                  borderRadius: BorderRadius.full,
                   backgroundColor: Colors.sageTint,
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -474,8 +623,8 @@ export default function PaymentMethodsScreen() {
                 style={{
                   width: 40,
                   height: 40,
-                  borderRadius: 20,
-                  backgroundColor: '#F7F8FA',
+                  borderRadius: BorderRadius.full,
+                  backgroundColor: Colors.borderLight,
                   alignItems: 'center',
                   justifyContent: 'center',
                   marginRight: 12,
@@ -501,7 +650,22 @@ export default function PaymentMethodsScreen() {
               Used for withdrawals. Service payments use your wallet balance and PIN.
             </Text>
 
-            {bankAccounts.length === 0 ? (
+            {billingLoadError && bankAccounts.length === 0 ? (
+              <ErrorState
+                title="Could not load bank accounts"
+                message={billingLoadError}
+                onRetry={() => {
+                  void loadBillingData();
+                }}
+                style={{
+                  flex: 0,
+                  marginBottom: 16,
+                  ...providerListCard,
+                  paddingVertical: 24,
+                }}
+                iconSize={32}
+              />
+            ) : bankAccounts.length === 0 ? (
               <View
                 style={{
               ...providerListCard,
@@ -509,7 +673,7 @@ export default function PaymentMethodsScreen() {
               marginBottom: 16,
                 }}
               >
-                <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: Colors.sageTint, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                <View style={{ width: 64, height: 64, borderRadius: BorderRadius.full, backgroundColor: Colors.sageTint, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
                   <Building2 size={30} color={Colors.accent} />
                 </View>
                 <Text style={{ fontFamily: 'Poppins-Bold', color: Colors.textPrimary, textAlign: 'center', marginBottom: 6, fontSize: 16 }}>
@@ -520,8 +684,16 @@ export default function PaymentMethodsScreen() {
                 </Text>
                 <TouchableOpacity
                   onPress={() => router.push('/ProviderLinkBankAccountScreen' as any)}
-                  style={{ backgroundColor: Colors.accent, paddingVertical: 12, paddingHorizontal: 20, borderRadius: 14 }}
+                  style={{
+                    backgroundColor: Colors.accent,
+                    paddingVertical: 12,
+                    paddingHorizontal: 20,
+                    borderRadius: BorderRadius.default,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                  }}
                 >
+                  <Plus size={18} color={Colors.black} strokeWidth={2.5} style={{ marginRight: 8 }} />
                   <Text style={{ fontFamily: 'Poppins-SemiBold', color: Colors.black }}>Link bank account</Text>
                 </TouchableOpacity>
               </View>
@@ -533,7 +705,7 @@ export default function PaymentMethodsScreen() {
                     flexDirection: 'row',
                     alignItems: 'center',
                     backgroundColor: Colors.white,
-                    borderRadius: 18,
+                    borderRadius: BorderRadius.default,
                     padding: 16,
                     marginBottom: 10,
                     borderWidth: 1,
@@ -562,6 +734,24 @@ export default function PaymentMethodsScreen() {
               ))
             )}
 
+            {/* {bankAccounts.length > 0 ? (
+              <TouchableOpacity
+                onPress={() => router.push('/ProviderLinkBankAccountScreen' as any)}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  marginTop: 4,
+                  marginBottom: 8,
+                  paddingVertical: 8,
+                }}
+              >
+                <Plus size={16} color={Colors.accent} strokeWidth={2.5} />
+                <Text style={{ marginLeft: 6, fontFamily: 'Poppins-SemiBold', fontSize: 13, color: Colors.accent }}>
+                  Add or replace bank
+                </Text>
+              </TouchableOpacity>
+            ) : null} */}
+
             <TouchableOpacity
               onPress={() => router.push('/WalletScreen' as any)}
               style={{
@@ -569,7 +759,7 @@ export default function PaymentMethodsScreen() {
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 backgroundColor: Colors.white,
-                borderRadius: 18,
+                borderRadius: BorderRadius.default,
                 padding: 16,
                 marginTop: 8,
                 borderWidth: 1,
@@ -607,18 +797,13 @@ export default function PaymentMethodsScreen() {
         {paymentError && (
           <View
             style={{
-              backgroundColor: paymentError.isInsufficientBalance ? '#FEF2F2' : '#FFF4E6',
+              backgroundColor: paymentError.isInsufficientBalance ? Colors.errorLight : Colors.warningLight,
               borderLeftWidth: 4,
               borderLeftColor: paymentError.isInsufficientBalance ? Colors.error : Colors.warning,
-              borderRadius: BorderRadius.md,
+              borderRadius: BorderRadius.default,
               padding: 16,
               marginTop: 16,
               marginBottom: 8,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 4,
-              elevation: 0.76,
             }}
           >
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: paymentError.isInsufficientBalance ? 12 : 0 }}>
@@ -628,7 +813,7 @@ export default function PaymentMethodsScreen() {
                     style={{
                       width: 24,
                       height: 24,
-                      borderRadius: 12,
+                      borderRadius: BorderRadius.default,
                       backgroundColor: paymentError.isInsufficientBalance ? Colors.error : Colors.warning,
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -663,7 +848,7 @@ export default function PaymentMethodsScreen() {
                 onPress={() => setPaymentError(null)}
                 style={{
                   padding: 4,
-                  borderRadius: 12,
+                  borderRadius: BorderRadius.default,
                   backgroundColor: 'rgba(0, 0, 0, 0.05)',
                 }}
                 activeOpacity={0.7}
@@ -697,26 +882,22 @@ export default function PaymentMethodsScreen() {
                   backgroundColor: Colors.accent,
                   paddingVertical: 12,
                   paddingHorizontal: 20,
-                  borderRadius: BorderRadius.md,
+                  borderRadius: BorderRadius.default,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  shadowColor: Colors.accent,
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 4,
-                  elevation: 0.76,
                 }}
                 activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel="Top up wallet"
               >
                 <Text
                   style={{
                     fontSize: 14,
                     fontFamily: 'Poppins-SemiBold',
                     color: Colors.white,
-                    letterSpacing: 0.3,
                   }}
                 >
-                  Top Up Wallet
+                  Top up wallet
                 </Text>
               </TouchableOpacity>
             )}
@@ -732,13 +913,13 @@ export default function PaymentMethodsScreen() {
         <TouchableOpacity
           onPress={startWalletCheckoutPayment}
           activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel={`Pay with wallet, available balance ₦${walletBalanceDisplay}`}
           style={{
-            backgroundColor: Colors.backgroundGray,
-            borderRadius: BorderRadius.xl,
+            ...providerHomeSurface,
+            borderColor: Colors.accent,
             padding: 20,
             marginBottom: 16,
-            borderWidth: 2,
-            borderColor: Colors.accent,
           }}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -746,8 +927,8 @@ export default function PaymentMethodsScreen() {
               style={{
                 width: 48,
                 height: 48,
-                borderRadius: 12,
-                backgroundColor: '#0a0a0a',
+                borderRadius: BorderRadius.default,
+                backgroundColor: Colors.sageTint,
                 alignItems: 'center',
                 justifyContent: 'center',
                 marginRight: 14,
@@ -756,12 +937,12 @@ export default function PaymentMethodsScreen() {
               <Wallet size={24} color={Colors.accent} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontFamily: 'Poppins-Bold', fontSize: 17, color: Colors.textPrimary, marginBottom: 4 }}>
+              <Text style={{ fontFamily: 'Poppins-Bold', fontSize: 15, color: Colors.textPrimary, marginBottom: 4 }}>
                 Wallet
               </Text>
               <Text style={{ fontFamily: 'Poppins-Regular', fontSize: 13, color: Colors.textSecondaryDark }}>
                 Available: ₦
-                {walletBalance.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {walletBalanceDisplay}
               </Text>
             </View>
             <ChevronRight size={22} color={Colors.textTertiary} />
@@ -773,18 +954,37 @@ export default function PaymentMethodsScreen() {
             haptics.light();
             router.push('/TopUpScreen' as any);
           }}
-          activeOpacity={0.7}
-          className="border-2 border-dashed border-gray-300 rounded-2xl px-4 py-5 flex-row items-center justify-between mb-4"
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel="Top up wallet"
+          style={{
+            ...providerHomeSurface,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: 16,
+            marginBottom: 16,
+          }}
         >
-          <View className="flex-row items-center flex-1">
-            <View className="w-12 h-12 items-center justify-center mr-4">
-              <Plus size={24} color={Colors.accent} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+            <View
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: BorderRadius.default,
+                backgroundColor: Colors.sageTint,
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginRight: 12,
+              }}
+            >
+              <Plus size={20} color={Colors.accent} strokeWidth={2.5} />
             </View>
-            <Text className="text-base" style={{ fontFamily: 'Poppins-Medium', color: Colors.textPrimary }}>
+            <Text style={{ fontSize: 14, fontFamily: 'Poppins-SemiBold', color: Colors.textPrimary }}>
               Top up wallet
             </Text>
           </View>
-          <ChevronRight size={20} color="#9CA3AF" />
+          <ChevronRight size={20} color={Colors.iconMuted} />
         </TouchableOpacity>
       </ScrollView>
 
@@ -793,7 +993,10 @@ export default function PaymentMethodsScreen() {
         visible={showProcessingModal}
         transparent={true}
         animationType="fade"
-        onRequestClose={() => {}}
+        onRequestClose={() => {
+          // Only escapable once the payment has reached a terminal state.
+          if (!isSettling && paymentStep !== 'success') handleDismissSettlement();
+        }}
       >
         <View
           style={{
@@ -807,7 +1010,7 @@ export default function PaymentMethodsScreen() {
           <View
             style={{
               backgroundColor: Colors.white,
-              borderRadius: 20,
+              borderRadius: BorderRadius.sageHero,
               padding: 32,
               alignItems: 'center',
               minWidth: 300,
@@ -820,7 +1023,7 @@ export default function PaymentMethodsScreen() {
                 style={{
                   width: 80,
                   height: 80,
-                  borderRadius: 40,
+                  borderRadius: BorderRadius.full,
                   backgroundColor: Colors.successLight,
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -828,6 +1031,34 @@ export default function PaymentMethodsScreen() {
                 }}
               >
                 <CheckCircle size={48} color={Colors.accent} />
+              </View>
+            ) : paymentStep === 'failed' ? (
+              <View
+                style={{
+                  width: 80,
+                  height: 80,
+                  borderRadius: BorderRadius.full,
+                  backgroundColor: Colors.errorLight,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 20,
+                }}
+              >
+                <XCircle size={44} color={Colors.error} />
+              </View>
+            ) : paymentStep === 'timedOut' ? (
+              <View
+                style={{
+                  width: 80,
+                  height: 80,
+                  borderRadius: BorderRadius.full,
+                  backgroundColor: Colors.warningLight,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 20,
+                }}
+              >
+                <Clock size={44} color={Colors.warningForeground} />
               </View>
             ) : (
               <View style={{ marginBottom: 20 }}>
@@ -869,7 +1100,30 @@ export default function PaymentMethodsScreen() {
               {stepMessage.subtitle}
             </Text>
 
-            {/* Progress Steps */}
+            {/* Terminal states replace the progress rail with a real way out */}
+            {paymentStep === 'failed' || paymentStep === 'timedOut' ? (
+              <View style={{ width: '100%', gap: 10 }}>
+                <Button
+                  title={paymentStep === 'failed' ? 'Try again' : 'Check again'}
+                  onPress={
+                    paymentStep === 'failed'
+                      ? handleRetryPayment
+                      : () => void handleRecheckSettlement()
+                  }
+                  variant="primary"
+                  size="medium"
+                  fullWidth
+                />
+                <Button
+                  title="Close"
+                  onPress={handleDismissSettlement}
+                  variant="muted"
+                  size="medium"
+                  fullWidth
+                />
+              </View>
+            ) : (
+            /* Progress Steps */
             <View style={{ width: '100%', marginBottom: 20 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
                 <View style={{ alignItems: 'center', flex: 1 }}>
@@ -877,8 +1131,8 @@ export default function PaymentMethodsScreen() {
                     style={{
                       width: MIN_TOUCH_TARGET,
 height: MIN_TOUCH_TARGET,
-                      borderRadius: 16,
-                      backgroundColor: ['verifying', 'completing', 'success'].indexOf(paymentStep) >= 0
+                      borderRadius: BorderRadius.default,
+                      backgroundColor: ['verifying', 'success'].indexOf(paymentStep) >= 0
                         ? Colors.accent
                         : paymentStep === 'processing'
                         ? Colors.warningLight
@@ -888,20 +1142,20 @@ height: MIN_TOUCH_TARGET,
                       marginBottom: 8,
                     }}
                   >
-                    {['verifying', 'completing', 'success'].indexOf(paymentStep) >= 0 ? (
+                    {['verifying', 'success'].indexOf(paymentStep) >= 0 ? (
                       <CheckCircle size={16} color={Colors.white} />
                     ) : (
-                      <Lock size={16} color={paymentStep === 'processing' ? '#D97706' : Colors.textSecondaryDark} />
+                      <Lock size={16} color={paymentStep === 'processing' ? Colors.warningForeground : Colors.textSecondaryDark} />
                     )}
                   </View>
                   <Text
                     style={{
                       fontSize: 10,
                       fontFamily: 'Poppins-Medium',
-                      color: ['verifying', 'completing', 'success'].indexOf(paymentStep) >= 0
+                      color: ['verifying', 'success'].indexOf(paymentStep) >= 0
                         ? Colors.accent
                         : paymentStep === 'processing'
-                        ? '#D97706'
+                        ? Colors.warningForeground
                         : Colors.textSecondaryDark,
                       textAlign: 'center',
                     }}
@@ -910,15 +1164,15 @@ height: MIN_TOUCH_TARGET,
                   </Text>
                 </View>
 
-                <View style={{ flex: 1, height: 2, backgroundColor: ['verifying', 'completing', 'success'].indexOf(paymentStep) >= 0 ? Colors.accent : Colors.border, marginTop: 16, marginHorizontal: 8 }} />
+                <View style={{ flex: 1, height: 2, backgroundColor: ['verifying', 'success'].indexOf(paymentStep) >= 0 ? Colors.accent : Colors.border, marginTop: 16, marginHorizontal: 8 }} />
 
                 <View style={{ alignItems: 'center', flex: 1 }}>
                   <View
                     style={{
                       width: MIN_TOUCH_TARGET,
 height: MIN_TOUCH_TARGET,
-                      borderRadius: 16,
-                      backgroundColor: ['completing', 'success'].indexOf(paymentStep) >= 0
+                      borderRadius: BorderRadius.default,
+                      backgroundColor: ['success'].indexOf(paymentStep) >= 0
                         ? Colors.accent
                         : paymentStep === 'verifying'
                         ? Colors.warningLight
@@ -928,20 +1182,20 @@ height: MIN_TOUCH_TARGET,
                       marginBottom: 8,
                     }}
                   >
-                    {['completing', 'success'].indexOf(paymentStep) >= 0 ? (
+                    {['success'].indexOf(paymentStep) >= 0 ? (
                       <CheckCircle size={16} color={Colors.white} />
                     ) : (
-                      <Lock size={16} color={paymentStep === 'verifying' ? '#D97706' : Colors.textSecondaryDark} />
+                      <Lock size={16} color={paymentStep === 'verifying' ? Colors.warningForeground : Colors.textSecondaryDark} />
                     )}
                   </View>
                   <Text
                     style={{
                       fontSize: 10,
                       fontFamily: 'Poppins-Medium',
-                      color: ['completing', 'success'].indexOf(paymentStep) >= 0
+                      color: ['success'].indexOf(paymentStep) >= 0
                         ? Colors.accent
                         : paymentStep === 'verifying'
-                        ? '#D97706'
+                        ? Colors.warningForeground
                         : Colors.textSecondaryDark,
                       textAlign: 'center',
                     }}
@@ -950,19 +1204,15 @@ height: MIN_TOUCH_TARGET,
                   </Text>
                 </View>
 
-                <View style={{ flex: 1, height: 2, backgroundColor: ['completing', 'success'].indexOf(paymentStep) >= 0 ? Colors.accent : Colors.border, marginTop: 16, marginHorizontal: 8 }} />
+                <View style={{ flex: 1, height: 2, backgroundColor: ['success'].indexOf(paymentStep) >= 0 ? Colors.accent : Colors.border, marginTop: 16, marginHorizontal: 8 }} />
 
                 <View style={{ alignItems: 'center', flex: 1 }}>
                   <View
                     style={{
                       width: MIN_TOUCH_TARGET,
 height: MIN_TOUCH_TARGET,
-                      borderRadius: 16,
-                      backgroundColor: paymentStep === 'success'
-                        ? Colors.accent
-                        : paymentStep === 'completing'
-                        ? Colors.warningLight
-                        : Colors.border,
+                      borderRadius: BorderRadius.default,
+                      backgroundColor: paymentStep === 'success' ? Colors.accent : Colors.border,
                       alignItems: 'center',
                       justifyContent: 'center',
                       marginBottom: 8,
@@ -971,18 +1221,14 @@ height: MIN_TOUCH_TARGET,
                     {paymentStep === 'success' ? (
                       <CheckCircle size={16} color={Colors.white} />
                     ) : (
-                      <Lock size={16} color={paymentStep === 'completing' ? '#D97706' : Colors.textSecondaryDark} />
+                      <Lock size={16} color={Colors.textSecondaryDark} />
                     )}
                   </View>
                   <Text
                     style={{
                       fontSize: 10,
                       fontFamily: 'Poppins-Medium',
-                      color: paymentStep === 'success'
-                        ? Colors.accent
-                        : paymentStep === 'completing'
-                        ? '#D97706'
-                        : Colors.textSecondaryDark,
+                      color: paymentStep === 'success' ? Colors.accent : Colors.textSecondaryDark,
                       textAlign: 'center',
                     }}
                   >
@@ -991,14 +1237,15 @@ height: MIN_TOUCH_TARGET,
                 </View>
               </View>
             </View>
+            )}
 
             {/* Payment Method Info */}
-            {selectedMethod && (
+            {selectedMethod && paymentStep !== 'failed' && paymentStep !== 'timedOut' && (
               <View
                 style={{
                   width: '100%',
                   backgroundColor: Colors.backgroundGray,
-                  borderRadius: 12,
+                  borderRadius: BorderRadius.default,
                   padding: 16,
                   marginTop: 8,
                 }}

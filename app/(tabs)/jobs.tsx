@@ -11,7 +11,7 @@ import { handleAuthErrorRedirect } from '@/utils/authRedirect';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, Modal, Platform, Pressable, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, Platform, RefreshControl, Text, TouchableOpacity, View } from 'react-native';
 import { JobHistoryCardSkeleton } from '@/components/LoadingSkeleton';
 import { JobsTabEmptyState } from '@/components/JobsTabEmptyState';
 import {
@@ -22,7 +22,7 @@ import {
   JobTabIcon,
 } from '@/components/jobs/JobStatusIcons';
 import { useSkeletonGate } from '@/hooks/useSkeletonGate';
-import { BorderRadius, Colors, REFRESH_CONTROL, useTabScrollContentPaddingTop, useTabScreenScrollBottomPadding } from '@/lib/designSystem';
+import { Colors, REFRESH_CONTROL, useTabScrollContentPaddingTop, useTabScreenScrollBottomPadding } from '@/lib/designSystem';
 import { providerListCard } from '@/lib/providerSurfaceStyles';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { extractMyRatingFromRequest, reviewRatingStorageKey } from '@/utils/reviewSync';
@@ -88,8 +88,8 @@ const JobListItem = React.memo(function JobListItem({
             {job.title}
           </Text>
           <Text
-            className="text-sm text-gray-600"
-            style={{ fontFamily: 'Poppins-Regular' }}
+            className="text-sm"
+            style={{ fontFamily: 'Poppins-Regular', color: Colors.textMuted }}
             numberOfLines={1}
             ellipsizeMode="tail"
           >
@@ -117,7 +117,7 @@ const JobListItem = React.memo(function JobListItem({
                 style={{
                   fontSize: 12,
                   fontFamily: 'Poppins-SemiBold',
-                  color: '#FF2C2C',
+                  color: Colors.error,
                 }}
               >
                 Cancel
@@ -130,7 +130,7 @@ const JobListItem = React.memo(function JobListItem({
       {showQuoteCountOnJobCard(job.status) && (job.quotationsCount ?? 0) >= 0 && (
         <View className="flex-row items-center gap-3 mt-2">
           <JobMetaIconQuotes size={16} color={Colors.textMuted} />
-          <Text className="text-sm text-gray-600" style={{ fontFamily: 'Poppins-Regular' }}>
+          <Text className="text-sm" style={{ fontFamily: 'Poppins-Regular', color: Colors.textMuted }}>
             {job.quotationsCount === 0
               ? 'Awaiting quotes'
               : `${job.quotationsCount} quote${job.quotationsCount === 1 ? '' : 's'}`}
@@ -139,26 +139,26 @@ const JobListItem = React.memo(function JobListItem({
       )}
       <View className="flex-row items-center gap-3 mt-2">
         <JobMetaIconPerson size={16} color={Colors.textMuted} />
-        <Text className="text-sm text-gray-600" style={{ fontFamily: 'Poppins-Regular' }}>
+        <Text className="text-sm" style={{ fontFamily: 'Poppins-Regular', color: Colors.textMuted }}>
           {job.name}
         </Text>
       </View>
       <View className="flex-row items-center gap-3 mt-2">
         <JobMetaIconCalendar size={16} color={Colors.textMuted} />
-        <Text className="text-sm text-gray-600" style={{ fontFamily: 'Poppins-Regular' }}>
+        <Text className="text-sm" style={{ fontFamily: 'Poppins-Regular', color: Colors.textMuted }}>
           {job.time}
         </Text>
       </View>
       <View className="flex-row items-center gap-3 mt-2">
         <JobMetaIconLocation size={16} color={Colors.textMuted} />
-        <Text className="text-sm text-gray-600" style={{ fontFamily: 'Poppins-Regular' }}>
+        <Text className="text-sm" style={{ fontFamily: 'Poppins-Regular', color: Colors.textMuted }}>
           {job.location}
         </Text>
       </View>
 
       {activeTab === 'Completed' && job.myRating != null && job.myRating >= 1 && (
         <View className="flex-row items-center gap-2 mt-3">
-          <Text className="text-xs text-gray-500" style={{ fontFamily: 'Poppins-Medium' }}>
+          <Text className="text-xs" style={{ fontFamily: 'Poppins-Medium', color: Colors.iconMuted }}>
             Your rating
           </Text>
           <View className="flex-row">
@@ -179,11 +179,13 @@ const JobListItem = React.memo(function JobListItem({
 
       <View className="flex flex-row pt-4 justify-center">
         <TouchableOpacity
-          className={`py-3 px-6 rounded-lg ${
-            activeTab === 'Ongoing' || activeTab === 'Pending'
-              ? 'bg-gray-100 w-full'
-              : 'bg-[#4F6739] w-full'
-          }`}
+          className="py-3 px-6 rounded-lg w-full"
+          style={{
+            backgroundColor:
+              activeTab === 'Ongoing' || activeTab === 'Pending'
+                ? Colors.backgroundGray
+                : Colors.accent,
+          }}
           activeOpacity={0.85}
           onPress={() => onPrimaryAction(activeTab, job)}
         >
@@ -273,12 +275,11 @@ export default function JobsScreen() {
     if (tab === 'Pending' || tab === 'Cancelled') return 'Pending';
     return 'Ongoing';
   });
-  const [pendingCancelJob, setPendingCancelJob] = useState<JobItem | null>(null);
   const [allJobs, setAllJobs] = useState<JobItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
-  const { showError, showSuccess } = useToast();
+  const { showError } = useToast();
 
   // Load user requests from API
   const loadRequests = useCallback(async () => {
@@ -426,16 +427,27 @@ export default function JobsScreen() {
     }
   };
 
+  const handleCancelRequest = useCallback(
+    (job: JobItem) => {
+      const requestId = job.requestId ?? job.id;
+      router.push({
+        pathname: '/CancelRequestScreen',
+        params: { requestId: String(requestId) },
+      } as any);
+    },
+    [router],
+  );
+
   const renderJobItem = useCallback(
     ({ item }: { item: JobItem }) => (
       <JobListItem
         job={item}
         activeTab={activeTab}
         onPrimaryAction={handlePrimaryAction}
-        onCancelRequest={setPendingCancelJob}
+        onCancelRequest={handleCancelRequest}
       />
     ),
-    [activeTab]
+    [activeTab, handleCancelRequest],
   );
 
   const jobKeyExtractor = useCallback(
@@ -470,15 +482,15 @@ export default function JobsScreen() {
                     color={isActive ? Colors.accent : Colors.textMuted}
                   />
                   <Text
-                    className={`text-base ${isActive ? 'text-black' : 'text-gray-500'}`}
-                    style={{ fontFamily: 'Poppins-Medium' }}
+                    className="text-base"
+                    style={{ fontFamily: 'Poppins-Medium', color: isActive ? Colors.textPrimary : Colors.iconMuted }}
                   >
                     {status}
                   </Text>
                 </View>
                 <View
-                  className={`mt-2 h-0.5 rounded-full ${isActive ? 'bg-[#4F6739]' : 'bg-transparent'}`}
-                  style={{ width: 88 }}
+                  className="mt-2 h-0.5 rounded-full"
+                  style={{ width: 88, backgroundColor: isActive ? Colors.accent : 'transparent' }}
                 />
               </TouchableOpacity>
             );
@@ -521,140 +533,6 @@ export default function JobsScreen() {
           />
         )}
       </View>
-
-      {/* Cancel Request Modal - Centered Box */}
-      <Modal
-        visible={!!pendingCancelJob}
-        transparent
-        animationType="fade"
-        onRequestClose={() => {
-          haptics.light();
-          setPendingCancelJob(null);
-        }}
-      >
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            justifyContent: 'center',
-            alignItems: 'center',
-            paddingHorizontal: 20,
-          }}
-        >
-          <Pressable
-            style={StyleSheet.absoluteFill}
-            onPress={() => {
-              haptics.light();
-              setPendingCancelJob(null);
-            }}
-          />
-          <View
-            style={{
-              backgroundColor: Colors.white,
-              borderRadius: BorderRadius.default,
-              padding: 24,
-              width: '100%',
-              maxWidth: 400,
-              borderWidth: 1,
-              borderColor: Colors.border,
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 18,
-                fontFamily: 'Poppins-Bold',
-                color: Colors.textPrimary,
-                textAlign: 'center',
-                marginBottom: 8,
-              }}
-            >
-              Cancel Request?
-            </Text>
-            <Text
-              style={{
-                fontSize: 13,
-                fontFamily: 'Poppins-Regular',
-                color: Colors.textSecondaryDark,
-                textAlign: 'center',
-                marginBottom: 24,
-              }}
-            >
-              This action cannot be undone
-            </Text>
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              <TouchableOpacity
-                style={{
-                  flex: 1,
-                  backgroundColor: '#FF2C2C',
-                  paddingVertical: 12,
-                  borderRadius: 12,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-                activeOpacity={0.85}
-                onPress={async () => {
-                  const job = pendingCancelJob;
-                  haptics.error();
-                  setPendingCancelJob(null);
-                  if (job && job.requestId) {
-                    try {
-                      await serviceRequestService.cancelRequest(job.requestId);
-                      haptics.success();
-                      showSuccess('Request cancelled.');
-                      setAllJobs((prev) => prev.filter((j) => j.requestId !== job.requestId));
-                      setActiveTab('Pending');
-                      await loadRequests();
-                      router.replace({
-                        pathname: '/(tabs)/jobs',
-                        params: { initialTab: 'Pending' },
-                      } as any);
-                    } catch (error: any) {
-                      const errorMessage = getSpecificErrorMessage(error, 'cancel_request');
-                      showError(errorMessage);
-                      await loadRequests();
-                    }
-                  }
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 14,
-                    fontFamily: 'Poppins-SemiBold',
-                    color: Colors.white,
-                  }}
-                >
-                  Cancel
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{
-                  flex: 1,
-                  backgroundColor: Colors.backgroundGray,
-                  paddingVertical: 12,
-                  borderRadius: 12,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-                activeOpacity={0.85}
-                onPress={() => {
-                  haptics.light();
-                  setPendingCancelJob(null);
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 14,
-                    fontFamily: 'Poppins-SemiBold',
-                    color: Colors.textPrimary,
-                  }}
-                >
-                  Go back
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaWrapper>
   );
 }

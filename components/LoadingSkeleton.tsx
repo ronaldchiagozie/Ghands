@@ -397,20 +397,47 @@ export const NotificationCardSkeleton = () => (
       flexDirection: 'row',
       marginBottom: 10,
       ...providerListCard,
-      paddingVertical: 10,
+      paddingVertical: 12,
       paddingHorizontal: 12,
-      minHeight: 72,
-      overflow: 'hidden',
+      minHeight: 96,
+      alignItems: 'flex-start',
     }}
   >
     <Skeleton width={36} height={36} borderRadius={14} style={{ marginRight: 10 }} />
-    <View style={{ flex: 1, justifyContent: 'center' }}>
-      <Skeleton width="40%" height={10} borderRadius={6} style={{ marginBottom: 7 }} />
-      <Skeleton width="90%" height={9} borderRadius={6} style={{ marginBottom: 5 }} />
-      <Skeleton width="60%" height={9} borderRadius={6} />
+    <View style={{ flex: 1 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+        <Skeleton width="58%" height={13} borderRadius={6} style={{ flex: 1, maxWidth: '75%' }} />
+        <Skeleton width={8} height={8} borderRadius={4} style={{ marginLeft: 8 }} />
+      </View>
+      <Skeleton width="100%" height={12} borderRadius={6} style={{ marginBottom: 5 }} />
+      <Skeleton width="88%" height={12} borderRadius={6} style={{ marginBottom: 10 }} />
+      <View style={{ flexDirection: 'row', gap: 6 }}>
+        <Skeleton width={92} height={26} borderRadius={999} />
+        <Skeleton width={72} height={26} borderRadius={999} />
+      </View>
     </View>
   </View>
 );
+
+/** Fills notifications list while loading — matches real card height and count for viewport. */
+export const NotificationsListSkeleton = () => {
+  const { height: windowHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const cardBlockHeight = 106;
+  const reservedTop = insets.top + 200;
+  const reservedBottom = insets.bottom + 100;
+  const listHeight = Math.max(320, windowHeight - reservedTop - reservedBottom);
+  const count = Math.min(14, Math.max(7, Math.ceil(listHeight / cardBlockHeight)));
+
+  return (
+    <View style={{ minHeight: listHeight, paddingBottom: 8 }}>
+      <Skeleton width={72} height={12} borderRadius={6} style={{ marginBottom: 12 }} />
+      {Array.from({ length: count }).map((_, i) => (
+        <NotificationCardSkeleton key={`notifications-skeleton-${i}`} />
+      ))}
+    </View>
+  );
+};
 
 /** Timeline rail — matches JobProgressTimeline (26px dots, PROGRESS section). */
 export const JobDetailsTimelineSkeleton = ({

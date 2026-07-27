@@ -1,16 +1,26 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { WalletPinInput } from '@/components/WalletPinInput';
-import { Colors } from '@/lib/designSystem';
+import { BorderRadius, Colors, useKeyboardAvoidingOffset } from '@/lib/designSystem';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Check, Shield } from 'lucide-react-native';
+import { Check, Lock } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { Modal, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { walletService } from '@/services/api';
 import { haptics } from '@/hooks/useHaptics';
 import { getSpecificErrorMessage } from '@/utils/errorMessages';
 
 export default function CreatePINScreen() {
+  const keyboardOffset = useKeyboardAvoidingOffset();
   const router = useRouter();
   const params = useLocalSearchParams<{
     returnTo?: string;
@@ -75,9 +85,15 @@ export default function CreatePINScreen() {
       setShowSuccessModal(true);
     } catch (error: any) {
       haptics.error();
-      const errorMessage = getSpecificErrorMessage(error, 'set_pin') || error?.message || 'Failed to save PIN. Please try again.';
+      const errorMessage =
+        getSpecificErrorMessage(error, 'set_pin') ||
+        error?.message ||
+        'Failed to save PIN. Please try again.';
 
-      if (errorMessage.toLowerCase().includes('already set') || errorMessage.toLowerCase().includes('change pin')) {
+      if (
+        errorMessage.toLowerCase().includes('already set') ||
+        errorMessage.toLowerCase().includes('change pin')
+      ) {
         setError('PIN is already set. Please use "Change PIN" from Security settings.');
       } else {
         setError(errorMessage);
@@ -110,99 +126,127 @@ export default function CreatePINScreen() {
   return (
     <SafeAreaWrapper backgroundColor={Colors.white}>
       <View style={{ flex: 1 }}>
-        <ScreenHeader title="Create PIN" onBack={() => router.back()} backgroundColor={Colors.white} />
-        <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 40, paddingBottom: 40 }}>
-          <View style={{ alignItems: 'center', marginBottom: 32 }}>
-            <View
+        <ScreenHeader
+          title="Create PIN"
+          onBack={() => router.back()}
+          backgroundColor={Colors.white}
+        />
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={keyboardOffset}
+        >
+          <ScrollView
+            contentContainerStyle={{
+              flexGrow: 1,
+              paddingHorizontal: 20,
+              paddingTop: 40,
+              paddingBottom: 40,
+            }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+          >
+            <View style={{ alignItems: 'center', marginBottom: 32 }}>
+              <View
+                style={{
+                  width: 88,
+                  height: 88,
+                  borderRadius: BorderRadius.full,
+                  backgroundColor: Colors.successLight,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Lock size={40} color={Colors.accent} />
+              </View>
+            </View>
+
+            <Text
               style={{
-                width: 120,
-                height: 120,
-                borderRadius: 60,
-                backgroundColor: Colors.infoLight,
-                alignItems: 'center',
-                justifyContent: 'center',
+                fontSize: 18,
+                fontFamily: 'Poppins-Bold',
+                color: Colors.textPrimary,
+                letterSpacing: -0.3,
+                lineHeight: 24,
+                textAlign: 'center',
+                marginBottom: 8,
               }}
             >
-              <Shield size={60} color="#3B82F6" />
-            </View>
-          </View>
+              Secure Your Wallet
+            </Text>
 
-          <Text
-            style={{
-              fontSize: 24,
-              fontFamily: 'Poppins-Bold',
-              color: Colors.textPrimary,
-              textAlign: 'center',
-              marginBottom: 12,
-            }}
-          >
-            Secure Your Wallet
-          </Text>
+            <Text
+              style={{
+                fontSize: 14,
+                fontFamily: 'Poppins-Regular',
+                color: Colors.textSecondaryDark,
+                textAlign: 'center',
+                marginBottom: 40,
+                lineHeight: 20,
+              }}
+            >
+              Create a 4-digit PIN to protect your wallet and transactions.
+            </Text>
 
-          <Text
-            style={{
-              fontSize: 14,
-              fontFamily: 'Poppins-Regular',
-              color: Colors.textSecondaryDark,
-              textAlign: 'center',
-              marginBottom: 40,
-              lineHeight: 20,
-            }}
-          >
-            Create a 4-digit PIN to protect your wallet and transactions.
-          </Text>
+            <Text
+              style={{
+                fontSize: 14,
+                fontFamily: 'Poppins-SemiBold',
+                color: Colors.textPrimary,
+                marginBottom: 16,
+              }}
+            >
+              {isConfirming ? 'Confirm PIN' : 'Enter PIN'}
+            </Text>
 
-          <Text
-            style={{
-              fontSize: 14,
-              fontFamily: 'Poppins-SemiBold',
-              color: Colors.textPrimary,
-              marginBottom: 16,
-            }}
-          >
-            {isConfirming ? 'Confirm PIN' : 'Enter PIN'}
-          </Text>
+            <WalletPinInput
+              key={isConfirming ? 'confirm-pin' : 'enter-pin'}
+              value={activePin}
+              onChange={handlePinChange}
+              onComplete={isConfirming ? handleConfirmComplete : handleEnterComplete}
+              error={!!error}
+              disabled={isSavingPin}
+              autoFocus
+            />
 
-          <WalletPinInput
-            key={isConfirming ? 'confirm-pin' : 'enter-pin'}
-            value={activePin}
-            onChange={handlePinChange}
-            onComplete={isConfirming ? handleConfirmComplete : handleEnterComplete}
-            error={!!error}
-            disabled={isSavingPin}
-            autoFocus
-          />
-
-          {isSavingPin ? (
-            <View style={{ alignItems: 'center', marginTop: 16, marginBottom: 16 }}>
-              <ActivityIndicator size="small" color={Colors.accent} />
-              <Text
+            {isSavingPin ? (
+              <View
                 style={{
-                  fontSize: 12,
-                  fontFamily: 'Poppins-Regular',
-                  color: Colors.textSecondaryDark,
-                  marginTop: 8,
+                  alignItems: 'center',
+                  marginTop: 16,
+                  marginBottom: 16,
                 }}
               >
-                Saving PIN...
-              </Text>
-            </View>
-          ) : null}
-
-          <View style={{ minHeight: 24, marginTop: 16, marginBottom: 40 }}>
-            {error ? (
-              <Text
-                style={{
-                  fontSize: 12,
-                  fontFamily: 'Poppins-Regular',
-                  color: Colors.error,
-                }}
-              >
-                {error}
-              </Text>
+                <ActivityIndicator size="small" color={Colors.accent} />
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontFamily: 'Poppins-Regular',
+                    color: Colors.textSecondaryDark,
+                    marginTop: 8,
+                  }}
+                >
+                  Saving PIN...
+                </Text>
+              </View>
             ) : null}
-          </View>
-        </View>
+
+            <View style={{ minHeight: 24, marginTop: 16, marginBottom: 40 }}>
+              {error ? (
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontFamily: 'Poppins-Regular',
+                    color: Colors.error,
+                  }}
+                >
+                  {error}
+                </Text>
+              ) : null}
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
 
         <Modal
           visible={showSuccessModal}

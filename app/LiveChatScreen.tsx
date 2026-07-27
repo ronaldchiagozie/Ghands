@@ -1,19 +1,22 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
-import { Colors, Spacing, BorderRadius, SHADOWS } from '@/lib/designSystem';
+import { haptics } from '@/hooks/useHaptics';
+import { BorderRadius, Colors, MIN_TOUCH_TARGET, Spacing } from '@/lib/designSystem';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Send, Image as ImageIcon, Mic, Headphones, Check, CheckCheck } from 'lucide-react-native';
-import React, { useEffect, useRef, useState } from 'react';
+import { ArrowLeft, Check, CheckCheck, Headphones, Send } from 'lucide-react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Dimensions,
   FlatList,
-  KeyboardAvoidingView,
+  Image,
+  Keyboard,
+  type KeyboardEvent,
   Platform,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-  Image,
 } from 'react-native';
-import { haptics } from '@/hooks/useHaptics';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface Message {
   id: string;
@@ -56,9 +59,16 @@ const SUPPORT_RESPONSES = [
 
 export default function LiveChatScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
   const [message, setMessage] = useState('');
+  const [keyboardInset, setKeyboardInset] = useState(0);
+  const [footerHeight, setFooterHeight] = useState(72);
   const flatListRef = useRef<FlatList>(null);
+
+  const scrollToBottom = useCallback((animated = true) => {
+    flatListRef.current?.scrollToEnd({ animated });
+  }, []);
 
   // Format time helper
   const formatTime = (date: Date): string => {
@@ -93,12 +103,29 @@ export default function LiveChatScreen() {
     }
   }, [messages]);
 
-  // Scroll to bottom when messages change
   useEffect(() => {
-    setTimeout(() => {
-      flatListRef.current?.scrollToEnd({ animated: true });
-    }, 100);
-  }, [messages]);
+    const timer = setTimeout(() => scrollToBottom(true), 100);
+    return () => clearTimeout(timer);
+  }, [messages, scrollToBottom]);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const onShow = (event: KeyboardEvent) => {
+      const windowHeight = Dimensions.get('window').height;
+      setKeyboardInset(Math.max(0, windowHeight - event.endCoordinates.screenY));
+      setTimeout(() => scrollToBottom(true), 50);
+    };
+    const onHide = () => setKeyboardInset(0);
+
+    const showSub = Keyboard.addListener(showEvent, onShow);
+    const hideSub = Keyboard.addListener(hideEvent, onHide);
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, [scrollToBottom]);
 
   const handleSend = () => {
     if (message.trim()) {
@@ -146,7 +173,7 @@ export default function LiveChatScreen() {
         case 'delivered':
           return <CheckCheck size={12} color={Colors.textSecondaryDark} style={{ marginLeft: 4 }} />;
         case 'read':
-          return <CheckCheck size={12} color="#4F46E5" style={{ marginLeft: 4 }} />;
+          return <CheckCheck size={12} color={Colors.accent} style={{ marginLeft: 4 }} />;
         default:
           return null;
       }
@@ -169,12 +196,11 @@ export default function LiveChatScreen() {
             style={{
               width: 36,
               height: 36,
-              borderRadius: 18,
-              backgroundColor: '#3B82F6',
+              borderRadius: BorderRadius.full,
+              backgroundColor: Colors.accent,
               alignItems: 'center',
               justifyContent: 'center',
               marginRight: Spacing.sm,
-              ...SHADOWS.sm,
             }}
           >
             <Headphones size={18} color={Colors.white} />
@@ -196,9 +222,8 @@ export default function LiveChatScreen() {
               borderTopRightRadius: isUser ? 4 : BorderRadius.lg,
               paddingHorizontal: Spacing.md,
               paddingVertical: Spacing.sm + 2,
-              ...(!isUser ? SHADOWS.sm : {}),
               borderWidth: !isUser ? 1 : 0,
-              borderColor: Colors.border,
+              borderColor: Colors.borderSage,
             }}
           >
             <Text
@@ -241,12 +266,11 @@ export default function LiveChatScreen() {
             style={{
               width: 36,
               height: 36,
-              borderRadius: 18,
+              borderRadius: BorderRadius.full,
               backgroundColor: Colors.backgroundGray,
               alignItems: 'center',
               justifyContent: 'center',
               marginLeft: Spacing.sm,
-              ...SHADOWS.sm,
             }}
           >
             <Image
@@ -254,7 +278,7 @@ export default function LiveChatScreen() {
               style={{
                 width: 36,
                 height: 36,
-                borderRadius: 18,
+                borderRadius: BorderRadius.full,
               }}
               resizeMode="cover"
             />
@@ -265,200 +289,170 @@ export default function LiveChatScreen() {
   };
 
   return (
-    <SafeAreaWrapper>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        className="flex-1"
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-      >
+    <SafeAreaWrapper backgroundColor={Colors.white} edges={['top']}>
+      <View style={{ flex: 1 }}>
         {/* Header */}
         <View
           style={{
             flexDirection: 'row',
             alignItems: 'center',
-            justifyContent: 'space-between',
             paddingHorizontal: Spacing.lg,
-            paddingTop: Spacing.md + 4,
-            paddingBottom: Spacing.md,
+            paddingTop: Spacing.md,
+            paddingBottom: 12,
             borderBottomWidth: 1,
-            borderBottomColor: Colors.border,
+            borderBottomColor: Colors.borderSage,
             backgroundColor: Colors.white,
-            ...SHADOWS.sm,
           }}
         >
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => {
               haptics.light();
               router.back();
-            }} 
+            }}
             activeOpacity={0.7}
             style={{
-              width: 40,
-              height: 40,
+              width: MIN_TOUCH_TARGET,
+              height: MIN_TOUCH_TARGET,
               alignItems: 'center',
               justifyContent: 'center',
-              borderRadius: 20,
+              borderRadius: BorderRadius.full,
+              backgroundColor: Colors.sageTint,
             }}
           >
-            <ArrowLeft size={24} color={Colors.textPrimary} />
+            <ArrowLeft size={22} color={Colors.textPrimary} />
           </TouchableOpacity>
-          
-          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', marginLeft: Spacing.md }}>
+
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', marginLeft: 12 }}>
             <View
               style={{
-                width: 44,
-                height: 44,
-                borderRadius: 22,
-                backgroundColor: '#3B82F6',
+                width: 42,
+                height: 42,
+                borderRadius: BorderRadius.full,
+                backgroundColor: Colors.sageTint,
                 alignItems: 'center',
                 justifyContent: 'center',
-                marginRight: Spacing.sm,
-                overflow: 'hidden',
+                marginRight: 10,
               }}
             >
-              <Headphones size={22} color={Colors.white} />
+              <Headphones size={20} color={Colors.accent} />
             </View>
             <View style={{ flex: 1 }}>
               <Text
                 style={{
-                  fontSize: 16,
+                  fontSize: 15,
                   fontFamily: 'Poppins-SemiBold',
                   color: Colors.textPrimary,
                 }}
               >
-                Support Team
+                Support team
               </Text>
               <Text
                 style={{
                   fontSize: 12,
                   fontFamily: 'Poppins-Regular',
-                  color: '#10B981',
-                  marginTop: 2,
+                  color: Colors.successForeground,
+                  marginTop: 1,
                 }}
               >
-                Online, usually replies instantly
+                Online · usually replies quickly
               </Text>
             </View>
           </View>
         </View>
 
-        {/* Messages Area */}
         <FlatList
           ref={flatListRef}
           data={messages}
           renderItem={renderMessage}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ 
+          contentContainerStyle={{
             paddingVertical: Spacing.md,
-            paddingBottom: Spacing.xl,
+            paddingBottom: footerHeight + 12,
           }}
           showsVerticalScrollIndicator={false}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-          style={{ flex: 1, backgroundColor: '#F9FAFB' }}
+          onContentSizeChange={() => scrollToBottom(false)}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          style={{ flex: 1, backgroundColor: Colors.sageSurface }}
         />
 
-        {/* Input Field */}
         <View
           style={{
-            paddingHorizontal: Spacing.lg,
-            paddingBottom: Platform.OS === 'ios' ? Spacing.xl : Spacing.lg,
-            paddingTop: Spacing.sm,
-            borderTopWidth: 1,
-            borderTopColor: Colors.border,
-            backgroundColor: Colors.white,
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: keyboardInset,
+          }}
+          onLayout={(event) => {
+            const nextHeight = event.nativeEvent.layout.height;
+            if (nextHeight > 0 && nextHeight !== footerHeight) {
+              setFooterHeight(nextHeight);
+            }
           }}
         >
           <View
             style={{
-              flexDirection: 'row',
-              alignItems: 'flex-end',
-              backgroundColor: Colors.backgroundGray,
-              borderRadius: BorderRadius.xl,
-              borderWidth: 1,
-              borderColor: Colors.border,
-              paddingHorizontal: Spacing.md,
-              paddingVertical: Spacing.sm,
-              minHeight: 48,
+              paddingHorizontal: 14,
+              paddingBottom: keyboardInset > 0 ? 6 : Math.max(insets.bottom, 8),
+              paddingTop: 8,
+              borderTopWidth: 1,
+              borderTopColor: Colors.borderSage,
+              backgroundColor: Colors.white,
             }}
           >
-            <TouchableOpacity 
-              onPress={() => {
-                haptics.light();
-                // Image picker action
-              }}
-              activeOpacity={0.7} 
-              style={{ 
-                marginRight: Spacing.sm,
-                width: 36,
-                height: 36,
+            <View
+              style={{
+                flexDirection: 'row',
                 alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: 18,
+                backgroundColor: Colors.sageSurface,
+                borderRadius: BorderRadius.full,
+                borderWidth: 1,
+                borderColor: Colors.borderSage,
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                minHeight: 52,
               }}
             >
-              <ImageIcon size={20} color={Colors.textSecondaryDark} />
-            </TouchableOpacity>
-            
-            <TextInput
-              placeholder="Type a message..."
-              value={message}
-              onChangeText={setMessage}
-              style={{
-                flex: 1,
-                fontSize: 15,
-                fontFamily: 'Poppins-Regular',
-                color: Colors.textPrimary,
-                paddingVertical: Spacing.sm,
-                maxHeight: 100,
-              }}
-              placeholderTextColor={Colors.placeholder}
-              multiline
-              maxLength={500}
-              onSubmitEditing={handleSend}
-              returnKeyType="send"
-            />
-            
-            {message.trim() ? (
+              <TextInput
+                placeholder="Type a message..."
+                value={message}
+                onChangeText={setMessage}
+                style={{
+                  flex: 1,
+                  fontSize: 15,
+                  fontFamily: 'Poppins-Regular',
+                  color: Colors.textPrimary,
+                  paddingVertical: Platform.OS === 'ios' ? 8 : 6,
+                  paddingHorizontal: 4,
+                  maxHeight: 100,
+                }}
+                placeholderTextColor={Colors.placeholder}
+                multiline
+                maxLength={500}
+                onSubmitEditing={handleSend}
+                returnKeyType="send"
+              />
+
               <TouchableOpacity
                 activeOpacity={0.8}
                 onPress={handleSend}
+                disabled={!message.trim()}
                 style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  backgroundColor: Colors.accent,
+                  width: MIN_TOUCH_TARGET,
+                  height: MIN_TOUCH_TARGET,
+                  borderRadius: BorderRadius.full,
+                  backgroundColor: message.trim() ? Colors.accent : Colors.borderSage,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  marginLeft: Spacing.sm,
-                  ...SHADOWS.sm,
+                  marginLeft: 4,
                 }}
               >
-                <Send size={18} color={Colors.white} />
+                <Send size={18} color={message.trim() ? Colors.white : Colors.textSecondaryDark} />
               </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => {
-                  haptics.light();
-                  // Voice message action
-                }}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  backgroundColor: Colors.accent,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginLeft: Spacing.sm,
-                  ...SHADOWS.sm,
-                }}
-              >
-                <Mic size={18} color={Colors.white} />
-              </TouchableOpacity>
-            )}
+            </View>
           </View>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </SafeAreaWrapper>
   );
 }

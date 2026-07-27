@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
-import { BorderRadius, Colors, Fonts, Spacing, runSpring, runTiming, useReducedMotion } from '@/lib/designSystem';
+import { BorderRadius, Colors, Spacing, runSpring, runTiming, useReducedMotion } from '@/lib/designSystem';
 
 interface AnimatedStatusChipProps {
   status: string;
@@ -101,7 +101,7 @@ export default function AnimatedStatusChip({
     >
       <Text
         style={[
-          Fonts.label,
+          styles.label,
           {
             color: textColor || Colors.textPrimary,
             fontSize: currentSize.fontSize,
@@ -117,6 +117,11 @@ export default function AnimatedStatusChip({
 const styles = StyleSheet.create({
   chip: {
     alignSelf: 'flex-start',
+  },
+  label: {
+    fontWeight: '600',
+    lineHeight: 14,
+    fontFamily: 'Poppins-SemiBold',
   },
 });
 

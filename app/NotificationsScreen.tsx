@@ -1,11 +1,16 @@
-import { NotificationCardSkeleton } from '@/components/LoadingSkeleton';
+import { ErrorState } from '@/components/ErrorState';
+import { NotificationsListSkeleton } from '@/components/LoadingSkeleton';
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import Toast from '@/components/Toast';
 import { haptics } from '@/hooks/useHaptics';
+import { useToast } from '@/hooks/useToast';
 import { BorderRadius, Colors, MIN_TOUCH_TARGET} from '@/lib/designSystem';
 import { providerListCard } from '@/lib/providerSurfaceStyles';
-import { Notification, notificationService } from '@/services/api';
+import { Notification, notificationService, walletService } from '@/services/api';
 import { formatTimeAgo } from '@/utils/dateFormatting';
+import { getErrorMessage } from '@/utils/errorMessages';
+import { openWalletTransactionReceipt } from '@/utils/openWalletTransactionReceipt';
 import {
   notificationActionLabel,
   resolveNotificationRoute,
@@ -16,10 +21,17 @@ import {
   isMessageNotificationType,
   shouldShowMessageNotification,
 } from '@/utils/messageNotificationCopy';
+import {
+  shouldOpenWalletTransactionReceipt,
+  walletNotificationPresentation,
+  type WalletNotificationContext,
+} from '@/utils/walletNotificationCopy';
+import { logNotificationsApiError, logNotificationsListApi } from '@/utils/notificationFlowLog';
+import type { WalletTransactionRow } from '@/utils/walletTransactions';
 import { authService } from '@/services/authService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import { Archive, Bell, Calendar, CheckCheck, Clock, FileText, Handshake, MessageCircle, Trash2, Wallet, X } from 'lucide-react-native';
+import { Archive, Bell, Calendar, CheckCheck, Clock, FileText, Handshake, MessageCircle, Trash2, Wallet, X, XCircle } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Modal,
@@ -134,7 +146,7 @@ const NotificationListItem = React.memo(function NotificationListItem({
           style={{
             width: 36,
             height: 36,
-            borderRadius: 14,
+            borderRadius: BorderRadius.default,
             backgroundColor: notification.iconBgColor,
             alignItems: 'center',
             justifyContent: 'center',
@@ -304,12 +316,15 @@ const logNotificationError = (event: string, error?: unknown) => {
 
 export default function NotificationsScreen() {
   const router = useRouter();
+  const { toast, showError, hideToast } = useToast();
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isClearing, setIsClearing] = useState(false);
   const [previewNotification, setPreviewNotification] = useState<UINotification | null>(null);
   const [filterPill, setFilterPill] = useState<FilterPill>('all');
   const [archivedIds, setArchivedIds] = useState<Set<number>>(new Set());
+  const [walletTxById, setWalletTxById] = useState<Map<number, WalletTransactionRow>>(new Map());
   const [userRole, setUserRole] = useState<'client' | 'provider'>('client');
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [currentCompanyId, setCurrentCompanyId] = useState<number | null>(null);
@@ -356,8 +371,14 @@ export default function NotificationsScreen() {
     void loadRoleAndIdentity();
   }, []);
 
+  const walletNotificationContext = useMemo<WalletNotificationContext>(
+    () => ({ transactionById: walletTxById }),
+    [walletTxById],
+  );
+
   // Map backend notification type to UI presentation
-  const mapNotificationToUI = (notification: Notification): UINotification => {
+  const mapNotificationToUI = useCallback(
+    (notification: Notification): UINotification => {
     // Default UI values
     let typeLabel = notification.title || 'Notification';
     const rawBackendDescription = String(notification.description || notification.message || '').trim();
@@ -516,6 +537,25 @@ export default function NotificationsScreen() {
       iconColor = Colors.inkMuted;
     }
 
+    const walletUi = walletNotificationPresentation(notification, description, walletNotificationContext);
+    if (walletUi) {
+      typeLabel = walletUi.typeLabel;
+      description = walletUi.description;
+      if (walletUi.tone === 'success') {
+        IconComponent = Wallet;
+        iconBgColor = Colors.successLight;
+        iconColor = Colors.successIcon;
+      } else if (walletUi.tone === 'warning') {
+        IconComponent = Clock;
+        iconBgColor = Colors.warningLight;
+        iconColor = Colors.warningForeground;
+      } else if (walletUi.tone === 'error') {
+        IconComponent = XCircle;
+        iconBgColor = Colors.errorLight;
+        iconColor = Colors.error;
+      }
+    }
+
     return {
       id: notification.id,
       isRead: notification.status === 'read',
@@ -532,7 +572,9 @@ export default function NotificationsScreen() {
       section: getSectionFromDate(notification.createdAt),
       raw: notification,
     };
-  };
+  },
+    [walletNotificationContext, userRole, currentUserId, currentCompanyId],
+  );
 
   const uiNotifications = useMemo<UINotification[]>(() => {
     const visible = notifications.filter((notification) => {
@@ -550,7 +592,7 @@ export default function NotificationsScreen() {
       });
     });
     return visible.map(mapNotificationToUI);
-  }, [notifications, userRole, currentUserId, currentCompanyId]);
+  }, [notifications, userRole, currentUserId, currentCompanyId, mapNotificationToUI]);
 
   const filteredNotifications = useMemo(() => {
     if (filterPill === 'archive') {
@@ -574,27 +616,42 @@ export default function NotificationsScreen() {
     return groups;
   }, [filteredNotifications]);
 
-  useEffect(() => {
-    logNotificationDebug('filter: updated visible list', {
-      activeFilter: filterPill,
-      totalBackendNotifications: notifications.length,
-      unreadCount,
-      archivedCount: archivedIds.size,
-      visibleCount: filteredNotifications.length,
-      recentCount: groupedNotifications.Recent.length,
-      yesterdayCount: groupedNotifications.Yesterday.length,
-      lastWeekCount: groupedNotifications['Last week'].length,
-    });
-  }, [filterPill, notifications.length, unreadCount, archivedIds.size, filteredNotifications.length, groupedNotifications]);
+  const loadWalletTransactionsForNotifications = useCallback(async (items: Notification[]) => {
+    const hasTx = items.some((n) => n.transactionId != null);
+    if (!hasTx) {
+      setWalletTxById(new Map());
+      return new Map<number, WalletTransactionRow>();
+    }
+    try {
+      const result = await walletService.getTransactions({ limit: 100, offset: 0 });
+      const map = new Map<number, WalletTransactionRow>();
+      for (const tx of result.transactions) {
+        if (tx.id != null) map.set(tx.id, tx as WalletTransactionRow);
+      }
+      setWalletTxById(map);
+      return map;
+    } catch {
+      setWalletTxById(new Map());
+      return new Map<number, WalletTransactionRow>();
+    }
+  }, []);
 
-  const loadNotifications = async () => {
+  const loadNotifications = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Fetch all notifications (both read and unread) to show full history
-      // Increase limit to get more notifications
       logNotificationDebug('loadNotifications: starting', { limit: 100, offset: 0 });
-      const result = await notificationService.getNotifications({ limit: 100, offset: 0 });
+      const result = await notificationService.getNotifications({
+        limit: 100,
+        offset: 0,
+        status: 'all',
+      });
       const nextNotifications = result.notifications || [];
+      const txMap = await loadWalletTransactionsForNotifications(nextNotifications);
+      void logNotificationsListApi(
+        'NotificationsScreen load',
+        result,
+        { transactionById: txMap },
+      );
       logNotificationDebug('loadNotifications: success', {
         count: nextNotifications.length,
         unreadCount: nextNotifications.filter((notification) => notification.status !== 'read').length,
@@ -610,16 +667,21 @@ export default function NotificationsScreen() {
           : null,
       });
       setNotifications(nextNotifications);
+      setLoadError(null);
     } catch (error) {
       logNotificationError('loadNotifications: failed', error);
+      logNotificationsApiError('loadNotifications', error);
+      setLoadError(
+        getErrorMessage(error, 'Could not load notifications. Check your connection and try again.'),
+      );
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [loadWalletTransactionsForNotifications]);
 
   useEffect(() => {
-    loadNotifications();
-  }, []);
+    void loadNotifications();
+  }, [loadNotifications]);
 
   useEffect(() => {
     const loadArchivedIds = async () => {
@@ -656,6 +718,7 @@ export default function NotificationsScreen() {
       logNotificationDebug('clearAll: success');
     } catch (error) {
       logNotificationError('clearAll: failed', error);
+      showError(getErrorMessage(error, 'Could not clear notifications. Please try again.'));
     } finally {
       setIsClearing(false);
     }
@@ -678,6 +741,7 @@ export default function NotificationsScreen() {
       logNotificationDebug('markAsRead: success', { id });
     } catch (error) {
       logNotificationError('markAsRead: failed', error);
+      showError(getErrorMessage(error, 'Could not mark as read. Please try again.'));
     }
   };
 
@@ -726,14 +790,27 @@ export default function NotificationsScreen() {
       logNotificationDebug('delete: success', { id });
     } catch (error) {
       logNotificationError('delete: failed', error);
+      showError(getErrorMessage(error, 'Could not delete notification. Please try again.'));
     }
-  }, [persistArchivedIds]);
+  }, [persistArchivedIds, showError]);
 
   const handleNavigateToDetails = useCallback(
     (notification: Notification | UINotification) => {
       setPreviewNotification(null);
 
       const rawNotification = 'raw' in notification ? notification.raw : notification;
+
+      if (shouldOpenWalletTransactionReceipt(rawNotification)) {
+        const txId = Number(rawNotification.transactionId);
+        const tx = walletTxById.get(txId);
+        if (tx) {
+          openWalletTransactionReceipt(router, tx);
+          return;
+        }
+        router.push('/WalletScreen' as any);
+        return;
+      }
+
       logNotificationDebug('navigate: pressed notification', {
         id: rawNotification.id,
         type: rawNotification.type,
@@ -757,7 +834,7 @@ export default function NotificationsScreen() {
       const uiNotif = 'raw' in notification ? notification : mapNotificationToUI(rawNotification);
       setPreviewNotification(uiNotif);
     },
-    [router, userRole]
+    [router, userRole, walletTxById],
   );
 
   const previewRoute = useMemo(
@@ -829,23 +906,31 @@ export default function NotificationsScreen() {
 
   const listEmpty = useMemo(() => {
     if (isLoading && !hasNotifications) {
+      return <NotificationsListSkeleton />;
+    }
+
+    if (loadError && !hasNotifications && !isLoading) {
       return (
-        <View style={{ marginBottom: 24 }}>
-          {[1, 2, 3].map((i) => (
-            <NotificationCardSkeleton key={i} />
-          ))}
-        </View>
+        <ErrorState
+          title="Could not load notifications"
+          message={loadError}
+          onRetry={() => {
+            void loadNotifications();
+          }}
+          style={{ flex: 0, marginTop: 12 }}
+          iconSize={36}
+        />
       );
     }
 
-    if (filteredNotifications.length === 0 && !isLoading) {
+    if (filteredNotifications.length === 0 && !isLoading && !loadError) {
       return (
         <View
           style={{
             marginTop: 20,
             paddingVertical: 36,
             paddingHorizontal: 20,
-            borderRadius: 24,
+            borderRadius: BorderRadius.lg,
             borderWidth: 1,
             borderColor: 'rgba(17, 24, 39, 0.04)',
             backgroundColor: Colors.sageSurface,
@@ -890,9 +975,52 @@ export default function NotificationsScreen() {
     }
 
     return null;
-  }, [archivedIds.size, filterPill, filteredNotifications.length, hasNotifications, isLoading]);
+  }, [
+    archivedIds.size,
+    filterPill,
+    filteredNotifications.length,
+    hasNotifications,
+    isLoading,
+    loadError,
+    loadNotifications,
+  ]);
 
-  if (!isLoading && !hasNotifications) {
+  if (isLoading && !hasNotifications) {
+    return (
+      <SafeAreaWrapper backgroundColor={Colors.white}>
+        <View style={{ flex: 1 }}>
+          <ScreenHeader title="Notifications" onBack={() => router.back()} />
+          <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }}>
+            <NotificationsListSkeleton />
+          </View>
+        </View>
+        <Toast message={toast.message} type={toast.type} visible={toast.visible} onClose={hideToast} />
+      </SafeAreaWrapper>
+    );
+  }
+
+  if (!isLoading && loadError && !hasNotifications) {
+    return (
+      <SafeAreaWrapper backgroundColor={Colors.white}>
+        <View style={{ flex: 1 }}>
+          <ScreenHeader title="Notifications" onBack={() => router.back()} />
+          <View style={{ flex: 1, paddingHorizontal: 20, justifyContent: 'center' }}>
+            <ErrorState
+              title="Could not load notifications"
+              message={loadError}
+              onRetry={() => {
+                void loadNotifications();
+              }}
+              iconSize={40}
+            />
+          </View>
+        </View>
+        <Toast message={toast.message} type={toast.type} visible={toast.visible} onClose={hideToast} />
+      </SafeAreaWrapper>
+    );
+  }
+
+  if (!isLoading && !loadError && !hasNotifications) {
     return (
       <SafeAreaWrapper backgroundColor={Colors.white}>
         <View style={{ flex: 1 }}>
@@ -909,7 +1037,7 @@ export default function NotificationsScreen() {
               style={{
                 width: 72,
                 height: 72,
-                borderRadius: 28,
+                borderRadius: BorderRadius.lg,
                 backgroundColor: Colors.sageTint,
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -920,7 +1048,7 @@ export default function NotificationsScreen() {
             </View>
             <Text
               style={{
-                fontSize: 19,
+                fontSize: 18,
                 fontFamily: 'Poppins-Bold',
                 color: Colors.textPrimary,
                 textAlign: 'center',
@@ -943,6 +1071,7 @@ export default function NotificationsScreen() {
             </Text>
           </View>
         </View>
+        <Toast message={toast.message} type={toast.type} visible={toast.visible} onClose={hideToast} />
       </SafeAreaWrapper>
     );
   }
@@ -980,7 +1109,7 @@ export default function NotificationsScreen() {
           <View
             style={{
               backgroundColor: Colors.surfaceDark,
-              borderRadius: 24,
+              borderRadius: BorderRadius.sageHero,
               padding: 18,
               marginBottom: 14,
               overflow: 'hidden',
@@ -1004,7 +1133,7 @@ export default function NotificationsScreen() {
                 style={{
                   width: 44,
                   height: 44,
-                  borderRadius: 16,
+                  borderRadius: BorderRadius.lg,
                   backgroundColor: 'rgba(255,255,255,0.12)',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -1161,7 +1290,7 @@ export default function NotificationsScreen() {
                       style={{
                         width: 44,
                         height: 44,
-                        borderRadius: 16,
+                        borderRadius: BorderRadius.lg,
                         backgroundColor: previewNotification.iconBgColor,
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -1235,7 +1364,7 @@ height: MIN_TOUCH_TARGET,
                     style={{
                       flex: 1,
                       backgroundColor: Colors.backgroundGray,
-                      borderRadius: 14,
+                      borderRadius: BorderRadius.default,
                       paddingVertical: 13,
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -1258,7 +1387,7 @@ height: MIN_TOUCH_TARGET,
                       style={{
                         flex: 1,
                         backgroundColor: Colors.accent,
-                        borderRadius: 14,
+                        borderRadius: BorderRadius.default,
                         paddingVertical: 13,
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -1272,7 +1401,7 @@ height: MIN_TOUCH_TARGET,
                           color: Colors.white,
                         }}
                       >
-                        {notificationActionLabel(previewRoute)}
+                        {notificationActionLabel(previewRoute, previewNotification.raw)}
                       </Text>
                     </TouchableOpacity>
                   ) : null}
@@ -1282,6 +1411,7 @@ height: MIN_TOUCH_TARGET,
           </View>
         </Modal>
       </View>
+      <Toast message={toast.message} type={toast.type} visible={toast.visible} onClose={hideToast} />
     </SafeAreaWrapper>
   );
 }

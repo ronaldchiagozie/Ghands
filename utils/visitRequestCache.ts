@@ -75,10 +75,6 @@ export const saveCachedVisitRequest = async (
   };
 
   await AsyncStorage.setItem(VISIT_REQUEST_CACHE_KEY, JSON.stringify(cache));
-
-  if (__DEV__) {
-    console.log('[VisitRequestCache] saved', cache[String(requestId)]);
-  }
 };
 
 export const getCachedVisitRequest = async (requestId: number): Promise<CachedVisitRequest | null> => {
@@ -92,9 +88,6 @@ export const mergeCachedVisitRequest = async <T extends { visitRequest?: any }>(
 ): Promise<T> => {
   const cachedVisit = await getCachedVisitRequest(requestId);
   if (!cachedVisit) {
-    if (__DEV__) {
-      console.log('[VisitRequestCache] miss', { requestId });
-    }
     return request;
   }
 
@@ -159,15 +152,6 @@ export const mergeCachedVisitRequest = async <T extends { visitRequest?: any }>(
         (currentVisit as { declined?: boolean }).declined === true,
     },
   };
-
-  if (__DEV__) {
-    console.log('[VisitRequestCache] merged', {
-      requestId,
-      cachedVisit,
-      before: currentVisit,
-      after: merged.visitRequest,
-    });
-  }
 
   return merged;
 };

@@ -13,6 +13,21 @@ const REDIRECT_COOLDOWN_MS = 3000;
 const SESSION_END_GRACE_MS = 3500;
 const REDIRECT_IN_FLIGHT_MS = 2500;
 
+/** Latest expo-router pathname — for auth redirects outside React (rejection handler, etc.). */
+let currentNavigationPath: string | null = null;
+
+export function setNavigationPath(pathname: string | null | undefined): void {
+  if (pathname == null || pathname === '') {
+    currentNavigationPath = null;
+    return;
+  }
+  currentNavigationPath = pathname.startsWith('/') ? pathname : `/${pathname}`;
+}
+
+export function getNavigationPath(): string | null {
+  return currentNavigationPath;
+}
+
 function normalizePath(pathname: string): string {
   const p = pathname.trim();
   if (!p || p === '/') return '/';
@@ -80,8 +95,8 @@ export async function redirectToAuthScreen(
     return true;
   } catch {
     try {
-      router.replace('/SelectAccountTypeScreen' as never);
-      lastRedirectRoute = '/SelectAccountTypeScreen';
+      router.replace('/LoginScreen' as never);
+      lastRedirectRoute = '/LoginScreen';
       lastRedirectAt = Date.now();
       return true;
     } catch {

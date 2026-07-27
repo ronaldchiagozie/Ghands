@@ -1,5 +1,5 @@
 import { isAuthError } from '@/utils/errors';
-import { isInAuthTransition, redirectToAuthScreen } from '@/utils/authNavigationGuard';
+import { isInAuthTransition, redirectToAuthScreen, getNavigationPath } from '@/utils/authNavigationGuard';
 import { expireAuthSession } from '@/utils/enforceAuthSession';
 
 let installed = false;
@@ -26,7 +26,11 @@ export function installAuthRejectionHandler(
       if (isInAuthTransition()) return;
       await expireAuthSession();
       if (routerRef) {
-        await redirectToAuthScreen(routerRef, { clearSession: false, force: true });
+        await redirectToAuthScreen(routerRef, {
+          pathname: getNavigationPath(),
+          clearSession: false,
+          force: true,
+        });
       }
     })();
   };

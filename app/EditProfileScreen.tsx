@@ -7,7 +7,8 @@ import { useRouter } from 'expo-router';
 import { Camera, Mail, Phone, User } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { ActivityIndicator, Alert, Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { showAppAlert } from '@/components/AppAlertHost';
 import { InputField } from '../components/InputField';
 import { useCurrentUserProfile, useUpdateProfile } from '../hooks/useProfile';
 import { API_BASE_URL } from '../lib/apiConfig';
@@ -77,14 +78,14 @@ export default function EditProfileScreen() {
         },
       });
 
-      Alert.alert('Success', 'Profile updated', [
+      showAppAlert('Success', 'Profile updated', [
         {
           text: 'OK',
           onPress: () => router.back(),
         },
       ]);
     } catch (error) {
-      Alert.alert(
+      showAppAlert(
         'Error',
         error instanceof Error
           ? error.message
@@ -96,7 +97,7 @@ export default function EditProfileScreen() {
   const requestPermissions = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission required', 'Photo library access is required to upload images.');
+      showAppAlert('Permission required', 'Photo library access is required to upload images.');
       return false;
     }
     return true;
@@ -106,7 +107,7 @@ export default function EditProfileScreen() {
     const hasPermission = await requestPermissions();
     if (!hasPermission) return;
 
-    Alert.alert(
+    showAppAlert(
       'Select Image',
       'Choose an option',
       [
@@ -129,7 +130,7 @@ export default function EditProfileScreen() {
   const openCamera = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission required', 'Camera access is required to take photos.');
+      showAppAlert('Permission required', 'Camera access is required to take photos.');
       return;
     }
 

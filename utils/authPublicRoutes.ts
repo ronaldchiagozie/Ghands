@@ -1,27 +1,19 @@
 /**
  * Routes where missing auth token should NOT trigger a forced redirect.
  * Keep in sync with app/index.tsx entry logic where possible.
+ * Provider auth screens live in the separate provider app — do not list them here.
  */
 const PUBLIC_UNAUTHENTICATED_PREFIXES = [
   '/LoginScreen',
-  '/ProviderSignInScreen',
   '/SignupScreen',
   '/CompanySignupScreen',
-  '/ProviderSignUpScreen',
-  '/ProviderSignupScreen',
   '/SelectAccountTypeScreen',
   '/ClientTypeSelectionScreen',
-  '/ProviderTypeSelectionScreen',
-  '/IndividualProviderComingSoonScreen',
   '/ResetPassword',
-  '/ProviderResetPasswordScreen',
   '/OtpScreen',
-  '/ProviderOtpScreen',
   '/PasswordConfirmation',
   '/CreatePINScreen',
-  '/provider-onboarding',
   '/onboarding',
-  '/ProviderSplashScreen',
   '/LocationPermissionScreen',
   /** Expo root / entry */
   '/index',
@@ -56,11 +48,8 @@ export function isPublicUnauthenticatedRoute(pathname: string | null | undefined
 
 /**
  * Where to send the user when token is missing but we know last role (no storage clear).
+ * This is the client app — always client login.
  */
 export async function getLoginRouteForStoredRole(): Promise<string> {
-  const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
-  const role = await AsyncStorage.getItem('@ghands:user_role');
-  if (role === 'provider') return '/ProviderSignInScreen';
-  if (role === 'client') return '/LoginScreen';
-  return '/SelectAccountTypeScreen';
+  return '/LoginScreen';
 }

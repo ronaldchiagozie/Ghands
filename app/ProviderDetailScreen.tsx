@@ -1,12 +1,14 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
-import { BorderRadius, Colors, Fonts, Spacing } from '@/lib/designSystem';
+import { ErrorState } from '@/components/ErrorState';
+import { BorderRadius, Colors, MIN_TOUCH_TARGET, Spacing } from '@/lib/designSystem';
 import { providerService } from '@/services/api';
+import { getErrorMessage } from '@/utils/errorMessages';
 import { formatSkillLabel } from '@/utils/formatSkillLabel';
 import { buildReviewerDisplayName, reviewAvatarUrl } from '@/utils/reviewerDisplayName';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MapPin, Star } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   ActivityIndicator,
@@ -159,107 +161,111 @@ export default function ProviderDetailScreen() {
     return !!(id && !Number.isNaN(id));
   });
   const [showAllSkillsModal, setShowAllSkillsModal] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const loadProviderProfile = useCallback(async () => {
+    const raw = String(params.providerId || '').trim();
+    const stripped = raw.replace(/^provider-/i, '');
+    const providerId = Number(stripped);
+    const fallbackRating = parseInitialRating();
+    const fallbackReviewCount = parseInitialReviewCount();
+
+    if (!providerId || isNaN(providerId)) {
+      setIsLoading(false);
+      setLoadError(null);
+      return;
+    }
+    setIsLoading(true);
+    setLoadError(null);
+    try {
+      const [data, imageUrls, analyticsSnap, publicReviewsList] = await Promise.all([
+        providerService.getPublicProfile(providerId),
+        providerService.getProviderPublicImages(providerId),
+        providerService.tryGetPublicProviderAnalytics(providerId),
+        providerService.tryGetPublicProviderReviews(providerId, { limit: 25, offset: 0 }),
+      ]);
+      const p = data.provider;
+
+      const profileWorkUrls = providerService.normalizeRecentWorkUrls(p.recentWork);
+      const fromAnalyticsReviews = providerService.normalizeRecentWorkUrls(
+        analyticsSnap?.latestReviews?.map((rev: any) => ({
+          image: rev.jobImageUrl ?? rev.jobPhoto ?? rev.photoUrl ?? rev.imageUrl,
+        }))
+      );
+      const localDemoImage = await AsyncStorage.getItem('@ghands:provider_profile_image_demo');
+
+      const primaryAvatar = imageUrls[0] || localDemoImage || '';
+      const galleryFromImageEndpoint = imageUrls.slice(1);
+      const uniqueRecent = [
+        ...new Set([...profileWorkUrls, ...fromAnalyticsReviews, ...galleryFromImageEndpoint]),
+      ];
+
+      const rawReviews = mergeRawReviews(
+        data.reviews,
+        analyticsSnap?.latestReviews,
+        publicReviewsList
+      );
+
+      const ratingsFromAnalytics = analyticsSnap?.ratings;
+      let rating = Number(p.rating || 0);
+      let reviewCount = Number(p.totalReviews || 0);
+      const ar = Number(ratingsFromAnalytics?.averageRating ?? NaN);
+      const tr = Number(ratingsFromAnalytics?.totalReviews ?? NaN);
+      if (!rating && !Number.isNaN(ar) && ar > 0) rating = ar;
+      if (!reviewCount && !Number.isNaN(tr) && tr > 0) reviewCount = tr;
+      if (!rating && fallbackRating > 0) rating = fallbackRating;
+      if (!reviewCount && fallbackReviewCount > 0) reviewCount = fallbackReviewCount;
+
+      const onTimeRaw = p.onTimeRate ?? (p as any).on_time_rate;
+      const onTimePercentage =
+        onTimeRaw != null && !Number.isNaN(Number(onTimeRaw)) ? Number(onTimeRaw) : null;
+
+      const localAbout = (await AsyncStorage.getItem('@ghands:provider_about_demo')) || '';
+      const aboutText =
+        typeof p.about === 'string' && p.about.trim().length > 0
+          ? p.about.trim()
+          : localAbout.trim().length > 0
+            ? localAbout.trim()
+            : 'No bio yet.';
+
+      const mapped: ProviderDetail = {
+        ...EMPTY_PROVIDER,
+        id: String(p.id || providerId),
+        name: p.name || params.providerName || 'Service Provider',
+        role: p.professionTitle || 'Professional Service Provider',
+        image: primaryAvatar,
+        rating,
+        reviewCount,
+        distance: p.milesAway != null ? `${p.milesAway} mi away` : 'Distance unavailable',
+        jobsDone: Number(p.jobsDone || 0),
+        responseTime:
+          p.responseTimeMinutes != null ? `${p.responseTimeMinutes}m` : 'N/A',
+        onTimePercentage,
+        skills: Array.isArray(p.skills) ? p.skills.map((s) => formatSkillLabel(String(s))) : [],
+        recentWork: uniqueRecent,
+        about: aboutText,
+        isOnline: !!p.isOnline,
+        reviews: rawReviews.map((r: any, index: number) => mapApiReviewToUi(r, index)),
+      };
+      setProvider(mapped);
+      setLoadError(null);
+    } catch (error) {
+      setLoadError(
+        getErrorMessage(error, 'Could not load this profile. Check your connection and try again.'),
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [
+    params.initialRating,
+    params.initialReviewCount,
+    params.providerId,
+    params.providerName,
+  ]);
 
   useEffect(() => {
-    const loadProviderProfile = async () => {
-      const raw = String(params.providerId || '').trim();
-      const stripped = raw.replace(/^provider-/i, '');
-      const providerId = Number(stripped);
-      const fallbackRating = parseInitialRating();
-      const fallbackReviewCount = parseInitialReviewCount();
-
-      if (!providerId || isNaN(providerId)) {
-        setIsLoading(false);
-        return;
-      }
-      setIsLoading(true);
-      try {
-        const [data, imageUrls, analyticsSnap, publicReviewsList] = await Promise.all([
-          providerService.getPublicProfile(providerId),
-          providerService.getProviderPublicImages(providerId),
-          providerService.tryGetPublicProviderAnalytics(providerId),
-          providerService.tryGetPublicProviderReviews(providerId, { limit: 25, offset: 0 }),
-        ]);
-        const p = data.provider;
-
-        const profileWorkUrls = providerService.normalizeRecentWorkUrls(p.recentWork);
-        const fromAnalyticsReviews = providerService.normalizeRecentWorkUrls(
-          analyticsSnap?.latestReviews?.map((rev: any) => ({
-            image: rev.jobImageUrl ?? rev.jobPhoto ?? rev.photoUrl ?? rev.imageUrl,
-          }))
-        );
-        // Local demo profile image from provider setup (used only when API has no image yet)
-        const localDemoImage = await AsyncStorage.getItem('@ghands:provider_profile_image_demo');
-
-        const primaryAvatar = imageUrls[0] || localDemoImage || '';
-        const galleryFromImageEndpoint = imageUrls.slice(1);
-        const uniqueRecent = [
-          ...new Set([...profileWorkUrls, ...fromAnalyticsReviews, ...galleryFromImageEndpoint]),
-        ];
-
-        const rawReviews = mergeRawReviews(
-          data.reviews,
-          analyticsSnap?.latestReviews,
-          publicReviewsList
-        );
-
-        const ratingsFromAnalytics = analyticsSnap?.ratings;
-        let rating = Number(p.rating || 0);
-        let reviewCount = Number(p.totalReviews || 0);
-        const ar = Number(ratingsFromAnalytics?.averageRating ?? NaN);
-        const tr = Number(ratingsFromAnalytics?.totalReviews ?? NaN);
-        if (!rating && !Number.isNaN(ar) && ar > 0) rating = ar;
-        if (!reviewCount && !Number.isNaN(tr) && tr > 0) reviewCount = tr;
-        if (!rating && fallbackRating > 0) rating = fallbackRating;
-        if (!reviewCount && fallbackReviewCount > 0) reviewCount = fallbackReviewCount;
-
-        const onTimeRaw = p.onTimeRate ?? (p as any).on_time_rate;
-        const onTimePercentage =
-          onTimeRaw != null && !Number.isNaN(Number(onTimeRaw)) ? Number(onTimeRaw) : null;
-
-        const localAbout = (await AsyncStorage.getItem('@ghands:provider_about_demo')) || '';
-        const aboutText =
-          typeof p.about === 'string' && p.about.trim().length > 0
-            ? p.about.trim()
-            : localAbout.trim().length > 0
-              ? localAbout.trim()
-              : 'No bio yet.';
-
-        const mapped: ProviderDetail = {
-          ...EMPTY_PROVIDER,
-          id: String(p.id || providerId),
-          name: p.name || params.providerName || 'Service Provider',
-          role: p.professionTitle || 'Professional Service Provider',
-          image: primaryAvatar,
-          rating,
-          reviewCount,
-          distance: p.milesAway != null ? `${p.milesAway} mi away` : 'Distance unavailable',
-          jobsDone: Number(p.jobsDone || 0),
-          responseTime:
-            p.responseTimeMinutes != null ? `${p.responseTimeMinutes}m` : 'N/A',
-          onTimePercentage,
-          skills: Array.isArray(p.skills) ? p.skills.map((s) => formatSkillLabel(String(s))) : [],
-          recentWork: uniqueRecent,
-          about: aboutText,
-          isOnline: !!p.isOnline,
-          reviews: rawReviews.map((r: any, index: number) => mapApiReviewToUi(r, index)),
-        };
-        setProvider(mapped);
-      } catch {
-        setProvider((prev) => ({
-          ...EMPTY_PROVIDER,
-          ...prev,
-          name: params.providerName || prev.name || EMPTY_PROVIDER.name,
-          rating: fallbackRating || prev.rating,
-          reviewCount: fallbackReviewCount || prev.reviewCount,
-        }));
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    loadProviderProfile();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.providerId, params.providerName, params.initialRating, params.initialReviewCount]);
+    void loadProviderProfile();
+  }, [loadProviderProfile]);
 
   if (isLoading) {
     return (
@@ -289,6 +295,41 @@ export default function ProviderDetailScreen() {
     );
   }
 
+  if (loadError) {
+    return (
+      <SafeAreaWrapper backgroundColor={Colors.backgroundLight}>
+        <View style={{ flex: 1 }}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            activeOpacity={0.7}
+            style={{
+              position: 'absolute',
+              top: 16,
+              left: 16,
+              zIndex: 2,
+              width: MIN_TOUCH_TARGET,
+              height: MIN_TOUCH_TARGET,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
+          </TouchableOpacity>
+          <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 24 }}>
+            <ErrorState
+              title="Could not load profile"
+              message={loadError}
+              onRetry={() => {
+                void loadProviderProfile();
+              }}
+              iconSize={40}
+            />
+          </View>
+        </View>
+      </SafeAreaWrapper>
+    );
+  }
+
   return (
     <SafeAreaWrapper backgroundColor={Colors.backgroundLight}>
       <ScrollView 
@@ -312,8 +353,8 @@ export default function ProviderDetailScreen() {
             onPress={() => router.back()} 
             activeOpacity={0.7}
             style={{
-              width: 40,
-              height: 40,
+              width: MIN_TOUCH_TARGET,
+              height: MIN_TOUCH_TARGET,
               alignItems: 'center',
               justifyContent: 'center',
             }}
@@ -352,7 +393,7 @@ export default function ProviderDetailScreen() {
                     style={{
                       width: 100,
                       height: 100,
-                      borderRadius: 50,
+                      borderRadius: BorderRadius.full,
                       backgroundColor: Colors.backgroundGray,
                     }}
                   />
@@ -361,7 +402,7 @@ export default function ProviderDetailScreen() {
                     style={{
                       width: 100,
                       height: 100,
-                      borderRadius: 50,
+                      borderRadius: BorderRadius.full,
                       backgroundColor: Colors.backgroundGray,
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -475,7 +516,7 @@ export default function ProviderDetailScreen() {
               <View style={{ alignItems: 'center', flex: 1 }}>
                 <Text
                   style={{
-                    fontSize: 22,
+                    fontSize: 20,
                     fontFamily: 'Poppins-Bold',
                     color: Colors.textPrimary,
                     marginBottom: 4,
@@ -506,7 +547,7 @@ export default function ProviderDetailScreen() {
               <View style={{ alignItems: 'center', flex: 1 }}>
                 <Text
                   style={{
-                    fontSize: 22,
+                    fontSize: 20,
                     fontFamily: 'Poppins-Bold',
                     color: Colors.textPrimary,
                     marginBottom: 4,
@@ -537,7 +578,7 @@ export default function ProviderDetailScreen() {
               <View style={{ alignItems: 'center', flex: 1 }}>
                 <Text
                   style={{
-                    fontSize: 22,
+                    fontSize: 20,
                     fontFamily: 'Poppins-Bold',
                     color: Colors.textPrimary,
                     marginBottom: 4,
@@ -826,7 +867,7 @@ export default function ProviderDetailScreen() {
                     style={{
                       width: 48,
                       height: 48,
-                      borderRadius: 24,
+                      borderRadius: BorderRadius.full,
                       backgroundColor: Colors.backgroundGray,
                       marginRight: 12,
                     }}
@@ -836,7 +877,7 @@ export default function ProviderDetailScreen() {
                     style={{
                       width: 48,
                       height: 48,
-                      borderRadius: 24,
+                      borderRadius: BorderRadius.full,
                       backgroundColor: Colors.backgroundGray,
                       marginRight: 12,
                       alignItems: 'center',
@@ -950,7 +991,7 @@ const styles = StyleSheet.create({
   },
   skillsModalBackdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: Colors.overlayScrim,
   },
   skillsModalCard: {
     backgroundColor: Colors.white,

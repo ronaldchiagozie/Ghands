@@ -9,7 +9,8 @@ import { useUserLocation } from '@/hooks/useUserLocation';
 import * as Location from 'expo-location';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
+import { showAppAlert } from '@/components/AppAlertHost';
 import { Button } from '@/components/ui/Button';
 import { ErrorState } from '@/components/ErrorState';
 import { EmptyState } from '@/components/EmptyState';
@@ -22,7 +23,7 @@ import { navigateBookingFlowToConfirmation } from '@/utils/navigation';
 import { resolveProviderDisplayName } from '@/utils/providerDisplayName';
 import { useToast } from '@/hooks/useToast';
 import Toast from '@/components/Toast';
-import { Colors, Spacing, BorderRadius, SHADOWS } from '@/lib/designSystem';
+import { Colors, Spacing, BorderRadius } from '@/lib/designSystem';
 import { MapPin, AlertCircle, ArrowLeft } from 'lucide-react-native';
 const MAX_SELECTION = 3;
 
@@ -377,7 +378,7 @@ const ServiceMapScreen = () => {
         }
         if (prev.length >= MAX_SELECTION) {
           haptics.warning();
-          Alert.alert('Selection limit reached', `You can select up to ${MAX_SELECTION} providers.`);
+          showAppAlert('Selection limit reached', `You can select up to ${MAX_SELECTION} providers.`);
           return prev;
         }
         haptics.selection();
@@ -418,14 +419,14 @@ const ServiceMapScreen = () => {
         {isLoadingProviders ? (
           <View className="flex-1 items-center justify-center bg-white">
             <ActivityIndicator size="large" color={Colors.accent} />
-            <Text className="mt-4 text-gray-600" style={{ fontFamily: 'Poppins-Medium' }}>
+            <Text className="mt-4" style={{ fontFamily: 'Poppins-Medium', color: Colors.textMuted }}>
               Finding nearby providers...
             </Text>
           </View>
         ) : !serviceLocationCoords ? (
           <View className="flex-1 items-center justify-center bg-white">
             <ActivityIndicator size="large" color={Colors.accent} />
-            <Text className="mt-4 text-gray-600" style={{ fontFamily: 'Poppins-Medium' }}>
+            <Text className="mt-4" style={{ fontFamily: 'Poppins-Medium', color: Colors.textMuted }}>
               Getting your location...
             </Text>
           </View>
@@ -478,12 +479,11 @@ const ServiceMapScreen = () => {
                 style={{
                   width: 80,
                   height: 80,
-                  borderRadius: 40,
+                  borderRadius: BorderRadius.full,
                   backgroundColor: Colors.backgroundGray,
                   alignItems: 'center',
                   justifyContent: 'center',
                   marginBottom: Spacing.lg,
-                  ...SHADOWS.md,
                 }}
               >
                 <AlertCircle size={40} color={Colors.textPrimary} strokeWidth={2} />
@@ -614,12 +614,11 @@ const ServiceMapScreen = () => {
                 style={{
                   width: 80,
                   height: 80,
-                  borderRadius: 40,
+                  borderRadius: BorderRadius.full,
                   backgroundColor: Colors.backgroundGray,
                   alignItems: 'center',
                   justifyContent: 'center',
                   marginBottom: Spacing.lg,
-                  ...SHADOWS.md,
                 }}
               >
                 <MapPin size={40} color={Colors.textPrimary} strokeWidth={2} />
@@ -686,15 +685,12 @@ const ServiceMapScreen = () => {
                 zIndex: 40,
                 width: 44,
                 height: 44,
-                borderRadius: 22,
+                borderRadius: BorderRadius.full,
                 backgroundColor: Colors.white,
                 alignItems: 'center',
                 justifyContent: 'center',
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.12,
-                shadowRadius: 6,
-                elevation: 0.76,
+                borderWidth: 1,
+                borderColor: Colors.border,
               }}
               activeOpacity={0.85}
             >
@@ -722,17 +718,18 @@ const ServiceMapScreen = () => {
         onClose={hideToast}
       />
       {selectedProviders.length > 0 && (
-        <View className="bg-white border-t border-gray-100 px-4 py-4 shadow-[0px_-8px_24px_rgba(15,23,42,0.08)]">
-          <Text className="text-sm text-gray-600 mb-2" style={{ fontFamily: 'Poppins-Medium' }}>
+        <View className="bg-white border-t px-4 py-4" style={{ borderTopColor: Colors.borderLight }}>
+          <Text className="text-sm mb-2" style={{ fontFamily: 'Poppins-Medium', color: Colors.textMuted }}>
             Selected providers ({selectedProviders.length}/{MAX_SELECTION})
           </Text>
           <View className="flex-row flex-wrap mb-3">
             {selectedProviders.map((provider) => (
               <View
                 key={`selected-${provider.id}`}
-                className="mr-2 mb-2 rounded-full bg-[#E3F4DF] px-3 py-1"
+                className="mr-2 mb-2 rounded-full px-3 py-1"
+                style={{ backgroundColor: Colors.sageTint }}
               >
-                <Text className="text-xs text-[#1B4332]" style={{ fontFamily: 'Poppins-SemiBold' }}>
+                <Text className="text-xs" style={{ fontFamily: 'Poppins-SemiBold', color: Colors.accent }}>
                   {provider.name}
                 </Text>
               </View>

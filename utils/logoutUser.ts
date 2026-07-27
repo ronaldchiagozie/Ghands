@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { type Router } from 'expo-router';
 import { authService } from '@/services/authService';
+import { clearAppQueryCache } from '@/providers/QueryProvider';
 import { markAuthSessionEnded } from '@/utils/authNavigationGuard';
 import { getLoginRouteForStoredRole } from '@/utils/authPublicRoutes';
 import { resetAuthSessionGate } from '@/utils/enforceAuthSession';

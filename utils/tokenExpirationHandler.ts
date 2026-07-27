@@ -1,20 +1,12 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authService } from '@/services/authService';
-import { getLoginRouteForStoredRole } from '@/utils/authPublicRoutes';
 
-const AUTH_ROLE_KEY = '@ghands:user_role';
-
-/** Login route for the stored role (does not clear tokens). */
+/** Login route for this client app (does not clear tokens). */
 export async function getRoleLoginRoute(): Promise<string> {
-  const role = await AsyncStorage.getItem(AUTH_ROLE_KEY);
-  if (role === 'provider') return '/ProviderSignInScreen';
-  if (role === 'client') return '/LoginScreen';
-  return '/SelectAccountTypeScreen';
+  return '/LoginScreen';
 }
 
 /**
- * Clears auth tokens and returns the login route for the user's last role.
- * Keeps `@ghands:user_role` so expired sessions land on the correct login — not role selection.
+ * Clears auth tokens and returns the client login route.
  */
 export async function handleTokenExpiration(): Promise<string> {
   try {
@@ -22,13 +14,13 @@ export async function handleTokenExpiration(): Promise<string> {
     await authService.clearAuthTokens();
     return route;
   } catch {
-    return '/SelectAccountTypeScreen';
+    return '/LoginScreen';
   }
 }
 
 type RouterLike = { replace: (href: any) => void };
 
-/** Clear session and navigate to client or provider login based on stored role. */
+/** Clear session and navigate to client login. */
 export async function logoutExpiredSession(
   router: RouterLike,
   pathname?: string | null

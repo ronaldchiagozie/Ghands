@@ -1,43 +1,50 @@
 import AnimatedModal from '@/components/AnimatedModal';
 import { BorderRadius, Colors, MIN_TOUCH_TARGET} from '@/lib/designSystem';
-import { ChevronDown, X } from 'lucide-react-native';
-import React, { useState } from 'react';
-import { ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { X } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+
+/**
+ * Only filters with real data behind them live here. Status is owned by the
+ * Activity tabs, so a second Status control would just contradict them.
+ * Service Type, Amount Range and a custom date range were removed rather than
+ * shipped as controls that silently do nothing — they need category data, a
+ * real min/max from the transaction set, and a date picker respectively.
+ */
+export interface FilterState {
+  dateRange: 'today' | 'thisWeek' | 'thisMonth' | null;
+  sortBy: 'newest' | 'oldest' | 'highToLow' | 'lowToHigh';
+}
+
+export const DEFAULT_TRANSACTION_FILTERS: FilterState = {
+  dateRange: null,
+  sortBy: 'newest',
+};
 
 interface FilterTransactionsModalProps {
   visible: boolean;
+  /** What the list is filtered by right now, so reopening never drifts from it. */
+  appliedFilters: FilterState;
   onClose: () => void;
   onApply: (filters: FilterState) => void;
 }
 
-interface FilterState {
-  dateRange: 'today' | 'thisWeek' | 'thisMonth' | 'custom' | null;
-  status: 'completed' | 'pending' | 'failed' | null;
-  serviceType: string;
-  minAmount: number;
-  maxAmount: number;
-  sortBy: 'newest' | 'oldest' | 'highToLow' | 'lowToHigh';
-}
+export default function FilterTransactionsModal({
+  visible,
+  appliedFilters,
+  onClose,
+  onApply,
+}: FilterTransactionsModalProps) {
+  const [filters, setFilters] = useState<FilterState>(appliedFilters);
 
-export default function FilterTransactionsModal({ visible, onClose, onApply }: FilterTransactionsModalProps) {
-  const [filters, setFilters] = useState<FilterState>({
-    dateRange: null,
-    status: 'completed',
-    serviceType: 'All Services',
-    minAmount: 15000,
-    maxAmount: 15000,
-    sortBy: 'newest',
-  });
+  // Re-seed from what is actually applied — closing with X must not leave the
+  // controls showing a selection the list never received.
+  useEffect(() => {
+    if (visible) setFilters(appliedFilters);
+  }, [visible, appliedFilters]);
 
   const handleReset = () => {
-    setFilters({
-      dateRange: null,
-      status: 'completed',
-      serviceType: 'All Services',
-      minAmount: 15000,
-      maxAmount: 15000,
-      sortBy: 'newest',
-    });
+    setFilters(DEFAULT_TRANSACTION_FILTERS);
   };
 
   const handleApply = () => {
@@ -107,10 +114,16 @@ height: MIN_TOUCH_TARGET,
                 gap: 8,
               }}
             >
-              {(['today', 'thisWeek', 'thisMonth', 'custom'] as const).map((range) => (
+              {(['today', 'thisWeek', 'thisMonth'] as const).map((range) => (
                 <TouchableOpacity
                   key={range}
-                  onPress={() => setFilters({ ...filters, dateRange: range })}
+                  onPress={() =>
+                    // Tapping the active chip clears it — otherwise a date range
+                    // can be selected but never removed.
+                    setFilters({ ...filters, dateRange: filters.dateRange === range ? null : range })
+                  }
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: filters.dateRange === range }}
                   style={{
                     paddingHorizontal: 16,
                     paddingVertical: 10,
@@ -129,191 +142,10 @@ height: MIN_TOUCH_TARGET,
                       textTransform: 'capitalize',
                     }}
                   >
-                    {range === 'thisWeek' ? 'This Week' : range === 'thisMonth' ? 'This Month' : range === 'custom' ? 'Custom Range' : 'Today'}
+                    {range === 'thisWeek' ? 'This Week' : range === 'thisMonth' ? 'This Month' : 'Today'}
                   </Text>
                 </TouchableOpacity>
               ))}
-            </View>
-          </View>
-
-          {/* Status */}
-          <View style={{ marginBottom: 24 }}>
-            <Text
-              style={{
-                fontSize: 16,
-                fontFamily: 'Poppins-Bold',
-                color: Colors.textPrimary,
-                marginBottom: 12,
-              }}
-            >
-              Status
-            </Text>
-            <View
-              style={{
-                flexDirection: 'row',
-                flexWrap: 'wrap',
-                gap: 8,
-              }}
-            >
-              {(['completed', 'pending', 'failed'] as const).map((status) => (
-                <TouchableOpacity
-                  key={status}
-                  onPress={() => setFilters({ ...filters, status })}
-                  style={{
-                    paddingHorizontal: 16,
-                    paddingVertical: 10,
-                    borderRadius: BorderRadius.full,
-                    borderWidth: 1,
-                    borderColor: filters.status === status ? Colors.accent : Colors.border,
-                    backgroundColor: filters.status === status ? Colors.accent : Colors.white,
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text
-                    style={{
-                      fontSize: 14,
-                      fontFamily: 'Poppins-Medium',
-                      color: filters.status === status ? Colors.white : Colors.textPrimary,
-                      textTransform: 'capitalize',
-                    }}
-                  >
-                    {status}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          {/* Service Type */}
-          <View style={{ marginBottom: 24 }}>
-            <Text
-              style={{
-                fontSize: 16,
-                fontFamily: 'Poppins-Bold',
-                color: Colors.textPrimary,
-                marginBottom: 12,
-              }}
-            >
-              Service Type
-            </Text>
-            <TouchableOpacity
-              style={{
-                backgroundColor: Colors.white,
-                borderRadius: 12,
-                paddingHorizontal: 16,
-                paddingVertical: 14,
-                borderWidth: 1,
-                borderColor: Colors.border,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}
-              activeOpacity={0.7}
-            >
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontFamily: 'Poppins-Regular',
-                  color: Colors.textPrimary,
-                }}
-              >
-                {filters.serviceType}
-              </Text>
-              <ChevronDown size={20} color={Colors.textSecondaryDark} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Amount Range */}
-          <View style={{ marginBottom: 24 }}>
-            <Text
-              style={{
-                fontSize: 16,
-                fontFamily: 'Poppins-Bold',
-                color: Colors.textPrimary,
-                marginBottom: 12,
-              }}
-            >
-              Amount Range
-            </Text>
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 12,
-                marginBottom: 12,
-              }}
-            >
-              <View
-                style={{
-                  flex: 1,
-                  backgroundColor: Colors.white,
-                  borderRadius: 12,
-                  paddingHorizontal: 12,
-                  paddingVertical: 12,
-                  borderWidth: 1,
-                  borderColor: Colors.border,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 14,
-                    fontFamily: 'Poppins-Regular',
-                    color: Colors.textPrimary,
-                  }}
-                >
-                  ₦ {filters.minAmount.toLocaleString()}
-                </Text>
-              </View>
-              <View
-                style={{
-                  flex: 2,
-                  height: 40,
-                  justifyContent: 'center',
-                  paddingHorizontal: 8,
-                }}
-              >
-                <View
-                  style={{
-                    height: 4,
-                    backgroundColor: Colors.accent,
-                    borderRadius: 2,
-                    position: 'relative',
-                  }}
-                >
-                  <View
-                    style={{
-                      position: 'absolute',
-                      left: '50%',
-                      top: -6,
-                      width: 16,
-                      height: 16,
-                      borderRadius: 8,
-                      backgroundColor: Colors.accent,
-                    }}
-                  />
-                </View>
-              </View>
-              <View
-                style={{
-                  flex: 1,
-                  backgroundColor: Colors.white,
-                  borderRadius: 12,
-                  paddingHorizontal: 12,
-                  paddingVertical: 12,
-                  borderWidth: 1,
-                  borderColor: Colors.border,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 14,
-                    fontFamily: 'Poppins-Regular',
-                    color: Colors.textPrimary,
-                  }}
-                >
-                  ₦ {filters.maxAmount.toLocaleString()}
-                </Text>
-              </View>
             </View>
           </View>
 
@@ -333,6 +165,8 @@ height: MIN_TOUCH_TARGET,
               <TouchableOpacity
                 key={sort}
                 onPress={() => setFilters({ ...filters, sortBy: sort })}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: filters.sortBy === sort }}
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',

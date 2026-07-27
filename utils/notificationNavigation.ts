@@ -1,4 +1,5 @@
 import type { Notification } from '@/services/api';
+import { shouldOpenWalletTransactionReceipt } from '@/utils/walletNotificationCopy';
 
 export type NotificationUserRole = 'client' | 'provider';
 
@@ -34,7 +35,14 @@ const PROVIDER_REQUEST_TYPES = new Set(['request_received', 'new_request']);
 
 const WALLET_TYPES = new Set([
   'deposit_success',
+  'deposit_failed',
+  'deposit_pending',
+  'payment_success',
+  'payment_failed',
+  'payment_pending',
   'withdrawal_success',
+  'withdrawal_failed',
+  'withdrawal_pending',
   'withdrawal_processed',
   'withdrawal_completed',
   'payment_released',
@@ -198,7 +206,13 @@ export function canNavigateFromNotification(
   return resolveNotificationRoute(notification, userRole) != null;
 }
 
-export function notificationActionLabel(route: NotificationRoute | null): string {
+export function notificationActionLabel(
+  route: NotificationRoute | null,
+  notification?: Notification,
+): string {
+  if (notification && shouldOpenWalletTransactionReceipt(notification)) {
+    return 'View receipt';
+  }
   if (!route) return 'Close';
   if (route.pathname === '/CallScreen') return 'Answer call';
   if (route.pathname === '/ChatScreen') return 'Open chat';

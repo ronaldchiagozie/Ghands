@@ -1,5 +1,6 @@
 import React from 'react';
-import { Modal, View, Text, TouchableOpacity, StyleSheet, Pressable, Alert } from 'react-native';
+import { Modal, View, Text, TouchableOpacity, StyleSheet, Pressable } from 'react-native';
+import { showAppAlert } from '@/components/AppAlertHost';
 import {Colors, BorderRadius, Spacing, MIN_TOUCH_TARGET} from '@/lib/designSystem';
 import { MapPin, Navigation, X, ExternalLink } from 'lucide-react-native';
 import { haptics } from '@/hooks/useHaptics';
@@ -39,7 +40,7 @@ export default function JobAcceptedModal({
       );
     } else {
       // If no coordinates, show alert
-      Alert.alert(
+      showAppAlert(
         'Location Not Available',
         'Navigation is not available for this location. Please contact the client for directions.',
         [{ text: 'OK' }]

@@ -1,7 +1,7 @@
 import { BorderRadius, Colors, INPUT_HEIGHTS, Spacing, TOUCH_HIT_SLOP } from '@/lib/designSystem';
 import { Eye, EyeOff } from 'lucide-react-native';
 import React, { forwardRef, ReactNode, useEffect, useId, useState } from 'react';
-import { KeyboardTypeOptions, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { KeyboardTypeOptions, Text, TextInput, TextInputProps, TouchableOpacity, View } from 'react-native';
 
 interface InputFieldProps {
   placeholder: string;
@@ -26,6 +26,10 @@ interface InputFieldProps {
   returnKeyType?: 'done' | 'next' | 'search' | 'send' | 'go';
   onSubmitEditing?: () => void;
   autoFocus?: boolean;
+  /** iOS autofill hint — lets Keychain/password managers offer and save the value. */
+  textContentType?: TextInputProps['textContentType'];
+  /** Android autofill hint. Pair with textContentType for cross-platform coverage. */
+  autoComplete?: TextInputProps['autoComplete'];
 }
 
 export const InputField = forwardRef<TextInput, InputFieldProps>((props, ref) => {
@@ -50,6 +54,8 @@ export const InputField = forwardRef<TextInput, InputFieldProps>((props, ref) =>
     returnKeyType = 'done',
     onSubmitEditing,
     autoFocus = false,
+    textContentType,
+    autoComplete,
   } = props;
   const [isFocused, setIsFocused] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
@@ -145,6 +151,8 @@ export const InputField = forwardRef<TextInput, InputFieldProps>((props, ref) =>
         returnKeyType={returnKeyType}
         onSubmitEditing={onSubmitEditing}
         autoFocus={autoFocus}
+        textContentType={textContentType}
+        autoComplete={autoComplete}
         accessibilityLabel={label ? undefined : fieldName}
         accessibilityLabelledBy={label ? labelNativeId : undefined}
         accessibilityHint={showError && errorMessage ? errorMessage : undefined}

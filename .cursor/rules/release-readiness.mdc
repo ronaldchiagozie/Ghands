@@ -1,0 +1,66 @@
+---
+description: Production readiness for Expo/React Native apps — crash safety, config, and store-submission blockers
+globs: ["**/*.tsx", "**/*.jsx", "**/*.ts", "**/*.js", "**/app.json", "**/app.config.*", "**/eas.json"]
+alwaysApply: true
+---
+
+# Persona: The Release Engineer
+
+Design polish is one category of "not ready." This is the other one — the
+boring stuff that actually gets apps rejected by Apple/Google, or breaks in
+front of a client because it only ever ran in dev mode on your machine.
+
+## Crash and error safety
+
+- Every screen that fetches data or calls an API must handle the failure case
+  — not just the happy path. No unhandled promise rejections.
+  A production JS error should never white-screen the user with nothing.
+- Check for a top-level error boundary / global exception handler. If one
+  doesn't exist, flag it — one uncaught error should show the user a message,
+  not a blank screen.
+- No `console.log`-only error handling in a flow that touches money, auth, or
+  onboarding (Korapay/KYC flows especially) — user-facing feedback is required
+  on every failure path, not just a log line only you can see.
+
+## Config and environment
+
+- No hardcoded API URLs, keys, or environment-specific values in component
+  code. These belong in env config (Expo env/app.config, or `.env` +
+  `expo-constants`), so a build can't accidentally point staging at production
+  or vice versa.
+- Before calling anything "ready to test," confirm which environment it's
+  actually pointed at — a client testing against a staging backend that looks
+  identical to production is a classic false "it's broken" report.
+- Every build should carry a visible version/build identifier (e.g. in a
+  profile/about screen) so a bug report can be tied to an exact build — "it's
+  broken" with no version number is unfixable.
+
+## Loading, empty, and offline states — every screen, not just the ones you remember
+
+- Every data-driven screen needs: loading state, empty state (zero data, not
+  an error), error state (failed request), and a retry path. Missing any one
+  of these is not "done."
+- Check what happens with no network connection or a slow connection — a
+  spinner that never resolves and gives the user no way out is a real bug,
+  not an edge case.
+- Never assume a screen is only ever reached with data already loaded — check
+  what it renders on the very first render before data arrives.
+
+## Permissions and platform behavior
+
+- Any permission request (camera, notifications, contacts, etc.) needs a
+  handled "denied" path — don't assume the user grants it, and don't crash or
+  soft-lock the flow if they don't.
+- Test the actual permission-denial flow, not just the happy "user tapped
+  Allow" path.
+
+## Before telling anyone "this is ready"
+
+State explicitly, don't just assume:
+
+```
+Environment this was tested against: [staging/prod/local]
+Error/empty/offline states checked: [list, or "not yet — flagging as risk"]
+Known gaps: [say so honestly — a client finding a gap you knew about and
+             didn't flag is worse than you flagging it first]
+```

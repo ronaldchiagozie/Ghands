@@ -1,28 +1,30 @@
 import { EmptyState } from '@/components/EmptyState';
+import { ErrorState } from '@/components/ErrorState';
 import {
-  SageAmountSkeleton,
-  TransactionCardSkeleton,
+    SageAmountSkeleton,
+    TransactionCardSkeleton,
 } from '@/components/LoadingSkeleton';
-import { invalidateWalletBalanceCache, useWalletBalance } from '@/hooks/useWalletBalance';
-import { useSkeletonGate } from '@/hooks/useSkeletonGate';
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { useSkeletonGate } from '@/hooks/useSkeletonGate';
+import { invalidateWalletBalanceCache, useWalletBalance } from '@/hooks/useWalletBalance';
 import { BorderRadius, Colors } from '@/lib/designSystem';
-import { CLIENT_HOME_SCROLL_GUTTER } from '@/lib/tabletLayout';
 import {
-  providerHomeActionButton,
-  providerHomeActionLabel,
-  providerHomeSectionTitle,
-  providerHomeSurface,
-  providerHomeSurfacePadding,
-  providerHomeViewAllLabel,
+    providerHomeActionButton,
+    providerHomeActionLabel,
+    providerHomeSectionTitle,
+    providerHomeSurface,
+    providerHomeSurfacePadding,
+    providerHomeViewAllLabel,
 } from '@/lib/providerSurfaceStyles';
+import { CLIENT_HOME_SCROLL_GUTTER } from '@/lib/tabletLayout';
 import { walletService } from '@/services/api';
-import { isCancelledWalletTransaction, mapWalletTransactionStatus } from '@/utils/walletTransactions';
+import { getErrorMessage } from '@/utils/errorMessages';
 import { openClientReceipt } from '@/utils/receiptNavigation';
+import { extractWalletTransactionFailureReason, isCancelledWalletTransaction, mapWalletTransactionStatus, walletTransactionTimestamp } from '@/utils/walletTransactions';
 
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ArrowLeft, ArrowRight, Bell, CheckCircle, Clock, Plus, Receipt, Wallet } from 'lucide-react-native';
+import { ArrowRight, Bell, Building2, CheckCircle, Clock, Plus, Receipt, Wallet, XCircle } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
@@ -36,16 +38,24 @@ interface Transaction {
   status: 'pending' | 'completed' | 'failed';
   requestId?: string;
   reference?: string;
+  failureReason?: string;
 }
 
 export default function WalletScreen() {
   const router = useRouter();
-  const { balance, walletId, isLoading: isLoadingBalance, refresh: refreshWalletBalance } = useWalletBalance({
+  const {
+    balance,
+    walletId,
+    isLoading: isLoadingBalance,
+    balanceError,
+    refresh: refreshWalletBalance,
+  } = useWalletBalance({
     refreshOnFocus: true,
   });
   const transactionsReadyRef = useRef(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState<boolean>(true);
+  const [transactionsError, setTransactionsError] = useState<string | null>(null);
 
   // Helper function to format date
   const formatDate = useCallback((dateString: string): { date: string; time: string } => {
@@ -70,8 +80,20 @@ export default function WalletScreen() {
       let serviceName = 'Service Payment';
       let serviceDescription = apiTransaction.description || 'Wallet transaction';
       
-      // Try to extract service name from description
-      if (apiTransaction.description) {
+      // Prefer ledger type from API (backend source of truth)
+      const txType = String(apiTransaction.type ?? '').toLowerCase();
+      if (txType === 'deposit') {
+        serviceName = 'Wallet Deposit';
+        serviceDescription = 'Funds added to wallet';
+      } else if (txType === 'withdrawal') {
+        serviceName = 'Withdrawal';
+        serviceDescription = 'Funds withdrawn to bank';
+      } else if (txType === 'payment') {
+        serviceName = apiTransaction.requestId
+          ? `Service Request #${apiTransaction.requestId}`
+          : 'Service Payment';
+        serviceDescription = apiTransaction.description || 'Wallet payment';
+      } else if (apiTransaction.description) {
         const desc = apiTransaction.description.toLowerCase();
         if (desc.includes('service request')) {
           serviceName = `Service Request #${apiTransaction.requestId || 'N/A'}`;
@@ -91,9 +113,11 @@ export default function WalletScreen() {
         }
       }
 
-      const { date, time } = formatDate(apiTransaction.createdAt || apiTransaction.completedAt || new Date().toISOString());
       const status = mapWalletTransactionStatus(apiTransaction);
-      
+      const { date, time } = formatDate(walletTransactionTimestamp(apiTransaction));
+      const failureReason =
+        status === 'failed' ? extractWalletTransactionFailureReason(apiTransaction) : undefined;
+
       return {
         id: String(apiTransaction.id || apiTransaction.reference || Math.random()),
         serviceName,
@@ -104,6 +128,7 @@ export default function WalletScreen() {
         status,
         requestId: apiTransaction.requestId != null ? String(apiTransaction.requestId) : undefined,
         reference: apiTransaction.reference ? String(apiTransaction.reference) : undefined,
+        failureReason,
       };
     } catch (error) {
       if (__DEV__) {
@@ -127,11 +152,14 @@ export default function WalletScreen() {
         .filter((t) => !(t.serviceName === 'Wallet Deposit' && t.status === 'pending'))
         .slice(0, 5);
       setTransactions(mappedTransactions);
+      setTransactionsError(null);
     } catch (error) {
       if (__DEV__) {
         console.error('Error loading transactions:', error);
       }
-      setTransactions([]);
+      setTransactionsError(
+        getErrorMessage(error, 'Could not load recent activity. Check your connection and try again.'),
+      );
     } finally {
       transactionsReadyRef.current = true;
       setIsLoadingTransactions(false);
@@ -156,10 +184,8 @@ export default function WalletScreen() {
     router.push('/TopUpScreen' as any);
   }, [router]);
 
-  const handlePay = useCallback(() => {
-    // Navigate to jobs screen to see pending service requests that need payment
-    // The Pay button should show pending payments, not just go to payment methods
-    router.push('/(tabs)/jobs' as any);
+  const handleWithdraw = useCallback(() => {
+    router.push('/WithdrawScreen' as any);
   }, [router]);
 
   const handleViewAll = useCallback(() => {
@@ -185,7 +211,30 @@ export default function WalletScreen() {
       providerName: transaction.serviceName,
       serviceName: transaction.serviceDescription,
       amount: transaction.amount.toString(),
+      status: transaction.status,
+      serviceDate: transaction.date,
+      serviceTime: transaction.time,
+      paymentDate: `${transaction.date} at ${transaction.time}`,
     });
+  }, [router]);
+
+  const handleViewFailedTransaction = useCallback((transaction: Transaction) => {
+    router.push({
+      pathname: '/TransactionFailedScreen',
+      params: {
+        transactionId: transaction.id,
+        reference: transaction.reference,
+        amount: transaction.amount.toString(),
+        providerName: transaction.serviceName,
+        serviceName: transaction.serviceDescription,
+        totalAmount: transaction.amount.toFixed(2),
+        paymentMethod: 'Wallet',
+        serviceDate: transaction.date,
+        serviceTime: transaction.time,
+        initiatedDate: `${transaction.date} · ${transaction.time}`,
+        failureReason: transaction.failureReason,
+      },
+    } as any);
   }, [router]);
 
   const formatCurrency = useCallback((value: number) => {
@@ -195,10 +244,15 @@ export default function WalletScreen() {
     }).format(value);
   }, []);
 
+  const balanceLoadFailed = Boolean(balanceError && balance === null);
   const { showSkeleton: showBalanceSkeleton, isLoadingEmpty: isBalanceLoadingEmpty } =
-    useSkeletonGate(isLoadingBalance, balance === null);
+    useSkeletonGate(isLoadingBalance, balance === null && !balanceLoadFailed);
   const { showSkeleton: showTransactionsSkeleton, isLoadingEmpty: isTransactionsLoadingEmpty } =
-    useSkeletonGate(isLoadingTransactions, transactions.length === 0);
+    useSkeletonGate(isLoadingTransactions, transactions.length === 0 && !transactionsError);
+
+  const handleRetryBalance = useCallback(() => {
+    void refreshWalletBalance();
+  }, [refreshWalletBalance]);
 
   return (
     <SafeAreaWrapper backgroundColor={Colors.backgroundLight}>
@@ -328,6 +382,48 @@ export default function WalletScreen() {
 
           {(showBalanceSkeleton || isBalanceLoadingEmpty) ? (
             <SageAmountSkeleton />
+          ) : balanceLoadFailed ? (
+            <View style={{ marginBottom: 10 }}>
+              <Text
+                style={{
+                  fontSize: 15,
+                  fontFamily: 'Poppins-SemiBold',
+                  color: Colors.white,
+                  marginBottom: 6,
+                }}
+              >
+                Could not load balance
+              </Text>
+              <Text
+                style={{
+                  fontSize: 13,
+                  fontFamily: 'Poppins-Regular',
+                  color: Colors.white,
+                  opacity: 0.85,
+                  lineHeight: 19,
+                  marginBottom: 12,
+                }}
+              >
+                {balanceError}
+              </Text>
+              <TouchableOpacity
+                onPress={handleRetryBalance}
+                activeOpacity={0.85}
+                style={{
+                  alignSelf: 'flex-start',
+                  paddingHorizontal: 14,
+                  paddingVertical: 8,
+                  borderRadius: BorderRadius.default,
+                  backgroundColor: 'rgba(255, 255, 255, 0.18)',
+                  borderWidth: 1,
+                  borderColor: 'rgba(255, 255, 255, 0.22)',
+                }}
+              >
+                <Text style={{ fontSize: 13, fontFamily: 'Poppins-SemiBold', color: Colors.white }}>
+                  Retry
+                </Text>
+              </TouchableOpacity>
+            </View>
           ) : (
             <>
             <Text
@@ -365,7 +461,7 @@ export default function WalletScreen() {
                   marginBottom: 4,
                 }}
               >
-                Total transactions
+                Recent activity
               </Text>
               <Text
                 style={{
@@ -374,7 +470,11 @@ export default function WalletScreen() {
                   color: Colors.white,
                 }}
               >
-                {showTransactionsSkeleton || isTransactionsLoadingEmpty ? '…' : transactions.length}
+                {showTransactionsSkeleton || isTransactionsLoadingEmpty
+                  ? '…'
+                  : transactionsError && transactions.length === 0
+                    ? '—'
+                    : transactions.length}
               </Text>
             </View>
             <View
@@ -439,20 +539,24 @@ export default function WalletScreen() {
             }}
             activeOpacity={0.85}
           >
-            <Plus size={16} color={Colors.textPrimary} />
-            <Text style={{ ...providerHomeActionLabel, marginLeft: 6 }}>Add Funds</Text>
+            <Plus size={16} color={Colors.accent} />
+            <Text style={{ ...providerHomeActionLabel, marginLeft: 6 }}>Add funds</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={handlePay}
+            onPress={handleWithdraw}
             style={{
               flex: 1,
               ...providerHomeActionButton,
             }}
             activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel="Withdraw to bank"
           >
-            <Text style={{ ...providerHomeActionLabel, marginRight: 6 }}>Pay</Text>
-            <ArrowRight size={16} color={Colors.textPrimary} />
+            <Building2 size={16} color={Colors.accent} />
+            <Text style={{ ...providerHomeActionLabel, marginLeft: 6 }} numberOfLines={1}>
+              Withdraw
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -484,6 +588,20 @@ export default function WalletScreen() {
               <TransactionCardSkeleton />
               <TransactionCardSkeleton />
             </>
+          ) : transactionsError && transactions.length === 0 ? (
+            <ErrorState
+              title="Could not load activity"
+              message={transactionsError}
+              onRetry={() => {
+                void loadTransactions();
+              }}
+              style={{
+                flex: 0,
+                ...providerHomeSurface,
+                padding: providerHomeSurfacePadding + 18,
+              }}
+              iconSize={36}
+            />
           ) : transactions.length === 0 ? (
             <EmptyState
               icon={<Receipt size={40} color={Colors.textSecondaryDark} />}
@@ -526,8 +644,10 @@ export default function WalletScreen() {
                 >
                   {transaction.status === 'completed' ? (
                     <CheckCircle size={20} color={Colors.accent} />
-                  ) : (
+                  ) : transaction.status === 'pending' ? (
                     <Clock size={20} color={Colors.warning} />
+                  ) : (
+                    <XCircle size={20} color={Colors.errorBright} />
                   )}
                 </View>
 
@@ -575,7 +695,12 @@ export default function WalletScreen() {
                       paddingHorizontal: 8,
                       paddingVertical: 4,
                       borderRadius: 12,
-                      backgroundColor: transaction.status === 'pending' ? 'rgba(245, 158, 11, 0.18)' : Colors.successLight,
+                      backgroundColor:
+                        transaction.status === 'completed'
+                          ? Colors.successLight
+                          : transaction.status === 'pending'
+                            ? 'rgba(245, 158, 11, 0.18)'
+                            : Colors.errorLight,
                       marginBottom: 6,
                     }}
                   >
@@ -583,10 +708,16 @@ export default function WalletScreen() {
                       style={{
                         fontSize: 11,
                         fontFamily: 'Poppins-SemiBold',
-                        color: transaction.status === 'pending' ? Colors.warningForeground : Colors.successForeground,
+                        color:
+                          transaction.status === 'completed'
+                            ? Colors.successForeground
+                            : transaction.status === 'pending'
+                              ? Colors.warningForeground
+                              : Colors.errorForeground,
+                        textTransform: 'capitalize',
                       }}
                     >
-                      {transaction.status === 'pending' ? 'Pending' : 'Completed'}
+                      {transaction.status}
                     </Text>
                   </View>
                   <Text
@@ -603,7 +734,19 @@ export default function WalletScreen() {
               </View>
 
               {/* Action Button at bottom */}
-              {transaction.status === 'pending' ? (
+              {transaction.status === 'completed' ? (
+                <TouchableOpacity
+                  onPress={() => handleViewReceipt(transaction)}
+                  style={{
+                    ...providerHomeActionButton,
+                    width: '100%',
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <Receipt size={15} color={Colors.textPrimary} style={{ marginRight: 5 }} />
+                  <Text style={providerHomeActionLabel}>View Receipt</Text>
+                </TouchableOpacity>
+              ) : transaction.status === 'pending' ? (
                 <TouchableOpacity
                   onPress={() => handleViewDetails(transaction)}
                   style={{
@@ -616,15 +759,14 @@ export default function WalletScreen() {
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity
-                  onPress={() => handleViewReceipt(transaction)}
+                  onPress={() => handleViewFailedTransaction(transaction)}
                   style={{
                     ...providerHomeActionButton,
                     width: '100%',
                   }}
                   activeOpacity={0.85}
                 >
-                  <Receipt size={15} color={Colors.textPrimary} style={{ marginRight: 5 }} />
-                  <Text style={providerHomeActionLabel}>View Receipt</Text>
+                  <Text style={providerHomeActionLabel}>View details</Text>
                 </TouchableOpacity>
               )}
             </View>

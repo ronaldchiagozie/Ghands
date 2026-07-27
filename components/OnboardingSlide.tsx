@@ -2,12 +2,13 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import { Animated, Image, SafeAreaView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Svg, { Defs, Rect, Stop, LinearGradient as SvgLinearGradient } from 'react-native-svg';
 import { SlideData } from '../lib/assets';
-import { Colors } from '../lib/designSystem';
-import { runParallel, runTiming, useReducedMotion } from '../lib/designSystem';
+import { Colors, runParallel, runTiming, useReducedMotion } from '../lib/designSystem';
 
 interface OnboardingSlideProps {
   slide: SlideData;
   isActive: boolean;
+  /** True while a swipe is in flight and this is the incoming slide. */
+  revealed?: boolean;
   /** When set (e.g. tablet phone lane), use instead of full window — fixes clipped / crooked slides */
   contentWidth?: number;
   contentHeight?: number;
@@ -16,6 +17,7 @@ interface OnboardingSlideProps {
 export default function OnboardingSlide({
   slide,
   isActive,
+  revealed = false,
   contentWidth,
   contentHeight,
 }: OnboardingSlideProps) {
@@ -26,6 +28,8 @@ export default function OnboardingSlide({
   const titleSlideAnim = useRef(new Animated.Value(30)).current;
   const descSlideAnim = useRef(new Animated.Value(30)).current;
   const reducedMotion = useReducedMotion();
+  /** Tracks whether the text is already on screen, so a committed swipe doesn't re-run the entrance. */
+  const isVisibleRef = useRef(false);
 
   const styles = useMemo(() => {
     const isSmallScreen = windowWidth < 375;
@@ -84,17 +88,32 @@ export default function OnboardingSlide({
   }, [windowWidth, windowHeight, contentWidth, contentHeight]);
 
   useEffect(() => {
+    // Mid-drag neighbour: show instantly, otherwise the swipe drags in a blank panel.
+    if (revealed && !isActive) {
+      fadeAnim.setValue(1);
+      titleSlideAnim.setValue(0);
+      descSlideAnim.setValue(0);
+      isVisibleRef.current = true;
+      return;
+    }
+
     if (isActive) {
       if (reducedMotion) {
         fadeAnim.setValue(1);
         titleSlideAnim.setValue(0);
         descSlideAnim.setValue(0);
+        isVisibleRef.current = true;
         return;
       }
 
-      fadeAnim.setValue(0);
-      titleSlideAnim.setValue(30);
-      descSlideAnim.setValue(30);
+      // Only replay the rise-into-place entrance when the slide isn't already on
+      // screen — committing a swipe would otherwise flash the text back to zero.
+      if (!isVisibleRef.current) {
+        fadeAnim.setValue(0);
+        titleSlideAnim.setValue(30);
+        descSlideAnim.setValue(30);
+      }
+      isVisibleRef.current = true;
 
       runParallel(reducedMotion, [
         Animated.timing(fadeAnim, {
@@ -120,6 +139,8 @@ export default function OnboardingSlide({
       return () => clearTimeout(descTimer);
     }
 
+    isVisibleRef.current = false;
+
     if (reducedMotion) {
       fadeAnim.setValue(0);
       titleSlideAnim.setValue(-30);
@@ -144,7 +165,7 @@ export default function OnboardingSlide({
         useNativeDriver: true,
       }),
     ]);
-  }, [isActive, fadeAnim, titleSlideAnim, descSlideAnim, reducedMotion]);
+  }, [isActive, revealed, fadeAnim, titleSlideAnim, descSlideAnim, reducedMotion]);
 
   return (
     <SafeAreaView style={styles.root}>

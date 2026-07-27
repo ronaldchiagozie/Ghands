@@ -9,12 +9,12 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   ScrollView,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { showAppAlert } from '@/components/AppAlertHost';
 import { useUserLocation } from '@/hooks/useUserLocation';
 
 function normalizeAddr(s: string | null | undefined): string {
@@ -147,7 +147,7 @@ export default function AddressBookScreen() {
       await refreshLocation();
       await loadAddresses(row.line1);
     } catch {
-      Alert.alert('Could not update', 'Please try again.');
+      showAppAlert('Could not update', 'Please try again.');
     }
   };
 
@@ -171,7 +171,7 @@ export default function AddressBookScreen() {
         text: 'Remove',
         style: 'destructive',
         onPress: () => {
-          Alert.alert('Remove address?', 'This removes it from your list on this device.', [
+          showAppAlert('Remove address?', 'This removes it from your list on this device.', [
             { text: 'Cancel', style: 'cancel' },
             {
               text: 'Remove',
@@ -186,7 +186,7 @@ export default function AddressBookScreen() {
       });
     }
     options.push({ text: 'Cancel', style: 'cancel' });
-    Alert.alert(row.line1.slice(0, 40) + (row.line1.length > 40 ? '…' : ''), undefined, options);
+    showAppAlert(row.line1.slice(0, 40) + (row.line1.length > 40 ? '…' : ''), undefined, options);
   };
 
   return (
