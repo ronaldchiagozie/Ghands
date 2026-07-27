@@ -1,6 +1,6 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { Colors } from '@/lib/designSystem';
+import { BorderRadius, Colors } from '@/lib/designSystem';
 import { CLIENT_HOME_SCROLL_GUTTER } from '@/lib/tabletLayout';
 import { useRouter } from 'expo-router';
 import { ChevronRight, MapPin, User } from 'lucide-react-native';
@@ -13,16 +13,16 @@ const accountCards = [
     title: 'Personal Details',
     subtitle: 'Name, email, phone number',
     icon: User,
-    iconColor: '#666',
-    iconBgColor: '#F5F5F5',
+    iconColor: Colors.textSecondaryDark,
+    iconBgColor: Colors.backgroundGray,
   },
   {
     id: '2',
     title: 'Address Book',
     subtitle: 'Manage your saved addresses',
     icon: MapPin,
-    iconColor: '#4F6739',
-    iconBgColor: '#EEFFD9',
+    iconColor: Colors.accent,
+    iconBgColor: Colors.sageTint,
   },
 ];
 
@@ -93,7 +93,7 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: Colors.white,
-    borderRadius: 16,
+    borderRadius: BorderRadius.lg,
     paddingHorizontal: 16,
     paddingVertical: 18,
     marginBottom: 12,
@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
   iconWrap: {
     width: 48,
     height: 48,
-    borderRadius: 24,
+    borderRadius: BorderRadius.full,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
@@ -115,10 +115,11 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   cardTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontFamily: 'Poppins-Bold',
     color: Colors.textPrimary,
     marginBottom: 4,
+    letterSpacing: -0.2,
   },
   cardSubtitle: {
     fontSize: 13,

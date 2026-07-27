@@ -38,7 +38,7 @@ export default function SecurityScreen() {
       title: 'Change Login Password',
       subtitle: 'Update your account password.',
       icon: Key,
-      iconBgColor: '#F5F5F5',
+      iconBgColor: Colors.backgroundGray,
       onPress: () => {
         router.push('/ResetPassword' as any);
       },
@@ -48,7 +48,7 @@ export default function SecurityScreen() {
       title: 'Change Phone number',
       subtitle: 'Update your contact number.',
       icon: Phone,
-      iconBgColor: '#F5F5F5',
+      iconBgColor: Colors.backgroundGray,
       onPress: () => {
         // Navigate to change phone screen
         // TODO: Create ChangePhoneScreen
@@ -59,7 +59,7 @@ export default function SecurityScreen() {
       title: 'Change Email Address',
       subtitle: 'Update your email address.',
       icon: Mail,
-      iconBgColor: '#F5F5F5',
+      iconBgColor: Colors.backgroundGray,
       onPress: () => {
         // Navigate to change email screen
         // TODO: Create ChangeEmailScreen
@@ -70,7 +70,7 @@ export default function SecurityScreen() {
       title: 'Biometric verification',
       subtitle: 'Use your fingerprint or Face ID.',
       icon: Shield,
-      iconBgColor: '#F5F5F5',
+      iconBgColor: Colors.backgroundGray,
       showToggle: true,
       toggleValue: biometricEnabled,
       onToggleChange: setBiometricEnabled,
@@ -98,8 +98,8 @@ export default function SecurityScreen() {
                 key={option.id}
                 onPress={option.onPress}
                 style={{
-                  backgroundColor: '#F5F5F5',
-                  borderRadius: 12,
+                  backgroundColor: Colors.backgroundGray,
+                  borderRadius: BorderRadius.default,
                   padding: 16,
                   marginBottom: 12,
                   flexDirection: 'row',
@@ -112,7 +112,7 @@ export default function SecurityScreen() {
                   style={{
                     width: 48,
                     height: 48,
-                    borderRadius: 12,
+                    borderRadius: BorderRadius.default,
                     backgroundColor: option.iconBgColor,
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -126,7 +126,7 @@ export default function SecurityScreen() {
                 <View style={{ flex: 1 }}>
                   <Text
                     style={{
-                      fontSize: 16,
+                      fontSize: 15,
                       fontFamily: 'Poppins-Bold',
                       color: Colors.textPrimary,
                       marginBottom: 4,
@@ -176,7 +176,7 @@ export default function SecurityScreen() {
               <Text
                 style={{
                   fontSize: 16,
-                  fontFamily: 'Poppins-Bold',
+                  fontFamily: 'Poppins-SemiBold',
                   color: Colors.textPrimary,
                   marginLeft: 8,
                 }}

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { haptics } from '@/hooks/useHaptics';
 import { useToast } from '@/hooks/useToast';
 import { useUserLocation } from '@/hooks/useUserLocation';
-import { BorderRadius, Colors } from '@/lib/designSystem';
+import { BorderRadius, Colors, useKeyboardAvoidingOffset } from '@/lib/designSystem';
 import { LocationSearchResult, LocationDetails, locationService, authService, UpdateLocationPayload } from '@/services/api';
 import { AuthError } from '@/utils/errors';
 import { handleAuthErrorRedirect } from '@/utils/authRedirect';
@@ -15,7 +15,7 @@ import * as Location from 'expo-location';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MapPin, Search, Send } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, FlatList, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Animated, FlatList, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function LocationSearchScreen() {
   const router = useRouter();
@@ -40,6 +40,7 @@ export default function LocationSearchScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const keyboardOffset = useKeyboardAvoidingOffset();
   
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -625,7 +626,7 @@ export default function LocationSearchScreen() {
         style={{
           width: 40,
           height: 40,
-          borderRadius: 20,
+          borderRadius: BorderRadius.full,
           backgroundColor: Colors.backgroundGray,
           alignItems: 'center',
           justifyContent: 'center',
@@ -637,7 +638,7 @@ export default function LocationSearchScreen() {
       <View style={{ flex: 1 }}>
         <Text
           style={{
-            fontSize: 15,
+            fontSize: 14,
             fontFamily: 'Poppins-SemiBold',
             color: Colors.textPrimary,
             marginBottom: 4,
@@ -669,6 +670,11 @@ export default function LocationSearchScreen() {
       >
         <ScreenHeader title="Find location" onBack={handleBack} backgroundColor={Colors.backgroundLight} />
 
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={keyboardOffset}
+        >
         <View style={{ flex: 1 }}>
           {/* Search Input */}
           <View
@@ -684,7 +690,7 @@ export default function LocationSearchScreen() {
               style={{
                 flex: 1,
                 backgroundColor: Colors.backgroundGray,
-                borderRadius: BorderRadius.xl,
+                borderRadius: BorderRadius.default,
                 paddingHorizontal: 16,
                 paddingVertical: 12,
                 borderWidth: 1,
@@ -709,7 +715,7 @@ export default function LocationSearchScreen() {
               style={{
                 width: 48,
                 height: 48,
-                backgroundColor: Colors.black,
+                backgroundColor: Colors.accent,
                 borderRadius: BorderRadius.default,
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -839,6 +845,8 @@ export default function LocationSearchScreen() {
           {/* Selected Location Display */}
           {selectedLocation && !showResults && (
             <ScrollView
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
               contentContainerStyle={{
                 paddingHorizontal: 20,
                 paddingBottom: 100,
@@ -846,8 +854,8 @@ export default function LocationSearchScreen() {
             >
               <View
                 style={{
-                  backgroundColor: '#FFF9E6',
-                  borderRadius: BorderRadius.xl,
+                  backgroundColor: Colors.warningLight,
+                  borderRadius: BorderRadius.default,
                   padding: 14,
                   marginBottom: 16,
                   borderWidth: 1,
@@ -900,6 +908,7 @@ export default function LocationSearchScreen() {
             disabled={isSaving || (!selectedLocation && (!searchQuery || (typeof searchQuery === 'string' && !searchQuery.trim())))}
           />
         </View>
+        </KeyboardAvoidingView>
       </Animated.View>
       <Toast
         message={toast.message}

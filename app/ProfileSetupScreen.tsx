@@ -1,12 +1,12 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
-import { Colors } from '@/lib/designSystem';
+import { BorderRadius, Colors, useKeyboardAvoidingOffset, useScrollViewKeyboardAssist } from '@/lib/designSystem';
 import { API_BASE_URL } from '@/lib/apiConfig';
 import { useUserLocation } from '@/hooks/useUserLocation';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { Camera, MapPin, Plus, User } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Dimensions, Image, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Animated, Dimensions, Image, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { showAppAlert } from '@/components/AppAlertHost';
 import { logClientProfilePhoto, writeLocalClientProfileImageUri } from '@/utils/clientProfilePhoto';
 
@@ -179,9 +179,21 @@ export default function ProfileSetupScreen() {
   };
 
   const isFormValid = fullName.trim() && location.trim() && description.trim();
+  const keyboardOffset = useKeyboardAvoidingOffset();
+  const descriptionSectionY = useRef(0);
+  const locationSectionY = useRef(0);
+  const { scrollRef, scrollBottomPad, scrollFieldIntoView } = useScrollViewKeyboardAssist({
+    footerClearance: 120,
+    baseBottomPad: 20,
+  });
 
   return (
     <SafeAreaWrapper>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={keyboardOffset}
+      >
       <Animated.View 
         style={{ 
           opacity: fadeAnim,
@@ -209,15 +221,17 @@ export default function ProfileSetupScreen() {
         </View>
 
         <ScrollView 
+          ref={scrollRef}
           className="flex-1 px-4"
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 20 }}
+          contentContainerStyle={{ paddingBottom: scrollBottomPad }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
           
           <View className="items-center mb-8">
             <TouchableOpacity 
               onPress={pickImage}
-              className="border-2 border-gray-300 rounded-full items-center justify-center relative overflow-hidden"
               activeOpacity={0.8}
               style={{ 
                 width: screenWidth * 0.32, 
@@ -225,7 +239,13 @@ export default function ProfileSetupScreen() {
                 minWidth: 120,
                 minHeight: 120,
                 maxWidth: 140,
-                maxHeight: 140
+                maxHeight: 140,
+                borderWidth: 1,
+                borderColor: Colors.borderStrong,
+                borderRadius: BorderRadius.full,
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'hidden',
               }}
             >
               {isUploading ? (
@@ -249,17 +269,35 @@ export default function ProfileSetupScreen() {
               ) : (
                 <Camera size={32} color={Colors.accent} />
               )}
-              <View className="absolute -bottom-1 -right-1 w-8 h-8 bg-black rounded-full items-center justify-center">
-                <Plus size={16} color="white" />
+              <View
+                style={{
+                  position: 'absolute',
+                  bottom: -4,
+                  right: -4,
+                  width: 32,
+                  height: 32,
+                  backgroundColor: Colors.accent,
+                  borderRadius: BorderRadius.full,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Plus size={16} color={Colors.white} />
               </View>
             </TouchableOpacity>
             {profileImage && (
-              <Text className="text-sm text-gray-600 mt-2" style={{ fontFamily: 'Poppins-Medium' }}>
+              <Text
+                className="mt-2"
+                style={{ fontFamily: 'Poppins-Medium', fontSize: 13, color: Colors.textMuted }}
+              >
                 Image selected ✓
               </Text>
             )}
             {isUploading && (
-              <Text className="text-xs text-gray-500 mt-1" style={{ fontFamily: 'Poppins-Regular' }}>
+              <Text
+                className="mt-1"
+                style={{ fontFamily: 'Poppins-Regular', fontSize: 11, color: Colors.iconMuted }}
+              >
                 Uploading...
               </Text>
             )}
@@ -271,28 +309,40 @@ export default function ProfileSetupScreen() {
             style={{ minHeight: screenHeight * 0.06 }}
           >
             <View 
-              className="bg-[#4F6739] border-[0.5px] border-black rounded-xl items-center justify-center mr-4"
-              style={{ 
+              style={{
+                backgroundColor: Colors.accent,
+                borderWidth: 1,
+                borderColor: Colors.border,
+                borderRadius: BorderRadius.default,
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginRight: 16,
                 width: screenWidth * 0.12, 
                 height: screenWidth * 0.08,
                 minWidth: 48,
-                minHeight: 48
+                minHeight: 48,
               }}
             >
-              <User size={20} color="white" />
+              <User size={20} color={Colors.white} />
             </View>
             <View 
-              className="flex-1 bg-gray-100 rounded-xl px-4 py-3"
+              style={{
+                flex: 1,
+                backgroundColor: Colors.backgroundGray,
+                borderRadius: BorderRadius.default,
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+              }}
             >
               <TextInput
                 placeholder="Full name"
                 value={fullName}
                 onChangeText={setFullName}
-                className="text-black text-base"
                 placeholderTextColor={Colors.placeholder}
                 style={{ 
                   fontFamily: 'Poppins-Medium',
-                  fontSize: screenWidth < 375 ? 14 : 16
+                  fontSize: 14,
+                  color: Colors.textPrimary,
                 }}
               />
             </View>
@@ -304,27 +354,41 @@ export default function ProfileSetupScreen() {
             style={{ minHeight: screenHeight * 0.06 }}
           >
             <View 
-              className="bg-[#4F6739] border-[0.5px] border-black rounded-xl items-center justify-center mr-4"
-              style={{ 
+              style={{
+                backgroundColor: Colors.accent,
+                borderWidth: 1,
+                borderColor: Colors.border,
+                borderRadius: BorderRadius.default,
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginRight: 16,
                 width: screenWidth * 0.12, 
                 height: screenWidth * 0.12,
                 minWidth: 48,
-                minHeight: 48
+                minHeight: 48,
               }}
             >
-              <MapPin size={20} color="white" />
+              <MapPin size={20} color={Colors.white} />
             </View>
             <TouchableOpacity
               onPress={handleAddHomeAddress}
-              className="flex-1 bg-[#000000] rounded-xl py-3 px-4"
               activeOpacity={0.8}
-              style={{ minHeight: 48 }}
+              style={{
+                flex: 1,
+                backgroundColor: Colors.accent,
+                borderRadius: BorderRadius.default,
+                paddingVertical: 12,
+                paddingHorizontal: 16,
+                minHeight: 48,
+                justifyContent: 'center',
+              }}
             >
               <Text 
-                className="text-white text-base text-center"
                 style={{ 
                   fontFamily: 'Poppins-SemiBold',
-                  fontSize: screenWidth < 375 ? 14 : 16
+                  fontSize: 16,
+                  color: Colors.white,
+                  textAlign: 'center',
                 }}
               >
                 Add home address
@@ -334,36 +398,56 @@ export default function ProfileSetupScreen() {
 
           
           <View 
-            className="bg-gray-100 rounded-xl px-4 py-3 mb-6"
-            style={{ minHeight: screenHeight * 0.06 }}
+            style={{
+              backgroundColor: Colors.backgroundGray,
+              borderRadius: BorderRadius.default,
+              paddingHorizontal: 16,
+              paddingVertical: 12,
+              marginBottom: 24,
+              minHeight: screenHeight * 0.06,
+            }}
+            onLayout={(event) => {
+              locationSectionY.current = event.nativeEvent.layout.y;
+            }}
           >
             <TextInput
               placeholder="Location..."
               value={location}
               onChangeText={setLocation}
-              className="text-black text-base"
+              onFocus={() => scrollFieldIntoView(locationSectionY.current, true)}
               placeholderTextColor={Colors.placeholder}
               style={{ 
                 fontFamily: 'Poppins-Medium',
-                fontSize: screenWidth < 375 ? 14 : 16
+                fontSize: 14,
+                color: Colors.textPrimary,
               }}
             />
           </View>
 
-          <View className="mb-8">
+          <View
+            className="mb-8"
+            onLayout={(event) => {
+              descriptionSectionY.current = event.nativeEvent.layout.y;
+            }}
+          >
             <TextInput
               placeholder="Description"
               value={description}
               onChangeText={setDescription}
+              onFocus={() => scrollFieldIntoView(descriptionSectionY.current, true)}
               multiline
               numberOfLines={4}
-              className="bg-gray-100 rounded-xl px-4 py-3 text-black text-base"
               placeholderTextColor={Colors.placeholder}
               style={{ 
                 fontFamily: 'Poppins-Medium',
                 textAlignVertical: 'top',
                 minHeight: screenHeight * 0.12,
-                fontSize: screenWidth < 375 ? 14 : 16
+                fontSize: 14,
+                color: Colors.textPrimary,
+                backgroundColor: Colors.backgroundGray,
+                borderRadius: BorderRadius.default,
+                paddingHorizontal: 16,
+                paddingVertical: 12,
               }}
             />
           </View>
@@ -377,19 +461,21 @@ export default function ProfileSetupScreen() {
           <TouchableOpacity
             onPress={handleSave}
             disabled={!isFormValid}
-            className={`rounded-xl py-4 px-6 ${
-              isFormValid ? 'bg-[#4F6739]' : 'bg-gray-300'
-            }`}
             activeOpacity={0.8}
-            style={{ minHeight: 52 }}
+            style={{
+              minHeight: 52,
+              borderRadius: BorderRadius.default,
+              paddingVertical: 16,
+              paddingHorizontal: 24,
+              backgroundColor: isFormValid ? Colors.accent : Colors.borderStrong,
+            }}
           >
             <Text 
-              className={`text-center text-lg font-semibold ${
-                isFormValid ? 'text-white' : 'text-gray-500'
-              }`}
               style={{ 
                 fontFamily: 'Poppins-SemiBold',
-                fontSize: screenWidth < 375 ? 16 : 18
+                fontSize: 16,
+                color: isFormValid ? Colors.white : Colors.iconMuted,
+                textAlign: 'center',
               }}
             >
               Save Profile
@@ -397,6 +483,7 @@ export default function ProfileSetupScreen() {
           </TouchableOpacity>
         </View>
       </Animated.View>
+      </KeyboardAvoidingView>
     </SafeAreaWrapper>
   );
 }

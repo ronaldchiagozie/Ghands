@@ -1,9 +1,9 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { BorderRadius, Colors, Spacing, MIN_TOUCH_TARGET, useKeyboardAvoidingOffset } from '@/lib/designSystem';
+import { BorderRadius, Colors, Spacing, MIN_TOUCH_TARGET, useKeyboardAvoidingOffset, useScrollViewKeyboardAssist } from '@/lib/designSystem';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Upload, X, AlertCircle } from 'lucide-react-native';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -45,6 +45,8 @@ export default function ReportIssueScreen() {
   }>();
   const { toast, showError, showSuccess, hideToast } = useToast();
   const keyboardOffset = useKeyboardAvoidingOffset();
+  const descriptionSectionY = useRef(0);
+  const { scrollRef, scrollBottomPad, scrollFieldIntoView } = useScrollViewKeyboardAssist();
 
   const [selectedIssue, setSelectedIssue] = useState<string>('');
   const [description, setDescription] = useState('');
@@ -159,13 +161,14 @@ export default function ReportIssueScreen() {
       >
         <ScreenHeader title="Report Issue" onBack={() => router.back()} backgroundColor={Colors.white} />
         <ScrollView
+          ref={scrollRef}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           contentContainerStyle={{
             paddingHorizontal: 20,
             paddingTop: 16,
-            paddingBottom: 24,
+            paddingBottom: scrollBottomPad,
           }}
         >
           {/* Introduction */}
@@ -185,14 +188,14 @@ export default function ReportIssueScreen() {
           <View
             style={{
               backgroundColor: Colors.backgroundGray,
-              borderRadius: BorderRadius.xl,
+              borderRadius: BorderRadius.lg,
               padding: 14,
               marginBottom: 20,
             }}
           >
             <Text
               style={{
-                fontSize: 15,
+                fontSize: 14,
                 fontFamily: 'Poppins-Bold',
                 color: Colors.textPrimary,
                 marginBottom: 12,
@@ -245,7 +248,7 @@ export default function ReportIssueScreen() {
                 style={{
                   width: 20,
                   height: 20,
-                  borderRadius: 10,
+                  borderRadius: BorderRadius.full,
                   backgroundColor: Colors.accent,
                   marginRight: 8,
                 }}
@@ -317,7 +320,7 @@ export default function ReportIssueScreen() {
                   style={{
                     width: 20,
                     height: 20,
-                    borderRadius: 10,
+                    borderRadius: BorderRadius.full,
                     borderWidth: 2,
                     borderColor:
                       selectedIssue === option.id ? Colors.accent : Colors.border,
@@ -331,7 +334,7 @@ export default function ReportIssueScreen() {
                       style={{
                         width: 10,
                         height: 10,
-                        borderRadius: 5,
+                        borderRadius: BorderRadius.full,
                         backgroundColor: Colors.accent,
                       }}
                     />
@@ -352,6 +355,11 @@ export default function ReportIssueScreen() {
           </View>
 
           {/* Describe the issue */}
+          <View
+            onLayout={(event) => {
+              descriptionSectionY.current = event.nativeEvent.layout.y;
+            }}
+          >
           <Text
             style={{
               fontSize: 14,
@@ -365,6 +373,7 @@ export default function ReportIssueScreen() {
           <TextInput
             value={description}
             onChangeText={setDescription}
+            onFocus={() => scrollFieldIntoView(descriptionSectionY.current, true)}
             placeholder="Please provide details about the issue..."
             placeholderTextColor={Colors.placeholder}
             multiline
@@ -383,6 +392,7 @@ export default function ReportIssueScreen() {
               marginBottom: 20,
             }}
           />
+          </View>
 
           {/* Upload evidence */}
           <Text
@@ -441,14 +451,14 @@ export default function ReportIssueScreen() {
                 style={{
                   width: 40,
                   height: 40,
-                  borderRadius: BorderRadius.default,
+                  borderRadius: BorderRadius.full,
                   backgroundColor: Colors.backgroundGray,
                   alignItems: 'center',
                   justifyContent: 'center',
                   marginRight: 12,
                 }}
               >
-                <Text style={{ fontSize: 20 }}>📄</Text>
+                <Text style={{ fontSize: 14, lineHeight: 20 }}>📄</Text>
               </View>
               <View style={{ flex: 1 }}>
                 <Text
@@ -492,7 +502,7 @@ height: MIN_TOUCH_TARGET,
           {/* Information Banner */}
           <View
             style={{
-              backgroundColor: '#E0F2FE',
+              backgroundColor: Colors.infoLight,
               borderRadius: BorderRadius.default,
               padding: 14,
               marginTop: 20,
@@ -501,12 +511,12 @@ height: MIN_TOUCH_TARGET,
               alignItems: 'flex-start',
             }}
           >
-            <AlertCircle size={18} color="#0284C7" style={{ marginRight: 10, marginTop: 2 }} />
+            <AlertCircle size={18} color={Colors.info} style={{ marginRight: 10, marginTop: 2 }} />
             <Text
               style={{
                 fontSize: 12,
                 fontFamily: 'Poppins-Regular',
-                color: '#0284C7',
+                color: Colors.info,
                 flex: 1,
                 lineHeight: 18,
               }}
@@ -533,7 +543,7 @@ height: MIN_TOUCH_TARGET,
             disabled={isSubmitting}
             style={{
               backgroundColor: Colors.accent,
-              borderRadius: BorderRadius.xl,
+              borderRadius: BorderRadius.default,
               paddingVertical: 14,
               alignItems: 'center',
               justifyContent: 'center',

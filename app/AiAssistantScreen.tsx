@@ -21,13 +21,14 @@ import { useCurrentUserProfile } from '@/hooks/useProfile';
 import { useToast } from '@/hooks/useToast';
 import { useTypewriterText } from '@/hooks/useTypewriterText';
 import { haptics } from '@/hooks/useHaptics';
-import { runParallel, useReducedMotion } from '@/lib/designSystem';
+import { MIN_TOUCH_TARGET, runParallel, useReducedMotion } from '@/lib/designSystem';
 import { applyDefaultStatusBar, applyHandyAiStatusBar, HANDY_AI_STATUS_BAR_BACKGROUND } from '@/utils/statusBar';
 import { startAiAssistedBooking } from '@/utils/aiBookingFlow';
 import { getSpecificErrorMessage } from '@/utils/errorMessages';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
+import { History } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -37,6 +38,7 @@ import {
   Keyboard,
   type KeyboardEvent,
   Platform,
+  Pressable,
   StatusBar,
   StyleSheet,
   Text,
@@ -276,13 +278,31 @@ export default function AiAssistantScreen() {
           style={{
             flexDirection: 'row',
             alignItems: 'center',
-            justifyContent: 'flex-start',
+            justifyContent: 'space-between',
             paddingHorizontal: 20,
             paddingTop: 4,
             paddingBottom: 4,
           }}
         >
           <AiMenuButton onPress={() => void openDrawer()} />
+          <Pressable
+            onPress={() => {
+              haptics.light();
+              router.push('/AiConversationsScreen');
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Chat history"
+            accessibilityHint="Opens your past Handy conversations"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={{
+              width: MIN_TOUCH_TARGET,
+              height: MIN_TOUCH_TARGET,
+              alignItems: 'flex-end',
+              justifyContent: 'center',
+            }}
+          >
+            <History size={22} color={AI_COLORS.primary} strokeWidth={2.2} />
+          </Pressable>
         </View>
 
         <View style={{ flex: 1 }}>

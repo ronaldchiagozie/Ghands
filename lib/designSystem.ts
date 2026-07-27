@@ -41,7 +41,7 @@ export {
   CLIENT_HOME_SCROLL_GUTTER,
   PROVIDER_TAB_GUTTER,
 } from './tabletLayout';
-export { useKeyboardAvoidingOffset } from './keyboardLayout';
+export { useKeyboardAvoidingOffset, useScrollViewKeyboardAssist } from './keyboardLayout';
 export const Spacing = DESIGN_TOKENS.spacing;
 export const BorderRadius = DESIGN_TOKENS.borderRadius;
 

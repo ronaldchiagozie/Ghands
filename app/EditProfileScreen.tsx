@@ -1,13 +1,22 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { Colors } from '@/lib/designSystem';
+import { BorderRadius, Colors, useKeyboardAvoidingOffset, useScrollViewKeyboardAssist } from '@/lib/designSystem';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { Camera, Mail, Phone, User } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { ActivityIndicator, Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { showAppAlert } from '@/components/AppAlertHost';
 import { InputField } from '../components/InputField';
 import { useCurrentUserProfile, useUpdateProfile } from '../hooks/useProfile';
@@ -220,6 +229,11 @@ export default function EditProfileScreen() {
 
   const isSaveDisabled = isSubmitting || !isValid || updateProfileMutation.isPending;
   const showHeaderLoader = isLoadingProfile;
+  const keyboardOffset = useKeyboardAvoidingOffset();
+  const phoneSectionY = useRef(0);
+  const { scrollRef, scrollBottomPad, scrollFieldIntoView } = useScrollViewKeyboardAssist({
+    baseBottomPad: 100,
+  });
 
   return (
     <SafeAreaWrapper backgroundColor={Colors.backgroundGray}>
@@ -234,29 +248,62 @@ export default function EditProfileScreen() {
           }
         />
 
-      <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
-        <View className="px-6 pt-8">
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={keyboardOffset}
+      >
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        className="flex-1"
+        ref={scrollRef}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        contentContainerStyle={{ paddingBottom: scrollBottomPad }}
+      >
+        <View className="pt-8" style={{ paddingHorizontal: 20 }}>
           
           <View className="items-center mb-8">
             <View className="relative">
-              <View className="w-32 h-32 bg-white rounded-full items-center justify-center border-2 border-black overflow-hidden">
+              <View
+                style={{
+                  width: 128,
+                  height: 128,
+                  backgroundColor: Colors.white,
+                  borderRadius: BorderRadius.full,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderWidth: 1,
+                  borderColor: Colors.border,
+                  overflow: 'hidden',
+                }}
+              >
                 {isUploadingImage ? (
-                  <ActivityIndicator size="large" color="#4F6739" />
+                  <ActivityIndicator size="large" color={Colors.accent} />
                 ) : profileImageUri ? (
                   <Image
                     source={{ uri: profileImageUri }}
-                    style={{ width: 128, height: 128, borderRadius: 64 }}
+                    style={{ width: 128, height: 128, borderRadius: BorderRadius.full }}
                     resizeMode="cover"
                   />
                 ) : (
-                  <User size={60} color="#4F6739" />
+                  <User size={60} color={Colors.accent} />
                 )}
               </View>
               <TouchableOpacity
-                className="absolute bottom-0 right-0 bg-black rounded-full p-3 border-2 border-black"
+                style={{
+                  position: 'absolute',
+                  bottom: 0,
+                  right: 0,
+                  backgroundColor: Colors.accent,
+                  borderRadius: BorderRadius.full,
+                  padding: 12,
+                  borderWidth: 2,
+                  borderColor: Colors.white,
+                }}
                 onPress={handleImagePicker}
               >
-                <Camera size={20} color="#ffffff" />
+                <Camera size={20} color={Colors.white} />
               </TouchableOpacity>
             </View>
           </View>
@@ -272,7 +319,10 @@ export default function EditProfileScreen() {
                 keyboardType="default"
               />
               {errors.name && (
-                <Text className="text-red-500 text-xs mt-1 px-4" style={{ fontFamily: 'Poppins-Medium' }}>
+                <Text
+                  className="text-xs mt-1 px-4"
+                  style={{ fontFamily: 'Poppins-Medium', color: Colors.error }}
+                >
                   {errors.name.message}
                 </Text>
               )}
@@ -287,22 +337,33 @@ export default function EditProfileScreen() {
                 keyboardType="email-address"
               />
               {errors.email && (
-                <Text className="text-red-500 text-xs mt-1 px-4" style={{ fontFamily: 'Poppins-Medium' }}>
+                <Text
+                  className="text-xs mt-1 px-4"
+                  style={{ fontFamily: 'Poppins-Medium', color: Colors.error }}
+                >
                   {errors.email.message}
                 </Text>
               )}
             </View>
 
-            <View>
+            <View
+              onLayout={(event) => {
+                phoneSectionY.current = event.nativeEvent.layout.y;
+              }}
+            >
               <InputField
                 placeholder="08100055522"
                 icon={<Phone size={20} color="white" />}
                 value={phone}
                 onChangeText={(text) => setValue('phone', text, { shouldValidate: true })}
                 keyboardType="phone-pad"
+                onFocus={() => scrollFieldIntoView(phoneSectionY.current, true)}
               />
               {errors.phone && (
-                <Text className="text-red-500 text-xs mt-1 px-4" style={{ fontFamily: 'Poppins-Medium' }}>
+                <Text
+                  className="text-xs mt-1 px-4"
+                  style={{ fontFamily: 'Poppins-Medium', color: Colors.error }}
+                >
                   {errors.phone.message}
                 </Text>
               )}
@@ -311,19 +372,27 @@ export default function EditProfileScreen() {
 
           
           <TouchableOpacity
-            className={`rounded-xl py-4 px-6 mt-6 items-center ${
-              isSaveDisabled ? 'bg-gray-400' : 'bg-black'
-            }`}
+            style={{
+              borderRadius: BorderRadius.default,
+              paddingVertical: 16,
+              paddingHorizontal: 24,
+              marginTop: 24,
+              alignItems: 'center',
+              backgroundColor: isSaveDisabled ? Colors.borderStrong : Colors.accent,
+            }}
             onPress={handleSubmit(onSubmit)}
             disabled={isSaveDisabled}
             activeOpacity={0.7}
           >
             {updateProfileMutation.isPending ? (
-              <ActivityIndicator color="white" />
+              <ActivityIndicator color={Colors.white} />
             ) : (
-              <Text 
-                className="text-white text-base font-semibold" 
-                style={{ fontFamily: 'Poppins-SemiBold' }}
+              <Text
+                style={{
+                  fontFamily: 'Poppins-SemiBold',
+                  fontSize: 16,
+                  color: Colors.white,
+                }}
               >
                 Save changes
               </Text>
@@ -334,6 +403,7 @@ export default function EditProfileScreen() {
         
         <View style={{ height: 100 }} />
       </ScrollView>
+      </KeyboardAvoidingView>
       </View>
     </SafeAreaWrapper>
   );

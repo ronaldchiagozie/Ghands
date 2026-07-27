@@ -4,7 +4,7 @@ import React, { useCallback, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Button } from '@/components/ui/Button';
-import { Colors, MIN_TOUCH_TARGET, useKeyboardAvoidingOffset } from '@/lib/designSystem';
+import { Colors, MIN_TOUCH_TARGET, useKeyboardAvoidingOffset, useScrollViewKeyboardAssist } from '@/lib/designSystem';
 import { haptics } from '@/hooks/useHaptics';
 import { useToast } from '@/hooks/useToast';
 import { serviceRequestService } from '@/services/api';
@@ -21,6 +21,9 @@ const REASONS = [
 
 export default function CancelRequestScreen() {
   const keyboardOffset = useKeyboardAvoidingOffset();
+  const { scrollRef, scrollBottomPad, scrollFieldIntoView } = useScrollViewKeyboardAssist({
+    baseBottomPad: 40,
+  });
   const router = useRouter();
   const params = useLocalSearchParams<{ requestId?: string }>();
   const { toast, showSuccess, hideToast } = useToast();
@@ -88,11 +91,12 @@ export default function CancelRequestScreen() {
         keyboardVerticalOffset={keyboardOffset}
       >
       <ScrollView
+        ref={scrollRef}
         className="flex-1"
         contentContainerStyle={{
           paddingHorizontal: 16,
           paddingTop: 16,
-          paddingBottom: 40,
+          paddingBottom: scrollBottomPad,
         }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -171,6 +175,7 @@ export default function CancelRequestScreen() {
             placeholder="Share more details"
             value={additionalNote}
             onChangeText={setAdditionalNote}
+            onFocus={() => scrollFieldIntoView(0, true)}
             multiline
             className="border rounded-2xl px-4 py-3 text-sm text-black mb-5"
             placeholderTextColor={Colors.placeholder}

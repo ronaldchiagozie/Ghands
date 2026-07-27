@@ -1,6 +1,6 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { Colors } from '@/lib/designSystem';
+import { BorderRadius, Colors } from '@/lib/designSystem';
 import { authService, locationService } from '@/services/api';
 import type { SavedLocation } from '@/services/api';
 import { loadAddressBookExtras, removeAddressBookExtra } from '@/utils/addressBookExtras';
@@ -206,7 +206,7 @@ export default function AddressBookScreen() {
             accessibilityLabel="Add address"
             accessibilityHint="Opens location search to save a new address"
           >
-            <Text style={{ fontFamily: 'Poppins-SemiBold', fontSize: 15, color: Colors.accent }}>Add</Text>
+            <Text style={{ fontFamily: 'Poppins-SemiBold', fontSize: 14, color: Colors.accent }}>Add</Text>
           </TouchableOpacity>
         }
       />
@@ -233,7 +233,7 @@ export default function AddressBookScreen() {
             style={{
               fontFamily: 'Poppins-Regular',
               color: Colors.textSecondaryDark,
-              fontSize: 15,
+              fontSize: 14,
               lineHeight: 22,
               marginBottom: 20,
             }}
@@ -250,7 +250,7 @@ export default function AddressBookScreen() {
             style={{
               backgroundColor: Colors.accent,
               paddingVertical: 14,
-              borderRadius: 12,
+              borderRadius: BorderRadius.default,
               alignItems: 'center',
             }}
           >
@@ -269,7 +269,17 @@ export default function AddressBookScreen() {
                   key={row.id}
                   activeOpacity={0.85}
                   onPress={() => handleSelectRow(row)}
-                  className="bg-white rounded-2xl px-4 py-4 mb-3 flex-row items-center border border-gray-200"
+                  style={{
+                    backgroundColor: Colors.white,
+                    borderRadius: BorderRadius.default,
+                    paddingHorizontal: 16,
+                    paddingVertical: 16,
+                    marginBottom: 12,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    borderWidth: 1,
+                    borderColor: Colors.border,
+                  }}
                 >
                   <View className="mr-4">
                     {active ? (
@@ -277,7 +287,7 @@ export default function AddressBookScreen() {
                         style={{
                           width: 24,
                           height: 24,
-                          borderRadius: 12,
+                          borderRadius: BorderRadius.full,
                           borderWidth: 2,
                           borderColor: Colors.accent,
                           backgroundColor: Colors.accent,
@@ -289,7 +299,7 @@ export default function AddressBookScreen() {
                           style={{
                             width: 10,
                             height: 10,
-                            borderRadius: 5,
+                            borderRadius: BorderRadius.full,
                             backgroundColor: Colors.white,
                           }}
                         />
@@ -299,9 +309,9 @@ export default function AddressBookScreen() {
                         style={{
                           width: 24,
                           height: 24,
-                          borderRadius: 12,
+                          borderRadius: BorderRadius.full,
                           borderWidth: 2,
-                          borderColor: '#D1D5DB',
+                          borderColor: Colors.borderStrong,
                           backgroundColor: Colors.white,
                         }}
                       />
@@ -311,13 +321,17 @@ export default function AddressBookScreen() {
                   <View className="flex-1 pr-2">
                     {row.title ? (
                       <Text
-                        className="text-base font-bold text-black mb-1"
-                        style={{ fontFamily: 'Poppins-Bold' }}
+                        style={{
+                          fontFamily: 'Poppins-Bold',
+                          fontSize: 14,
+                          color: Colors.textPrimary,
+                          marginBottom: 4,
+                        }}
                       >
                         {row.title}
                       </Text>
                     ) : null}
-                    <Text className="text-sm text-gray-700" style={{ fontFamily: 'Poppins-Medium' }}>
+                    <Text style={{ fontFamily: 'Poppins-Medium', fontSize: 13, color: Colors.textMuted }}>
                       {row.line1}
                     </Text>
                     {row.line2 ? (
@@ -339,7 +353,7 @@ export default function AddressBookScreen() {
                     onPress={() => openRowMenu(row)}
                     hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                   >
-                    <Ionicons name="ellipsis-vertical" size={20} color="#666" />
+                    <Ionicons name="ellipsis-vertical" size={20} color={Colors.textSecondaryDark} />
                   </TouchableOpacity>
                 </TouchableOpacity>
               );

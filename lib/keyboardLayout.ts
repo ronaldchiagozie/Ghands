@@ -1,4 +1,12 @@
-import { Platform, useWindowDimensions } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  Keyboard,
+  Platform,
+  ScrollView,
+  useWindowDimensions,
+  type KeyboardEvent,
+  type LayoutChangeEvent,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { computePhoneLaneHeight, isTabletSize } from './tabletLayout';
@@ -38,4 +46,62 @@ export function useKeyboardAvoidingOffset(): number {
   const centeringGap = Math.max((height - insets.top - insets.bottom - laneHeight) / 2, 0);
 
   return insets.top + centeringGap;
+}
+
+type ScrollViewKeyboardAssistOptions = {
+  /** Scroll padding while the keyboard is open — clears sticky footers. */
+  footerClearance?: number;
+  baseBottomPad?: number;
+};
+
+/**
+ * Pairs with `KeyboardAvoidingView`: lifts the layout, then scrolls the focused
+ * field into view (KAV alone does not scroll `ScrollView` content).
+ */
+export function useScrollViewKeyboardAssist(options: ScrollViewKeyboardAssistOptions = {}) {
+  const { footerClearance = 96, baseBottomPad = 32 } = options;
+  const scrollRef = useRef<ScrollView>(null);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const onShow = (_event: KeyboardEvent) => setKeyboardOpen(true);
+    const onHide = () => setKeyboardOpen(false);
+
+    const showSub = Keyboard.addListener(showEvent, onShow);
+    const hideSub = Keyboard.addListener(hideEvent, onHide);
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  const scrollBottomPad = keyboardOpen ? footerClearance : baseBottomPad;
+
+  const scrollFieldIntoView = useCallback((sectionY: number, scrollToEnd = false) => {
+    const delay = Platform.OS === 'ios' ? 280 : 120;
+    setTimeout(() => {
+      if (scrollToEnd) {
+        scrollRef.current?.scrollToEnd({ animated: true });
+        return;
+      }
+      scrollRef.current?.scrollTo({
+        y: Math.max(0, sectionY - 12),
+        animated: true,
+      });
+    }, delay);
+  }, []);
+
+  const captureSectionY = useCallback((event: LayoutChangeEvent) => {
+    return event.nativeEvent.layout.y;
+  }, []);
+
+  return {
+    scrollRef,
+    scrollBottomPad,
+    scrollFieldIntoView,
+    captureSectionY,
+  };
 }

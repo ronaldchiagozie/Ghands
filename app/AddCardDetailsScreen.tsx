@@ -1,9 +1,9 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
-import { Colors, useKeyboardAvoidingOffset } from '@/lib/designSystem';
+import { Colors, useKeyboardAvoidingOffset, useScrollViewKeyboardAssist } from '@/lib/designSystem';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Camera, Info } from 'lucide-react-native';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 interface ValidationState {
@@ -15,6 +15,10 @@ interface ValidationState {
 
 export default function AddCardDetailsScreen() {
   const keyboardOffset = useKeyboardAvoidingOffset();
+  const zipSectionY = useRef(0);
+  const { scrollRef, scrollBottomPad, scrollFieldIntoView } = useScrollViewKeyboardAssist({
+    baseBottomPad: 32,
+  });
   const router = useRouter();
   const [cardNumber, setCardNumber] = useState('');
   const [expiration, setExpiration] = useState('');
@@ -156,9 +160,12 @@ export default function AddCardDetailsScreen() {
         </View>
 
         <ScrollView 
+          ref={scrollRef}
           className="flex-1 px-4" 
-          contentContainerStyle={{ paddingBottom: 32 }}
+          contentContainerStyle={{ paddingBottom: scrollBottomPad }}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
           {/* Card Number */}
           <View className="mb-6">
@@ -258,7 +265,12 @@ export default function AddCardDetailsScreen() {
           </View>
 
           {/* Zip Code */}
-          <View className="mb-8">
+          <View
+            className="mb-8"
+            onLayout={(event) => {
+              zipSectionY.current = event.nativeEvent.layout.y;
+            }}
+          >
             <Text 
               className="text-sm text-gray-700 mb-2" 
               style={{ fontFamily: 'Poppins-Medium' }}
@@ -268,6 +280,7 @@ export default function AddCardDetailsScreen() {
             <TextInput
               value={zipCode}
               onChangeText={handleZipCodeChange}
+              onFocus={() => scrollFieldIntoView(zipSectionY.current, true)}
               placeholder="ZIP"
               placeholderTextColor={Colors.placeholder}
               className="border rounded-xl px-4 py-4 text-base"

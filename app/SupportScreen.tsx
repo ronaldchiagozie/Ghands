@@ -3,7 +3,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import Toast from '@/components/Toast';
 import { haptics } from '@/hooks/useHaptics';
 import { useToast } from '@/hooks/useToast';
-import { BorderRadius, Colors, MIN_TOUCH_TARGET, useKeyboardAvoidingOffset } from '@/lib/designSystem';
+import { BorderRadius, Colors, MIN_TOUCH_TARGET, useKeyboardAvoidingOffset, useScrollViewKeyboardAssist } from '@/lib/designSystem';
 import { providerListCard } from '@/lib/providerSurfaceStyles';
 import { CLIENT_HOME_SCROLL_GUTTER } from '@/lib/tabletLayout';
 import { supportService } from '@/services/api/support';
@@ -12,7 +12,7 @@ import { isValidEmail } from '@/utils/inputFormatting';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { BookOpen, ChevronDown, Mail, Phone, Search } from 'lucide-react-native';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   LayoutAnimation,
@@ -73,6 +73,10 @@ const MIN_MESSAGE_LENGTH = 10;
 
 export default function SupportScreen() {
   const keyboardOffset = useKeyboardAvoidingOffset();
+  const messageSectionY = useRef(0);
+  const { scrollRef, scrollBottomPad, scrollFieldIntoView } = useScrollViewKeyboardAssist({
+    baseBottomPad: 40,
+  });
   const router = useRouter();
   const { toast, showError, showSuccess, hideToast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
@@ -156,9 +160,11 @@ export default function SupportScreen() {
         keyboardVerticalOffset={keyboardOffset}
       >
       <ScrollView
+        ref={scrollRef}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[styles.scroll, { paddingBottom: scrollBottomPad }]}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
       >
         <View style={styles.searchWrap}>
           <Search size={18} color={Colors.textSecondaryDark} style={styles.searchIcon} />
@@ -259,7 +265,12 @@ export default function SupportScreen() {
             />
           </View>
 
-          <View style={styles.field}>
+          <View
+            style={styles.field}
+            onLayout={(event) => {
+              messageSectionY.current = event.nativeEvent.layout.y;
+            }}
+          >
             <Text style={styles.fieldLabel}>
               Message <Text style={styles.required}>*</Text>
             </Text>
@@ -267,6 +278,7 @@ export default function SupportScreen() {
               placeholder="Tell us about your booking, payment, or account issue"
               value={formData.message}
               onChangeText={(text) => setFormData((prev) => ({ ...prev, message: text }))}
+              onFocus={() => scrollFieldIntoView(messageSectionY.current, true)}
               multiline
               placeholderTextColor={Colors.placeholder}
               style={[styles.fieldInput, styles.fieldInputMultiline]}
@@ -357,7 +369,7 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: 'Poppins-Regular',
     color: Colors.textPrimary,
   },
@@ -370,14 +382,14 @@ const styles = StyleSheet.create({
   guideIcon: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: BorderRadius.full,
     backgroundColor: Colors.sageTint,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
   guideTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: 'Poppins-SemiBold',
     color: Colors.textPrimary,
   },
@@ -388,10 +400,11 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontFamily: 'Poppins-Bold',
+    fontSize: 16,
+    fontFamily: 'Poppins-SemiBold',
     color: Colors.textPrimary,
     marginBottom: 12,
+    letterSpacing: -0.2,
   },
   faqCard: {
     padding: 0,
@@ -417,7 +430,7 @@ const styles = StyleSheet.create({
   },
   faqQuestion: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: 'Poppins-Medium',
     color: Colors.textPrimary,
     lineHeight: 21,
@@ -469,7 +482,7 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.default,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: 'Poppins-Regular',
     color: Colors.textPrimary,
   },
@@ -501,7 +514,7 @@ const styles = StyleSheet.create({
     color: Colors.accent,
   },
   primaryBtnText: {
-    fontSize: 15,
+    fontSize: 16,
     fontFamily: 'Poppins-SemiBold',
     color: Colors.white,
   },
@@ -522,14 +535,14 @@ const styles = StyleSheet.create({
   contactIcon: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: BorderRadius.full,
     backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
   contactText: {
-    fontSize: 15,
+    fontSize: 14,
     fontFamily: 'Poppins-Medium',
     color: Colors.textPrimary,
   },

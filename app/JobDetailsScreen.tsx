@@ -5,7 +5,7 @@ import { Animated, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, 
 
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { Button } from '@/components/ui/Button';
-import { Colors, useKeyboardAvoidingOffset } from '@/lib/designSystem';
+import { Colors, useKeyboardAvoidingOffset, useScrollViewKeyboardAssist } from '@/lib/designSystem';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import Toast from '@/components/Toast';
 import HandyDraftChip, { type HandyChipState } from '@/components/ai/HandyDraftChip';
@@ -41,6 +41,9 @@ export default function JobDetailsScreen() {
   const isMountedRef = useRef(true);
   const hasSubmittedRef = useRef(false);
   const handyUndoRef = useRef<{ jobTitle: string; description: string } | null>(null);
+  const jobTitleSectionY = useRef(0);
+  const descriptionSectionY = useRef(0);
+  const { scrollRef, scrollBottomPad, scrollFieldIntoView } = useScrollViewKeyboardAssist();
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -433,11 +436,12 @@ export default function JobDetailsScreen() {
         <ScreenHeader title="Job details" onBack={handleBack} />
 
         <ScrollView
+          ref={scrollRef}
           className="flex-1 px-4"
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
-          contentContainerStyle={{ paddingBottom: 32, paddingTop: 8 }}
+          contentContainerStyle={{ paddingBottom: scrollBottomPad, paddingTop: 8 }}
         >
           <View
             className="mb-8 rounded-2xl px-5 py-5 border"
@@ -488,7 +492,12 @@ export default function JobDetailsScreen() {
             </View>
           </View>
 
-          <View className="mb-8">
+          <View
+            className="mb-8"
+            onLayout={(event) => {
+              jobTitleSectionY.current = event.nativeEvent.layout.y;
+            }}
+          >
             <View className="flex-row items-center justify-between mb-3">
               <Text
                 className="text-sm text-black"
@@ -508,6 +517,7 @@ export default function JobDetailsScreen() {
             <TextInput
               value={jobTitle}
               onChangeText={handleJobTitleChange}
+              onFocus={() => scrollFieldIntoView(jobTitleSectionY.current)}
               placeholder="e.g., Kitchen faucet repair, Electrical outlet..."
               className="rounded-xl border bg-white px-5 py-4 text-base text-black"
               placeholderTextColor={Colors.placeholder}
@@ -528,13 +538,19 @@ export default function JobDetailsScreen() {
             )}
           </View>
 
-          <View className="mb-8">
+          <View
+            className="mb-8"
+            onLayout={(event) => {
+              descriptionSectionY.current = event.nativeEvent.layout.y;
+            }}
+          >
             <Text className="text-sm text-black mb-3" style={{ fontFamily: 'Poppins-SemiBold' }}>
               Description <Text style={{ color: Colors.error }}>*</Text>
             </Text>
             <TextInput
               value={description}
               onChangeText={handleDescriptionChange}
+              onFocus={() => scrollFieldIntoView(descriptionSectionY.current, true)}
               placeholder="Describe the issue in detail..."
               multiline
               numberOfLines={6}

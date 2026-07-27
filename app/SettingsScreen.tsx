@@ -1,6 +1,6 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { Colors, Spacing } from '@/lib/designSystem';
+import { BorderRadius, Colors, Spacing } from '@/lib/designSystem';
 import { useRouter } from 'expo-router';
 import { ChevronRight, HelpCircle, Key, Scale, User } from 'lucide-react-native';
 import React from 'react';
@@ -24,7 +24,7 @@ export default function SettingsScreen() {
       title: 'Account & Preferences',
       subtitle: 'personal info, Notification',
       icon: User,
-      iconBgColor: '#F5F5F5',
+      iconBgColor: Colors.backgroundGray,
       onPress: () => {
         // Navigate to account settings
         router.push('/AccountInformationScreen' as any);
@@ -35,7 +35,7 @@ export default function SettingsScreen() {
       title: 'Support & Information',
       subtitle: 'Manage preferences',
       icon: HelpCircle,
-      iconBgColor: '#F3E8FF',
+      iconBgColor: Colors.sageTint,
       onPress: () => {
         // Navigate to support
         router.push('/HelpSupportScreen' as any);
@@ -46,7 +46,7 @@ export default function SettingsScreen() {
       title: 'Legal & About',
       subtitle: 'Terms and Conditions',
       icon: Scale,
-      iconBgColor: '#F5F5F5',
+      iconBgColor: Colors.backgroundGray,
       onPress: () => {
         router.push('/LegalAboutScreen' as any);
       },
@@ -56,7 +56,7 @@ export default function SettingsScreen() {
       title: 'Security',
       subtitle: 'Account security settings',
       icon: Key,
-      iconBgColor: '#F5F5F5',
+      iconBgColor: Colors.backgroundGray,
       onPress: () => {
         router.push('/SecurityScreen' as any);
       },
@@ -83,16 +83,13 @@ export default function SettingsScreen() {
                 onPress={option.onPress}
                 style={{
                   backgroundColor: Colors.white,
-                  borderRadius: 12,
+                  borderRadius: BorderRadius.default,
                   padding: 16,
                   marginBottom: 12,
                   flexDirection: 'row',
                   alignItems: 'center',
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.05,
-                  shadowRadius: 2,
-                  elevation: 0.76,
+                  borderWidth: 1,
+                  borderColor: Colors.border,
                 }}
                 activeOpacity={0.7}
               >
@@ -101,7 +98,7 @@ export default function SettingsScreen() {
                   style={{
                     width: 48,
                     height: 48,
-                    borderRadius: 24,
+                    borderRadius: BorderRadius.full,
                     backgroundColor: option.iconBgColor,
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -115,10 +112,11 @@ export default function SettingsScreen() {
                 <View style={{ flex: 1 }}>
                   <Text
                     style={{
-                      fontSize: 16,
+                      fontSize: 15,
                       fontFamily: 'Poppins-Bold',
                       color: Colors.textPrimary,
                       marginBottom: 4,
+                      letterSpacing: -0.2,
                     }}
                   >
                     {option.title}
