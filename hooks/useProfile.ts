@@ -3,6 +3,7 @@ import { profileService } from '../services/api';
 import { authService } from '../services/authService';
 import { ClientProfileView, UpdateProfilePayload, UserProfile } from '../types';
 import {
+  isDisplayableAvatarUri,
   logClientProfilePhoto,
   pickProfileImageUriFromApi,
   readLocalClientProfileImageUri,
@@ -105,7 +106,7 @@ export function useCurrentUserProfile() {
       const apiImage = mapped.profileImageUri;
       const localUri = await readLocalClientProfileImageUri(mapped.id);
 
-      if (!apiImage && localUri) {
+      if (!apiImage && localUri && isDisplayableAvatarUri(localUri)) {
         logClientProfilePhoto('avatar_source', {
           source: 'local_cache',
           reason: 'api_had_no_image_uri',

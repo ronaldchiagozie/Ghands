@@ -3,7 +3,10 @@ import { useRouter } from 'expo-router';
 import { Activity, ChevronDown, ChevronUp, MessageCircle } from 'lucide-react-native';
 import { CallIconOutline } from '@/components/call/CallIcons';
 import React, { useState } from 'react';
-import { Image, Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
+
+import { AvatarCircle } from '@/components/AvatarCircle';
+import { pickProviderImageUriFromRecord } from '@/utils/clientProfilePhoto';
 
 import { JobProgressTimeline, type JobProgressStep } from '@/components/JobProgressTimeline';
 import { haptics } from '@/hooks/useHaptics';
@@ -180,10 +183,13 @@ export function ClientJobUpdatesPanel({
           {provider ? (
             <>
               <TouchableOpacity activeOpacity={0.7} onPress={handlePressProvider} style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
-                <Image
-                  source={require('../../assets/images/plumbericon2.png')}
-                  style={{ width: 38, height: 38, borderRadius: 19, marginRight: 10 }}
-                  resizeMode="cover"
+                <AvatarCircle
+                  uri={pickProviderImageUriFromRecord(provider)}
+                  size={38}
+                  style={{ marginRight: 10 }}
+                  backgroundColor={JOB_TIMELINE.pendingDotFill}
+                  borderColor={JOB_TIMELINE.panelBorder}
+                  iconColor={JOB_TIMELINE.iconMuted}
                 />
                 <View style={{ flex: 1 }}>
                   <Text
@@ -224,30 +230,14 @@ export function ClientJobUpdatesPanel({
             </>
           ) : (
             <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
-              <View
-                style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 19,
-                  marginRight: 10,
-                  overflow: 'hidden',
-                  backgroundColor: JOB_TIMELINE.pendingDotFill,
-                  borderWidth: 1,
-                  borderColor: JOB_TIMELINE.panelBorder,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                {clientIdentity?.imageUri ? (
-                  <Image
-                    source={{ uri: clientIdentity.imageUri }}
-                    style={{ width: 38, height: 38 }}
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <Ionicons name="person" size={20} color={JOB_TIMELINE.iconMuted} />
-                )}
-              </View>
+              <AvatarCircle
+                uri={clientIdentity?.imageUri}
+                size={38}
+                style={{ marginRight: 10 }}
+                backgroundColor={JOB_TIMELINE.pendingDotFill}
+                borderColor={JOB_TIMELINE.panelBorder}
+                iconColor={JOB_TIMELINE.iconMuted}
+              />
               <View style={{ flex: 1 }}>
                 <Text
                   style={{ fontSize: 14, fontFamily: 'Poppins-SemiBold', color: JOB_TIMELINE.titleText }}

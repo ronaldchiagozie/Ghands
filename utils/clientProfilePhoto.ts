@@ -6,6 +6,7 @@ export const CLIENT_PROFILE_IMAGE_LEGACY_KEY = '@ghands:client_profile_image_uri
 
 const LOG_TAG = '[ClientProfilePhoto]';
 
+/** All image-related keys (for dev summaries only). */
 const IMAGE_FIELD_KEYS = [
   'profileImageUri',
   'profileImage',
@@ -20,6 +21,43 @@ const IMAGE_FIELD_KEYS = [
   'profilePicture',
   'profile_picture',
 ] as const;
+
+/** Profile avatar only — avoids unrelated API `image` / banner fields. */
+const PROFILE_AVATAR_FIELD_KEYS = [
+  'profileImageUri',
+  'profileImage',
+  'profile_image',
+  'avatarUrl',
+  'avatar',
+  'profilePicture',
+  'profile_picture',
+] as const;
+
+const PROVIDER_AVATAR_FIELD_KEYS = [
+  ...PROFILE_AVATAR_FIELD_KEYS,
+  'photoUrl',
+  'imageUrl',
+] as const;
+
+export function isDisplayableAvatarUri(uri: string | null | undefined): boolean {
+  const trimmed = typeof uri === 'string' ? uri.trim() : '';
+  if (!trimmed) return false;
+  if (/^https?:\/\//i.test(trimmed)) return true;
+  if (trimmed.startsWith('file://')) return true;
+  if (trimmed.startsWith('content://')) return true;
+  return false;
+}
+
+function pickFirstDisplayableUri(
+  record: Record<string, unknown>,
+  keys: readonly string[],
+): string | undefined {
+  for (const key of keys) {
+    const v = record[key];
+    if (typeof v === 'string' && isDisplayableAvatarUri(v)) return v.trim();
+  }
+  return undefined;
+}
 
 export function clientProfileImageStorageKey(userId: string | null | undefined): string {
   if (userId) return `${CLIENT_PROFILE_IMAGE_LEGACY_KEY}:${userId}`;
@@ -63,11 +101,12 @@ export function summarizeProfileImageFields(raw: unknown): Record<string, string
 
 export function pickProfileImageUriFromApi(raw: unknown): string | undefined {
   const d = readProfileRecord(raw);
-  for (const key of IMAGE_FIELD_KEYS) {
-    const v = d[key];
-    if (typeof v === 'string' && v.trim()) return v.trim();
-  }
-  return undefined;
+  return pickFirstDisplayableUri(d, PROFILE_AVATAR_FIELD_KEYS);
+}
+
+export function pickProviderImageUriFromRecord(raw: unknown): string | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  return pickFirstDisplayableUri(raw as Record<string, unknown>, PROVIDER_AVATAR_FIELD_KEYS);
 }
 
 export async function readLocalClientProfileImageUri(

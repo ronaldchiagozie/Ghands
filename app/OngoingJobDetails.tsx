@@ -1,5 +1,6 @@
 
 import ConfirmModal from '@/components/ConfirmModal';
+import { AvatarCircle } from '@/components/AvatarCircle';
 import { ClientJobUpdatesPanel } from '@/components/client/ClientJobUpdatesPanel';
 import {
   DestructiveButton,
@@ -47,6 +48,7 @@ import {
   getQuotationNegotiationStep,
 } from '@/utils/timelineNegotiationSteps';
 import { navigateBack, navigateBackFromBookingJob, NAV_FALLBACK } from '@/utils/navigation';
+import { isDisplayableAvatarUri, pickProviderImageUriFromRecord } from '@/utils/clientProfilePhoto';
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { CheckCircle2, Clock, FileText, MapPinned, Wrench } from 'lucide-react-native';
@@ -56,7 +58,6 @@ import {
   Animated,
   AppState,
   BackHandler,
-  Image,
   RefreshControl,
   ScrollView,
   Text,
@@ -204,10 +205,13 @@ export default function OngoingJobDetails() {
   const { toast, showError, showSuccess, showWarning, showInfo, hideToast } = useToast();
   const { data: currentUserProfile } = useCurrentUserProfile();
   const clientIdentity = useMemo(
-    () => ({
-      displayName: currentUserProfile?.name?.trim() || undefined,
-      imageUri: currentUserProfile?.profileImageUri ?? null,
-    }),
+    () => {
+      const rawUri = currentUserProfile?.profileImageUri ?? null;
+      return {
+        displayName: currentUserProfile?.name?.trim() || undefined,
+        imageUri: isDisplayableAvatarUri(rawUri) ? rawUri : null,
+      };
+    },
     [currentUserProfile?.name, currentUserProfile?.profileImageUri],
   );
 
@@ -2002,10 +2006,10 @@ export default function OngoingJobDetails() {
                         }}
                       >
                         <View className="flex-row items-center">
-                          <Image
-                            source={require('../assets/images/plumbericon2.png')}
-                            className="w-14 h-14 rounded-full mr-3"
-                            resizeMode="cover"
+                          <AvatarCircle
+                            uri={pickProviderImageUriFromRecord(quotations[currentQuoteIndex].provider)}
+                            size={56}
+                            style={{ marginRight: 12 }}
                           />
                           <View className="flex-1">
                             <View className="flex-row items-center">

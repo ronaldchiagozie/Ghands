@@ -3,6 +3,9 @@ import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import { Image, Text, TouchableOpacity, View } from 'react-native';
 
+import { AvatarCircle } from '@/components/AvatarCircle';
+import { pickProviderImageUriFromRecord } from '@/utils/clientProfilePhoto';
+
 import { haptics } from '@/hooks/useHaptics';
 import { Colors } from '@/lib/designSystem';
 import { buildChatScreenParams } from '@/utils/navigation';
@@ -183,10 +186,10 @@ const TimelineStatusCardComponent = ({
                 alignItems: 'center',
               }}
             >
-              <Image
-                source={require('../assets/images/plumbericon2.png')}
-                style={{ width: 44, height: 44, borderRadius: 22, marginRight: 12 }}
-                resizeMode="cover"
+              <AvatarCircle
+                uri={pickProviderImageUriFromRecord(provider)}
+                size={44}
+                style={{ marginRight: 12 }}
               />
               <View className="flex-1">
                 <Text
@@ -232,28 +235,7 @@ const TimelineStatusCardComponent = ({
           </View>
         ) : (
           <View className="flex-row items-center">
-            <View
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: 24,
-                marginRight: 12,
-                overflow: 'hidden',
-                backgroundColor: Colors.border,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              {clientIdentity?.imageUri ? (
-                <Image
-                  source={{ uri: clientIdentity.imageUri }}
-                  style={{ width: 48, height: 48 }}
-                  resizeMode="cover"
-                />
-              ) : (
-                <Ionicons name="person" size={26} color="#9CA3AF" />
-              )}
-            </View>
+            <AvatarCircle uri={clientIdentity?.imageUri} size={48} style={{ marginRight: 12 }} />
             <View className="flex-1 mr-2" style={{ minHeight: 48, justifyContent: 'center' }}>
               <Text
                 className="text-base text-black"

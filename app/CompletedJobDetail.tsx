@@ -18,6 +18,8 @@ import { openClientReceipt } from '@/utils/receiptNavigation';
 import { analytics } from '@/services/analytics';
 import { CheckCircle2, FileText, Wrench } from 'lucide-react-native';
 import { BorderRadius, Colors } from '@/lib/designSystem';
+import { AvatarCircle } from '@/components/AvatarCircle';
+import { pickProviderImageUriFromRecord } from '@/utils/clientProfilePhoto';
 import { JOB_TIMELINE } from '@/lib/jobTimelineTheme';
 import { CLIENT_HOME_SCROLL_GUTTER } from '@/lib/tabletLayout';
 import { formatTimeAgo } from '@/utils/dateFormatting';
@@ -69,17 +71,10 @@ export default function CompletedJobDetail() {
   const [myReviewRating, setMyReviewRating] = useState<number | null>(null);
   const completedContactToastShown = useRef(false);
 
-  const providerAvatarUri = useMemo(() => {
-    if (!selectedProvider) return null;
-    const p = selectedProvider as Record<string, unknown>;
-    const candidates = [p.avatar, p.profileImage, p.photoUrl, p.image];
-    for (const c of candidates) {
-      if (typeof c === 'string' && c.trim().length > 0 && /^https?:\/\//i.test(c)) {
-        return c.trim();
-      }
-    }
-    return null;
-  }, [selectedProvider]);
+  const providerAvatarUri = useMemo(
+    () => pickProviderImageUriFromRecord(selectedProvider) ?? null,
+    [selectedProvider],
+  );
 
   useEffect(() => {
     if (params.requestId) {
@@ -461,17 +456,7 @@ export default function CompletedJobDetail() {
                 }}
               >
                 <View className="flex flex-row items-center gap-5">
-                  <View className="w-14 h-14 rounded-full overflow-hidden" style={{ backgroundColor: Colors.border }}>
-                    <Image
-                      source={
-                        providerAvatarUri
-                          ? { uri: providerAvatarUri }
-                          : require('../assets/images/plumbericon.png')
-                      }
-                      className="w-full h-full"
-                      resizeMode="cover"
-                    />
-                  </View>
+                  <AvatarCircle uri={providerAvatarUri} size={56} />
                   <View>
                     <Text
                       className="text-base mb-1"
