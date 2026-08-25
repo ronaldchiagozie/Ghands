@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { User } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { Image, View, type StyleProp, type ViewStyle } from 'react-native';
 
@@ -56,7 +56,7 @@ export function AvatarCircle({
           onError={() => setLoadFailed(true)}
         />
       ) : (
-        <Ionicons name="person" size={Math.round(size * 0.5)} color={iconColor} />
+        <User size={Math.round(size * 0.5)} color={iconColor} />
       )}
     </View>
   );

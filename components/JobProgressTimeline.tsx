@@ -22,6 +22,8 @@ export type JobProgressStep = {
   isActive?: boolean;
   isDeclined?: boolean;
   isSkipped?: boolean;
+  /** Set by CompletedJobDetail; reserved for timeline tinting. */
+  accent?: string;
   dotColor?: string;
   lineColor?: string;
   showPayLogistics?: boolean;

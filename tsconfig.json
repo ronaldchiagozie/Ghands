@@ -5,6 +5,12 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@ghands/contract": [
+        "./contract/src/index.ts"
+      ],
+      "@ghands/contract/*": [
+        "./contract/src/*"
       ]
     }
   },

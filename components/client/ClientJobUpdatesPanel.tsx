@@ -1,6 +1,5 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Activity, ChevronDown, ChevronUp, MessageCircle } from 'lucide-react-native';
+import { Activity, ChevronDown, ChevronUp, Clock, MessageCircle } from 'lucide-react-native';
 import { CallIconOutline } from '@/components/call/CallIcons';
 import React, { useState } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
@@ -348,7 +347,7 @@ export function ClientJobUpdatesPanel({
                   ) : null}
                   {statusExpanded && header?.timestamp ? (
                     <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 6 }}>
-                      <Ionicons name="time-outline" size={14} color={JOB_TIMELINE.iconMuted} />
+                      <Clock size={14} color={JOB_TIMELINE.iconMuted} />
                       <Text
                         style={{
                           fontSize: 12,

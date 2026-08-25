@@ -326,6 +326,8 @@ export default function SupportScreen() {
           <View style={styles.contactDivider} />
           <View style={styles.contactRow}>
             <View style={styles.contactIcon}>
+              {/* The only non-Lucide icon in the app: Lucide ships no brand marks,
+                  and a generic chat bubble would misrepresent a WhatsApp action. */}
               <Ionicons name="logo-whatsapp" size={18} color={Colors.white} />
             </View>
             <Text style={styles.contactText}>WhatsApp support</Text>

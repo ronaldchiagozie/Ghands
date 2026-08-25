@@ -68,7 +68,7 @@ export default function NoInternetScreen({ onRetry }: NoInternetScreenProps) {
 
         <Text style={styles.title}>No connection</Text>
         <Text style={styles.body}>
-          You're offline. Check your connection and try again.
+          You’re offline. Check your connection and try again.
         </Text>
         <TouchableOpacity
           style={styles.button}

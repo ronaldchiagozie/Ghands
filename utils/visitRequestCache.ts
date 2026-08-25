@@ -147,9 +147,8 @@ export const mergeCachedVisitRequest = async <T extends { visitRequest?: any }>(
         ? currentVisit.requestedAt ?? cachedVisit.requestedAt
         : cachedVisit.requestedAt ?? currentVisit.requestedAt,
       declinedBy: cachedVisit.declinedBy ?? currentVisit.declinedBy,
-      declined:
-        cachedVisit.declined === true ||
-        (currentVisit as { declined?: boolean }).declined === true,
+      // A declined cachedVisit returns earlier, so only currentVisit can set this.
+      declined: (currentVisit as { declined?: boolean }).declined === true,
     },
   };
 

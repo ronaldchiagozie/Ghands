@@ -8,7 +8,7 @@ import { getSpecificErrorMessage } from '@/utils/errorMessages';
 import { AuthError } from '@/utils/errors';
 import { isConnectivityOrNetworkError } from '@/utils/isNetworkFailure';
 import { handleAuthErrorRedirect } from '@/utils/authRedirect';
-import { Ionicons } from '@expo/vector-icons';
+import { Star } from 'lucide-react-native';
 import { useFocusEffect, useRouter, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, Platform, RefreshControl, Text, TouchableOpacity, View } from 'react-native';
@@ -163,11 +163,11 @@ const JobListItem = React.memo(function JobListItem({
           </Text>
           <View className="flex-row">
             {Array.from({ length: 5 }).map((_, i) => (
-              <Ionicons
+              <Star
                 key={`r-${job.id}-${i}`}
-                name={i < job.myRating! ? 'star' : 'star-outline'}
                 size={14}
                 color={i < job.myRating! ? Colors.accent : Colors.border}
+                fill={i < job.myRating! ? Colors.accent : 'transparent'}
               />
             ))}
           </View>
@@ -235,7 +235,7 @@ const mapRequestToJobItem = (
     : 'Service';
   
     const apiStatus = ((request as any).status ?? '').toString().toLowerCase();
-    const hasQuotationSent = jobHasSentQuotation(quotations, request as Record<string, unknown>);
+    const hasQuotationSent = jobHasSentQuotation(quotations, request as unknown as Record<string, unknown>);
     const quotationsCount =
       countSentQuotations(quotations) || (hasQuotationSent ? 1 : 0);
     const status = resolveJobDisplayStatus(apiStatus, {

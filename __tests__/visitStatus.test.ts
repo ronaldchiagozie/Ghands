@@ -1,8 +1,11 @@
 import { describe, expect, it } from '@jest/globals';
 import {
   canClientDeclineVisit,
+  canClientPayVisitFee,
   isProviderVisitRequestSent,
+  isTerminalVisitStatus,
   isVisitDeclined,
+  isVisitPaid,
   patchVisitDeclined,
   resolveVisitOccurred,
 } from '@/utils/visitStatus';
@@ -131,5 +134,44 @@ describe('patchVisitDeclined', () => {
     const patched = patchVisitDeclined(PROVIDER_VISIT_WITH_FEE, 'client');
     expect(isVisitDeclined(patched)).toBe(true);
     expect(patched.declinedBy).toBe('client');
+  });
+});
+
+describe('visit fee paid vocabulary (client ↔ provider parity)', () => {
+  /**
+   * The provider app accepts paid | confirmed | completed | success. The client
+   * accepted only `paid`, so a visit the provider considered settled still
+   * offered "Pay visit fee" here — a second charge for the same fee.
+   * These four must stay in lockstep with the provider's VISIT_PAID_STATUSES.
+   */
+  const PAID = ['paid', 'confirmed', 'completed', 'success'];
+
+  const gate = (logisticsStatus: string) => ({
+    visitRequest: {
+      logisticsStatus,
+      logisticsCost: 5000,
+      requestedAt: new Date().toISOString(),
+    },
+    providerHasAccepted: true,
+    visitDeclined: false,
+    hasQuotationSent: false,
+  });
+
+  it.each(PAID)('treats logisticsStatus "%s" as settled', (status) => {
+    expect(isVisitPaid({ logisticsStatus: status })).toBe(true);
+  });
+
+  it.each(PAID)('does not offer payment again when status is "%s"', (status) => {
+    expect(canClientPayVisitFee(gate(status))).toBe(false);
+  });
+
+  it('still offers payment while the fee is genuinely outstanding', () => {
+    expect(isVisitPaid({ logisticsStatus: 'pending_payment' })).toBe(false);
+    expect(canClientPayVisitFee(gate('pending_payment'))).toBe(true);
+  });
+
+  it('treats every settled status as terminal', () => {
+    PAID.forEach((status) => expect(isTerminalVisitStatus(status)).toBe(true));
+    expect(isTerminalVisitStatus('pending_payment')).toBe(false);
   });
 });

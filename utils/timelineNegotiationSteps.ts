@@ -63,6 +63,7 @@ function skippedStep(description: string): NegotiationStepVisual {
     isDeclined: false,
     isSkipped: true,
     accent: JOB_TIMELINE.pendingSoft,
+    dotColor: JOB_TIMELINE.pendingDot,
     lineColor: JOB_TIMELINE.railMuted,
     showRequestVisit: false,
     canEdit: false,

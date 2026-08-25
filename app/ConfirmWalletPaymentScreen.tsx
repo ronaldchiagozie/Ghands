@@ -81,6 +81,8 @@ export default function ConfirmWalletPaymentScreen() {
   const [settlementMessage, setSettlementMessage] = useState<string | null>(null);
   /** Reference of the in-flight payment, so `timedOut` can re-check the same one. */
   const settlementRefRef = useRef<string | null>(null);
+  /** Amount the API says it actually debited — the receipt's source of truth. */
+  const debitedAmountRef = useRef<number | null>(null);
   /** Set on unmount so in-flight polling stops touching state. */
   const unmountedRef = useRef(false);
   const spinAnim = useRef(new Animated.Value(0)).current;
@@ -152,13 +154,21 @@ export default function ConfirmWalletPaymentScreen() {
 
   const goToReceipt = useCallback(
     (reference: string | undefined) => {
+      /**
+       * The route param is only what we asked to be charged. When the API reports
+       * what it actually debited, that figure is the receipt — a receipt showing
+       * the requested amount would quietly misstate a charge that differed.
+       */
+      const debited = debitedAmountRef.current;
+      const receiptAmount = debited != null && debited > 0 ? String(debited) : params.amount;
+
       router.replace({
         pathname: '/PaymentSuccessfulScreen' as any,
         params: {
           transactionId: reference,
           providerName: params.providerName || 'Service Provider',
           serviceName: params.serviceName || 'Service Request',
-          amount: params.amount,
+          amount: receiptAmount,
           requestId: params.requestId,
         },
       });
@@ -289,6 +299,21 @@ export default function ConfirmWalletPaymentScreen() {
         : await walletService.payForService({ requestId, amount: amountNum, pin: pinValue });
 
       settlementRefRef.current = response?.reference ?? null;
+      debitedAmountRef.current = response?.amount ?? null;
+
+      /**
+       * The client only ever proposes an amount; the server decides. A divergence
+       * means the request and the debit disagree, which is worth seeing in the
+       * flow log even though the server's figure is the one we honour.
+       */
+      if (response?.amount != null && response.amount > 0 && response.amount !== amountNum) {
+        void appendPaymentFlowLog({
+          event: 'Job payment: amount differs from request',
+          detail: `requested=₦${amountNum} debited=₦${response.amount}`,
+          transactionId: String(requestId),
+          reference: response?.reference,
+        });
+      }
 
       // A 2xx with an explicit `failed` is a real failure — it used to render as success.
       const reportedStatus = String(response?.status ?? '').toLowerCase();

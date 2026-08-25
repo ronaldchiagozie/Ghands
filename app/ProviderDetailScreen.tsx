@@ -5,9 +5,8 @@ import { useErrorSheet } from '@/hooks/useErrorSheet';
 import { providerService } from '@/services/api';
 import { formatSkillLabel } from '@/utils/formatSkillLabel';
 import { buildReviewerDisplayName, reviewAvatarUrl } from '@/utils/reviewerDisplayName';
-import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { MapPin, Star } from 'lucide-react-native';
+import { ArrowLeft, Images, MapPin, MessageCircleMore, Star, User, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
@@ -282,7 +281,7 @@ export default function ProviderDetailScreen() {
             activeOpacity={0.7}
             style={{ position: 'absolute', top: 16, left: 16, zIndex: 2, padding: 8 }}
           >
-            <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
+            <ArrowLeft size={24} color={Colors.textPrimary} />
           </TouchableOpacity>
           <ActivityIndicator size="large" color={Colors.accent} />
           <Text
@@ -319,7 +318,7 @@ export default function ProviderDetailScreen() {
               justifyContent: 'center',
             }}
           >
-            <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
+            <ArrowLeft size={24} color={Colors.textPrimary} />
           </TouchableOpacity>
           {/* Failed: keep the screen's chrome and shape, dimmed and still.
               ErrorSheet carries the explanation and the retry. */}
@@ -365,7 +364,7 @@ export default function ProviderDetailScreen() {
               justifyContent: 'center',
             }}
           >
-            <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
+            <ArrowLeft size={24} color={Colors.textPrimary} />
           </TouchableOpacity>
         </View>
 
@@ -414,7 +413,7 @@ export default function ProviderDetailScreen() {
                       justifyContent: 'center',
                     }}
                   >
-                    <Ionicons name="person" size={42} color={Colors.textSecondaryDark} />
+                    <User size={42} color={Colors.textSecondaryDark} />
                   </View>
                 )}
                 {provider.isOnline && (
@@ -735,7 +734,7 @@ export default function ProviderDetailScreen() {
                     paddingHorizontal: 8,
                   }}
                 >
-                  <Ionicons name="images-outline" size={28} color={Colors.textTertiary} />
+                  <Images size={28} color={Colors.textTertiary} />
                   <Text
                     style={{
                       marginTop: 6,
@@ -823,7 +822,7 @@ export default function ProviderDetailScreen() {
               }}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-                <Ionicons name="chatbubble-ellipses-outline" size={22} color={Colors.accent} />
+                <MessageCircleMore size={22} color={Colors.accent} />
                 <Text
                   style={{
                     marginLeft: 10,
@@ -890,7 +889,7 @@ export default function ProviderDetailScreen() {
                       justifyContent: 'center',
                     }}
                   >
-                    <Ionicons name="person" size={24} color={Colors.textTertiary} />
+                    <User size={24} color={Colors.textTertiary} />
                   </View>
                 )}
                 <View style={{ flex: 1 }}>
@@ -968,7 +967,7 @@ export default function ProviderDetailScreen() {
             <View style={styles.skillsModalHeader}>
               <Text style={styles.skillsModalTitle}>All skills</Text>
               <TouchableOpacity onPress={() => setShowAllSkillsModal(false)} hitSlop={12}>
-                <Ionicons name="close" size={26} color={Colors.textPrimary} />
+                <X size={26} color={Colors.textPrimary} />
               </TouchableOpacity>
             </View>
             <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 420 }}>

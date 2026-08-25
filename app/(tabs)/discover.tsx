@@ -7,9 +7,8 @@ import {
   useTabScreenBottomSpacerHeight,
   useTabScrollContentPaddingTop,
 } from '@/lib/designSystem';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { MapPin, TrendingUp } from 'lucide-react-native';
+import { ChevronRight, Gift, MapPin, TrendingUp } from 'lucide-react-native';
 import React, { useCallback, useMemo, useRef } from 'react';
 import { Animated, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useUserLocation } from '@/hooks/useUserLocation';
@@ -219,7 +218,7 @@ export default function DiscoverScreen() {
                     marginRight: 12,
                   }}
                 >
-                  <Ionicons name="gift" size={22} color={Colors.textPrimary} />
+                  <Gift size={22} color={Colors.textPrimary} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text
@@ -552,7 +551,7 @@ export default function DiscoverScreen() {
                       </Text>
                     </View>
                   </View>
-                  <Ionicons name="chevron-forward" size={14} color={Colors.textTertiary} style={{ marginTop: 1 }} />
+                  <ChevronRight size={14} color={Colors.textTertiary} style={{ marginTop: 1 }} />
                 </View>
               </TouchableOpacity>
             ))}

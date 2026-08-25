@@ -4,7 +4,7 @@ import { BorderRadius, Colors } from '@/lib/designSystem';
 import { authService, locationService } from '@/services/api';
 import type { SavedLocation } from '@/services/api';
 import { loadAddressBookExtras, removeAddressBookExtra } from '@/utils/addressBookExtras';
-import { Ionicons } from '@expo/vector-icons';
+import { MoreVertical } from 'lucide-react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
@@ -353,7 +353,7 @@ export default function AddressBookScreen() {
                     onPress={() => openRowMenu(row)}
                     hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                   >
-                    <Ionicons name="ellipsis-vertical" size={20} color={Colors.textSecondaryDark} />
+                    <MoreVertical size={20} color={Colors.textSecondaryDark} />
                   </TouchableOpacity>
                 </TouchableOpacity>
               );

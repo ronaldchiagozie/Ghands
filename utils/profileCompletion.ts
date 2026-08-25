@@ -9,7 +9,8 @@ import { unwrapProfilePayload } from '@/utils/profilePayload';
 /** Legacy key; also mirrored per user id when available. */
 export const PROFILE_COMPLETE_LEGACY_KEY = '@ghands:profile_complete';
 
-export function profileCompleteKeyForUser(userId: string | null | undefined): string {
+/** `authService.getUserId()` yields a number, so the key builders accept both. */
+export function profileCompleteKeyForUser(userId: string | number | null | undefined): string {
   if (userId) return `${PROFILE_COMPLETE_LEGACY_KEY}:${userId}`;
   return PROFILE_COMPLETE_LEGACY_KEY;
 }
@@ -20,7 +21,7 @@ export function isProfileDetailsComplete(name: string, phone: string): boolean {
   return trimmedName.length >= 3 && digits.length >= 10;
 }
 
-export async function readProfileCompleteFlag(userId: string | null): Promise<boolean> {
+export async function readProfileCompleteFlag(userId: string | number | null): Promise<boolean> {
   const keys = userId
     ? [profileCompleteKeyForUser(userId), PROFILE_COMPLETE_LEGACY_KEY]
     : [PROFILE_COMPLETE_LEGACY_KEY];
@@ -31,7 +32,7 @@ export async function readProfileCompleteFlag(userId: string | null): Promise<bo
   return false;
 }
 
-export async function writeProfileCompleteFlag(userId: string | null): Promise<void> {
+export async function writeProfileCompleteFlag(userId: string | number | null): Promise<void> {
   await AsyncStorage.setItem(PROFILE_COMPLETE_LEGACY_KEY, 'true');
   if (userId) {
     await AsyncStorage.setItem(profileCompleteKeyForUser(userId), 'true');

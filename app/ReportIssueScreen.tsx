@@ -2,7 +2,7 @@ import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { BorderRadius, Colors, Spacing, MIN_TOUCH_TARGET, useKeyboardAvoidingOffset, useScrollViewKeyboardAssist } from '@/lib/designSystem';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Upload, X, AlertCircle } from 'lucide-react-native';
+import { AlertCircle, FileText, Upload, X } from 'lucide-react-native';
 import React, { useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -458,7 +458,7 @@ export default function ReportIssueScreen() {
                   marginRight: 12,
                 }}
               >
-                <Text style={{ fontSize: 14, lineHeight: 20 }}>📄</Text>
+                <FileText size={16} color={Colors.textSecondaryDark} strokeWidth={2} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text

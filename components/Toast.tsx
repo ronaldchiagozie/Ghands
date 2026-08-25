@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { AlertTriangle, CheckCircle2, Info, X, XCircle } from 'lucide-react-native';
 import React, { useEffect, useRef } from 'react';
 import { Animated, Text, TouchableOpacity, View } from 'react-native';
 import { Colors, runParallel, useReducedMotion } from '@/lib/designSystem';
@@ -19,28 +19,28 @@ const TOAST_CONFIG = {
     bgColor: Colors.white,
     borderColor: '#BBF7D0',
     textColor: Colors.success,
-    icon: 'checkmark-circle' as const,
+    Icon: CheckCircle2,
     iconColor: Colors.successIcon,
   },
   error: {
     bgColor: Colors.white,
     borderColor: '#FECACA',
     textColor: Colors.errorForeground,
-    icon: 'close-circle' as const,
+    Icon: XCircle,
     iconColor: Colors.errorBright,
   },
   info: {
     bgColor: Colors.white,
     borderColor: '#BFDBFE',
     textColor: '#1E40AF',
-    icon: 'information-circle' as const,
+    Icon: Info,
     iconColor: '#3B82F6',
   },
   warning: {
     bgColor: Colors.white,
     borderColor: '#FDE68A',
     textColor: Colors.warningForeground,
-    icon: 'warning' as const,
+    Icon: AlertTriangle,
     iconColor: Colors.warning,
   },
 };
@@ -141,7 +141,7 @@ export default function Toast({ message, type = 'info', duration = 3000, onClose
             elevation: 6,
           }}
         >
-          <Ionicons name={config.icon} size={24} color={config.iconColor} />
+          <config.Icon size={24} color={config.iconColor} />
           <Text
             className="flex-1 ml-3 text-sm"
             style={{
@@ -153,7 +153,7 @@ export default function Toast({ message, type = 'info', duration = 3000, onClose
             {message}
           </Text>
           <TouchableOpacity onPress={handleClose} className="ml-2" activeOpacity={0.7}>
-            <Ionicons name="close" size={20} color={config.textColor} />
+            <X size={20} color={config.textColor} />
           </TouchableOpacity>
         </View>
       </Animated.View>

@@ -2,7 +2,7 @@ import React from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet, Pressable } from 'react-native';
 import { showAppAlert } from '@/components/AppAlertHost';
 import {Colors, BorderRadius, Spacing, MIN_TOUCH_TARGET} from '@/lib/designSystem';
-import { MapPin, Navigation, X, ExternalLink } from 'lucide-react-native';
+import { Check, ExternalLink, MapPin, Navigation, X } from 'lucide-react-native';
 import { haptics } from '@/hooks/useHaptics';
 import { formatDistance, formatTravelTime, openNavigation } from '@/utils/navigationUtils';
 
@@ -68,7 +68,7 @@ export default function JobAcceptedModal({
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.successBadge}>
-              <Text style={styles.checkmark}>✓</Text>
+              <Check size={32} color={Colors.white} strokeWidth={3} />
             </View>
             <Text style={styles.title}>Request accepted</Text>
             <Text style={styles.subtitle}>You accepted this job request</Text>
@@ -176,11 +176,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
-  },
-  checkmark: {
-    fontSize: 32,
-    color: Colors.white,
-    fontFamily: 'Poppins-Bold',
   },
   title: {
     fontSize: 22,

@@ -137,17 +137,13 @@ export default function TopUpScreen() {
     depositVerifyPhase !== 'checkout' &&
     depositVerifyPhase !== 'preparing';
 
+  /** No `checkout` case: the modal is hidden for that phase — the Kora window is on top. */
   const paymentStatusCopy = useMemo(() => {
     switch (depositVerifyPhase) {
       case 'preparing':
         return {
           title: 'Setting up payment',
           subtitle: 'Connecting you to Kora’s secure checkout…',
-        };
-      case 'checkout':
-        return {
-          title: 'Proceed to Kora checkout',
-          subtitle: 'Complete your payment in the secure window. We’ll update your wallet as soon as you’re done.',
         };
       case 'checking':
         return {
@@ -303,14 +299,22 @@ export default function TopUpScreen() {
       const goToDestination = () => {
         if (returnTo) {
           void AsyncStorage.removeItem(TOPUP_RETURN_CTX_KEY);
+          /**
+           * Top Up was pushed on top of the screen that sent us here, so pop back
+           * to it rather than replacing — `replace` left a second copy of that
+           * screen on the stack for back to land on, showing the pre-top-up
+           * balance. `dismissTo` refreshes the existing entry's params, and falls
+           * back to replace-like behaviour when it is not in the stack (cold start).
+           */
+          const returnToExisting = router.dismissTo ?? router.replace;
           try {
             const returnParams = returnParamsRaw ? JSON.parse(returnParamsRaw) : {};
-            router.replace({
+            returnToExisting({
               pathname: returnTo as any,
               params: returnParams,
             } as any);
           } catch {
-            router.replace(returnTo as any);
+            returnToExisting(returnTo as any);
           }
           return;
         }
@@ -1382,11 +1386,7 @@ export default function TopUpScreen() {
                   borderColor: Colors.border,
                 }}
               >
-                {depositVerifyPhase === 'checkout' ? (
-                  <ExternalLink size={34} color={Colors.accent} strokeWidth={2.2} />
-                ) : (
-                  <ActivityIndicator size="large" color={Colors.accent} />
-                )}
+                <ActivityIndicator size="large" color={Colors.accent} />
               </View>
               <Text
                 style={{
@@ -1425,30 +1425,6 @@ export default function TopUpScreen() {
                 >
                   {formattedPendingAmount}
                 </Text>
-              ) : null}
-              {depositVerifyPhase === 'checkout' ? (
-                <View
-                  style={{
-                    backgroundColor: Colors.backgroundGray,
-                    borderRadius: BorderRadius.default,
-                    paddingHorizontal: 14,
-                    paddingVertical: 12,
-                    marginBottom: 8,
-                    width: '100%',
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      fontFamily: 'Poppins-Medium',
-                      color: Colors.textSecondaryDark,
-                      textAlign: 'center',
-                      lineHeight: 19,
-                    }}
-                  >
-                    Pay in the Kora window, then return here. No extra steps needed.
-                  </Text>
-                </View>
               ) : null}
               {isPaymentProcessingPhase ? (
                 <View

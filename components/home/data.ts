@@ -1,3 +1,5 @@
+import type { LucideIcon } from 'lucide-react-native';
+import { AlertTriangle, CreditCard, MapPin, RefreshCw, User, Wallet } from 'lucide-react-native';
 import { JobActivity } from './JobActivityCard';
 import { PromoCode } from './PromoCodeCard';
 import { RecommendedService } from './RecommendedCard';
@@ -7,17 +9,17 @@ export const todoItems: TodoCardConfig[] = [
   {
     id: 'todo-1',
     title: 'Complete Your Profile',
-    iconName: 'person-outline'
+    Icon: User
   },
   {
     id: 'todo-2',
     title: 'Set Your Location',
-    iconName: 'location-outline'
+    Icon: MapPin
   },
   {
     id: 'todo-3',
     title: 'Add Payments Methods',
-    iconName: 'card-outline'
+    Icon: CreditCard
   }
 ];
 
@@ -83,7 +85,7 @@ export const promoCodes: PromoCode[] = [
 export interface QuickAction {
   id: string;
   title: string;
-  iconName: string;
+  Icon: LucideIcon;
   color: string;
   backgroundColor: string;
   onPress?: () => void;
@@ -92,21 +94,21 @@ export const quickActions: QuickAction[] = [
   {
     id: 'emergency',
     title: 'Emergency Service',
-    iconName: 'warning',
+    Icon: AlertTriangle,
     color: '#A32126',
     backgroundColor: '#F8E8E8',
   },
   {
     id: 'book-again',
     title: 'Book Again',
-    iconName: 'repeat',
+    Icon: RefreshCw,
     color: '#4F6739',
     backgroundColor: '#EEF5E8',
   },
   {
     id: 'wallet',
     title: 'My Wallet',
-    iconName: 'wallet',
+    Icon: Wallet,
     color: '#8F5C12',
     backgroundColor: '#FAF4E8',
   },

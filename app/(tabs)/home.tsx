@@ -30,9 +30,8 @@ import { navigateToClientHomeTab } from '@/utils/navigation';
 import { countSentQuotations, jobHasSentQuotation } from '@/utils/quotationStatus';
 import { mergeCachedVisitRequest } from '@/utils/visitRequestCache';
 import { healJobStatusAfterVisitDecline } from '@/utils/visitStatus';
-import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { Bell, ChevronDown, MapPin, Search } from 'lucide-react-native';
+import { Bell, Briefcase, ChevronDown, ChevronRight, Gift, MapPin, Search, Tag, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { ServiceCategory } from '../../data/serviceCategories';
@@ -383,11 +382,6 @@ const HomeScreen = React.memo(() => {
     }, [refreshLocation, loadJobActivities, router])
   );
 
-  // Fetch categories from API on mount
-  useEffect(() => {
-    runAuthSafe(() => loadCategoriesFromAPI(), router);
-    runAuthSafe(() => loadJobActivities(), router);
-  }, [loadJobActivities, loadCategoriesFromAPI, router]);
 
   // Animate categories when API data loads
   useEffect(() => {
@@ -477,6 +471,14 @@ const HomeScreen = React.memo(() => {
       setIsLoadingCategories(false);
     }
   }, [router, shuffleArray]);
+
+  // Fetch categories from API on mount. Must stay below the loadCategoriesFromAPI
+  // declaration: the dependency array is evaluated during render, so referencing
+  // the const above its definition throws "Cannot access before initialization".
+  useEffect(() => {
+    runAuthSafe(() => loadCategoriesFromAPI(), router);
+    runAuthSafe(() => loadJobActivities(), router);
+  }, [loadJobActivities, loadCategoriesFromAPI, router]);
 
   useOnNetworkRestore(() => {
     refreshLocation();
@@ -707,7 +709,7 @@ const HomeScreen = React.memo(() => {
                     activeOpacity={0.7}
                     accessibilityLabel="Clear search"
                   >
-                    <Ionicons name='close-outline' size={20} color={Colors.textSecondaryDark} />
+                    <X size={20} color={Colors.textSecondaryDark} />
                   </TouchableOpacity>
                 )}
                 <TouchableOpacity
@@ -740,7 +742,7 @@ const HomeScreen = React.memo(() => {
                   >
                     View all
                   </Text>
-                  <Ionicons name="chevron-forward" size={16} color="black" />
+                  <ChevronRight size={16} color="black" />
                 </TouchableOpacity>
               </View>
 
@@ -881,11 +883,7 @@ const HomeScreen = React.memo(() => {
                           borderColor: 'rgba(255, 255, 255, 0.45)',
                         }}
                       >
-                        <Ionicons
-                          name={action.iconName as any}
-                          size={20}
-                          color={action.color}
-                        />
+                        <action.Icon size={20} color={action.color} />
                       </View>
                       <Text
                         style={{
@@ -981,7 +979,7 @@ const HomeScreen = React.memo(() => {
                     marginLeft: 14,
                   }}
                 >
-                  <Ionicons name="gift" size={32} color="#000000" />
+                  <Gift size={32} color="#000000" />
                 </View>
               </View>
             </View>
@@ -1032,7 +1030,7 @@ const HomeScreen = React.memo(() => {
                     >
                       View all
                     </Text>
-                    <Ionicons name="chevron-forward" size={14} color={HOME_QUICK_ACTIONS_PANEL_BG} />
+                    <ChevronRight size={14} color={HOME_QUICK_ACTIONS_PANEL_BG} />
                   </TouchableOpacity>
                 </View>
                 <Text
@@ -1087,7 +1085,7 @@ const HomeScreen = React.memo(() => {
                       marginBottom: 16,
                     }}
                   >
-                    <Ionicons name="briefcase-outline" size={32} color={HOME_QUICK_ACTIONS_PANEL_BG} />
+                    <Briefcase size={32} color={HOME_QUICK_ACTIONS_PANEL_BG} />
                   </View>
                   <Text
                     style={{
@@ -1128,7 +1126,7 @@ const HomeScreen = React.memo(() => {
                 Promo Codes
               </Text>
               <View className="w-10 h-10 rounded-full bg-[#EEF1FF] items-center justify-center">
-                <Ionicons name="pricetag-outline" size={18} color="#2563EB" />
+                <Tag size={18} color="#2563EB" />
               </View>
             </View>
             {promoCodes.map((promo, index) => (

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Copy } from 'lucide-react-native';
 
 export type PromoCode = {
   id: string;
@@ -31,7 +31,7 @@ const PromoCodeCardComponent = ({ promo }: PromoCodeCardProps) => {
           </Text>
         </View>
         <TouchableOpacity className="bg-[#2563EB] px-4 py-2 rounded-xl flex-row items-center">
-          <Ionicons name="copy-outline" size={14} color="#FFFFFF" />
+          <Copy size={14} color="#FFFFFF" />
           <Text
             className="text-white text-xs font-semibold ml-2"
             style={{ fontFamily: 'Poppins-SemiBold' }}

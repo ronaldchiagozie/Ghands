@@ -2,6 +2,11 @@ import type { Router } from 'expo-router';
 
 type RouterLike = Pick<Router, 'back' | 'replace' | 'canGoBack'>;
 type RouterWithNav = RouterLike & Pick<Router, 'push' | 'replace'>;
+/**
+ * `dismissTo` is optional so plain `{ push, replace }` mocks still satisfy this.
+ * At runtime expo-router always provides it; without it we fall back to `replace`.
+ */
+type RouterWithReturn = RouterWithNav & Partial<Pick<Router, 'dismissTo'>>;
 type RouterWithStackReset = RouterLike &
   Pick<Router, 'replace' | 'dismissTo' | 'dismissAll' | 'canDismiss'>;
 
@@ -65,13 +70,20 @@ export function buildJobDetailsParams(opts: {
 
 /** Open active job hub — single entry point for job details navigation. */
 export function navigateToJob(
-  router: RouterWithNav,
+  router: RouterWithReturn,
   opts: {
     requestId: string | number;
     tab?: JobDetailsTab;
     fromBooking?: boolean;
     paymentStatus?: 'success';
     replace?: boolean;
+    /**
+     * Return to the job screen the flow started from instead of stacking a second
+     * copy of it. `dismissTo` pops back to the existing entry and refreshes its
+     * params; if it is not in the stack the router replaces the current screen,
+     * which is what `replace` would have done anyway.
+     */
+    dismissTo?: boolean;
   }
 ): void {
   const route = {
@@ -79,7 +91,11 @@ export function navigateToJob(
     params: buildJobDetailsParams(opts),
   } as const;
 
-  if (opts.replace) {
+  if (opts.dismissTo && router.dismissTo) {
+    router.dismissTo(route as never);
+    return;
+  }
+  if (opts.dismissTo || opts.replace) {
     router.replace(route as never);
     return;
   }
@@ -121,9 +137,14 @@ export function navigateBackFromBookingJob(router: RouterWithStackReset): void {
   navigateToJobsPendingTab(router);
 }
 
-/** After in-flow payment — replace receipt stack with job details. */
-export function exitPaymentToJob(router: RouterWithNav, requestId: string | number): void {
-  navigateToJob(router, { requestId, tab: 'updates', replace: true });
+/**
+ * After in-flow payment — return to the job the payment was started from.
+ *
+ * `replace` only swapped the receipt for a *second* OngoingJobDetails, leaving
+ * the pre-payment copy underneath for back to land on.
+ */
+export function exitPaymentToJob(router: RouterWithReturn, requestId: string | number): void {
+  navigateToJob(router, { requestId, tab: 'updates', dismissTo: true });
 }
 
 /** Chat opened from job hub passes `fromJobHub=1` so "View job" pops instead of stacking another details screen. */
@@ -145,7 +166,7 @@ export function buildChatScreenParams(opts: {
 }
 
 export function exitChatToJobHub(
-  router: RouterWithNav,
+  router: RouterWithReturn,
   opts: {
     requestId: string | number;
     isProvider?: boolean;

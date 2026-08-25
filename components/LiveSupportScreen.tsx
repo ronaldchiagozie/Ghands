@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { MessageCircle } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
@@ -37,7 +37,7 @@ const LiveSupportScreen = () => {
               marginRight: 10,
             }}
           >
-            <Ionicons name='chatbubble' size={18} color="#4F6739" />
+            <MessageCircle size={18} color="#4F6739" />
           </View>
           <View style={{ flex: 1 }}>
             <Text 

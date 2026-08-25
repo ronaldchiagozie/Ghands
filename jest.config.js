@@ -10,10 +10,13 @@ module.exports = {
     'hooks/**/*.{ts,tsx}',
     'services/**/*.{ts,tsx}',
     'utils/**/*.{ts,tsx}',
+    'contract/src/**/*.{ts,tsx}',
     '!**/*.d.ts',
     '!**/node_modules/**',
   ],
   moduleNameMapper: {
+    '^@ghands/contract$': '<rootDir>/contract/src/index.ts',
+    '^@ghands/contract/(.*)$': '<rootDir>/contract/src/$1',
     '^@/(.*)$': '<rootDir>/$1',
   },
   testMatch: ['**/__tests__/**/*.test.{ts,tsx}'],

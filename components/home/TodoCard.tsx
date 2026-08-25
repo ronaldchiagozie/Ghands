@@ -1,15 +1,15 @@
-import { Ionicons } from '@expo/vector-icons';
+import { ChevronRight, type LucideIcon } from 'lucide-react-native';
 import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 
 export type TodoCardConfig = {
   id: string;
   title: string;
-  iconName: keyof typeof Ionicons.glyphMap;
+  Icon: LucideIcon;
   onPress?: () => void;
 };
 
-const TodoCardComponent = ({ title, iconName, onPress }: TodoCardConfig) => {
+const TodoCardComponent = ({ title, Icon, onPress }: TodoCardConfig) => {
   return (
     <TouchableOpacity
       className="w-40 bg-gray-100 py-4 pl-2 pr-4 rounded-xl mr-3"
@@ -19,7 +19,7 @@ const TodoCardComponent = ({ title, iconName, onPress }: TodoCardConfig) => {
     >
       <View className="flex">
         <View className="w-12 h-12 rounded-full  items-center justify-center">
-          <Ionicons name={iconName} size={20} color="#1F2937"/>
+          <Icon size={20} color="#1F2937" />
         </View>
         <Text
           className="text-sm pr-3 py-2"
@@ -28,7 +28,7 @@ const TodoCardComponent = ({ title, iconName, onPress }: TodoCardConfig) => {
           {title}
         </Text>
         <View className="absolute right-0 top-8">
-          <Ionicons name="chevron-forward-outline" color="gray" size={20} />
+          <ChevronRight color="gray" size={20} />
         </View>
       </View>
     </TouchableOpacity>

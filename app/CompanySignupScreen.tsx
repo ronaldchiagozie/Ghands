@@ -183,7 +183,7 @@ export default function CompanySignupScreen() {
               marginBottom: 28,
             }}
           >
-            Business details are saved now. Company accounts don't need a separate profile step.
+            Business details are saved now. Company accounts don’t need a separate profile step.
           </Text>
 
           <InputField

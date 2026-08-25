@@ -3,9 +3,8 @@ import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import Toast from '@/components/Toast';
 import { Button } from '@/components/ui/Button';
 import { useToast } from '@/hooks/useToast';
-import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Search, X } from 'lucide-react-native';
+import { ArrowLeft, ArrowRight, Search, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { serviceRequestService, ServiceCategory, authService } from '@/services/api';
@@ -758,7 +757,7 @@ export default function CategoryPage() {
             fullWidth
             disabled={!isToggle || isCreatingRequest}
             loading={isCreatingRequest}
-            icon={<Ionicons name="arrow-forward" size={18} color={Colors.white} />}
+            icon={<ArrowRight size={18} color={Colors.white} />}
             iconPosition="right"
             style={{ marginTop: Spacing.xxxl, marginBottom: 96, width: '90%', alignSelf: 'center' }}
           />

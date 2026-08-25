@@ -164,6 +164,64 @@ function mapDepositVerification(reference: string, verificationData: Record<stri
   };
 }
 
+/**
+ * Payment status vocabulary, mirroring `normalizeDepositStatus`.
+ *
+ * Anything unrecognised — including a missing field — resolves to `pending`,
+ * never `completed`. The screens poll the ledger on `pending` and reach a real
+ * verdict; treating an unknown status as success would show a receipt for a
+ * payment that may have failed.
+ */
+function normalizePaymentStatus(raw: unknown): 'completed' | 'pending' | 'failed' {
+  const status = String(raw ?? '').toLowerCase();
+  if (
+    status === 'completed' ||
+    status === 'success' ||
+    status === 'successful' ||
+    status === 'paid' ||
+    status === 'approved'
+  ) {
+    return 'completed';
+  }
+  if (status === 'failed' || status === 'cancelled' || status === 'canceled' || status === 'declined') {
+    return 'failed';
+  }
+  return 'pending';
+}
+
+/** A layer is the payment result if it carries any of the fields we read off it. */
+function isPaymentResultShape(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const row = value as Record<string, unknown>;
+  return 'reference' in row || 'status' in row || 'transactionId' in row;
+}
+
+/**
+ * `/pay` and `/pay-logistics-fee` were unwrapped differently — one read
+ * `response.data`, the other `response.data.data ?? response.data` — so one of
+ * them was wrong for any given response shape. Getting it wrong is not a cosmetic
+ * bug: a result read off the wrong layer has no `status`, and the payment screens
+ * treat a statusless 2xx as a completed debit.
+ *
+ * Rather than pick a shape, find the layer that actually carries the result.
+ * Deepest first, so a genuinely double-wrapped body wins over its envelope.
+ */
+function normalizePaymentResponse(response: unknown, requestId: number): PayForServiceResponse {
+  const envelope = response as Record<string, any> | undefined;
+  const layers = [envelope?.data?.data, envelope?.data, envelope];
+  const result = layers.find(isPaymentResultShape) ?? {};
+
+  const reference = String(result.reference ?? result.transactionId ?? '').trim();
+
+  return {
+    reference,
+    status: normalizePaymentStatus(result.status ?? result.paymentStatus),
+    amount: readNumericField(result.amount, result.paidAmount, result.transactionAmount),
+    balance: readNumericField(result.balance, result.walletBalance, result.newBalance, result.balanceAfter),
+    requestId: Number(result.requestId ?? requestId),
+  };
+}
+
 export const walletService = {
   getWallet: async (): Promise<{
     id: number;
@@ -265,11 +323,11 @@ export const walletService = {
   payForService: async (payload: PayForServicePayload): Promise<PayForServiceResponse> => {
     try {
       const response = await apiClient.post<any>('/api/wallet/pay', payload, NO_RETRY);
-      const data = (response as any).data;
+      const data = normalizePaymentResponse(response, payload.requestId);
       void logWalletApiResponse(
         'API POST /api/wallet/pay',
         { detail: `requestId=${payload.requestId}`, transactionId: String(payload.requestId) },
-        data,
+        { normalized: data, raw: response },
       );
       return data;
     } catch (error) {
@@ -285,11 +343,11 @@ export const walletService = {
   payLogisticsFee: async (payload: { requestId: number; amount: number; pin: string }): Promise<PayForServiceResponse> => {
     try {
       const response = await apiClient.post<any>('/api/wallet/pay-logistics-fee', payload, NO_RETRY);
-      const data = (response as any)?.data?.data ?? (response as any)?.data;
+      const data = normalizePaymentResponse(response, payload.requestId);
       void logWalletApiResponse(
         'API POST /api/wallet/pay-logistics-fee',
         { detail: `requestId=${payload.requestId}` },
-        data,
+        { normalized: data, raw: response },
       );
       return data;
     } catch (error) {

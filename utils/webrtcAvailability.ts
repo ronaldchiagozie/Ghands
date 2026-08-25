@@ -25,7 +25,8 @@ export async function loadWebRtcModule(): Promise<WebRtcModule | null> {
     if (typeof mod.RTCPeerConnection !== 'function' || typeof mod.mediaDevices?.getUserMedia !== 'function') {
       return null;
     }
-    return mod as WebRtcModule;
+    /** The package's own types diverge structurally from our narrower surface. */
+    return mod as unknown as WebRtcModule;
   } catch {
     return null;
   }

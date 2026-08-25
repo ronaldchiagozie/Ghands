@@ -14,7 +14,8 @@
     "test:coverage": "jest --coverage",
     "verify": "node scripts/verify-expo-setup.mjs .",
     "reset-project": "node ./scripts/reset-project.js",
-    "build:apk": "cd android && ./gradlew assembleRelease"
+    "build:apk": "cd android && ./gradlew assembleRelease",
+    "check:contract": "node scripts/check-contract.mjs"
   },
   "dependencies": {
     "@expo-google-fonts/outfit": "^0.4.3",
@@ -71,6 +72,7 @@
   },
   "devDependencies": {
     "@jest/globals": "^29.7.0",
+    "@types/jest": "^29.5.14",
     "@types/react": "~19.1.0",
     "autoprefixer": "^10.4.21",
     "eslint": "^9.25.0",

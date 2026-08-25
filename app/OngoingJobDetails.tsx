@@ -49,9 +49,8 @@ import {
 } from '@/utils/timelineNegotiationSteps';
 import { navigateBack, navigateBackFromBookingJob, NAV_FALLBACK } from '@/utils/navigation';
 import { isDisplayableAvatarUri, pickProviderImageUriFromRecord } from '@/utils/clientProfilePhoto';
-import { Ionicons } from '@expo/vector-icons';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { CheckCircle2, Clock, FileText, MapPinned, Wrench } from 'lucide-react-native';
+import { AlertCircle, CheckCircle2, ChevronLeft, ChevronRight, Clock, FileText, MapPinned, Wrench, XCircle } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -732,7 +731,7 @@ export default function OngoingJobDetails() {
     if (!request) return null;
     const hasAcceptedProviders = (acceptedProviders && acceptedProviders.length > 0) || !!request.selectedProvider;
     const qListH = Array.isArray(quotations) ? quotations : [];
-    const hasQuotationSent = jobHasSentQuotation(qListH, request as Record<string, unknown>);
+    const hasQuotationSent = jobHasSentQuotation(qListH, request as unknown as Record<string, unknown>);
     const acceptedQuotation = qListH.find((q: any) => q?.status === 'accepted');
     const quotationAccepted = !!acceptedQuotation;
     const formatCurrency = (v: number | undefined | null) => (typeof v === 'number' ? v : 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -1710,7 +1709,7 @@ export default function OngoingJobDetails() {
             style={{ backgroundColor: Colors.successLight }}
           >
             <View className="flex-row items-center">
-              <Ionicons name="checkmark-circle" size={20} color={Colors.successIcon} style={{ marginRight: 8 }} />
+              <CheckCircle2 size={20} color={Colors.successIcon} style={{ marginRight: 8 }} />
               <Text className="text-sm" style={{ fontFamily: 'Poppins-SemiBold', color: Colors.successIcon }}>
                 Quotation Accepted
               </Text>
@@ -1758,7 +1757,7 @@ export default function OngoingJobDetails() {
             style={{ backgroundColor: Colors.errorLight }}
           >
             <View className="flex-row items-center">
-              <Ionicons name="close-circle" size={20} color={Colors.error} style={{ marginRight: 8 }} />
+              <XCircle size={20} color={Colors.error} style={{ marginRight: 8 }} />
               <Text className="text-sm" style={{ fontFamily: 'Poppins-SemiBold', color: Colors.error }}>
                 Quotation Rejected
               </Text>
@@ -1839,7 +1838,7 @@ export default function OngoingJobDetails() {
           </View>
         ) : !request && (hasAttemptedLoad || !params.requestId) ? (
           <View className="flex-1 items-center justify-center py-20 px-6" style={{ minHeight: 200 }}>
-            <Ionicons name="alert-circle-outline" size={64} color={Colors.tabInactive} />
+            <AlertCircle size={64} color={Colors.tabInactive} />
             <Text className="mt-4 text-center px-4" style={{ fontFamily: 'Poppins-Medium', color: Colors.textMuted }}>
               {params.requestId ? 'Unable to load job details. Please try again.' : 'Invalid job. Please go back and try again.'}
             </Text>
@@ -2017,7 +2016,7 @@ export default function OngoingJobDetails() {
                                 {quotations[currentQuoteIndex].provider.name}
                             </Text>
                               {quotations[currentQuoteIndex].provider.verified && (
-                                <Ionicons name="checkmark-circle" size={16} color={Colors.accent} style={{ marginLeft: 6 }} />
+                                <CheckCircle2 size={16} color={Colors.accent} style={{ marginLeft: 6 }} />
                               )}
                             </View>
                               <Text className="text-xs mt-1" style={{ fontFamily: 'Poppins-Regular', color: Colors.iconMuted }}>
@@ -2159,8 +2158,7 @@ export default function OngoingJobDetails() {
                         activeOpacity={0.85}
                         className={`flex-row items-center ${currentQuoteIndex === 0 ? 'opacity-40' : ''}`}
                       >
-                        <Ionicons
-                          name="chevron-back"
+                        <ChevronLeft
                           size={20}
                           color={currentQuoteIndex === 0 ? Colors.tabInactive : Colors.accent}
                         />
@@ -2199,17 +2197,13 @@ export default function OngoingJobDetails() {
                         >
                           Next
                         </Text>
-                        <Ionicons
-                          name="chevron-forward"
-                          size={20}
-                          color={currentQuoteIndex === quotations.length - 1 ? Colors.tabInactive : Colors.accent}
-                        />
+                        <ChevronRight size={20} color={currentQuoteIndex === quotations.length - 1 ? Colors.tabInactive : Colors.accent} />
                       </TouchableOpacity>
                     </View>
                   </>
                 ) : (
                   <View className="items-center justify-center py-12">
-                    <Ionicons name="document-text-outline" size={48} color={Colors.tabInactive} />
+                    <FileText size={48} color={Colors.tabInactive} />
                     <Text className="mt-4 text-center" style={{ fontFamily: 'Poppins-Medium', color: Colors.textMuted }}>
                       No quotations available yet.
                     </Text>

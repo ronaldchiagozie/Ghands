@@ -195,8 +195,15 @@ export default function WalletScreen() {
       pathname: '/PaymentPendingScreen',
       params: {
         transactionId: transaction.id,
+        reference: transaction.reference,
         amount: transaction.amount.toString(),
         providerName: transaction.serviceName,
+        serviceName: transaction.serviceDescription,
+        totalAmount: transaction.amount.toFixed(2),
+        paymentMethod: 'Wallet',
+        serviceDate: transaction.date,
+        serviceTime: transaction.time,
+        initiatedDate: `${transaction.date} · ${transaction.time}`,
       },
     } as any);
   }, [router]);

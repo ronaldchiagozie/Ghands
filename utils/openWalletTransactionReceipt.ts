@@ -70,12 +70,20 @@ export function openWalletTransactionReceipt(
   }
 
   if (status === 'pending') {
+    /** Same field set as the failed/completed receipts — all three render ClientPaymentReceipt. */
     router.push({
       pathname: '/PaymentPendingScreen',
       params: {
         transactionId: id,
+        reference,
         amount: amount.toString(),
         providerName: serviceName,
+        serviceName: serviceDescription,
+        totalAmount: amount.toFixed(2),
+        paymentMethod: 'Wallet',
+        serviceDate: date,
+        serviceTime: time,
+        initiatedDate: `${date} · ${time}`,
       },
     } as any);
     return;

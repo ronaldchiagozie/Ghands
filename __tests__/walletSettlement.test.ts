@@ -3,6 +3,7 @@ import {
   findSettlementRow,
   matchesSettlementReference,
 } from '@/utils/walletSettlement';
+import { mapWalletTransactionStatus } from '@/utils/walletTransactions';
 
 describe('matchesSettlementReference', () => {
   it('matches a row carrying the same reference', () => {
@@ -64,5 +65,33 @@ describe('canPollForSettlement', () => {
     expect(canPollForSettlement('   ')).toBe(false);
     expect(canPollForSettlement(null)).toBe(false);
     expect(canPollForSettlement(undefined)).toBe(false);
+  });
+});
+
+describe('mapWalletTransactionStatus status aliases', () => {
+  /**
+   * walletNotificationCopy already passed these aliases; the mapper ignored them,
+   * so a row carrying only `paymentStatus` read as pending whatever it said.
+   */
+  it('reads paymentStatus when status is absent', () => {
+    expect(mapWalletTransactionStatus({ paymentStatus: 'completed' })).toBe('completed');
+    expect(mapWalletTransactionStatus({ paymentStatus: 'failed' })).toBe('failed');
+  });
+
+  it('reads transactionStatus when the others are absent', () => {
+    expect(mapWalletTransactionStatus({ transactionStatus: 'successful' })).toBe('completed');
+  });
+
+  it('lets a present status win over the aliases', () => {
+    expect(mapWalletTransactionStatus({ status: 'pending', paymentStatus: 'completed' })).toBe('pending');
+  });
+
+  it('skips a blank status instead of treating it as the verdict', () => {
+    expect(mapWalletTransactionStatus({ status: '   ', paymentStatus: 'completed' })).toBe('completed');
+  });
+
+  it('still falls back to completedAt when no status field is set', () => {
+    expect(mapWalletTransactionStatus({ completedAt: '2026-08-25T10:00:00Z' })).toBe('completed');
+    expect(mapWalletTransactionStatus({})).toBe('pending');
   });
 });

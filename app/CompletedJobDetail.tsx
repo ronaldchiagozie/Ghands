@@ -10,14 +10,13 @@ import { useToast } from '@/hooks/useToast';
 import { getSpecificErrorMessage } from '@/utils/errorMessages';
 import { AuthError } from '@/utils/errors';
 import { handleAuthErrorRedirect } from '@/utils/authRedirect';
-import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Image, Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TouchableOpacity, TextInput, View } from "react-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { openClientReceipt } from '@/utils/receiptNavigation';
 import { analytics } from '@/services/analytics';
-import { CheckCircle2, FileText, Wrench } from 'lucide-react-native';
+import { ArrowRight, Banknote, Calendar, CheckCircle2, FileText, MapPin, Star, Wrench } from 'lucide-react-native';
 import { BorderRadius, Colors } from '@/lib/designSystem';
 import { AvatarCircle } from '@/components/AvatarCircle';
 import { pickProviderImageUriFromRecord } from '@/utils/clientProfilePhoto';
@@ -377,12 +376,12 @@ export default function CompletedJobDetail() {
       {
         name: "Scheduled Date",
         subtitle: formatDate(request.scheduledDate, request.scheduledTime),
-        icon: <Ionicons name="calendar" color={Colors.tabInactive} size={18}/>
+        icon: <Calendar color={Colors.tabInactive} size={18} />
       },
       {
         name: "Location",
         subtitle: request.location?.formattedAddress || request.location?.address || 'Location not specified',
-        icon: <Ionicons name="location" color={Colors.tabInactive} size={18}/>
+        icon: <MapPin color={Colors.tabInactive} size={18} />
       },
       {
         name: 'Total Cost',
@@ -392,7 +391,7 @@ export default function CompletedJobDetail() {
               maximumFractionDigits: 2,
             })}`
           : '₦0.00',
-        icon: <Ionicons name="cash" color={Colors.tabInactive} size={18}/>
+        icon: <Banknote color={Colors.tabInactive} size={18} />
       }
     ];
   }, [request]);
@@ -487,11 +486,11 @@ export default function CompletedJobDetail() {
                           const r = Number((selectedProvider as any)?.rating ?? 0);
                           const filled = i < Math.round(r);
                           return (
-                            <Ionicons
+                            <Star
                               key={i}
-                              name={filled ? 'star' : 'star-outline'}
                               size={14}
                               color={filled ? Colors.star : Colors.border}
+                              fill={filled ? Colors.star : 'transparent'}
                             />
                           );
                         })}
@@ -519,11 +518,11 @@ export default function CompletedJobDetail() {
                         </Text>
                         <View className="flex-row">
                           {Array.from({ length: 5 }).map((_, i) => (
-                            <Ionicons
+                            <Star
                               key={`y-${i}`}
-                              name={i < myReviewRating ? 'star' : 'star-outline'}
                               size={16}
                               color={i < myReviewRating ? Colors.accent : Colors.border}
+                              fill={i < myReviewRating ? Colors.accent : 'transparent'}
                             />
                           ))}
                         </View>
@@ -641,7 +640,7 @@ export default function CompletedJobDetail() {
                 >
                   View receipt
                 </Text>
-                <Ionicons size={18} name="arrow-forward" color="white" />
+                <ArrowRight size={18} color="white" />
               </TouchableOpacity>
             </View>
 
@@ -720,7 +719,7 @@ export default function CompletedJobDetail() {
               {postReviewThankYou ? (
                 <>
                   <View style={{ alignItems: 'center', marginBottom: 14 }}>
-                    <Ionicons name="checkmark-circle" size={52} color={Colors.accent} />
+                    <CheckCircle2 size={52} color={Colors.accent} />
                   </View>
                   <Text
                     style={{
@@ -810,10 +809,10 @@ export default function CompletedJobDetail() {
                           activeOpacity={0.85}
                           style={{ padding: 8 }}
                         >
-                          <Ionicons
-                            name={filled ? 'star' : 'star-outline'}
+                          <Star
                             size={28}
                             color={filled ? Colors.star : Colors.borderStrong}
+                            fill={filled ? Colors.star : 'transparent'}
                           />
                         </TouchableOpacity>
                       );

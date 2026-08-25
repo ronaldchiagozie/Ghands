@@ -6,6 +6,7 @@ import { haptics } from '@/hooks/useHaptics';
 import { useToast } from '@/hooks/useToast';
 import { BorderRadius, Colors, MIN_TOUCH_TARGET, useSageHeroPanelMetrics, useKeyboardAvoidingOffset } from '@/lib/designSystem';
 import { providerHomeSectionTitle, providerHomeSurface } from '@/lib/providerSurfaceStyles';
+import { openWalletTransactionReceipt } from '@/utils/openWalletTransactionReceipt';
 import { walletService, type BankAccount } from '@/services/api';
 import { getSpecificErrorMessage } from '@/utils/errorMessages';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -28,7 +29,7 @@ const PRESET_AMOUNTS = [5000, 10000, 20000, 50000];
 export default function WithdrawScreen() {
   const keyboardOffset = useKeyboardAvoidingOffset();
   const router = useRouter();
-  const { showError, showSuccess } = useToast();
+  const { showError } = useToast();
   const [balance, setBalance] = useState<number>(0);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<BankAccount | null>(null);
@@ -40,6 +41,13 @@ export default function WithdrawScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const pinRefs = React.useRef<TextInput[]>([]);
+  /**
+   * Re-entrancy guard for the debit. `isWithdrawing` is state, so two submits in
+   * the same tick would both read the stale `false` and fire two withdrawals —
+   * and the API client no longer retries this endpoint, so the UI is the only
+   * thing standing between a fumbled keystroke and a double transfer.
+   */
+  const withdrawInFlightRef = React.useRef(false);
   const { amountFontSize } = useSageHeroPanelMetrics();
 
   const loadData = useCallback(async () => {
@@ -103,6 +111,7 @@ export default function WithdrawScreen() {
   };
 
   const submitWithdraw = async (pinValue: string) => {
+    if (withdrawInFlightRef.current) return;
     if (!pinValue || pinValue.length !== 4 || !selectedAccount) {
       if (__DEV__) {
         console.log('❌ [Withdraw] submitWithdraw blocked', {
@@ -114,6 +123,7 @@ export default function WithdrawScreen() {
       return;
     }
     try {
+      withdrawInFlightRef.current = true;
       setIsWithdrawing(true);
       setShowPinModal(false);
       if (__DEV__) {
@@ -122,19 +132,35 @@ export default function WithdrawScreen() {
           amount,
         });
       }
-      await walletService.withdraw({
+      const result = await walletService.withdraw({
         bankAccountId: selectedAccount.id,
         amount,
         pin: pinValue,
         narration: 'Withdrawal',
       });
       if (__DEV__) {
-        console.log('✅ [Withdraw] success');
+        console.log('✅ [Withdraw] success', { reference: result.reference, status: result.status });
       }
       haptics.success();
-      showSuccess(`₦${amount.toLocaleString()} withdrawal initiated`);
       loadData();
-      router.back();
+      /**
+       * Bank transfers usually come back `pending`, so route on the real status
+       * rather than claiming success — the same dispatch Wallet and Activity use
+       * when you tap a withdrawal row. Handing the helper `replace` puts the
+       * receipt in this screen's place, so back returns to the wallet rather than
+       * to a withdrawal form that has already been submitted.
+       */
+      openWalletTransactionReceipt(
+        { push: router.replace },
+        {
+          id: result.reference,
+          reference: result.reference,
+          type: 'withdrawal',
+          status: result.status,
+          amount: result.amount,
+          createdAt: new Date().toISOString(),
+        },
+      );
     } catch (err: any) {
       if (__DEV__) {
         console.log('❌ [Withdraw] error', err);
@@ -161,6 +187,7 @@ export default function WithdrawScreen() {
         );
       }
     } finally {
+      withdrawInFlightRef.current = false;
       setIsWithdrawing(false);
     }
   };
@@ -453,6 +480,7 @@ export default function WithdrawScreen() {
                   value={pin[i]}
                   onChangeText={(v) => handlePinChange(v, i)}
                   onKeyPress={(e) => e.nativeEvent.key === 'Backspace' && !pin[i] && i > 0 && pinRefs.current[i - 1]?.focus()}
+                  editable={!isWithdrawing}
                   keyboardType="number-pad"
                   maxLength={1}
                   secureTextEntry

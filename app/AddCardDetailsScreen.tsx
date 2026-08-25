@@ -1,8 +1,7 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { Colors, useKeyboardAvoidingOffset, useScrollViewKeyboardAssist } from '@/lib/designSystem';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Camera, Info } from 'lucide-react-native';
+import { AlertCircle, ArrowLeft, Camera, Info } from 'lucide-react-native';
 import React, { useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
@@ -147,7 +146,7 @@ export default function AddCardDetailsScreen() {
         <View style={{ paddingTop: 20, paddingHorizontal: 16, paddingBottom: 12 }}>
           <View className="flex-row items-center justify-between mb-4">
             <TouchableOpacity onPress={() => router.back()}>
-              <Ionicons name="arrow-back" size={24} color="#000" />
+              <ArrowLeft size={24} color="#000" />
             </TouchableOpacity>
             <Text 
               className="text-xl font-bold text-black" 
@@ -199,7 +198,7 @@ export default function AddCardDetailsScreen() {
             </View>
             {validation.cardNumber === false && (
               <View className="flex-row items-center mt-2">
-                <Ionicons name="alert-circle" size={16} color={Colors.errorBright} />
+                <AlertCircle size={16} color={Colors.errorBright} />
                 <Text 
                   className="text-red-500 text-sm ml-2" 
                   style={{ fontFamily: 'Poppins-Regular' }}

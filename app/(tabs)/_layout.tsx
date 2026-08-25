@@ -1,4 +1,4 @@
-import { MaterialIcons } from '@expo/vector-icons';
+import { ClipboardList, Compass, Home, Plus, User, type LucideIcon } from 'lucide-react-native';
 import type { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs';
 import { Tabs, useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useRef } from 'react';
@@ -11,9 +11,9 @@ import { Colors, runParallel, useReducedMotion } from '@/lib/designSystem';
 import { surfaceElevation } from '@/lib/surfaceStyles';
 import { navigateToClientHomeTab, resetToClientTab, NAV_FALLBACK } from '@/utils/navigation';
 
-type IconName = keyof typeof MaterialIcons.glyphMap;
 
-const AnimatedIcon = ({ iconName, color, focused }: { iconName: IconName; color: string; focused: boolean }) => {
+
+const AnimatedIcon = ({ Icon, color, focused }: { Icon: LucideIcon; color: string; focused: boolean }) => {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const opacityAnim = useRef(new Animated.Value(focused ? 1 : 0.7)).current;
   const translateYAnim = useRef(new Animated.Value(0)).current;
@@ -58,7 +58,7 @@ const AnimatedIcon = ({ iconName, color, focused }: { iconName: IconName; color:
         opacity: opacityAnim,
       }}
     >
-      <MaterialIcons name={iconName} size={Platform.OS === 'android' ? 19 : 20} color={color} />
+      <Icon size={Platform.OS === 'android' ? 19 : 20} color={color} />
     </Animated.View>
   );
 };
@@ -165,7 +165,7 @@ export default function TabLayout() {
           title: 'Home',
           tabBarLabel: 'Home',
           tabBarIcon: ({ color, focused }) => (
-            <AnimatedIcon iconName="home" color={color} focused={focused} />
+            <AnimatedIcon Icon={Home} color={color} focused={focused} />
           ),
         }}
         listeners={{
@@ -180,7 +180,7 @@ export default function TabLayout() {
           title: 'Discover',
           tabBarLabel: 'Discover',
           tabBarIcon: ({ color, focused }) => (
-            <AnimatedIcon iconName="explore" color={color} focused={focused} />
+            <AnimatedIcon Icon={Compass} color={color} focused={focused} />
           ),
         }}
       />
@@ -189,7 +189,7 @@ export default function TabLayout() {
         options={{
           title: 'Request',
           tabBarLabel: '',
-          tabBarIcon: () => <MaterialIcons name="add" size={30} color="white" />,
+          tabBarIcon: () => <Plus size={30} color="white" strokeWidth={2.5} />,
           tabBarButton: (props) => (
             <CentralTabButton
               {...props}
@@ -204,7 +204,7 @@ export default function TabLayout() {
           title: 'Jobs',
           tabBarLabel: 'Jobs',
           tabBarIcon: ({ color, focused }) => (
-            <AnimatedIcon iconName="assignment" color={color} focused={focused} />
+            <AnimatedIcon Icon={ClipboardList} color={color} focused={focused} />
           ),
         }}
         listeners={{
@@ -219,7 +219,7 @@ export default function TabLayout() {
           title: 'Profile',
           tabBarLabel: 'Profile',
           tabBarIcon: ({ color, focused }) => (
-            <AnimatedIcon iconName="person" color={color} focused={focused} />
+            <AnimatedIcon Icon={User} color={color} focused={focused} />
           ),
         }}
       />

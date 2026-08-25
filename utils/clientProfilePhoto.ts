@@ -59,7 +59,8 @@ function pickFirstDisplayableUri(
   return undefined;
 }
 
-export function clientProfileImageStorageKey(userId: string | null | undefined): string {
+/** `authService.getUserId()` yields a number, so the key builders accept both. */
+export function clientProfileImageStorageKey(userId: string | number | null | undefined): string {
   if (userId) return `${CLIENT_PROFILE_IMAGE_LEGACY_KEY}:${userId}`;
   return CLIENT_PROFILE_IMAGE_LEGACY_KEY;
 }
@@ -110,7 +111,7 @@ export function pickProviderImageUriFromRecord(raw: unknown): string | undefined
 }
 
 export async function readLocalClientProfileImageUri(
-  userId?: string | null,
+  userId?: string | number | null,
 ): Promise<string | null> {
   const id = userId ?? (await authService.getUserId());
   const key = clientProfileImageStorageKey(id);

@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { ChevronDown, ChevronUp, MessageCircleMore } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import { Image, Text, TouchableOpacity, View } from 'react-native';
@@ -211,7 +211,7 @@ const TimelineStatusCardComponent = ({
               </View>
             </TouchableOpacity>
             <TouchableOpacity activeOpacity={0.85} onPress={handlePressChat}>
-              <Ionicons name="chatbubble-ellipses-outline" size={20} color={Colors.iconMuted} />
+              <MessageCircleMore size={20} color={Colors.iconMuted} />
             </TouchableOpacity>
             <View
               style={{
@@ -335,11 +335,11 @@ const TimelineStatusCardComponent = ({
                 >
                   Details
                 </Text>
-                <Ionicons
-                  name={detailsExpanded ? 'chevron-up' : 'chevron-down'}
-                  size={14}
-                  color={Colors.iconMuted}
-                />
+                {detailsExpanded ? (
+                  <ChevronUp size={14} color={Colors.iconMuted} />
+                ) : (
+                  <ChevronDown size={14} color={Colors.iconMuted} />
+                )}
               </View>
             </TouchableOpacity>
             {header.subtitle && detailsExpanded ? (

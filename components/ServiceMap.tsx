@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Image, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE, Region } from 'react-native-maps';
 import { useRouter } from 'expo-router';
-import { Search } from 'lucide-react-native';
+import { Search, Star } from 'lucide-react-native';
 import { BorderRadius, Colors, MIN_TOUCH_TARGET } from '@/lib/designSystem';
 import { SURFACE_STYLES } from '@/lib/surfaceStyles';
 
@@ -330,10 +330,11 @@ const ServiceMap: React.FC<ServiceMapProps> = ({
                           {provider.category} • {provider.distance}
                         </Text>
                         <View className="flex-row items-center mt-1">
-                          <Text className="text-xs text-gray-500" style={{ fontFamily: 'Poppins-Medium' }}>
-                            ⭐ {provider.rating.toFixed(1)} ({provider.reviews} reviews)
+                          <Star size={12} color="#F59E0B" fill="#F59E0B" strokeWidth={0} />
+                          <Text className="text-xs text-gray-500 ml-1" style={{ fontFamily: 'Poppins-Medium' }}>
+                            {provider.rating.toFixed(1)} ({provider.reviews} reviews)
                           </Text>
-                          <View className="ml-2 rounded-full bg-[rgba(79, 103, 57, 0.14)] px-2 py-0.5">
+                          <View className="ml-2 rounded-full bg-[rgba(79,103,57,0.14)] px-2 py-0.5">
                             <Text className="text-xs text-[#166534]" style={{ fontFamily: 'Poppins-Medium' }}>
                               {provider.availability}
                             </Text>
@@ -394,10 +395,11 @@ const ServiceMap: React.FC<ServiceMapProps> = ({
                   {activeProvider.category} • {activeProvider.distance}
                 </Text>
                 <View className="flex-row items-center mt-1">
-                  <Text className="text-xs text-gray-500" style={{ fontFamily: 'Poppins-Medium' }}>
-                    ⭐ {activeProvider.rating.toFixed(1)} ({activeProvider.reviews} reviews)
+                  <Star size={12} color="#F59E0B" fill="#F59E0B" strokeWidth={0} />
+                  <Text className="text-xs text-gray-500 ml-1" style={{ fontFamily: 'Poppins-Medium' }}>
+                    {activeProvider.rating.toFixed(1)} ({activeProvider.reviews} reviews)
                   </Text>
-                  <View className="ml-2 rounded-full bg-[rgba(79, 103, 57, 0.14)] px-2 py-0.5">
+                  <View className="ml-2 rounded-full bg-[rgba(79,103,57,0.14)] px-2 py-0.5">
                     <Text className="text-xs text-[#166534]" style={{ fontFamily: 'Poppins-Medium' }}>
                       {activeProvider.availability}
                     </Text>
