@@ -1,5 +1,4 @@
 import { EmptyState } from '@/components/EmptyState';
-import { ErrorState } from '@/components/ErrorState';
 import FilterTransactionsModal, {
   DEFAULT_TRANSACTION_FILTERS,
   type FilterState,
@@ -7,6 +6,7 @@ import FilterTransactionsModal, {
 import { TransactionCardSkeleton } from '@/components/LoadingSkeleton';
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { useErrorSheet } from '@/hooks/useErrorSheet';
 import { useSkeletonGate } from '@/hooks/useSkeletonGate';
 import { BorderRadius, Colors, MIN_TOUCH_TARGET, REFRESH_CONTROL } from '@/lib/designSystem';
 import { CLIENT_HOME_SCROLL_GUTTER } from '@/lib/tabletLayout';
@@ -20,7 +20,6 @@ import {
   providerUnderlineTabRow,
 } from '@/lib/providerSurfaceStyles';
 import { walletService } from '@/services/api';
-import { getErrorMessage } from '@/utils/errorMessages';
 import { openClientReceipt } from '@/utils/receiptNavigation';
 import { isCancelledWalletTransaction, extractWalletTransactionFailureReason, mapWalletTransactionStatus, walletTransactionTimestamp } from '@/utils/walletTransactions';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -202,7 +201,8 @@ export default function ActivityScreen() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [transactionsError, setTransactionsError] = useState<string | null>(null);
+  /** The thrown error itself — the sheet needs its status, not just a string. */
+  const [transactionsError, setTransactionsError] = useState<unknown>(null);
   /** Keeps loaded rows on screen when the tab is revisited — only the first load shows skeletons. */
   const transactionsReadyRef = useRef(false);
 
@@ -291,9 +291,7 @@ export default function ActivityScreen() {
       if (__DEV__) {
         console.error('Error loading transactions:', error);
       }
-      setTransactionsError(
-        getErrorMessage(error, 'Could not load transactions. Check your connection and try again.'),
-      );
+      setTransactionsError(error);
     } finally {
       transactionsReadyRef.current = true;
       setIsLoading(false);
@@ -633,6 +631,13 @@ export default function ActivityScreen() {
     transactions.length === 0 && !transactionsError
   );
 
+  useErrorSheet({
+    error: transactionsError,
+    subject: 'your transactions',
+    hasContent: transactions.length > 0,
+    onRetry: loadTransactions,
+  });
+
   const renderTransaction = useCallback(
     ({ item }: { item: Transaction }) => (
       <TransactionRow
@@ -655,20 +660,13 @@ export default function ActivityScreen() {
       );
     }
     if (transactionsError && transactions.length === 0) {
+      // Failed: hold the list's real shape, dimmed and still. ErrorSheet explains it.
       return (
-        <ErrorState
-          title="Could not load transactions"
-          message={transactionsError}
-          onRetry={() => {
-            void loadTransactions();
-          }}
-          style={{
-            flex: 0,
-            ...providerHomeSurface,
-            padding: providerHomeSurfacePadding + 18,
-          }}
-          iconSize={36}
-        />
+        <View style={{ opacity: 0.35 }} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          <TransactionCardSkeleton />
+          <TransactionCardSkeleton />
+          <TransactionCardSkeleton />
+        </View>
       );
     }
     // A date filter hiding every row must not read as "you have none".

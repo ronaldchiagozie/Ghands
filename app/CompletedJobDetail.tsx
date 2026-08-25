@@ -2,7 +2,8 @@ import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { JobProgressTimeline, type JobProgressStep } from '@/components/JobProgressTimeline';
 import Demcatorline from "@/components/Demacator";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { ErrorState } from '@/components/ErrorState';
+import { JobDetailsTimelineSkeleton } from '@/components/LoadingSkeleton';
+import { useErrorSheet } from '@/hooks/useErrorSheet';
 import { haptics } from '@/hooks/useHaptics';
 import { authService, serviceRequestService, ServiceRequest } from '@/services/api';
 import { useToast } from '@/hooks/useToast';
@@ -57,6 +58,8 @@ export default function CompletedJobDetail() {
   const { showError, showSuccess, showInfo, showWarning } = useToast();
   
   const [request, setRequest] = useState<ServiceRequest | null>(null);
+  /** The thrown error itself — the sheet needs its status, not just a string. */
+  const [loadError, setLoadError] = useState<unknown>(null);
   const [selectedProvider, setSelectedProvider] = useState<any | null>(null);
   // Start loading when a requestId is present so the first paint is the skeleton, not the
   // "unable to load" error state that only becomes true after the fetch actually fails.
@@ -87,6 +90,7 @@ export default function CompletedJobDetail() {
     if (!params.requestId) return;
     
     setIsLoading(true);
+    setLoadError(null);
     try {
       const requestId = parseInt(params.requestId, 10);
       const { request: requestDetails, usedListFallback } =
@@ -226,12 +230,18 @@ export default function CompletedJobDetail() {
         )
       );
 
-      const errorMessage = getSpecificErrorMessage(error, 'get_request_details');
-      showError(errorMessage);
+      setLoadError(error);
     } finally {
       setIsLoading(false);
     }
   };
+
+  useErrorSheet({
+    error: loadError,
+    subject: 'this job',
+    hasContent: !!request,
+    onRetry: loadRequestDetails,
+  });
 
   const handleSubmitReview = async () => {
     if (!params.requestId) return;
@@ -410,14 +420,18 @@ export default function CompletedJobDetail() {
   }
 
   if (!request) {
+    // Failed: keep the screen's shape, dimmed and still. ErrorSheet carries the
+    // explanation and the retry.
     return (
       <SafeAreaWrapper>
-        <View className="flex-1 items-center justify-center px-8">
-          <ErrorState
-            message="Unable to load job details. Please try again."
-            onRetry={loadRequestDetails}
-            retryLabel="Retry"
-          />
+        <View
+          className="flex-1 px-6 pt-8"
+          style={{ opacity: 0.35 }}
+          pointerEvents="none"
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
+          <JobDetailsTimelineSkeleton />
         </View>
       </SafeAreaWrapper>
     );

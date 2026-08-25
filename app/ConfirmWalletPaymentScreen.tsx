@@ -15,6 +15,7 @@ import {
   isCancelledWalletTransaction,
   mapWalletTransactionStatus,
 } from '@/utils/walletTransactions';
+import { canPollForSettlement, findSettlementRow } from '@/utils/walletSettlement';
 import { navigateBack, NAV_FALLBACK } from '@/utils/navigation';
 import { appendPaymentFlowLog } from '@/utils/paymentFlowLog';
 import { applyDefaultStatusBar } from '@/utils/statusBar';
@@ -172,15 +173,20 @@ export default function ConfirmWalletPaymentScreen() {
    */
   const waitForSettlement = useCallback(
     async (reference: string): Promise<'completed' | 'failed' | 'timedOut'> => {
+      /**
+       * No reference means nothing to match a ledger row against. Report it as
+       * unsettled rather than polling — matching on a blank would pick up any
+       * row that also lacks one and read it as this payment's verdict.
+       */
+      if (!canPollForSettlement(reference)) return 'timedOut';
+
       for (let attempt = 0; attempt < SETTLEMENT_MAX_ATTEMPTS; attempt += 1) {
         await new Promise((resolve) => setTimeout(resolve, SETTLEMENT_POLL_MS));
         if (unmountedRef.current) return 'timedOut';
 
         try {
           const { transactions } = await walletService.getTransactions({ limit: 25, offset: 0 });
-          const row = transactions.find(
-            (t) => String(t.reference ?? '') === String(reference)
-          );
+          const row = findSettlementRow(transactions, reference);
           if (!row) continue;
           if (isCancelledWalletTransaction(row)) return 'failed';
 
@@ -205,7 +211,14 @@ export default function ConfirmWalletPaymentScreen() {
   /** Re-checks a payment that was still pending when the poll gave up. */
   const handleRecheckSettlement = useCallback(async () => {
     const reference = settlementRefRef.current;
-    if (!reference) return;
+    if (!canPollForSettlement(reference)) {
+      /** No reference came back, so there is nothing to re-check against. */
+      setSettlementMessage(
+        'We could not get a reference for this payment. Check Wallet › Activity for the transaction before paying again.',
+      );
+      setPaymentStep('timedOut');
+      return;
+    }
     setSettlementMessage(null);
     setPaymentStep('verifying');
 

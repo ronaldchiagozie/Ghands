@@ -1,21 +1,22 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
-import { ErrorState } from '@/components/ErrorState';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import Toast from '@/components/Toast';
 import { WalletPinInput } from '@/components/WalletPinInput';
 import { haptics } from '@/hooks/useHaptics';
 import { useToast } from '@/hooks/useToast';
+import { useErrorSheet } from '@/hooks/useErrorSheet';
 import { useWalletBalance } from '@/hooks/useWalletBalance';
 import { BorderRadius, Colors, MIN_TOUCH_TARGET } from '@/lib/designSystem';
 import { providerHomeSurface, providerListCard } from '@/lib/providerSurfaceStyles';
 import { CLIENT_HOME_SCROLL_GUTTER } from '@/lib/tabletLayout';
 import { walletService, type BankAccount } from '@/services/api';
-import { getErrorMessage, getSpecificErrorMessage } from '@/utils/errorMessages';
+import { getSpecificErrorMessage } from '@/utils/errorMessages';
 import {
   extractWalletTransactionFailureReason,
   isCancelledWalletTransaction,
   mapWalletTransactionStatus,
 } from '@/utils/walletTransactions';
+import { canPollForSettlement, findSettlementRow } from '@/utils/walletSettlement';
 import { Button } from '@/components/ui/Button';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Building2, CheckCircle, ChevronRight, Clock, Lock, Plus, Receipt, RefreshCw, Wallet, X, XCircle } from 'lucide-react-native';
@@ -124,7 +125,8 @@ export default function PaymentMethodsScreen() {
 
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [isLoadingBilling, setIsLoadingBilling] = useState(true);
-  const [billingLoadError, setBillingLoadError] = useState<string | null>(null);
+  /** The thrown error itself — the sheet needs its status, not just a string. */
+  const [billingLoadError, setBillingLoadError] = useState<unknown>(null);
 
   const loadBillingData = useCallback(async () => {
     try {
@@ -134,13 +136,18 @@ export default function PaymentMethodsScreen() {
       setBankAccounts(Array.isArray(banks) ? banks : []);
       setBillingLoadError(null);
     } catch (error) {
-      setBillingLoadError(
-        getErrorMessage(error, 'Could not load bank accounts. Check your connection and try again.'),
-      );
+      setBillingLoadError(error);
     } finally {
       setIsLoadingBilling(false);
     }
   }, []);
+
+  useErrorSheet({
+    error: billingLoadError,
+    subject: 'your bank accounts',
+    hasContent: bankAccounts.length > 0,
+    onRetry: loadBillingData,
+  });
 
   useFocusEffect(
     useCallback(() => {
@@ -217,15 +224,20 @@ export default function PaymentMethodsScreen() {
    */
   const waitForSettlement = useCallback(
     async (reference: string): Promise<'completed' | 'failed' | 'timedOut'> => {
+      /**
+       * No reference means nothing to match a ledger row against. Report it as
+       * unsettled rather than polling — matching on a blank would pick up any
+       * row that also lacks one and read it as this payment's verdict.
+       */
+      if (!canPollForSettlement(reference)) return 'timedOut';
+
       for (let attempt = 0; attempt < SETTLEMENT_MAX_ATTEMPTS; attempt += 1) {
         await new Promise((resolve) => setTimeout(resolve, SETTLEMENT_POLL_MS));
         if (unmountedRef.current) return 'timedOut';
 
         try {
           const { transactions } = await walletService.getTransactions({ limit: 25, offset: 0 });
-          const row = transactions.find(
-            (t) => String(t.reference ?? '') === String(reference)
-          );
+          const row = findSettlementRow(transactions, reference);
           if (!row) continue;
           if (isCancelledWalletTransaction(row)) return 'failed';
 
@@ -250,7 +262,14 @@ export default function PaymentMethodsScreen() {
   /** Re-checks a payment that was still pending when the poll gave up. */
   const handleRecheckSettlement = useCallback(async () => {
     const reference = settlementRefRef.current;
-    if (!reference) return;
+    if (!canPollForSettlement(reference)) {
+      /** No reference came back, so there is nothing to re-check against. */
+      setSettlementMessage(
+        'We could not get a reference for this payment. Check Wallet › Activity for the transaction before paying again.',
+      );
+      setPaymentStep('timedOut');
+      return;
+    }
     setSettlementMessage(null);
     setPaymentStep('verifying');
 
@@ -651,20 +670,16 @@ export default function PaymentMethodsScreen() {
             </Text>
 
             {billingLoadError && bankAccounts.length === 0 ? (
-              <ErrorState
-                title="Could not load bank accounts"
-                message={billingLoadError}
-                onRetry={() => {
-                  void loadBillingData();
-                }}
-                style={{
-                  flex: 0,
-                  marginBottom: 16,
-                  ...providerListCard,
-                  paddingVertical: 24,
-                }}
-                iconSize={32}
-              />
+              // Failed: hold the card's real shape, dimmed and still. ErrorSheet explains it.
+              <View
+                style={{ ...providerListCard, marginBottom: 16, paddingVertical: 24, opacity: 0.35 }}
+                pointerEvents="none"
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+              >
+                <View style={{ width: '55%', height: 16, borderRadius: 8, backgroundColor: Colors.backgroundGray, marginBottom: 10 }} />
+                <View style={{ width: '38%', height: 13, borderRadius: 8, backgroundColor: Colors.backgroundGray }} />
+              </View>
             ) : bankAccounts.length === 0 ? (
               <View
                 style={{

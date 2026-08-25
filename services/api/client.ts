@@ -172,13 +172,12 @@ class ApiClient {
             if (text && (contentType.includes('text/html') || text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html'))) {
               const preMatch = text.match(/<pre[^>]*>([\s\S]*?)<\/pre>/i);
               const titleMatch = text.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-              if (preMatch?.[1]) errorMessage = `Server error: ${preMatch[1].trim()}`;
-              else if (titleMatch?.[1]) errorMessage = `Server error: ${titleMatch[1].trim()}`;
-              else errorMessage = 'Server error: The server encountered an internal error. Please try again later.';
+              const scraped = (preMatch?.[1] ?? titleMatch?.[1] ?? '').trim();
+              errorMessage = 'The server could not be reached. Please try again in a moment.';
               const err = new Error(errorMessage) as any;
               err.status = statusCode;
               err.statusText = response.statusText;
-              err.details = { htmlResponse: text.substring(0, 500) };
+              err.details = { htmlResponse: text.substring(0, 500), scrapedTitle: scraped || undefined };
               throw err;
             }
             try {
@@ -222,8 +221,6 @@ class ApiClient {
           if (isNetworkErr) {
             reportApiUnreachable();
           }
-          // Only 401/403 → session expired. Skip if this failure is really offline / flaky network
-          // (avoids mis-classifying connection issues as logout when proxies or DNS act up).
           if (
             !isNetworkErr &&
             !config.skipAuth &&
@@ -260,8 +257,16 @@ class ApiClient {
       retryDelay: DEFAULT_RETRY_OPTIONS.retryDelay,
       ...options,
     };
-    const { retries = 0, retryDelay = 1000 } = defaultConfig;
-    const effectiveRetries = retries > 0 ? retries : DEFAULT_RETRY_OPTIONS.maxRetries || 2;
+    const { retries, retryDelay = 1000 } = defaultConfig;
+    /**
+     * An explicit `retries: 0` must be honoured — money-moving POSTs opt out of
+     * retries entirely (see NO_RETRY in services/api/wallet.ts). Treating 0 as
+     * "unset" would silently re-send a debit the server may already have applied.
+     */
+    const effectiveRetries =
+      typeof retries === 'number' && retries >= 0
+        ? retries
+        : DEFAULT_RETRY_OPTIONS.maxRetries ?? 2;
     return this.retryRequest<T>(url, defaultConfig, effectiveRetries, retryDelay);
   }
 

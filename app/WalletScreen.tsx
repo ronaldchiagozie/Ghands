@@ -1,11 +1,11 @@
 import { EmptyState } from '@/components/EmptyState';
-import { ErrorState } from '@/components/ErrorState';
 import {
     SageAmountSkeleton,
     TransactionCardSkeleton,
 } from '@/components/LoadingSkeleton';
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { ScreenHeader } from '@/components/ScreenHeader';
+import { useErrorSheet } from '@/hooks/useErrorSheet';
 import { useSkeletonGate } from '@/hooks/useSkeletonGate';
 import { invalidateWalletBalanceCache, useWalletBalance } from '@/hooks/useWalletBalance';
 import { BorderRadius, Colors } from '@/lib/designSystem';
@@ -19,7 +19,6 @@ import {
 } from '@/lib/providerSurfaceStyles';
 import { CLIENT_HOME_SCROLL_GUTTER } from '@/lib/tabletLayout';
 import { walletService } from '@/services/api';
-import { getErrorMessage } from '@/utils/errorMessages';
 import { openClientReceipt } from '@/utils/receiptNavigation';
 import { extractWalletTransactionFailureReason, isCancelledWalletTransaction, mapWalletTransactionStatus, walletTransactionTimestamp } from '@/utils/walletTransactions';
 
@@ -55,7 +54,8 @@ export default function WalletScreen() {
   const transactionsReadyRef = useRef(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState<boolean>(true);
-  const [transactionsError, setTransactionsError] = useState<string | null>(null);
+  /** The thrown error itself — the sheet needs its status, not just a string. */
+  const [transactionsError, setTransactionsError] = useState<unknown>(null);
 
   // Helper function to format date
   const formatDate = useCallback((dateString: string): { date: string; time: string } => {
@@ -157,9 +157,7 @@ export default function WalletScreen() {
       if (__DEV__) {
         console.error('Error loading transactions:', error);
       }
-      setTransactionsError(
-        getErrorMessage(error, 'Could not load recent activity. Check your connection and try again.'),
-      );
+      setTransactionsError(error);
     } finally {
       transactionsReadyRef.current = true;
       setIsLoadingTransactions(false);
@@ -249,6 +247,13 @@ export default function WalletScreen() {
     useSkeletonGate(isLoadingBalance, balance === null && !balanceLoadFailed);
   const { showSkeleton: showTransactionsSkeleton, isLoadingEmpty: isTransactionsLoadingEmpty } =
     useSkeletonGate(isLoadingTransactions, transactions.length === 0 && !transactionsError);
+
+  useErrorSheet({
+    error: transactionsError,
+    subject: 'your recent activity',
+    hasContent: transactions.length > 0,
+    onRetry: loadTransactions,
+  });
 
   const handleRetryBalance = useCallback(() => {
     void refreshWalletBalance();
@@ -589,19 +594,12 @@ export default function WalletScreen() {
               <TransactionCardSkeleton />
             </>
           ) : transactionsError && transactions.length === 0 ? (
-            <ErrorState
-              title="Could not load activity"
-              message={transactionsError}
-              onRetry={() => {
-                void loadTransactions();
-              }}
-              style={{
-                flex: 0,
-                ...providerHomeSurface,
-                padding: providerHomeSurfacePadding + 18,
-              }}
-              iconSize={36}
-            />
+            // Failed: hold the list's real shape, dimmed and still. ErrorSheet explains it.
+            <View style={{ opacity: 0.35 }} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+              <TransactionCardSkeleton />
+              <TransactionCardSkeleton />
+              <TransactionCardSkeleton />
+            </View>
           ) : transactions.length === 0 ? (
             <EmptyState
               icon={<Receipt size={40} color={Colors.textSecondaryDark} />}

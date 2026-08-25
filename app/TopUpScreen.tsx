@@ -40,7 +40,7 @@ import {
   getPendingDepositReference,
   isDepositReferenceAlreadyHandled,
   markDepositReferenceHandled,
-  setPendingDepositReference,
+  setPendingDepositReference as persistPendingDepositReference,
 } from '@/utils/walletDepositSession';
 import { getSpecificErrorMessage } from '@/utils/errorMessages';
 import { handleAuthErrorRedirect } from '@/utils/authRedirect';
@@ -557,16 +557,28 @@ export default function TopUpScreen() {
         return;
       }
 
+      if (error instanceof AuthError) {
+        releasePaymentUi();
+        await handleAuthErrorRedirect(router);
+        return;
+      }
+
       if (!background && showFailedUi) {
         setDepositVerifyPhase('failed');
         setPaymentSessionActive(true);
         setPaymentModalDismissed(false);
       } else {
-        releasePaymentUi();
-      }
-      if (error instanceof AuthError) {
-        await handleAuthErrorRedirect(router);
-        return;
+        /**
+         * A transient verify failure is not a verdict. Keep the pending reference
+         * and the polling session alive so the next tick can still reconcile —
+         * releasing here used to strand an already-paid deposit after a single
+         * network blip. Once the attempts run out we let the UI go, but the
+         * persisted reference stays for the next app launch to pick up.
+         */
+        pollCountRef.current += 1;
+        if (pollCountRef.current >= DEPOSIT_MAX_POLL_ATTEMPTS) {
+          releasePaymentUi();
+        }
       }
       if (__DEV__) {
         console.error('❌ [TopUpScreen] Verification error:', error);
@@ -850,9 +862,10 @@ export default function TopUpScreen() {
 
       haptics.success();
 
-      // Store deposit reference for verification when user returns
+      // Store deposit reference for verification when user returns — persisted so a
+      // cold start or the `wallet-deposit-return` deep link can still reconcile it.
       await clearHandledDepositReference();
-      await setPendingDepositReference(depositResponse.reference);
+      await persistPendingDepositReference(depositResponse.reference);
       setPendingDepositReference(depositResponse.reference);
       setPendingDepositAmount(amount);
       void logWalletDeposit('Deposit initialized', {

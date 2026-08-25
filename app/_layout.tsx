@@ -26,6 +26,7 @@ import { UserLocationProvider } from '@/hooks/useUserLocation';
 import { NetworkProvider } from '@/hooks/useNetworkConnectivity';
 import GlobalOfflineOverlay from '@/components/GlobalOfflineOverlay';
 import AppAlertHost from '@/components/AppAlertHost';
+import ErrorSheetHost from '@/components/ErrorSheet';
 import AppStatusBar from '@/components/AppStatusBar';
 import { installStatusBarRestore, applyDefaultStatusBar, applyHandyAiStatusBar, isHandyAiRoute } from '@/utils/statusBar';
 import { registerWebRtcGlobalsIfAvailable } from '@/utils/webrtcAvailability';
@@ -216,6 +217,7 @@ export default function RootLayout() {
             </UserLocationProvider>
             <GlobalOfflineOverlay />
             <AppAlertHost />
+            <ErrorSheetHost />
             </View>
             </NetworkProvider>
           </QueryProvider>

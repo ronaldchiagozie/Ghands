@@ -1,5 +1,5 @@
-import { ErrorState } from '@/components/ErrorState';
 import { NotificationsListSkeleton } from '@/components/LoadingSkeleton';
+import { useErrorSheet } from '@/hooks/useErrorSheet';
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import Toast from '@/components/Toast';
@@ -319,7 +319,8 @@ export default function NotificationsScreen() {
   const { toast, showError, hideToast } = useToast();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  /** The thrown error itself — the sheet needs its status, not just a string. */
+  const [loadError, setLoadError] = useState<unknown>(null);
   const [isClearing, setIsClearing] = useState(false);
   const [previewNotification, setPreviewNotification] = useState<UINotification | null>(null);
   const [filterPill, setFilterPill] = useState<FilterPill>('all');
@@ -671,13 +672,18 @@ export default function NotificationsScreen() {
     } catch (error) {
       logNotificationError('loadNotifications: failed', error);
       logNotificationsApiError('loadNotifications', error);
-      setLoadError(
-        getErrorMessage(error, 'Could not load notifications. Check your connection and try again.'),
-      );
+      setLoadError(error);
     } finally {
       setIsLoading(false);
     }
   }, [loadWalletTransactionsForNotifications]);
+
+  useErrorSheet({
+    error: loadError,
+    subject: 'your notifications',
+    hasContent: hasNotifications,
+    onRetry: loadNotifications,
+  });
 
   useEffect(() => {
     void loadNotifications();
@@ -910,16 +916,11 @@ export default function NotificationsScreen() {
     }
 
     if (loadError && !hasNotifications && !isLoading) {
+      // Failed: hold the list's real shape, dimmed and still. ErrorSheet explains it.
       return (
-        <ErrorState
-          title="Could not load notifications"
-          message={loadError}
-          onRetry={() => {
-            void loadNotifications();
-          }}
-          style={{ flex: 0, marginTop: 12 }}
-          iconSize={36}
-        />
+        <View style={{ opacity: 0.35 }} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          <NotificationsListSkeleton />
+        </View>
       );
     }
 
@@ -992,27 +993,6 @@ export default function NotificationsScreen() {
           <ScreenHeader title="Notifications" onBack={() => router.back()} />
           <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }}>
             <NotificationsListSkeleton />
-          </View>
-        </View>
-        <Toast message={toast.message} type={toast.type} visible={toast.visible} onClose={hideToast} />
-      </SafeAreaWrapper>
-    );
-  }
-
-  if (!isLoading && loadError && !hasNotifications) {
-    return (
-      <SafeAreaWrapper backgroundColor={Colors.white}>
-        <View style={{ flex: 1 }}>
-          <ScreenHeader title="Notifications" onBack={() => router.back()} />
-          <View style={{ flex: 1, paddingHorizontal: 20, justifyContent: 'center' }}>
-            <ErrorState
-              title="Could not load notifications"
-              message={loadError}
-              onRetry={() => {
-                void loadNotifications();
-              }}
-              iconSize={40}
-            />
           </View>
         </View>
         <Toast message={toast.message} type={toast.type} visible={toast.visible} onClose={hideToast} />

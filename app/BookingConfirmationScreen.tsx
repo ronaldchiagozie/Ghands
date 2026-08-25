@@ -1,4 +1,5 @@
-import { ErrorState } from '@/components/ErrorState';
+import { JobDetailsTimelineSkeleton } from '@/components/LoadingSkeleton';
+import { useErrorSheet } from '@/hooks/useErrorSheet';
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { haptics } from '@/hooks/useHaptics';
 import { BorderRadius, Colors, MIN_TOUCH_TARGET } from '@/lib/designSystem';
@@ -47,6 +48,8 @@ export default function BookingConfirmationScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
+  /** The thrown error itself — the sheet needs its status, not just a flag. */
+  const [loadError, setLoadError] = useState<unknown>(null);
 
   const exitToJobs = useCallback(() => {
     haptics.light();
@@ -73,6 +76,7 @@ export default function BookingConfirmationScreen() {
     }
     try {
       setLoadFailed(false);
+      setLoadError(null);
       const [req, provs, quots] = await Promise.all([
         serviceRequestService.getRequestDetails(requestId),
         serviceRequestService.getAcceptedProviders(requestId),
@@ -87,6 +91,7 @@ export default function BookingConfirmationScreen() {
         return;
       }
       setLoadFailed(true);
+      setLoadError(error);
       setRequest(null);
       setAcceptedProviders([]);
       setQuotations([]);
@@ -122,6 +127,13 @@ export default function BookingConfirmationScreen() {
     setLoadFailed(false);
     loadData();
   }, [loadData]);
+
+  useErrorSheet({
+    error: loadError,
+    subject: 'your booking',
+    hasContent: !!request,
+    onRetry: loadData,
+  });
 
   const progressSteps = useMemo((): ProgressStep[] => {
     const providerCount = params.providerCount
@@ -267,11 +279,16 @@ export default function BookingConfirmationScreen() {
             <X size={22} color={Colors.textSecondaryDark} />
           </TouchableOpacity>
         </View>
-        <ErrorState
-          title="Couldn't load booking"
-          message="We couldn't load your booking details. Check your connection and try again."
-          onRetry={handleRetryLoad}
-        />
+        {/* Failed: keep the screen's shape, dimmed and still. ErrorSheet carries
+            the explanation and the retry. */}
+        <View
+          style={{ flex: 1, paddingHorizontal: 20, paddingTop: 12, opacity: 0.35 }}
+          pointerEvents="none"
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
+          <JobDetailsTimelineSkeleton />
+        </View>
         <View style={{ paddingHorizontal: 20, paddingBottom: 24 }}>
           <TouchableOpacity onPress={exitToJobs} activeOpacity={0.85}>
             <Text

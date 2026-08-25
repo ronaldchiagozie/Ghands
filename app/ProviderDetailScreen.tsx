@@ -1,8 +1,8 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
-import { ErrorState } from '@/components/ErrorState';
 import { BorderRadius, Colors, MIN_TOUCH_TARGET, Spacing } from '@/lib/designSystem';
+import { ProfileSkeleton } from '@/components/LoadingSkeleton';
+import { useErrorSheet } from '@/hooks/useErrorSheet';
 import { providerService } from '@/services/api';
-import { getErrorMessage } from '@/utils/errorMessages';
 import { formatSkillLabel } from '@/utils/formatSkillLabel';
 import { buildReviewerDisplayName, reviewAvatarUrl } from '@/utils/reviewerDisplayName';
 import { Ionicons } from '@expo/vector-icons';
@@ -161,7 +161,8 @@ export default function ProviderDetailScreen() {
     return !!(id && !Number.isNaN(id));
   });
   const [showAllSkillsModal, setShowAllSkillsModal] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  /** The thrown error itself — the sheet needs its status, not just a string. */
+  const [loadError, setLoadError] = useState<unknown>(null);
 
   const loadProviderProfile = useCallback(async () => {
     const raw = String(params.providerId || '').trim();
@@ -250,9 +251,7 @@ export default function ProviderDetailScreen() {
       setProvider(mapped);
       setLoadError(null);
     } catch (error) {
-      setLoadError(
-        getErrorMessage(error, 'Could not load this profile. Check your connection and try again.'),
-      );
+      setLoadError(error);
     } finally {
       setIsLoading(false);
     }
@@ -262,6 +261,13 @@ export default function ProviderDetailScreen() {
     params.providerId,
     params.providerName,
   ]);
+
+  useErrorSheet({
+    error: loadError,
+    subject: 'this profile',
+    hasContent: !!provider,
+    onRetry: loadProviderProfile,
+  });
 
   useEffect(() => {
     void loadProviderProfile();
@@ -315,15 +321,15 @@ export default function ProviderDetailScreen() {
           >
             <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
           </TouchableOpacity>
-          <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 24 }}>
-            <ErrorState
-              title="Could not load profile"
-              message={loadError}
-              onRetry={() => {
-                void loadProviderProfile();
-              }}
-              iconSize={40}
-            />
+          {/* Failed: keep the screen's chrome and shape, dimmed and still.
+              ErrorSheet carries the explanation and the retry. */}
+          <View
+            style={{ flex: 1, paddingTop: 72, opacity: 0.35 }}
+            pointerEvents="none"
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          >
+            <ProfileSkeleton />
           </View>
         </View>
       </SafeAreaWrapper>

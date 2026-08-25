@@ -12,7 +12,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 import { showAppAlert } from '@/components/AppAlertHost';
 import { Button } from '@/components/ui/Button';
-import { ErrorState } from '@/components/ErrorState';
 import { EmptyState } from '@/components/EmptyState';
 import { providerService, locationService, authService, serviceRequestService } from '@/services/api';
 import { getCategoryIcon } from '@/utils/categoryIcons';

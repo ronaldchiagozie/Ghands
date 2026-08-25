@@ -1,11 +1,11 @@
 import { CoachMarkTarget } from '@/components/CoachMarkTarget';
 import { CategoryChipSkeleton, JobCardSkeleton } from '@/components/LoadingSkeleton';
-import { ErrorState } from '@/components/ErrorState';
 import LocationSearchModal from '@/components/LocationSearchModal';
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import AiSparkleFab from '@/components/home/AiSparkleFab';
 import type { JobActivity } from '@/components/home/JobActivityCard';
 import JobActivityCard from '@/components/home/JobActivityCard';
+import { useErrorSheet } from '@/hooks/useErrorSheet';
 import { useSkeletonGate } from '@/hooks/useSkeletonGate';
 // import PromoCodeCard from '@/components/home/PromoCodeCard';
 import TodoCard from '@/components/home/TodoCard';
@@ -22,7 +22,6 @@ import { CLIENT_HOME_SCROLL_GUTTER } from '@/lib/tabletLayout';
 import { ServiceRequest, serviceRequestService } from '@/services/api';
 import { handleApiAuthFailure, runAuthSafe } from '@/utils/authRedirect';
 import { getCategoryIcon, resolveCategoryImageSource } from '@/utils/categoryIcons';
-import { getErrorMessage } from '@/utils/errorMessages';
 import { logDevAuthTokens } from '@/utils/devAuthTokens';
 import { isAuthError } from '@/utils/errors';
 import { isConnectivityOrNetworkError } from '@/utils/isNetworkFailure';
@@ -145,8 +144,9 @@ const HomeScreen = React.memo(() => {
   const { location, isLoading, refreshLocation } = useUserLocation();
   const [jobActivities, setJobActivities] = useState<JobActivity[]>([]);
   const [isLoadingJobs, setIsLoadingJobs] = useState(true);
-  const [jobsLoadError, setJobsLoadError] = useState<string | null>(null);
-  const [categoriesLoadError, setCategoriesLoadError] = useState<string | null>(null);
+  /** The thrown error itself — ErrorSheet needs the status/kind, not just a string. */
+  const [jobsLoadError, setJobsLoadError] = useState<unknown>(null);
+  const [categoriesLoadError, setCategoriesLoadError] = useState<unknown>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   // Tour disabled - keep hook to avoid runtime errors, use empty steps so tour never shows
@@ -346,12 +346,8 @@ const HomeScreen = React.memo(() => {
         return;
       }
       const isNetworkError = isConnectivityOrNetworkError(error);
-      const message = getErrorMessage(
-        error,
-        'Could not load job activity. Check your connection and try again.',
-      );
       if (isNetworkError) {
-        setJobsLoadError((prev) => prev ?? message);
+        setJobsLoadError((prev: unknown) => prev ?? error);
         return;
       }
       const status = (error as { status?: number })?.status;
@@ -363,7 +359,7 @@ const HomeScreen = React.memo(() => {
         if (__DEV__) console.warn('Job activities API returned 500; skipping redirect.');
       }
       if (__DEV__) console.error('Error loading job activities:', error);
-      setJobsLoadError(message);
+      setJobsLoadError(error);
     } finally {
       jobsReadyRef.current = true;
       setIsLoadingJobs(false);
@@ -467,19 +463,15 @@ const HomeScreen = React.memo(() => {
         return;
       }
 
-      const message = getErrorMessage(
-        error,
-        'Could not load services. Check your connection and try again.',
-      );
       if (isConnectivityOrNetworkError(error)) {
-        setCategoriesLoadError((prev) => prev ?? message);
+        setCategoriesLoadError((prev: unknown) => prev ?? error);
         return;
       }
 
       if (__DEV__) {
         console.error('Error loading categories from API:', error);
       }
-      setCategoriesLoadError(message);
+      setCategoriesLoadError(error);
     } finally {
       categoriesReadyRef.current = true;
       setIsLoadingCategories(false);
@@ -583,6 +575,24 @@ const HomeScreen = React.memo(() => {
     useSkeletonGate(isLoadingCategories, filteredCategories.length === 0 && !categoriesLoadError);
   const { showSkeleton: showJobsSkeleton, isLoadingEmpty: isJobsLoadingEmpty } =
     useSkeletonGate(isLoadingJobs, jobActivities.length === 0 && !jobsLoadError);
+
+  // A section that fails keeps its shape on screen; the sheet carries the
+  // explanation and the one action that can actually fix it.
+  useErrorSheet({
+    sheetKey: 'home-categories',
+    error: categoriesLoadError,
+    subject: 'services',
+    hasContent: filteredCategories.length > 0,
+    onRetry: loadCategoriesFromAPI,
+  });
+
+  useErrorSheet({
+    sheetKey: 'home-jobs',
+    error: jobsLoadError,
+    subject: 'your job activity',
+    hasContent: jobActivities.length > 0,
+    onRetry: loadJobActivities,
+  });
 
   return (
     <SafeAreaWrapper tabletShellTop>
@@ -743,20 +753,18 @@ const HomeScreen = React.memo(() => {
                     ))}
                   </View>
                 ) : categoriesLoadError && filteredCategories.length === 0 ? (
-                  <ErrorState
-                    title="Could not load services"
-                    message={categoriesLoadError}
-                    onRetry={() => {
-                      void loadCategoriesFromAPI();
-                    }}
-                    style={{
-                      flex: 0,
-                      paddingVertical: 20,
-                      paddingHorizontal: 8,
-                      ...providerListCard,
-                    }}
-                    iconSize={32}
-                  />
+                  // Failed: hold the row's real shape, dimmed and still. ErrorSheet
+                  // explains it over the top — the section never collapses into a card.
+                  <View
+                    style={{ flexDirection: 'row', marginTop: 0, marginBottom: 0, paddingVertical: 6, overflow: 'visible', opacity: 0.35 }}
+                    pointerEvents="none"
+                    accessibilityElementsHidden
+                    importantForAccessibility="no-hide-descendants"
+                  >
+                    {[1, 2, 3, 4].map((i) => (
+                      <CategoryChipSkeleton key={i} />
+                    ))}
+                  </View>
                 ) : filteredCategories.length === 0 ? null : (
                   <ScrollView
                     horizontal
@@ -1044,19 +1052,15 @@ const HomeScreen = React.memo(() => {
                   <JobCardSkeleton />
                 </>
               ) : jobsLoadError && jobActivities.length === 0 ? (
-                <ErrorState
-                  title="Could not load job activity"
-                  message={jobsLoadError}
-                  onRetry={() => {
-                    void loadJobActivities();
-                  }}
-                  style={{
-                    flex: 0,
-                    ...providerListCard,
-                    paddingVertical: 24,
-                  }}
-                  iconSize={32}
-                />
+                <View
+                  style={{ opacity: 0.35 }}
+                  pointerEvents="none"
+                  accessibilityElementsHidden
+                  importantForAccessibility="no-hide-descendants"
+                >
+                  <JobCardSkeleton />
+                  <JobCardSkeleton />
+                </View>
               ) : jobActivities.length > 0 ? (
                 jobActivities.map((activity, index) => (
                   <View key={activity.id} style={{ marginBottom: index < jobActivities.length - 1 ? 12 : 0 }}>

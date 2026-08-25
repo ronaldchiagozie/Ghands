@@ -6,6 +6,14 @@ import { mapWalletAccountStatus, type WalletAccountStatus } from '@/utils/wallet
 
 export type { PayForServicePayload, PayForServiceResponse };
 
+/**
+ * Money-moving requests must never be auto-retried: these endpoints are not
+ * idempotent and carry no idempotency key, so a retry after a lost response can
+ * debit the wallet twice. `pin/verify` opts out too — a retry burns a PIN
+ * attempt against the server's lockout counter.
+ */
+const NO_RETRY = { retries: 0 } as const;
+
 export interface Bank {
   code: string;
   name: string;
@@ -194,7 +202,7 @@ export const walletService = {
   },
 
   verifyPin: async (pin: string): Promise<{ isValid: boolean }> => {
-    const response = await apiClient.post<any>('/api/wallet/pin/verify', { pin });
+    const response = await apiClient.post<any>('/api/wallet/pin/verify', { pin }, NO_RETRY);
     const data = extractResponseData<any>(response)?.data || extractResponseData<any>(response);
     return { isValid: data?.isValid ?? false };
   },
@@ -256,7 +264,7 @@ export const walletService = {
 
   payForService: async (payload: PayForServicePayload): Promise<PayForServiceResponse> => {
     try {
-      const response = await apiClient.post<any>('/api/wallet/pay', payload);
+      const response = await apiClient.post<any>('/api/wallet/pay', payload, NO_RETRY);
       const data = (response as any).data;
       void logWalletApiResponse(
         'API POST /api/wallet/pay',
@@ -276,7 +284,7 @@ export const walletService = {
 
   payLogisticsFee: async (payload: { requestId: number; amount: number; pin: string }): Promise<PayForServiceResponse> => {
     try {
-      const response = await apiClient.post<any>('/api/wallet/pay-logistics-fee', payload);
+      const response = await apiClient.post<any>('/api/wallet/pay-logistics-fee', payload, NO_RETRY);
       const data = (response as any)?.data?.data ?? (response as any)?.data;
       void logWalletApiResponse(
         'API POST /api/wallet/pay-logistics-fee',
@@ -300,7 +308,7 @@ export const walletService = {
     amount: number;
     balance: number;
   }> => {
-    const response = await apiClient.post<any>('/api/wallet/withdraw', payload);
+    const response = await apiClient.post<any>('/api/wallet/withdraw', payload, NO_RETRY);
     const data = extractResponseData<any>(response)?.data || extractResponseData<any>(response);
     return {
       reference: data?.reference || '',
@@ -323,7 +331,7 @@ export const walletService = {
     }
     void logWalletApiResponse(
       'API GET /api/wallet/banks',
-      { countryCode },
+      { detail: `countryCode=${countryCode}` },
       { count: banks.length, sample: banks.slice(0, 3) },
     );
     return banks;
