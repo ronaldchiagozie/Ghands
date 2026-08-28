@@ -15,10 +15,21 @@ export function profileCompleteKeyForUser(userId: string | number | null | undef
   return PROFILE_COMPLETE_LEGACY_KEY;
 }
 
-export function isProfileDetailsComplete(name: string, phone: string): boolean {
+/**
+ * Must stay in step with what ProfileCompletionModal actually demands: name,
+ * phone AND gender. It previously checked only name and phone, so an account
+ * missing gender counted as complete — the setup checklist hid the task while
+ * the form still refused to submit without it.
+ *
+ * `gender` is optional in the signature so existing two-argument callers keep
+ * their meaning; pass it wherever the value is known.
+ */
+export function isProfileDetailsComplete(name: string, phone: string, gender?: string): boolean {
   const trimmedName = name.trim();
   const digits = phone.replace(/\D/g, '');
-  return trimmedName.length >= 3 && digits.length >= 10;
+  if (trimmedName.length < 3 || digits.length < 10) return false;
+  if (gender !== undefined && !String(gender).trim()) return false;
+  return true;
 }
 
 export async function readProfileCompleteFlag(userId: string | number | null): Promise<boolean> {
@@ -44,7 +55,8 @@ export async function resolveProfileCompleteFromServer(): Promise<boolean> {
   try {
     const raw = await profileService.getCurrentUserProfile();
     const mapped = mapApiProfileToUserProfile(raw);
-    const complete = isProfileDetailsComplete(mapped.name, mapped.phone);
+    const genderRaw = String(unwrapProfilePayload(raw).gender ?? '').trim();
+    const complete = isProfileDetailsComplete(mapped.name, mapped.phone, genderRaw);
     if (complete && raw && typeof raw === 'object') {
       const d = unwrapProfilePayload(raw);
       const companyName = String(d.companyName ?? d.company_name ?? '').trim();

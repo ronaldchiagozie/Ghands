@@ -1,4 +1,5 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { NAV_FALLBACK, navigateBack } from '@/utils/navigation';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Colors, BorderRadius } from '@/lib/designSystem';
 import { useRouter } from 'expo-router';
@@ -81,7 +82,7 @@ export default function SecurityScreen() {
   return (
     <SafeAreaWrapper backgroundColor={Colors.white}>
       <View style={{ flex: 1 }}>
-        <ScreenHeader title="Account Security" onBack={() => router.back()} backgroundColor={Colors.white} />
+        <ScreenHeader title="Account Security" onBack={() => navigateBack(router, NAV_FALLBACK.clientHome)} backgroundColor={Colors.white} />
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{

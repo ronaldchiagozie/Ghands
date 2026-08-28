@@ -1,4 +1,8 @@
 import { CoachMarkTarget } from '@/components/CoachMarkTarget';
+import AccountSetupCard from '@/components/home/AccountSetupCard';
+import { useAccountSetup, type SetupTaskId } from '@/hooks/useAccountSetup';
+import { syncPushNotifications } from '@/utils/pushNotifications';
+import { isSubmittedBooking } from '@ghands/contract';
 import { CategoryChipSkeleton, JobCardSkeleton } from '@/components/LoadingSkeleton';
 import LocationSearchModal from '@/components/LocationSearchModal';
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
@@ -132,6 +136,12 @@ const formatNaira = (amount: number): string =>
   })}`;
 
 const HomeScreen = React.memo(() => {
+  const {
+    outstanding: setupOutstanding,
+    completedCount: setupCompletedCount,
+    totalCount: setupTotalCount,
+    refresh: refreshSetup,
+  } = useAccountSetup();
   const router = useRouter();
   useTokenGuard();
   const [searchQuery, setSearchQuery] = useState('');
@@ -274,10 +284,9 @@ const HomeScreen = React.memo(() => {
         setJobsLoadError(null);
         return;
       }
+      /** Same rule as the Jobs tab — an unfinished booking is not activity. */
       const confirmedRequests = requests.filter((request) => {
-        const hasJobTitle = request.jobTitle && request.jobTitle.trim().length > 0;
-        const hasDescription = request.description && request.description.trim().length > 0;
-        return hasJobTitle && hasDescription;
+        return isSubmittedBooking(request);
       });
       const activityEntries = await Promise.all(
         confirmedRequests.map(async (request) => {
@@ -539,24 +548,31 @@ const HomeScreen = React.memo(() => {
     router.push('/(tabs)/jobs' as any);
   }, [router]);
 
-  const handleTodoPress = useCallback(
-    (id: string) => {
+  const handleSetupTaskPress = useCallback(
+    (id: SetupTaskId) => {
       haptics.light();
       switch (id) {
-        case 'todo-1':
-          router.push('/AccountInformationScreen' as never);
+        case 'profile':
+          router.push('/ProfileCompletionScreen' as never);
           break;
-        case 'todo-2':
+        case 'location':
           setShowLocationModal(true);
           break;
-        case 'todo-3':
-          router.push('/PaymentMethodsScreen' as never);
+        case 'pin':
+          router.push('/CreatePINScreen' as never);
+          break;
+        case 'bank':
+          router.push('/ProviderLinkBankAccountScreen' as never);
+          break;
+        case 'notifications':
+          /** Prompts if undetermined; a denied permission needs system settings. */
+          void syncPushNotifications(true).finally(() => void refreshSetup());
           break;
         default:
           break;
       }
     },
-    [router]
+    [router, refreshSetup]
   );
 
   // Temporarily disabling home recommendations until we plug in real data
@@ -985,13 +1001,13 @@ const HomeScreen = React.memo(() => {
             </View>
           </View>
           */}
-          <View className='px-4 mb-6 hidden'>
-            <Text className='text-lg font-bold mb-2' style={{ fontFamily: 'Poppins-Bold', letterSpacing: -0.3 }}>Todo</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} className='flex mt-0  flex-row '>
-              {todoItems.map((item) => (
-                <TodoCard key={item.id} {...item} onPress={() => handleTodoPress(item.id)} />
-              ))}
-            </ScrollView>
+          <View style={{ paddingHorizontal: CLIENT_HOME_SCROLL_GUTTER }}>
+            <AccountSetupCard
+              outstanding={setupOutstanding}
+              completedCount={setupCompletedCount}
+              totalCount={setupTotalCount}
+              onTaskPress={handleSetupTaskPress}
+            />
           </View>
           <CoachMarkTarget name="job-activity" style={{ overflow: 'visible' }}>
             <View style={{ paddingHorizontal: CLIENT_HOME_SCROLL_GUTTER, marginBottom: HOME_SECTION_VERTICAL_GAP, overflow: 'visible' }}>

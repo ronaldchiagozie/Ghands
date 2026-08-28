@@ -1,4 +1,7 @@
 import { CategorySkeleton } from '@/components/LoadingSkeleton';
+import { resolveClientProfileComplete } from '@/utils/profileCompletion';
+import { CLIENT_TAB_BAR_BASE_HEIGHT } from '@/lib/tabletLayout';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import Toast from '@/components/Toast';
 import { Button } from '@/components/ui/Button';
@@ -22,6 +25,7 @@ interface CategoryData extends ServiceCategory {
 }
 
 export default function CategoryPage() {
+  const insets = useSafeAreaInsets();
   const routes = useRouter();
   const params = useLocalSearchParams<{
     selectedCategoryId?: string;
@@ -344,6 +348,20 @@ export default function CategoryPage() {
   const handleNextJobsScreen = async () => {
     if (isToggle !== "") {
       haptics.light();
+
+      /**
+       * Browsing needs nothing, but a booking does: a provider cannot act on a
+       * job from someone with no name and no phone number. Ask here — at the
+       * point the data is actually needed — rather than walling the app on open.
+       */
+      if (!(await resolveClientProfileComplete())) {
+        showError('Add your name and phone so providers can reach you.');
+        routes.push({
+          pathname: '/ProfileCompletionScreen' as any,
+          params: { returnTo: '/(tabs)/categories' },
+        } as any);
+        return;
+      }
 
       if (params.returnToServiceMap === 'true' && params.requestId) {
         setIsCreatingRequest(true);
@@ -759,7 +777,20 @@ export default function CategoryPage() {
             loading={isCreatingRequest}
             icon={<ArrowRight size={18} color={Colors.white} />}
             iconPosition="right"
-            style={{ marginTop: Spacing.xxxl, marginBottom: 96, width: '90%', alignSelf: 'center' }}
+            style={{
+              marginTop: Spacing.lg,
+              /**
+               * This component renders twice: as the Categories tab (a tab bar
+               * sits below it) and as the Request Service stack screen (nothing
+               * below it). A fixed 96 cleared the tab bar but stranded the
+               * button far up the stack screen.
+               */
+              marginBottom: isFromStackScreen
+                ? Math.max(Spacing.lg, insets.bottom + Spacing.md)
+                : CLIENT_TAB_BAR_BASE_HEIGHT + insets.bottom + Spacing.xl,
+              width: '90%',
+              alignSelf: 'center',
+            }}
           />
         <Toast
           message={toast.message}

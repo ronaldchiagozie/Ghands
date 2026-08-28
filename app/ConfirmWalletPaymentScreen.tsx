@@ -67,6 +67,8 @@ export default function ConfirmWalletPaymentScreen() {
   const [balance, setBalance] = useState<number | null>(null);
   const [isLoadingBalance, setIsLoadingBalance] = useState(true);
   const [balanceLoadError, setBalanceLoadError] = useState<string | null>(null);
+  /** The API reports this on every wallet read; nothing was using it. */
+  const [isPinSet, setIsPinSet] = useState<boolean | null>(null);
   const [showPinModal, setShowPinModal] = useState(false);
   const [showProcessingModal, setShowProcessingModal] = useState(false);
   const [paymentStep, setPaymentStep] = useState<PaymentStep>('processing');
@@ -98,6 +100,7 @@ export default function ConfirmWalletPaymentScreen() {
       const wallet = await walletService.getWallet();
       const b = typeof wallet.balance === 'number' ? wallet.balance : parseFloat(String(wallet.balance)) || 0;
       setBalance(b);
+      setIsPinSet(Boolean(wallet.isPinSet));
       setBalanceLoadError(null);
     } catch (error) {
       if (__DEV__) console.error('Error loading balance:', error);
@@ -148,6 +151,19 @@ export default function ConfirmWalletPaymentScreen() {
   const handlePayNow = () => {
     setPaymentError(null);
     setSettlementMessage(null);
+
+    /**
+     * We already know from the wallet read whether a PIN exists. Asking for four
+     * digits the account does not have, waiting on the network, then failing is
+     * a worse way to learn it than being told up front.
+     */
+    if (isPinSet === false) {
+      haptics.error();
+      showError('You need a wallet PIN before you can pay. Create one now.');
+      goToCreateOrChangePin();
+      return;
+    }
+
     setPin('');
     setShowPinModal(true);
   };

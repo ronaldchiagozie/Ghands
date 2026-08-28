@@ -1,4 +1,5 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { NAV_FALLBACK, navigateBack } from '@/utils/navigation';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { BorderRadius, Colors } from '@/lib/designSystem';
 import { CLIENT_HOME_SCROLL_GUTTER } from '@/lib/tabletLayout';
@@ -42,7 +43,7 @@ export default function AccountInformationScreen() {
       <View style={styles.root}>
         <ScreenHeader
           title="Account Information"
-          onBack={() => router.back()}
+          onBack={() => navigateBack(router, NAV_FALLBACK.clientHome)}
           backgroundColor={Colors.white}
           showBottomBorder
         />

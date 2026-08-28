@@ -1,4 +1,5 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { navigateBack } from '@/utils/navigation';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { BorderRadius, Colors } from '@/lib/designSystem';
 import { invalidateWalletBalanceCache } from '@/hooks/useWalletBalance';
@@ -98,7 +99,7 @@ export default function BankTransferScreen() {
 
   return (
     <SafeAreaWrapper backgroundColor={Colors.backgroundLight}>
-      <ScreenHeader title="Account details" onBack={() => router.back()} backgroundColor={Colors.white} />
+      <ScreenHeader title="Account details" onBack={() => navigateBack(router, '/WalletScreen')} backgroundColor={Colors.white} />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{

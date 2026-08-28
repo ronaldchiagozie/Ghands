@@ -1,4 +1,5 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { NAV_FALLBACK, navigateBack } from '@/utils/navigation';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { BorderRadius, Colors, Spacing } from '@/lib/designSystem';
 import { useRouter } from 'expo-router';
@@ -66,7 +67,7 @@ export default function SettingsScreen() {
   return (
     <SafeAreaWrapper backgroundColor={Colors.white}>
       <View style={{ flex: 1 }}>
-        <ScreenHeader title="Settings" onBack={() => router.back()} backgroundColor={Colors.white} />
+        <ScreenHeader title="Settings" onBack={() => navigateBack(router, NAV_FALLBACK.clientHome)} backgroundColor={Colors.white} />
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{

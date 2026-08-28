@@ -1,4 +1,5 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { NAV_FALLBACK, navigateBack } from '@/utils/navigation';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { BorderRadius, Colors } from '@/lib/designSystem';
 import { useRouter } from 'expo-router';
@@ -23,7 +24,7 @@ export default function PhotosGalleryScreen() {
   return (
     <SafeAreaWrapper backgroundColor={Colors.white}>
       <View style={{ flex: 1 }}>
-        <ScreenHeader title="Photos" onBack={() => router.back()} backgroundColor={Colors.white} />
+        <ScreenHeader title="Photos" onBack={() => navigateBack(router, NAV_FALLBACK.clientJobs)} backgroundColor={Colors.white} />
         {/* Grid of Images */}
         <ScrollView
           showsVerticalScrollIndicator={false}

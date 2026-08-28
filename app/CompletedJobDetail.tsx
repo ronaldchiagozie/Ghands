@@ -1,4 +1,5 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { NAV_FALLBACK, navigateBack } from '@/utils/navigation';
 import { JobProgressTimeline, type JobProgressStep } from '@/components/JobProgressTimeline';
 import Demcatorline from "@/components/Demacator";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -441,7 +442,7 @@ export default function CompletedJobDetail() {
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
           <View style={{ paddingHorizontal: CLIENT_HOME_SCROLL_GUTTER, paddingTop: 20 }}>
             <View className="mb-6">
-              <ScreenHeader title="Job details" onBack={() => router.back()} />
+              <ScreenHeader title="Job details" onBack={() => navigateBack(router, NAV_FALLBACK.clientJobs)} />
             </View>
             <View className="mb-6">
               <Text

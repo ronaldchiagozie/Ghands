@@ -1,4 +1,5 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { NAV_FALLBACK, navigateBack } from '@/utils/navigation';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { BorderRadius, Colors, Spacing, MIN_TOUCH_TARGET, useKeyboardAvoidingOffset, useScrollViewKeyboardAssist } from '@/lib/designSystem';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -159,7 +160,7 @@ export default function ReportIssueScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={keyboardOffset}
       >
-        <ScreenHeader title="Report Issue" onBack={() => router.back()} backgroundColor={Colors.white} />
+        <ScreenHeader title="Report Issue" onBack={() => navigateBack(router, NAV_FALLBACK.clientJobs)} backgroundColor={Colors.white} />
         <ScrollView
           ref={scrollRef}
           showsVerticalScrollIndicator={false}

@@ -1,4 +1,5 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { NAV_FALLBACK, navigateBack } from '@/utils/navigation';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Colors } from '@/lib/designSystem';
 import { useRouter } from 'expo-router';
@@ -12,7 +13,7 @@ export default function AboutGHandsScreen() {
   return (
     <SafeAreaWrapper backgroundColor={Colors.white}>
       <View style={{ flex: 1 }}>
-        <ScreenHeader title="About G-Hands" onBack={() => router.back()} backgroundColor={Colors.white} />
+        <ScreenHeader title="About G-Hands" onBack={() => navigateBack(router, NAV_FALLBACK.clientHome)} backgroundColor={Colors.white} />
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{

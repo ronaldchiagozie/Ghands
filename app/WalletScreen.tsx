@@ -1,4 +1,5 @@
 import { EmptyState } from '@/components/EmptyState';
+import { NAV_FALLBACK, navigateBack } from '@/utils/navigation';
 import {
     SageAmountSkeleton,
     TransactionCardSkeleton,
@@ -270,7 +271,7 @@ export default function WalletScreen() {
     <SafeAreaWrapper backgroundColor={Colors.backgroundLight}>
       <ScreenHeader
         title="Wallet"
-        onBack={() => router.back()}
+        onBack={() => navigateBack(router, NAV_FALLBACK.clientHome)}
         backgroundColor={Colors.backgroundLight}
         rightElement={
           <TouchableOpacity

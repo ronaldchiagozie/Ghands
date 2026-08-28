@@ -1,4 +1,5 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { NAV_FALLBACK, navigateBack } from '@/utils/navigation';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import Toast from '@/components/Toast';
 import { haptics } from '@/hooks/useHaptics';
@@ -152,7 +153,7 @@ export default function SupportScreen() {
 
   return (
     <SafeAreaWrapper backgroundColor={Colors.backgroundLight}>
-      <ScreenHeader title="Help centre" onBack={() => router.back()} />
+      <ScreenHeader title="Help centre" onBack={() => navigateBack(router, NAV_FALLBACK.clientHome)} />
 
       <KeyboardAvoidingView
         style={styles.flex}

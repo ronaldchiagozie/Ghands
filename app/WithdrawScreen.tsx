@@ -1,4 +1,5 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { navigateBack } from '@/utils/navigation';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { SageHeroPanel } from '@/components/provider/SageHeroPanel';
 import { Button } from '@/components/ui/Button';
@@ -8,7 +9,7 @@ import { BorderRadius, Colors, MIN_TOUCH_TARGET, useSageHeroPanelMetrics, useKey
 import { providerHomeSectionTitle, providerHomeSurface } from '@/lib/providerSurfaceStyles';
 import { openWalletTransactionReceipt } from '@/utils/openWalletTransactionReceipt';
 import { walletService, type BankAccount } from '@/services/api';
-import { getSpecificErrorMessage } from '@/utils/errorMessages';
+import { getSpecificErrorMessage, presentServerError } from '@/utils/errorMessages';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Building2, ChevronDown, Lock, Plus } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -173,16 +174,32 @@ export default function WithdrawScreen() {
         '';
       const lower = rawMsg.toLowerCase();
 
-      if (lower.includes('wallet pin not set')) {
-        showError('Wallet PIN not set. Please create a PIN first to withdraw.');
-        // Small delay so the toast is visible before navigation
+      /**
+       * A wrong PIN is the most common failure here and the only one the user
+       * can act on immediately. getSpecificErrorMessage always returns its
+       * generic "check your PIN and balance" line, so the server's actual
+       * "Invalid PIN" was being swallowed and the sheet closed — leaving the
+       * user to start the whole withdrawal again to retry four digits.
+       */
+      const notSet = /pin not set|no pin|not been set|set up|create.*pin|must set/i.test(rawMsg);
+      const isPinError = /pin/i.test(rawMsg);
+
+      if (notSet) {
+        showError('Wallet PIN not set. Create one first, then withdraw.');
         setTimeout(() => {
           router.push('/CreatePINScreen' as any);
         }, 800);
+      } else if (isPinError) {
+        haptics.error();
+        setPin(['', '', '', '']);
+        setShowPinModal(true);
+        setTimeout(() => pinRefs.current[0]?.focus(), 250);
+        showError('That PIN is incorrect. Try again.');
       } else {
+        /** Real reason when it is useful to the user; our own copy when it is not. */
         showError(
-          getSpecificErrorMessage(err, 'withdraw') ||
-            rawMsg ||
+          presentServerError(rawMsg) ||
+            getSpecificErrorMessage(err, 'withdraw') ||
             'Withdrawal failed. Please try again.'
         );
       }
@@ -242,7 +259,7 @@ export default function WithdrawScreen() {
       <SafeAreaWrapper backgroundColor={Colors.backgroundLight}>
         <ScreenHeader
           title=""
-          onBack={() => router.back()}
+          onBack={() => navigateBack(router, '/WalletScreen')}
           backgroundColor={Colors.backgroundLight}
           rightElement={linkBankHeaderAction}
         />
@@ -285,7 +302,7 @@ export default function WithdrawScreen() {
     <SafeAreaWrapper backgroundColor={Colors.backgroundLight}>
       <ScreenHeader
         title="Withdraw"
-        onBack={() => router.back()}
+        onBack={() => navigateBack(router, '/WalletScreen')}
         backgroundColor={Colors.backgroundLight}
         rightElement={linkBankHeaderAction}
       />

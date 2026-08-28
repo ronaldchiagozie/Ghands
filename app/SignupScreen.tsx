@@ -1,4 +1,5 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { recordSignupStep } from '@/utils/signupProgress';
 import { haptics } from '@/hooks/useHaptics';
 import { authService } from '@/services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -159,6 +160,7 @@ export default function SignupScreen() {
       await AsyncStorage.setItem('@ghands:signup_email', email.trim());
       await AsyncStorage.removeItem('@ghands:signup_phone');
       await AsyncStorage.setItem('@ghands:profile_complete', 'false');
+      await recordSignupStep('account_created');
 
       haptics.success();
 

@@ -1,4 +1,5 @@
 import { ClientPaymentReceipt, type ClientReceiptData } from '@/components/ClientPaymentReceipt';
+import { navigateBack } from '@/utils/navigation';
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Colors } from '@/lib/designSystem';
@@ -89,7 +90,7 @@ export default function PaymentPendingScreen() {
 
   return (
     <SafeAreaWrapper backgroundColor={Colors.backgroundLight}>
-      <ScreenHeader title="Receipt" onBack={() => router.back()} backgroundColor={Colors.backgroundLight} />
+      <ScreenHeader title="Receipt" onBack={() => navigateBack(router, '/WalletScreen')} backgroundColor={Colors.backgroundLight} />
 
       <View
         style={{

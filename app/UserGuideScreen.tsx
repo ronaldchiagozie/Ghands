@@ -1,4 +1,5 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { NAV_FALLBACK, navigateBack } from '@/utils/navigation';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { haptics } from '@/hooks/useHaptics';
 import appLogo from '@/assets/images/icon.png';
@@ -170,7 +171,7 @@ export default function UserGuideScreen() {
 
   return (
     <SafeAreaWrapper backgroundColor={Colors.backgroundLight}>
-      <ScreenHeader title="User Guide" onBack={() => router.back()} />
+      <ScreenHeader title="User Guide" onBack={() => navigateBack(router, NAV_FALLBACK.clientHome)} />
 
       <View style={styles.container}>
         <Animated.View style={{ flex: 1, opacity: fadeAnim }}>

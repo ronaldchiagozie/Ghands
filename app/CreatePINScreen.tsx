@@ -1,4 +1,5 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { navigateBack } from '@/utils/navigation';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { WalletPinInput } from '@/components/WalletPinInput';
 import { BorderRadius, Colors, useKeyboardAvoidingOffset } from '@/lib/designSystem';
@@ -128,7 +129,7 @@ export default function CreatePINScreen() {
       <View style={{ flex: 1 }}>
         <ScreenHeader
           title="Create PIN"
-          onBack={() => router.back()}
+          onBack={() => navigateBack(router, '/WalletScreen')}
           backgroundColor={Colors.white}
         />
         <KeyboardAvoidingView

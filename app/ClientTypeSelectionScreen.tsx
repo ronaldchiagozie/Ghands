@@ -1,4 +1,5 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { recordSignupStep } from '@/utils/signupProgress';
 import { Colors } from '@/lib/designSystem';
 import { useRouter } from 'expo-router';
 import { Building2, User, Users } from 'lucide-react-native';

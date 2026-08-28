@@ -1,4 +1,5 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { NAV_FALLBACK, navigateBack } from '@/utils/navigation';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { BorderRadius, Colors } from '@/lib/designSystem';
 import { authService, locationService } from '@/services/api';
@@ -193,7 +194,7 @@ export default function AddressBookScreen() {
     <SafeAreaWrapper backgroundColor={Colors.white}>
       <ScreenHeader
         title="Address Book"
-        onBack={() => router.back()}
+        onBack={() => navigateBack(router, NAV_FALLBACK.clientHome)}
         rightElement={
           <TouchableOpacity
             onPress={() =>

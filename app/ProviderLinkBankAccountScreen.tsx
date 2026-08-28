@@ -1,4 +1,5 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { navigateBack } from '@/utils/navigation';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Button } from '@/components/ui/Button';
 import { haptics } from '@/hooks/useHaptics';
@@ -138,7 +139,7 @@ export default function ProviderLinkBankAccountScreen() {
     <SafeAreaWrapper backgroundColor={Colors.backgroundLight}>
       <ScreenHeader
         title="Link bank account"
-        onBack={() => router.back()}
+        onBack={() => navigateBack(router, '/WalletScreen')}
         backgroundColor={Colors.backgroundLight}
       />
 

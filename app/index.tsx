@@ -1,4 +1,5 @@
 import { useRouter, usePathname } from 'expo-router';
+import { resolveSignupResume } from '@/utils/signupProgress';
 import { useEffect, useRef } from 'react';
 import useOnboarding from '@/hooks/useOnboarding';
 import { authService } from '@/services/authService';
@@ -47,7 +48,16 @@ export default function ClientEntryPoint() {
             router.replace(loginRoute as never);
             return;
           }
+
           hasRedirectedRef.current = true;
+
+          /**
+           * A half-finished signup still lands on Home — people are allowed to
+           * look around before committing details. This only records how far
+           * they got, so Home can surface what is outstanding and booking can
+           * ask for it at the point it is actually needed.
+           */
+          void resolveSignupResume();
           router.replace('/(tabs)/home' as never);
           return;
         }

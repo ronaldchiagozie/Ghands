@@ -1,4 +1,5 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { NAV_FALLBACK, navigateBack } from '@/utils/navigation';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { BorderRadius, Colors, useKeyboardAvoidingOffset, useScrollViewKeyboardAssist } from '@/lib/designSystem';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -240,7 +241,7 @@ export default function EditProfileScreen() {
       <View style={{ flex: 1 }}>
         <ScreenHeader
           title="Edit your profile"
-          onBack={() => router.back()}
+          onBack={() => navigateBack(router, NAV_FALLBACK.clientHome)}
           backgroundColor={Colors.white}
           showBottomBorder
           rightElement={

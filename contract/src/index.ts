@@ -12,3 +12,4 @@ export * from './visitStatus';
 export * from './walletTransactions';
 export * from './walletSettlement';
 export * from './quotationStatus';
+export * from './bookingDraft';

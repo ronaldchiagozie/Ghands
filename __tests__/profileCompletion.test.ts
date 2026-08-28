@@ -27,3 +27,29 @@ describe('profileCompletion', () => {
     await expect(resolveClientProfileComplete()).resolves.toBe(true);
   });
 });
+
+describe('gender is part of a complete profile', () => {
+  /**
+   * ProfileCompletionModal refuses to submit without name, phone AND gender.
+   * The check used to look at only name and phone, so an account missing gender
+   * counted as complete — the setup checklist hid the task while the form still
+   * demanded it. These must not drift apart again.
+   */
+  it('rejects a profile with no gender when gender is known', () => {
+    expect(isProfileDetailsComplete('Bendee Ok', '08129381869', '')).toBe(false);
+    expect(isProfileDetailsComplete('Bendee Ok', '08129381869', '   ')).toBe(false);
+  });
+
+  it('accepts a profile with all three', () => {
+    expect(isProfileDetailsComplete('Bendee Ok', '08129381869', 'male')).toBe(true);
+  });
+
+  it('still enforces name and phone regardless of gender', () => {
+    expect(isProfileDetailsComplete('Bo', '08129381869', 'male')).toBe(false);
+    expect(isProfileDetailsComplete('Bendee Ok', '123', 'male')).toBe(false);
+  });
+
+  it('leaves two-argument callers unchanged', () => {
+    expect(isProfileDetailsComplete('Bendee Ok', '08129381869')).toBe(true);
+  });
+});

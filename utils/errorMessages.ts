@@ -331,3 +331,50 @@ export const getSpecificErrorMessage = (error: ApiError | Error | any, context?:
 
   return getErrorMessage(error, defaultMessage);
 };
+
+/**
+ * Turns a raw server error string into something worth showing a user.
+ *
+ * Backend messages arrive wrapped in internal prefixes — "Withdrawal failed:
+ * Kora API Error: ..." — and some describe a platform problem in words that
+ * sound like the user's fault. "You are not authorized to access this resource"
+ * comes from our payment gateway credentials, not from anything they did.
+ *
+ * Returns null when the text is only meaningful to us, so callers fall back to
+ * their own copy. The raw string is still logged either way.
+ */
+export function presentServerError(raw: string | null | undefined): string | null {
+  const text = String(raw ?? '').trim();
+  if (!text) return null;
+
+  const stripped = text
+    .replace(/^(withdrawal|payment|deposit|request)\s+failed:\s*/i, '')
+    .replace(/^(kora|korapay|paystack|flutterwave)\s*api\s*error:\s*/i, '')
+    .replace(/^error:\s*/i, '')
+    .trim();
+
+  const lower = stripped.toLowerCase();
+
+  /** Gateway/credential problems — our side, never the user's. */
+  if (
+    /not authorized to access this resource|unauthorized|invalid (api )?key|forbidden|merchant|credential/.test(
+      lower,
+    )
+  ) {
+    return 'This service is temporarily unavailable. Please try again later, or contact support if it continues.';
+  }
+
+  if (/insufficient/.test(lower)) return 'Insufficient balance for this transaction.';
+  if (/pin/.test(lower)) return 'That PIN is incorrect. Try again.';
+  if (/bank account|account number|account not found/.test(lower)) {
+    return 'We could not use that bank account. Check the details and try again.';
+  }
+  if (/limit|exceed/.test(lower)) return stripped;
+
+  /** Internal noise — stack-ish text or bare codes are no use to anyone. */
+  if (stripped.length > 140 || /^[A-Z_]+$/.test(stripped) || /\bat\s+\w+\.\w+/.test(stripped)) {
+    return null;
+  }
+
+  return stripped.charAt(0).toUpperCase() + stripped.slice(1);
+}

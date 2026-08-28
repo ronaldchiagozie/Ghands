@@ -1,4 +1,5 @@
 import { NotificationsListSkeleton } from '@/components/LoadingSkeleton';
+import { NAV_FALLBACK, navigateBack } from '@/utils/navigation';
 import { useErrorSheet } from '@/hooks/useErrorSheet';
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { ScreenHeader } from '@/components/ScreenHeader';
@@ -990,7 +991,7 @@ export default function NotificationsScreen() {
     return (
       <SafeAreaWrapper backgroundColor={Colors.white}>
         <View style={{ flex: 1 }}>
-          <ScreenHeader title="Notifications" onBack={() => router.back()} />
+          <ScreenHeader title="Notifications" onBack={() => navigateBack(router, NAV_FALLBACK.clientHome)} />
           <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }}>
             <NotificationsListSkeleton />
           </View>
@@ -1004,7 +1005,7 @@ export default function NotificationsScreen() {
     return (
       <SafeAreaWrapper backgroundColor={Colors.white}>
         <View style={{ flex: 1 }}>
-          <ScreenHeader title="Notifications" onBack={() => router.back()} />
+          <ScreenHeader title="Notifications" onBack={() => navigateBack(router, NAV_FALLBACK.clientHome)} />
           <View
             style={{
               flex: 1,
@@ -1061,7 +1062,7 @@ export default function NotificationsScreen() {
       <View style={{ flex: 1 }}>
         <ScreenHeader
           title="Notifications"
-          onBack={() => router.back()}
+          onBack={() => navigateBack(router, NAV_FALLBACK.clientHome)}
           style={{ paddingBottom: 10 }}
           rightElement={
             <TouchableOpacity

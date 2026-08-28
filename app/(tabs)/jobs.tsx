@@ -1,4 +1,5 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { isSubmittedBooking } from '@ghands/contract';
 import AnimatedStatusChip from '@/components/AnimatedStatusChip';
 import { haptics } from '@/hooks/useHaptics';
 import { useOnNetworkRestore } from '@/hooks/useNetworkConnectivity';
@@ -291,16 +292,16 @@ export default function JobsScreen() {
       // Ensure requests is always an array
       const requestsArray = Array.isArray(requests) ? requests : [];
       
-      const confirmedRequests = requestsArray.filter((request) => {
-        // Must have both jobTitle and description or we ignore it as noise
-        const hasJobTitle = request.jobTitle && request.jobTitle.trim().length > 0;
-        const hasDescription = request.description && request.description.trim().length > 0;
-        if (!hasJobTitle || !hasDescription) {
-          return false;
-        }
-
-        return true;
-      });
+      /**
+       * The request row is created when a category is tapped, so backing out of
+       * the flow leaves one behind. Title + description alone was not enough to
+       * tell those apart: a user who filled the details and then quit still had
+       * a row, and it showed as "Pending" as though providers were being found.
+       * isSubmittedBooking additionally requires evidence the flow completed.
+       */
+      const confirmedRequests = requestsArray.filter((request) =>
+        isSubmittedBooking(request),
+      );
       
       // Map to job items - Load accepted providers for each request to determine correct status
       const jobItems = await Promise.all(

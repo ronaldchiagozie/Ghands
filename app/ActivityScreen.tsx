@@ -1,4 +1,5 @@
 import { EmptyState } from '@/components/EmptyState';
+import { navigateBack } from '@/utils/navigation';
 import FilterTransactionsModal, {
   DEFAULT_TRANSACTION_FILTERS,
   type FilterState,
@@ -704,7 +705,7 @@ export default function ActivityScreen() {
 
   return (
     <SafeAreaWrapper backgroundColor={Colors.backgroundLight}>
-        <ScreenHeader title="Activity" onBack={() => router.back()} backgroundColor={Colors.backgroundLight} />
+        <ScreenHeader title="Activity" onBack={() => navigateBack(router, '/WalletScreen')} backgroundColor={Colors.backgroundLight} />
       <FlatList
         data={showSkeleton || isLoadingEmpty ? [] : filteredTransactions}
         keyExtractor={(item) => item.id}

@@ -1,4 +1,5 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { NAV_FALLBACK, navigateBack } from '@/utils/navigation';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Colors, BorderRadius } from '@/lib/designSystem';
 import { providerListCard } from '@/lib/providerSurfaceStyles';
@@ -34,7 +35,7 @@ export default function HelpSupportScreen() {
 
   return (
     <SafeAreaWrapper backgroundColor={Colors.backgroundLight}>
-      <ScreenHeader title="Help & support" onBack={() => router.back()} />
+      <ScreenHeader title="Help & support" onBack={() => navigateBack(router, NAV_FALLBACK.clientHome)} />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
