@@ -19,6 +19,16 @@ export default function ClientEntryPoint() {
 
   useEffect(() => {
     const checkAuthAndRoute = async () => {
+      /**
+       * The ref was set in four places and checked in none. This effect re-runs
+       * when the onboarding flag resolves, and `pathname` does not update until
+       * the navigation commits — so it could redirect a second time on top of
+       * the first, which renders the destination twice.
+       */
+      if (hasRedirectedRef.current) {
+        return;
+      }
+
       const currentRoute = pathname || '/';
       const normalizedRoute = currentRoute.startsWith('/') ? currentRoute : `/${currentRoute}`;
 

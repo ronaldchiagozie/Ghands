@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ONBOARDING_STORAGE_KEY } from './useOnboarding';
 import { authService } from '@/services/api';
 import { beginRoleSwitch, endRoleSwitch } from '@/hooks/useRoleSwitching';
-import { markAuthSessionEnded } from '@/utils/authNavigationGuard';
+import { isInAuthTransition, markAuthSessionEnded } from '@/utils/authNavigationGuard';
 import { logoutUser } from '@/utils/logoutUser';
 
 export type UserRole = 'client' | 'provider' | null;
@@ -108,7 +108,14 @@ export function useAuthRole(): UseAuthRoleReturn {
       await logoutUser(router);
     } catch (error) {
       console.error('Error during logout:', error);
-      router.replace('/LoginScreen' as never);
+      /**
+       * logoutUser navigates as its last step, so a failure after that point
+       * would send us to login a second time. Only take over if no redirect has
+       * happened.
+       */
+      if (!isInAuthTransition()) {
+        router.replace('/LoginScreen' as never);
+      }
     }
   }, [router]);
 
