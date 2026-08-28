@@ -126,10 +126,54 @@ Wherever you touch an error path, add a stable machine-readable `code` alongside
 `AUTH_TOKEN_MISSING`, `PROVIDER_NOT_VERIFIED`. The apps currently pattern-match English text,
 which breaks whenever wording changes.
 
+## What to send back
+
+Write your findings to a single file, `BACKEND_AUDIT_RESPONSE.md`, in the root of this repository,
+and keep it updated as you work. It goes back to the mobile team, so it has to stand on its own —
+assume the reader cannot see this codebase.
+
+Use exactly this structure, one block per item:
+
+```markdown
+## 01 — Payment amounts must come from the quotation
+
+**Status:** confirmed | not reproducible | already correct | fixed
+**Where:** src/wallet/wallet.controller.ts:142 — payForService()
+**What is actually happening:**
+One or two sentences. Quote the relevant lines.
+
+**What I changed:**
+What you did, or "nothing yet — awaiting decision on X".
+
+**Test:** test/wallet.spec.ts — "rejects a client-supplied amount"
+**Mobile app impact:** none | describe exactly what changes for the apps
+```
+
+Then two sections at the end:
+
+```markdown
+## Answers to the five questions
+Answer each one, or say who needs to decide it.
+
+## Where the audit was wrong
+Anything the documents claimed that does not hold here. Be blunt — this matters more
+than the fixes, because the mobile side may have built around a false assumption.
+```
+
+**That last section is not a formality.** The audit was performed from outside the API without a
+valid token, so some conclusions are inferences from black-box behaviour. If something is wrong,
+saying so is the most valuable thing you can send back.
+
+Include, for anything you could not test from outside:
+- what the endpoint does **with** a valid authenticated session
+- the actual response body for a successful `POST /api/wallet/pay` — the apps had to be written
+  defensively because we have never seen one
+
 ## Definition of done
 
-For each item: it reproduces, it is fixed, there is a test, and you have told me whether any
-mobile app change is needed to go with it.
+For each item: it reproduces, it is fixed, there is a test, and `BACKEND_AUDIT_RESPONSE.md` says
+so — including whether the mobile apps need a matching change.
 
-Start by reading the three documents and giving me your report on items 1 and 2. Do not change
-anything yet.
+Start by reading the three documents. Then give me your report on crash reporting and the four
+money items, and create `BACKEND_AUDIT_RESPONSE.md` with what you find. **Do not change any
+money-handling code until I have read that report and replied.**
