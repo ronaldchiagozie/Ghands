@@ -43,19 +43,24 @@ export default function OnboardingSlide({
         height: windowHeight,
       },
       heroZone: {
-        height: windowHeight * 0.61,
+        /**
+         * The illustration is the whole point of the slide, so it gets the room.
+         * It was rendering at 78% width inside a zone with 7% top padding, which
+         * left it small against a large field of black.
+         */
+        height: windowHeight * 0.64,
         alignItems: 'center',
         justifyContent: 'center',
         position: 'relative',
-        paddingTop: windowHeight * 0.07,
+        paddingTop: windowHeight * 0.035,
       },
       illustration: {
-        width: windowWidth * 0.78,
+        width: windowWidth * 0.94,
         height: '100%',
         zIndex: 1,
       },
       contentZone: {
-        height: windowHeight * 0.39,
+        height: windowHeight * 0.36,
         paddingHorizontal: isSmallScreen ? 16 : isMediumScreen ? 20 : 24,
         paddingTop: windowHeight < 760 ? 22 * scale : 28 * scale,
         paddingBottom: windowHeight < 700 ? 20 * scale : 32 * scale,
@@ -172,15 +177,17 @@ export default function OnboardingSlide({
       <Svg style={StyleSheet.absoluteFill} width={windowWidth} height={windowHeight}>
         <Defs>
           <SvgLinearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-            <Stop offset="0%" stopColor="#E5E8E0" />
-            <Stop offset="10%" stopColor="#D4D8CF" />
-            <Stop offset="23%" stopColor="#C8D0C0" />
-            <Stop offset="30%" stopColor="#B8C8A0" />
-            <Stop offset="40%" stopColor="#A5C070" />
-            <Stop offset="48%" stopColor="#8AB050" />
-            <Stop offset="54%" stopColor="#4F7600" />
-            <Stop offset="58%" stopColor="#172000" />
-            <Stop offset="72%" stopColor="#070B00" />
+            <Stop offset="0%" stopColor="#E8EBE3" />
+            <Stop offset="12%" stopColor="#D9DED2" />
+            <Stop offset="26%" stopColor="#C6D2B6" />
+            <Stop offset="38%" stopColor="#B0C98A" />
+            <Stop offset="48%" stopColor="#96BE5E" />
+            <Stop offset="57%" stopColor="#74A238" />
+            <Stop offset="65%" stopColor="#527A22" />
+            <Stop offset="72%" stopColor="#345215" />
+            <Stop offset="79%" stopColor="#1E330D" />
+            <Stop offset="86%" stopColor="#101C07" />
+            <Stop offset="93%" stopColor="#070D03" />
             <Stop offset="100%" stopColor="#000000" />
           </SvgLinearGradient>
         </Defs>
