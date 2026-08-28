@@ -56,7 +56,7 @@ export function JobsTabEmptyState(props: JobsTabEmptyStateProps) {
 
   return (
     <View style={styles.container}>
-      <JobsEmptyIllustration variant={copy.variant} size={152} />
+      <JobsEmptyIllustration variant={copy.variant} size={96} />
       <Text style={styles.title}>{copy.title}</Text>
       <Text style={styles.description}>{copy.description}</Text>
     </View>
@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.xxxl,
   },
   title: {
-    marginTop: Spacing.lg,
+    marginTop: Spacing.xl,
     fontSize: 18,
     fontFamily: 'Poppins-SemiBold',
     color: Colors.textPrimary,

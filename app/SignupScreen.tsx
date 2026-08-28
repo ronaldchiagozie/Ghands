@@ -150,7 +150,7 @@ export default function SignupScreen() {
         password: password.trim(),
       };
 
-      await authService.userSignup(signupPayload);
+      const signupResult = await authService.userSignup(signupPayload);
 
       await setClientAccountType('individual');
       // CRITICAL: Set role so index.tsx routes correctly (client came from SelectAccountTypeScreen)
@@ -161,8 +161,19 @@ export default function SignupScreen() {
       await AsyncStorage.setItem('@ghands:profile_complete', 'false');
 
       haptics.success();
-      showSuccess('Account created');
 
+      /**
+       * Signup can come back with a user but no token (backend returns the id
+       * only). Without one the profile step cannot save — its API call 401s —
+       * so send them to sign in rather than into a form that will fail.
+       */
+      if (!signupResult?.token) {
+        showSuccess('Account created. Please sign in to continue.');
+        router.replace('/LoginScreen');
+        return;
+      }
+
+      showSuccess('Account created');
       router.replace('/ProfileCompletionScreen');
     } catch (error: any) {
       haptics.error();

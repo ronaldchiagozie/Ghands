@@ -447,31 +447,18 @@ export default function AddPhotosScreen() {
             </View>
           )}
 
-          <View
-            className="rounded-2xl px-4 py-4 mb-6"
-            style={{
-              backgroundColor: Colors.warningLight,
-              borderWidth: 1,
-              borderColor: Colors.warning,
-            }}
-          >
-            <View className="flex-row items-center mb-2">
-              <Camera size={18} color={Colors.warningForeground} />
-              <Text className="text-sm ml-2" style={{ fontFamily: 'Poppins-SemiBold', color: Colors.warningForeground }}>
-                Photo Tips
-              </Text>
-            </View>
-            <View className="ml-6">
-              <Text className="text-xs mb-1" style={{ fontFamily: 'Poppins-Medium', color: Colors.warningForeground }}>
-                • Take clear, well-lit photos
-              </Text>
-              <Text className="text-xs mb-1" style={{ fontFamily: 'Poppins-Medium', color: Colors.warningForeground }}>
-                • Include surrounding area for context
-              </Text>
-              <Text className="text-xs" style={{ fontFamily: 'Poppins-Medium', color: Colors.warningForeground }}>
-                • Show the problem from multiple angles
-              </Text>
-            </View>
+          <View className="flex-row items-start mb-6 px-1">
+            <Camera size={15} color={Colors.textTertiary} style={{ marginTop: 2 }} />
+            <Text
+              className="flex-1 ml-2 text-xs"
+              style={{
+                fontFamily: 'Poppins-Regular',
+                color: Colors.textTertiary,
+                lineHeight: 18,
+              }}
+            >
+              Clear, well-lit photos from a few angles help providers quote accurately.
+            </Text>
           </View>
         </ScrollView>
 

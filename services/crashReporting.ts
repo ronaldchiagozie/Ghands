@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '@/lib/apiConfig';
 /**
  * Crash reporting service for tracking and reporting app crashes
  * Supports multiple crash reporting providers (can be extended)
@@ -45,7 +46,7 @@ class CrashReportingService {
     // Example: Custom crash reporting endpoint
     this.providers.push(async (report) => {
       try {
-        const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://api.ghands.com';
+        const apiUrl = API_BASE_URL;
         await fetch(`${apiUrl}/crash-reports`, {
           method: 'POST',
           headers: {

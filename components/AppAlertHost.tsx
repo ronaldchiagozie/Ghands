@@ -2,6 +2,7 @@ import { BorderRadius, Colors, MIN_TOUCH_TARGET, Spacing } from '@/lib/designSys
 import { useNarrowOverlayMaxWidth } from '@/lib/tabletLayout';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { AlertTriangle, CheckCircle2, Info, XCircle } from 'lucide-react-native';
 
 export type AppAlertButtonStyle = 'default' | 'cancel' | 'destructive';
 
@@ -11,9 +12,13 @@ export type AppAlertButton = {
   onPress?: () => void | Promise<void>;
 };
 
+export type AppAlertTone = 'success' | 'error' | 'warning' | 'info';
+
 export type AppAlertOptions = {
   cancelable?: boolean;
   onDismiss?: () => void;
+  /** Overrides the tone inferred from the title. */
+  tone?: AppAlertTone;
 };
 
 type AppAlertRequest = {
@@ -43,6 +48,28 @@ export function showAppAlert(
   const resolved = buttons && buttons.length > 0 ? buttons : [{ text: 'OK' }];
   listener?.({ title, message, buttons: resolved, options });
 }
+
+/**
+ * Inferred so the 35 existing call sites gain an icon without being touched.
+ * Pass `options.tone` to override.
+ */
+function inferTone(title: string): AppAlertTone {
+  const t = title.toLowerCase();
+  if (/success|updated|saved|sent|complete|added/.test(t)) return 'success';
+  if (/error|failed|unable|could not|couldn.t|invalid|denied|wrong/.test(t)) return 'error';
+  if (/\?$|required|limit|remove|delete|discard|cancel/.test(t)) return 'warning';
+  return 'info';
+}
+
+const TONE_PRESENTATION: Record<
+  AppAlertTone,
+  { Icon: typeof Info; color: string; background: string }
+> = {
+  success: { Icon: CheckCircle2, color: Colors.accent, background: Colors.successLight },
+  error: { Icon: XCircle, color: Colors.error, background: 'rgba(220, 38, 38, 0.10)' },
+  warning: { Icon: AlertTriangle, color: Colors.warningForeground, background: Colors.warningLight },
+  info: { Icon: Info, color: Colors.accent, background: Colors.successLight },
+};
 
 function buttonColors(style: AppAlertButtonStyle | undefined, isOnly: boolean) {
   if (style === 'destructive') {
@@ -102,6 +129,8 @@ export default function AppAlertHost() {
   if (!request) return null;
 
   const { title, message, buttons } = request;
+  const { Icon, color: toneColor, background: toneBackground } =
+    TONE_PRESENTATION[request.options?.tone ?? inferTone(title)];
   // Two buttons sit side by side; three or more stack, same as the native alert.
   const isRow = buttons.length === 2;
   const ordered = isRow
@@ -134,12 +163,26 @@ export default function AppAlertHost() {
             paddingBottom: 20,
           }}
         >
+          <View
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              backgroundColor: toneBackground,
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: 14,
+            }}
+          >
+            <Icon size={24} color={toneColor} strokeWidth={2.2} />
+          </View>
+
           <Text
             accessibilityRole="header"
             style={{
-              fontSize: 17,
-              lineHeight: 24,
-              fontFamily: 'Poppins-SemiBold',
+              fontSize: 18,
+              lineHeight: 25,
+              fontFamily: 'Poppins-Bold',
               color: Colors.textPrimary,
               marginBottom: message ? 6 : 20,
             }}
@@ -149,7 +192,9 @@ export default function AppAlertHost() {
 
           {message ? (
             <ScrollView
-              style={{ maxHeight: 220 }}
+              /** flexGrow:0 — a maxHeight alone lets a one-line message claim all 220px,
+                  leaving a void between the text and the buttons. */
+              style={{ maxHeight: 220, flexGrow: 0, flexShrink: 1 }}
               contentContainerStyle={{ paddingBottom: 2 }}
               showsVerticalScrollIndicator={false}
               bounces={false}

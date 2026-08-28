@@ -12,6 +12,13 @@ const PUBLIC_UNAUTHENTICATED_PREFIXES = [
   '/ResetPassword',
   '/OtpScreen',
   '/PasswordConfirmation',
+  /**
+   * Reached straight from signup, before the session is guaranteed. Signup can
+   * return a user without a token, and this screen is where the profile is
+   * completed — leaving it protected let the 2s session poll evict people
+   * mid-form and bounce them back to login / account type.
+   */
+  '/ProfileCompletionScreen',
   '/CreatePINScreen',
   '/onboarding',
   '/LocationPermissionScreen',

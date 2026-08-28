@@ -1,3 +1,4 @@
+import { API_BASE_URL } from '@/lib/apiConfig';
 /**
  * Performance monitoring service for tracking app performance metrics
  */
@@ -130,7 +131,7 @@ class PerformanceService {
    */
   private async sendMetric(metric: PerformanceMetric): Promise<void> {
     try {
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://api.ghands.com';
+      const apiUrl = API_BASE_URL;
       await fetch(`${apiUrl}/performance/metrics`, {
         method: 'POST',
         headers: {

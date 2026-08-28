@@ -1,5 +1,6 @@
 
 import ConfirmModal from '@/components/ConfirmModal';
+import { JobsEmptyIllustration } from '@/components/JobsEmptyIllustrations';
 import { AvatarCircle } from '@/components/AvatarCircle';
 import { ClientJobUpdatesPanel } from '@/components/client/ClientJobUpdatesPanel';
 import {
@@ -50,7 +51,7 @@ import {
 import { navigateBack, navigateBackFromBookingJob, NAV_FALLBACK } from '@/utils/navigation';
 import { isDisplayableAvatarUri, pickProviderImageUriFromRecord } from '@/utils/clientProfilePhoto';
 import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { AlertCircle, CheckCircle2, ChevronLeft, ChevronRight, Clock, FileText, MapPinned, Wrench, XCircle } from 'lucide-react-native';
+import { AlertCircle, CheckCircle2, ChevronLeft, ChevronRight, ClipboardCheck, ClipboardList, Clock, FileCheck2, FileText, MapPinned, ScanSearch, UserRoundCheck, Wrench, XCircle } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -304,7 +305,7 @@ export default function OngoingJobDetails() {
       dotColor: JOB_TIMELINE.sage,
       isActive: false,
       isCompleted: true,
-      icon: CheckCircle2,
+      icon: ClipboardList,
     });
 
     // Step 1.5: Provider Selection (if applicable)
@@ -320,7 +321,7 @@ export default function OngoingJobDetails() {
           dotColor: JOB_TIMELINE.sage,
           isActive: false,
           isCompleted: true,
-          icon: CheckCircle2,
+          icon: UserRoundCheck,
         });
       } else if (request.selectedAt && selectionCountdown !== null && selectionCountdown > 0) {
         // Selection pending with countdown
@@ -335,7 +336,7 @@ export default function OngoingJobDetails() {
         dotColor: JOB_TIMELINE.activeDot,
           isActive: true,
           isCompleted: false,
-          icon: Clock,
+          icon: UserRoundCheck,
         });
       } else if (request.selectedAt) {
         timeline.push({
@@ -347,7 +348,7 @@ export default function OngoingJobDetails() {
           dotColor: JOB_TIMELINE.activeDot,
           isActive: true,
           isCompleted: false,
-          icon: Clock,
+          icon: UserRoundCheck,
         });
       }
     }
@@ -396,7 +397,7 @@ export default function OngoingJobDetails() {
         dotColor: JOB_TIMELINE.sage,
         isActive: false,
         isCompleted: true,
-        icon: CheckCircle2,
+        icon: UserRoundCheck,
       });
       
     } else {
@@ -410,7 +411,7 @@ export default function OngoingJobDetails() {
         dotColor: JOB_TIMELINE.pendingDot,
         isActive: false,
         isCompleted: false,
-        icon: Clock,
+        icon: UserRoundCheck,
       });
       
     }
@@ -472,7 +473,7 @@ export default function OngoingJobDetails() {
     timeline.push({
       id: 'step-3',
       title: 'Inspection',
-      icon: MapPinned,
+      icon: ScanSearch,
       ...inspectionVisual,
       description:
         !hasQuotationSent && visitOccurred && !visitDeclined && !visitPaid && visitFeeText
@@ -557,7 +558,7 @@ export default function OngoingJobDetails() {
         dotColor: JOB_TIMELINE.sage,
         isActive: !paidAndConfirmed,
         isCompleted: paidAndConfirmed,
-        icon: paidAndConfirmed ? CheckCircle2 : Clock,
+        icon: FileCheck2,
       });
     } else if (hasQuotationSent) {
       // Quotation sent but not accepted yet - YELLOW (waiting for client to accept)
@@ -570,7 +571,7 @@ export default function OngoingJobDetails() {
         dotColor: JOB_TIMELINE.activeDot,
         isActive: true,
         isCompleted: false,
-        icon: Clock,
+        icon: FileCheck2,
       });
     } else {
       // No quotation sent yet - grey (pending). Use FileText so icon isn't empty-looking
@@ -583,7 +584,7 @@ export default function OngoingJobDetails() {
         dotColor: JOB_TIMELINE.pendingDot,
         isActive: false,
         isCompleted: false,
-        icon: FileText,
+        icon: FileCheck2,
       });
     }
 
@@ -606,7 +607,7 @@ export default function OngoingJobDetails() {
         dotColor: JOB_TIMELINE.sage,
         isActive: false,
         isCompleted: true,
-        icon: CheckCircle2,
+        icon: ClipboardCheck,
       });
     } else if (quotationAccepted) {
       timeline.push({
@@ -618,7 +619,7 @@ export default function OngoingJobDetails() {
         dotColor: JOB_TIMELINE.activeDot,
         isActive: true,
         isCompleted: false,
-        icon: Clock,
+        icon: ClipboardCheck,
       });
     } else {
       timeline.push({
@@ -630,7 +631,7 @@ export default function OngoingJobDetails() {
         dotColor: JOB_TIMELINE.pendingDot,
         isActive: false,
         isCompleted: false,
-        icon: Wrench,
+        icon: ClipboardCheck,
       });
     }
 
@@ -2202,12 +2203,18 @@ export default function OngoingJobDetails() {
                     </View>
                   </>
                 ) : (
-                  <View className="items-center justify-center py-12">
-                    <FileText size={48} color={Colors.tabInactive} />
-                    <Text className="mt-4 text-center" style={{ fontFamily: 'Poppins-Medium', color: Colors.textMuted }}>
-                      No quotations available yet.
+                  <View className="items-center justify-center py-14 px-8">
+                    <JobsEmptyIllustration variant="quotations" size={96} />
+                    <Text
+                      className="mt-6 text-center"
+                      style={{ fontSize: 18, fontFamily: 'Poppins-SemiBold', color: Colors.textPrimary, letterSpacing: -0.3 }}
+                    >
+                      No quotations yet
                     </Text>
-                    <Text className="mt-2 text-center text-sm" style={{ fontFamily: 'Poppins-Regular', color: Colors.iconMuted }}>
+                    <Text
+                      className="mt-2 text-center"
+                      style={{ fontSize: 14, lineHeight: 21, fontFamily: 'Poppins-Regular', color: Colors.textSecondaryDark, maxWidth: 280 }}
+                    >
                       Quotations will appear here once providers submit them.
                     </Text>
                   </View>

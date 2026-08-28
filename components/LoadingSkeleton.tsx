@@ -363,30 +363,50 @@ export const JobCardSkeleton = () => (
   </SkeletonCardShell>
 );
 
+/**
+ * Job card placeholder.
+ *
+ * Laid out in three breathing groups — status, who/what, then details — rather
+ * than a dense stack. The action row is a normal flex child instead of being
+ * absolutely positioned at `top: 52`, where it used to collide with the title on
+ * narrow screens and made the whole card read as clutter.
+ */
 export const JobHistoryCardSkeleton = () => (
-  <SkeletonCardShell style={{ position: 'relative' }}>
-    <Skeleton width={80} height={12} borderRadius={6} style={{ marginBottom: 8 }} />
-    <Skeleton width={90} height={24} borderRadius={12} style={{ marginBottom: 12, alignSelf: 'flex-start' }} />
-    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12, paddingRight: 50 }}>
-      <Skeleton width={36} height={36} borderRadius={18} style={{ marginRight: 10 }} />
+  <SkeletonCardShell style={{ marginBottom: 20, padding: 18 }}>
+    {/* Status row */}
+    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+      <Skeleton width={92} height={26} borderRadius={13} />
+      <Skeleton width={64} height={12} borderRadius={6} />
+    </View>
+
+    {/* Provider + title */}
+    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 20 }}>
+      <Skeleton width={44} height={44} borderRadius={22} style={{ marginRight: 14 }} />
       <View style={{ flex: 1 }}>
-        <Skeleton width="60%" height={16} borderRadius={8} style={{ marginBottom: 4 }} />
-        <Skeleton width="80%" height={14} borderRadius={7} />
+        <Skeleton width="62%" height={16} borderRadius={8} style={{ marginBottom: 9 }} />
+        <Skeleton width="42%" height={13} borderRadius={7} />
       </View>
     </View>
-    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-      <Skeleton width={12} height={12} borderRadius={6} style={{ marginRight: 8 }} />
-      <Skeleton width="50%" height={14} borderRadius={7} />
+
+    {/* Detail lines */}
+    <View style={{ marginTop: 20, gap: 12 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <Skeleton width={14} height={14} borderRadius={7} style={{ marginRight: 12 }} />
+        <Skeleton width="55%" height={13} borderRadius={7} />
+      </View>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <Skeleton width={14} height={14} borderRadius={7} style={{ marginRight: 12 }} />
+        <Skeleton width="72%" height={13} borderRadius={7} />
+      </View>
     </View>
-    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-      <Skeleton width={12} height={12} borderRadius={6} style={{ marginRight: 8 }} />
-      <Skeleton width="70%" height={14} borderRadius={7} />
-    </View>
-    <Skeleton width="100%" height={38} borderRadius={12} />
-    <View style={{ position: 'absolute', right: 14, top: 52, flexDirection: 'row', gap: 4 }}>
-      <Skeleton width={40} height={40} borderRadius={8} />
-      <Skeleton width={40} height={40} borderRadius={8} />
-      <Skeleton width={40} height={40} borderRadius={8} />
+
+    {/* Action row */}
+    <View style={{ flexDirection: 'row', gap: 10, marginTop: 22 }}>
+      <Skeleton width={44} height={44} borderRadius={12} />
+      <Skeleton width={44} height={44} borderRadius={12} />
+      <View style={{ flex: 1 }}>
+        <Skeleton width="100%" height={44} borderRadius={12} />
+      </View>
     </View>
   </SkeletonCardShell>
 );
@@ -559,17 +579,13 @@ export const ClientJobUpdatesPanelSkeleton = ({
         paddingVertical: providerStackGapMd,
       }}
     >
-      <Skeleton width={38} height={38} borderRadius={19} style={{ marginRight: 10 }} />
+      <Skeleton width={40} height={40} borderRadius={20} style={{ marginRight: 12 }} />
       <View style={{ flex: 1 }}>
-        <Skeleton width="46%" height={14} borderRadius={7} style={{ marginBottom: 6 }} />
-        <Skeleton width="32%" height={11} borderRadius={6} />
+        <Skeleton width="44%" height={13} borderRadius={7} style={{ marginBottom: 8 }} />
+        <Skeleton width="28%" height={10} borderRadius={5} />
       </View>
-      <View style={[providerHeaderActionButton, { marginLeft: 6, backgroundColor: '#F3F4F6' }]}>
-        <Skeleton width={16} height={16} borderRadius={8} />
-      </View>
-      <View style={[providerHeaderActionButton, { marginLeft: 6, backgroundColor: '#F3F4F6' }]}>
-        <Skeleton width={16} height={16} borderRadius={8} />
-      </View>
+      <Skeleton width={34} height={34} borderRadius={12} style={{ marginLeft: 8 }} />
+      <Skeleton width={34} height={34} borderRadius={12} style={{ marginLeft: 8 }} />
     </View>
 
     <View style={providerPanelDivider} />
@@ -580,20 +596,15 @@ export const ClientJobUpdatesPanelSkeleton = ({
         paddingVertical: providerStackGapMd,
       }}
     >
-      <Skeleton width={96} height={10} borderRadius={5} style={{ marginBottom: 8 }} />
-      <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-        <View style={{ flex: 1, paddingRight: 8 }}>
-          <Skeleton width="78%" height={15} borderRadius={7} style={{ marginBottom: 8 }} />
-          <Skeleton width="92%" height={12} borderRadius={6} />
-        </View>
-        <Skeleton width={18} height={18} borderRadius={9} />
-      </View>
+      <Skeleton width={72} height={9} borderRadius={5} style={{ marginBottom: 12 }} />
+      <Skeleton width="70%" height={14} borderRadius={7} style={{ marginBottom: 10 }} />
+      <Skeleton width="88%" height={11} borderRadius={6} />
     </View>
 
     <View style={providerPanelDivider} />
 
     <View style={{ flex: 1 }}>
-      <JobDetailsTimelineSkeleton steps={6} fillRemaining={fillHeight != null} />
+      <JobDetailsTimelineSkeleton steps={3} fillRemaining={fillHeight != null} />
     </View>
   </View>
 );

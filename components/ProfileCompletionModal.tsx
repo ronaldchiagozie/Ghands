@@ -9,10 +9,11 @@ import { writeProfileCompleteFlag } from '@/utils/profileCompletion';
 import { getSpecificErrorMessage } from '@/utils/errorMessages';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQueryClient } from '@tanstack/react-query';
-import { Phone, User, X } from 'lucide-react-native';
+import { Phone, User } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import AnimatedModal from './AnimatedModal';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import SafeAreaWrapper from './SafeAreaWrapper';
+import { ScreenHeader } from './ScreenHeader';
 import { InputField } from './InputField';
 import { Button } from './ui/Button';
 
@@ -178,28 +179,34 @@ export default function ProfileCompletionModal({
     }
   };
 
+  if (!visible) return null;
+
   return (
-    <AnimatedModal
-      visible={visible}
-      onClose={handleClose}
-      dismissible={!isSubmitting}
-      minHeightPercent={92}
-      backdropOpacity={0.32}
-    >
-      <View style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.iconContainer}>
-            <User size={24} color={Colors.accent} />
-          </View>
+    <SafeAreaWrapper backgroundColor={Colors.white}>
+      <ScreenHeader
+        title=""
+        backgroundColor={Colors.white}
+        rightElement={
           <TouchableOpacity
             onPress={handleClose}
             activeOpacity={0.7}
-            style={styles.closeButton}
             disabled={isSubmitting}
+            accessibilityRole="button"
+            accessibilityLabel="Skip for now"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={styles.skipButton}
           >
-            <X size={20} color={Colors.textSecondaryDark} />
+            <Text style={[styles.skipText, isSubmitting && { opacity: 0.4 }]}>Skip for now</Text>
           </TouchableOpacity>
+        }
+      />
+
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <View style={styles.iconContainer}>
+          <User size={26} color={Colors.accent} />
         </View>
 
         <ScrollView
@@ -294,10 +301,11 @@ export default function ProfileCompletionModal({
             size="large"
             fullWidth
             disabled={isSubmitting}
+            loading={isSubmitting}
           />
         </View>
-      </View>
-    </AnimatedModal>
+      </KeyboardAvoidingView>
+    </SafeAreaWrapper>
   );
 }
 
@@ -305,51 +313,49 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.white,
-    borderRadius: BorderRadius.xl,
     paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.sm,
-    paddingBottom: Spacing.sm,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: Spacing.sm,
+  skipButton: {
+    minHeight: MIN_TOUCH_TARGET,
+    justifyContent: 'center',
+    paddingHorizontal: 4,
   },
+  skipText: {
+    fontSize: 14,
+    fontFamily: 'Poppins-SemiBold',
+    color: Colors.textSecondaryDark,
+  },
+  /** Left-aligned with the form, like a screen — not centred like a sheet. */
   iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: Colors.successLight,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  closeButton: {
-    width: MIN_TOUCH_TARGET,
-height: MIN_TOUCH_TARGET,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 16,
-    backgroundColor: Colors.backgroundGray,
+    marginTop: Spacing.xs,
+    marginBottom: Spacing.md,
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: Spacing.xs,
+    paddingBottom: Spacing.lg,
   },
   title: {
-    fontSize: 20,
+    fontSize: 26,
+    lineHeight: 32,
     fontFamily: 'Poppins-Bold',
     color: Colors.textPrimary,
-    marginBottom: 4,
-    textAlign: 'center',
+    marginBottom: 6,
+    textAlign: 'left',
+    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 13,
+    fontSize: 14,
     fontFamily: 'Poppins-Regular',
     color: Colors.textSecondaryDark,
-    textAlign: 'center',
-    marginBottom: Spacing.md,
-    lineHeight: 20,
+    textAlign: 'left',
+    marginBottom: Spacing.xl,
+    lineHeight: 21,
   },
   inlineErrorBanner: {
     backgroundColor: '#FEF2F2',
@@ -372,10 +378,10 @@ height: MIN_TOUCH_TARGET,
     marginBottom: 6,
   },
   form: {
-    gap: Spacing.sm,
+    gap: Spacing.lg,
   },
   inputContainer: {
-    marginBottom: Spacing.sm,
+    marginBottom: 0,
   },
   label: {
     fontSize: 13,
@@ -413,8 +419,8 @@ height: MIN_TOUCH_TARGET,
     fontFamily: 'Poppins-SemiBold',
   },
   actions: {
-    marginTop: Spacing.md,
-    paddingTop: Spacing.sm,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.md,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
   },

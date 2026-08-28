@@ -1,11 +1,7 @@
-import {
-  JobTabIconCompleted,
-  JobTabIconOngoing,
-  JobTabIconPending,
-} from '@/components/jobs/JobStatusIcons';
+import { getCategoryIcon } from '@/utils/categoryIcons';
 import { useRouter } from 'expo-router';
 import { navigateToJob } from '@/utils/navigation';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { SURFACE_STYLES } from '@/lib/surfaceStyles';
 import { Colors } from '@/lib/designSystem';
@@ -37,14 +33,15 @@ const JobActivityCardComponent = ({ activity }: JobActivityCardProps) => {
   const theme = getJobDisplayStatusBadge(displayStatus);
   const isAwaitingQuote = (activity.priceRange ?? '').toLowerCase().includes('awaiting');
 
-  const statusIcon =
-    displayStatus === 'Completed' ? (
-      <JobTabIconCompleted size={17} color={Colors.accent} />
-    ) : displayStatus === 'Pending' ? (
-      <JobTabIconPending size={17} color={Colors.accent} />
-    ) : (
-      <JobTabIconOngoing size={17} color={Colors.accent} />
-    );
+  /**
+   * The category's own artwork, falling back to its initials. The status pill on
+   * the right already carries the status, so repeating it as an icon here said
+   * nothing about which job this is.
+   */
+  const CategoryIcon = useMemo(
+    () => getCategoryIcon(activity.category, activity.category),
+    [activity.category],
+  );
 
   const handlePress = () => {
     const requestId = parseInt(activity.id, 10);
@@ -69,11 +66,8 @@ const JobActivityCardComponent = ({ activity }: JobActivityCardProps) => {
     >
       <View className="flex-row items-center justify-between mb-3">
         <View className="flex-row items-center flex-1 pr-3">
-          <View
-            className="w-9 h-9 rounded-full items-center justify-center mr-3"
-            style={{ backgroundColor: Colors.successLight }}
-          >
-            {statusIcon}
+          <View className="items-center justify-center mr-3">
+            <CategoryIcon />
           </View>
           <View style={{ flex: 1 }}>
             <Text
