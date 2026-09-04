@@ -1401,17 +1401,33 @@ export default function OngoingJobDetails() {
     const statusNorm = (request.status || '').toString().toLowerCase().replace(/[\s_-]/g, '');
     if (statusNorm !== 'reviewing') return;
 
+    /**
+     * Name the money and the person. The dialog was titled "Complete Job" with a
+     * "Complete" button, which says nothing about the payment it releases and
+     * does not match the "Confirm & release payment" button that opened it. The
+     * title also matched the tone heuristic's /complete/ rule, so a question
+     * about releasing someone's money was presented with a green success tick,
+     * as though it had already gone through.
+     */
+    const accepted = quotations.find((q: any) => q?.status === 'accepted') as any;
+    const releaseAmount = typeof accepted?.total === 'number' ? accepted.total : null;
+    const providerLabel = accepted?.provider?.name?.trim() || 'the provider';
+    const amountText =
+      releaseAmount != null
+        ? `₦${releaseAmount.toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+        : null;
+
     showAppAlert(
-      'Complete Job',
-      'Are you sure the service has been completed? This will transfer payment to the provider.',
+      amountText ? `Release ${amountText}?` : 'Release payment?',
+      `${amountText ?? 'Payment'} goes to ${providerLabel} now. Only do this if the work is finished and you are happy with it — it cannot be reversed from here.`,
       [
         {
-          text: 'Cancel',
+          text: 'Not yet',
           style: 'cancel',
           onPress: () => haptics.light(),
         },
         {
-          text: 'Complete',
+          text: amountText ? `Release ${amountText}` : 'Release payment',
           style: 'default',
           onPress: async () => {
             if (completeJobLockRef.current) return;
@@ -1465,7 +1481,8 @@ export default function OngoingJobDetails() {
           },
         },
       ],
-      { cancelable: true }
+      /** Explicit: the /complete/ heuristic would otherwise tint this as success. */
+      { cancelable: true, tone: 'warning' }
     );
   };
 

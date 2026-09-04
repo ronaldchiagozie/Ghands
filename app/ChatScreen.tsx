@@ -48,6 +48,7 @@ import { exitChatToJobHub } from '@/utils/navigation';
 import { formatLastActiveLabel, isPeerRecentlyActive } from '@/utils/chatFormatting';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AvatarCircle } from '@/components/AvatarCircle';
+import { resolveMessageOwnership } from '@/contract/src/messageOwnership';
 
 type DirectionHint = 'outgoing' | 'incoming' | null;
 
@@ -325,60 +326,27 @@ export default function ChatScreen() {
 
       const messageId = String((apiMessage as any).id ?? '');
 
-      const isFromClientType =
-        rawSenderType === 'user' || rawSenderType === 'client' || rawSenderType === 'customer';
-      const isFromProviderType =
-        rawSenderType === 'provider' || rawSenderType === 'company';
-
       const peerProviderId =
         peerProviderOverride !== undefined ? peerProviderOverride : providerIdNum ?? resolvedProviderId;
 
-      let isFromCurrentUser = false;
-      let ownershipBranch:
-        | 'identity'
-        | 'peerProvider'
-        | 'direction'
-        | 'ownershipRef'
-        | 'senderTypeFallback' = 'senderTypeFallback';
-
-      // 1) Same id as logged-in party (user id or company id) — works when JWT/storage matches API
-      if (
-        currentUserIdNum !== null &&
-        Number.isFinite(senderIdNum) &&
-        !Number.isNaN(senderIdNum)
-      ) {
-        isFromCurrentUser = senderIdNum === currentUserIdNum;
-        ownershipBranch = 'identity';
-      }
-      // 2) Client app + we know provider id: only that id is the other party (handles missing/wrong senderType)
-      else if (
-        !isProviderView &&
-        peerProviderId !== null &&
-        Number.isFinite(peerProviderId) &&
-        Number.isFinite(senderIdNum) &&
-        !Number.isNaN(senderIdNum)
-      ) {
-        isFromCurrentUser = senderIdNum !== peerProviderId;
-        ownershipBranch = 'peerProvider';
-      }
-      // 3) API direction (outgoing = mine, incoming = theirs) when sender id is missing
-      else if (directionFromApi === 'outgoing') {
-        isFromCurrentUser = true;
-        ownershipBranch = 'direction';
-      } else if (directionFromApi === 'incoming') {
-        isFromCurrentUser = false;
-        ownershipBranch = 'direction';
-      }
-      // 4) Last known per message (optimistic send)
-      else if (messageId && ownershipByMessageIdRef.current[messageId] !== undefined) {
-        isFromCurrentUser = ownershipByMessageIdRef.current[messageId];
-        ownershipBranch = 'ownershipRef';
-      }
-      // 5) senderType only (often wrong/empty from API)
-      else {
-        isFromCurrentUser = isProviderView ? isFromProviderType : isFromClientType;
-        ownershipBranch = 'senderTypeFallback';
-      }
+      /**
+       * One shared rule, because the two apps are the two sides of this
+       * conversation. It used to compare senderId against the logged-in id
+       * directly, which ignores that user ids and provider ids are separate
+       * sequences — client #7 talking to provider #7 matched on every message
+       * and the whole thread stacked onto the right.
+       */
+      const ownership = resolveMessageOwnership({
+        viewer: isProviderView ? 'provider' : 'client',
+        senderType: rawSenderType,
+        senderId: senderIdNum,
+        currentUserId: currentUserIdNum,
+        direction: directionFromApi ?? null,
+        remembered: messageId ? ownershipByMessageIdRef.current[messageId] : undefined,
+        peerProviderId,
+      });
+      const isFromCurrentUser = ownership.isFromCurrentUser;
+      const ownershipBranch = ownership.branch;
 
       if (__DEV__) {
         logChatDebug('message map', {

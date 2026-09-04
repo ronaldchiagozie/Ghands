@@ -109,10 +109,10 @@ export default function RootLayout() {
     const redirectOnSessionExpired = async () => {
       if (await isRoleSwitchInProgress()) return;
       if (isInAuthTransition()) return;
+      /** Involuntary expiry — dedupe with the screens' own AuthError handlers. */
       await redirectToAuthScreen(router, {
         pathname: pathnameRef.current,
         clearSession: false,
-        force: true,
       });
     };
 

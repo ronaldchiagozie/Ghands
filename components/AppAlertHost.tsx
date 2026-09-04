@@ -228,32 +228,46 @@ export default function AppAlertHost() {
                   onPress={() => handlePress(button)}
                   accessibilityRole="button"
                   accessibilityLabel={button.text}
-                  style={({ pressed }) => ({
-                    flex: isRow ? 1 : undefined,
-                    minHeight: MIN_TOUCH_TARGET,
-                    paddingVertical: 13,
-                    paddingHorizontal: 16,
-                    borderRadius: BorderRadius.default,
-                    borderWidth: 1,
-                    borderColor: tone.border,
-                    backgroundColor: tone.background,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    opacity: pressed ? 0.85 : 1,
-                  })}
+                  style={{ flex: isRow ? 1 : undefined }}
                 >
-                  <Text
-                    numberOfLines={2}
+                  {/**
+                   * The button's whole appearance lives on this View, and the
+                   * Pressable carries nothing but the flex slot.
+                   *
+                   * These styles used to be a `({ pressed }) => ({…})` function
+                   * on the Pressable, which is the pattern that flattened
+                   * AccountSetupCard's rows into a vertical stack: NativeWind
+                   * wraps every element here, and a function style does not
+                   * survive it intact. On a plain View it cannot go wrong, and
+                   * for the alert that confirms releasing someone's money, the
+                   * buttons looking like buttons is not a detail.
+                   */}
+                  <View
                     style={{
-                      fontSize: 15,
-                      lineHeight: 20,
-                      fontFamily: 'Poppins-SemiBold',
-                      color: tone.label,
-                      textAlign: 'center',
+                      minHeight: MIN_TOUCH_TARGET,
+                      paddingVertical: 13,
+                      paddingHorizontal: 16,
+                      borderRadius: BorderRadius.default,
+                      borderWidth: 1,
+                      borderColor: tone.border,
+                      backgroundColor: tone.background,
+                      alignItems: 'center',
+                      justifyContent: 'center',
                     }}
                   >
-                    {button.text}
-                  </Text>
+                    <Text
+                      numberOfLines={2}
+                      style={{
+                        fontSize: 15,
+                        lineHeight: 20,
+                        fontFamily: 'Poppins-SemiBold',
+                        color: tone.label,
+                        textAlign: 'center',
+                      }}
+                    >
+                      {button.text}
+                    </Text>
+                  </View>
                 </Pressable>
               );
             })}

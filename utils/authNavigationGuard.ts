@@ -60,7 +60,10 @@ export async function redirectToAuthScreen(
   options: {
     pathname?: string | null;
     clearSession?: boolean;
-    /** Intentional sign-out — bypass cooldown but still dedupe in-flight. */
+    /**
+     * Bypasses the time-based cooldown only. It never bypasses the in-flight
+     * check below — two navigations at once are never what anyone wants.
+     */
     force?: boolean;
   } = {}
 ): Promise<boolean> {
@@ -71,7 +74,19 @@ export async function redirectToAuthScreen(
     return false;
   }
 
-  if (redirectInFlight && !force) return false;
+  /**
+   * Unconditional. This used to be `redirectInFlight && !force`, and both
+   * callers that reach here on an expired session pass force: true — the root
+   * layout's session-expired listener and every screen's AuthError handler. So
+   * the guard was disabled on exactly the path it existed for. An expired token
+   * on a tab screen produced one redirect from the listener and one from each
+   * mounted screen whose fetch had 401'd, which is why signing out walked
+   * through the login screen three times.
+   *
+   * `force` still skips the cooldown below, which is what an intentional
+   * sign-out shortly after a redirect needs.
+   */
+  if (redirectInFlight) return false;
   if (!force && now - lastRedirectAt < REDIRECT_COOLDOWN_MS) return false;
 
   redirectInFlight = true;

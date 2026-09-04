@@ -17,11 +17,13 @@ export async function handleAuthErrorRedirect(
     if (!router && isInAuthTransition()) return;
     await expireAuthSession();
     if (router) {
-      await redirectToAuthScreen(router, {
-        pathname,
-        clearSession: false,
-        force: true,
-      });
+      /**
+       * Not forced. This is an involuntary expiry, and several screens reach it
+       * at once when their fetches 401 together — deduping is the entire point.
+       * Forcing here is what made a single expired session redirect to login
+       * once per mounted screen.
+       */
+      await redirectToAuthScreen(router, { pathname, clearSession: false });
     }
   } catch {
     /* expireAuthSession is coalesced; navigation handled by session-expired listener */
