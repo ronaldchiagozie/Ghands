@@ -137,7 +137,6 @@ const generateDummyQuotations = (acceptedProviders: any[], categoryName?: string
       id: `quote-${item.provider.id}`,
       providerName: item.provider.name,
       providerType: 'Provider',
-      providerImage: require('../assets/images/plumbericon2.png'),
       quoteAmount: `$${finalAmount}`,
       serviceBreakdown: breakdown.map(item => ({
         ...item,
@@ -180,7 +179,6 @@ interface Quotation {
   id: string;
   providerName: string;
   providerType: string;
-  providerImage: any; 
   quoteAmount: string;
   serviceBreakdown: ServiceBreakdownItem[];
   paymentTerms: PaymentTerm[];

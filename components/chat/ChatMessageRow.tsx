@@ -3,10 +3,10 @@ import { androidElevation, iosOnlyShadow } from '@/lib/surfaceStyles';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { AlertCircle, Check, CheckCheck } from 'lucide-react-native';
 import React, { useEffect, useRef } from 'react';
+import { AvatarCircle } from '@/components/AvatarCircle';
 import {
   ActivityIndicator,
   Animated,
-  Image,
   Text,
   TouchableOpacity,
   View,
@@ -28,6 +28,8 @@ type ChatMessageRowProps = {
   animateEnter: boolean;
   onRetry?: () => void;
   onLongPress?: () => void;
+  /** The other party's name, for initials when they have no photo. */
+  counterpartName?: string;
 };
 
 export default function ChatMessageRow({
@@ -37,6 +39,7 @@ export default function ChatMessageRow({
   animateEnter,
   onRetry,
   onLongPress,
+  counterpartName,
 }: ChatMessageRowProps) {
   const reducedMotion = useReducedMotion();
   const opacity = useRef(new Animated.Value(animateEnter && !reducedMotion ? 0 : 1)).current;
@@ -112,15 +115,7 @@ export default function ChatMessageRow({
               borderColor: Colors.border,
             }}
           >
-            <Image
-              source={
-                isFromProvider
-                  ? require('../../assets/images/plumbericon2.png')
-                  : require('../../assets/images/userimg.jpg')
-              }
-              style={{ width: 28, height: 28, borderRadius: 14 }}
-              resizeMode="cover"
-            />
+            <AvatarCircle name={counterpartName} size={28} borderColor="transparent" />
           </View>
         ) : (
           <View style={{ width: 28, marginRight: 8 }} />

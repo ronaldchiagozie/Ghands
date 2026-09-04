@@ -34,9 +34,9 @@ import {
     Wallet,
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AvatarCircle } from '@/components/AvatarCircle';
 import {
     ActivityIndicator,
-    Image,
     Modal,
     Pressable,
     RefreshControl,
@@ -46,7 +46,6 @@ import {
     View,
 } from 'react-native';
 
-const DEFAULT_AVATAR = require('../../assets/images/userimg.jpg');
 
 const MODAL_ACTION_BTN = {
   flex: 1,
@@ -313,9 +312,6 @@ const ProfileScreen = () => {
   const displayName = profile?.name?.trim() || 'Your profile';
   const displayLocation = location?.trim() || 'Add your location';
   const hasRating = (profile?.rating ?? 0) > 0 || (profile?.reviewCount ?? 0) > 0;
-  const avatarSource = profile?.profileImageUri
-    ? { uri: profile.profileImageUri }
-    : DEFAULT_AVATAR;
 
   useEffect(() => {
     logClientProfilePhoto('profile_tab_avatar', {
@@ -531,16 +527,21 @@ const ProfileScreen = () => {
             }}
           >
             <TouchableOpacity onPress={openEditProfile} activeOpacity={0.85} style={{ marginRight: 18 }}>
-              <Image
-                source={avatarSource}
-                style={{
-                  width: 80,
-                  height: 80,
-                  borderRadius: 40,
-                  borderWidth: 3,
-                  borderColor: 'rgba(255,255,255,0.38)',
-                }}
-                resizeMode="cover"
+              {/**
+                * Their initials when they have no photo, not userimg.jpg — a
+                * stock portrait of somebody else, which is a stranger's face
+                * sitting where your own is supposed to be. Light-on-sage here
+                * because this panel is dark.
+                */}
+              <AvatarCircle
+                uri={profile?.profileImageUri}
+                name={profile?.name}
+                size={80}
+                borderWidth={3}
+                borderColor="rgba(255,255,255,0.38)"
+                backgroundColor="rgba(255,255,255,0.18)"
+                textColor={Colors.white}
+                iconColor={Colors.white}
               />
             </TouchableOpacity>
 

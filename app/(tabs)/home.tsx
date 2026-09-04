@@ -1,7 +1,7 @@
 import { CoachMarkTarget } from '@/components/CoachMarkTarget';
 import AccountSetupCard from '@/components/home/AccountSetupCard';
 import { useAccountSetup, type SetupTaskId } from '@/hooks/useAccountSetup';
-import { syncPushNotifications } from '@/utils/pushNotifications';
+import { enableNotifications, syncPushNotifications } from '@/utils/pushNotifications';
 import { isSubmittedBooking } from '@ghands/contract';
 import { CategoryChipSkeleton, JobCardSkeleton } from '@/components/LoadingSkeleton';
 import LocationSearchModal from '@/components/LocationSearchModal';
@@ -37,7 +37,7 @@ import { healJobStatusAfterVisitDecline } from '@/utils/visitStatus';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Bell, Briefcase, ChevronDown, ChevronRight, Gift, MapPin, Search, Tag, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Animated, Linking, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { ServiceCategory } from '../../data/serviceCategories';
 
 /** Deep olive: Quick actions panel + matching CTAs (pin, search, badges) on home. */
@@ -565,8 +565,29 @@ const HomeScreen = React.memo(() => {
           router.push('/ProviderLinkBankAccountScreen' as never);
           break;
         case 'notifications':
-          /** Prompts if undetermined; a denied permission needs system settings. */
-          void syncPushNotifications(true).finally(() => void refreshSetup());
+          /**
+           * Prompts if the OS will still prompt, and opens system settings if it
+           * will not — which is the case for anyone who has already declined
+           * once, and so for most people still looking at this row.
+           *
+           * Nothing is said on success: the row disappears from the checklist,
+           * which is the clearer confirmation. The only case worth a word is a
+           * fresh decline, and it gets a button rather than a sentence.
+           */
+          void enableNotifications()
+            .then((result) => {
+              if (result === 'denied') {
+                Alert.alert(
+                  'Notifications are off',
+                  'Turn them on in Settings to hear when a provider accepts your job.',
+                  [
+                    { text: 'Not now', style: 'cancel' },
+                    { text: 'Open Settings', onPress: () => void Linking.openSettings() },
+                  ],
+                );
+              }
+            })
+            .finally(() => void refreshSetup());
           break;
         default:
           break;

@@ -1,7 +1,11 @@
 import type { ServiceRequest } from '@/services/api';
 
 const TECH = require('../assets/images/Category icons/Technician.png');
-const DEFAULT_ICON = require('../assets/images/plumbericon2.png');
+/**
+ * The neutral stand-in for a step with no better art. Was plumbericon2.png,
+ * so an unmatched category rendered its whole timeline as plumbing.
+ */
+const DEFAULT_ICON = TECH;
 
 /** First photo URL from common API shapes (`images`, `photos`, etc.). */
 export function extractFirstRemoteImageUrl(req: any): string | null {

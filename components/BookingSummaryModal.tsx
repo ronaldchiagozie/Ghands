@@ -6,6 +6,7 @@ import { Edit2, Calendar, Clock, MapPin, Image as ImageIcon, Users, ChevronRight
 import { Button } from './ui/Button';
 import { haptics } from '@/hooks/useHaptics';
 import { formatSkillLabel } from '@/utils/formatSkillLabel';
+import { AvatarCircle } from '@/components/AvatarCircle';
 
 export interface BookingSummaryData {
   serviceType?: string;
@@ -19,7 +20,7 @@ export interface BookingSummaryData {
     id: string;
     name: string;
     category: string;
-    image?: any;
+    imageUri?: string | null;
   }>;
 }
 
@@ -233,13 +234,17 @@ export default function BookingSummaryModal({
               <View style={styles.providersList}>
                 {data.selectedProviders.map((provider, index) => (
                   <View key={provider.id} style={styles.providerItem}>
-                    {provider.image && (
-                      <Image
-                        source={provider.image}
-                        style={styles.providerImage}
-                        resizeMode="cover"
-                      />
-                    )}
+                    {/**
+                      * Always rendered now. This was `provider.image && …`, and
+                      * the only image ever passed was a stock plumber icon, so
+                      * the row either showed the wrong trade or nothing at all.
+                      */}
+                    <AvatarCircle
+                      uri={provider.imageUri}
+                      name={provider.name}
+                      size={48}
+                      style={{ marginRight: Spacing.md }}
+                    />
                     <View style={styles.providerInfo}>
                       <Text style={styles.providerName}>{provider.name}</Text>
                       <Text style={styles.providerCategory}>

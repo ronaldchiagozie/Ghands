@@ -7,7 +7,6 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Dimensions,
   FlatList,
-  Image,
   Keyboard,
   type KeyboardEvent,
   Platform,
@@ -273,15 +272,12 @@ export default function LiveChatScreen() {
               marginLeft: Spacing.sm,
             }}
           >
-            <Image
-              source={require('../assets/images/userimg.jpg')}
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: BorderRadius.full,
-              }}
-              resizeMode="cover"
-            />
+            {/**
+              * Support is a desk, not a person, so it gets the brand mark rather
+              * than userimg.jpg — a stock portrait that read as a named human
+              * agent nobody could actually ask for.
+              */}
+            <Headphones size={20} color={Colors.accent} />
           </View>
         )}
       </View>

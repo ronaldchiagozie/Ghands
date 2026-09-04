@@ -36,7 +36,7 @@ const SAMPLE_PROVIDERS: ServiceProvider[] = __DEV__ ? [
     reviews: 0,
     distance: '0.8 miles away',
     availability: 'Available',
-    image: require('../assets/images/plumbericon2.png'),
+    imageUri: null,
     coords: { latitude: 6.6018, longitude: 3.3515 },
   },
   {
@@ -47,7 +47,7 @@ const SAMPLE_PROVIDERS: ServiceProvider[] = __DEV__ ? [
     reviews: 0,
     distance: '1.1 miles away',
     availability: 'Available',
-    image: require('../assets/images/electricianicon2.png'),
+    imageUri: null,
     coords: { latitude: 6.6128, longitude: 3.3615 },
   },
   {
@@ -58,7 +58,7 @@ const SAMPLE_PROVIDERS: ServiceProvider[] = __DEV__ ? [
     reviews: 0,
     distance: '1.4 miles away',
     availability: 'Available',
-    image: require('../assets/images/cleanericon.png'),
+    imageUri: null,
     coords: { latitude: 6.5965, longitude: 3.3472 },
   },
   {
@@ -69,7 +69,7 @@ const SAMPLE_PROVIDERS: ServiceProvider[] = __DEV__ ? [
     reviews: 0,
     distance: '1.6 miles away',
     availability: 'Available',
-    image: require('../assets/images/plumbericon.png'),
+    imageUri: null,
     coords: { latitude: 6.609, longitude: 3.3312 },
   },
   {
@@ -80,7 +80,7 @@ const SAMPLE_PROVIDERS: ServiceProvider[] = __DEV__ ? [
     reviews: 0,
     distance: '2.1 miles away',
     availability: 'Available',
-    image: require('../assets/images/electricianicon.png'),
+    imageUri: null,
     coords: { latitude: 6.593, longitude: 3.3674 },
   },
 ] : [];
@@ -349,7 +349,13 @@ const ServiceMapScreen = () => {
                 ? `${formatDistance(provider.distanceKm)} away`
                 : 'Distance unavailable',
             availability: provider.verified ? 'Available' : 'Busy',
-            image: require('../assets/images/plumbericon2.png'), // Default icon - could use getCategoryIcon result
+            /**
+             * No photo to show: /api/provider/nearby returns no image field at
+             * all, so the avatar falls back to the provider's initials. It used
+             * to be hardcoded to plumbericon2.png, which meant every provider on
+             * this map was drawn as a plumber.
+             */
+            imageUri: null,
             coords: {
               latitude: serviceLocationCoords.latitude + (Math.cos(angle) * distanceInDegrees),
               longitude: serviceLocationCoords.longitude + (Math.sin(angle) * distanceInDegrees),
@@ -912,7 +918,7 @@ const ServiceMapScreen = () => {
             id: p.id,
             name: p.name,
             category: p.category,
-            image: p.image,
+            imageUri: p.imageUri,
           })),
         }}
       />

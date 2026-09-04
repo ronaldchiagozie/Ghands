@@ -1,6 +1,6 @@
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
-import { AppState, Platform, type AppStateStatus } from 'react-native';
+import { AppState, Linking, Platform, type AppStateStatus } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { notificationService } from '@/services/api';
 import { authService } from '@/services/authService';
@@ -326,4 +326,62 @@ export function installPushNotificationLifecycle(
 
 export function schedulePushSyncAfterAuth(): void {
   void syncPushNotifications(true);
+}
+
+/**
+ * What happened when the user asked to turn notifications on.
+ *
+ * `denied` is separate from `opened-settings` because they need different
+ * things said to them: one just declined a prompt, the other is looking at the
+ * system settings screen and needs no further explanation.
+ */
+export type EnableNotificationsResult = 'granted' | 'denied' | 'opened-settings' | 'unavailable';
+
+/**
+ * Turns notifications on from the setup checklist, ending somewhere useful.
+ *
+ * The checklist row used to call syncPushNotifications and hope. That works
+ * exactly once: iOS shows its permission prompt a single time, and every later
+ * requestPermissionsAsync resolves "denied" without displaying anything. So for
+ * anyone who had already said no — which is most people who still see this row,
+ * since granting it removes the row — the button did nothing at all. No prompt,
+ * no settings, no error. It just sat there.
+ *
+ * Now the only route back is the one that exists: the system settings screen.
+ */
+export async function enableNotifications(): Promise<EnableNotificationsResult> {
+  const Notifications = getNotificationsModule();
+  if (!Notifications || !Device.isDevice) return 'unavailable';
+
+  const current = await Notifications.getPermissionsAsync();
+
+  if (current.status === 'granted') {
+    await syncPushNotifications(true);
+    return 'granted';
+  }
+
+  /**
+   * `canAskAgain` false means the OS will not show the prompt again, so asking
+   * is the dead end described above. Send them to settings instead.
+   */
+  if (current.canAskAgain === false) {
+    await Linking.openSettings();
+    return 'opened-settings';
+  }
+
+  const next = await Notifications.requestPermissionsAsync({
+    ios: { allowAlert: true, allowBadge: true, allowSound: true },
+  });
+
+  if (next.status === 'granted') {
+    await syncPushNotifications(true);
+    return 'granted';
+  }
+
+  /**
+   * Deliberately not opening settings here. They declined the prompt a moment
+   * ago; throwing them into system settings for saying no reads as a punishment.
+   * Tapping the row again will take them there, because canAskAgain is now false.
+   */
+  return 'denied';
 }

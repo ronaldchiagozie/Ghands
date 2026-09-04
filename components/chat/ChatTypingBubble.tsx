@@ -1,13 +1,19 @@
 import AiChatTypingDots from '@/components/ai/chat/AiChatTypingDots';
 import React from 'react';
-import { Image, View } from 'react-native';
+import { View } from 'react-native';
 import { Colors } from '@/lib/designSystem';
+import { AvatarCircle } from '@/components/AvatarCircle';
 
 type ChatTypingBubbleProps = {
   isProviderView: boolean;
+  /** The other party's name, for initials when they have no photo. */
+  counterpartName?: string;
 };
 
-export default function ChatTypingBubble({ isProviderView }: ChatTypingBubbleProps) {
+export default function ChatTypingBubble({
+  isProviderView,
+  counterpartName,
+}: ChatTypingBubbleProps) {
   return (
     <View
       style={{
@@ -28,15 +34,7 @@ export default function ChatTypingBubble({ isProviderView }: ChatTypingBubblePro
           borderColor: Colors.border,
         }}
       >
-        <Image
-          source={
-            isProviderView
-              ? require('../../assets/images/userimg.jpg')
-              : require('../../assets/images/plumbericon2.png')
-          }
-          style={{ width: 28, height: 28, borderRadius: 14 }}
-          resizeMode="cover"
-        />
+        <AvatarCircle name={counterpartName} size={28} borderColor="transparent" />
       </View>
 
       <View

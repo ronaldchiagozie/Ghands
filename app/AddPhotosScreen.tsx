@@ -6,11 +6,12 @@ import { useToast } from '@/hooks/useToast';
 import { BorderRadius, Colors, Spacing } from '@/lib/designSystem';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Camera, Plus, X } from 'lucide-react-native';
+import { Camera, Plus, Search, X } from 'lucide-react-native';
 import { navigateBookingStepBack } from '@/utils/bookingFlowNavigation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Image, Modal, ScrollView, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { resolveCategoryImageSource } from '@/utils/categoryIcons';
 
 const BOOKING_PHOTO_URIS_KEY = '@ghands:booking_photo_uris';
 
@@ -267,6 +268,12 @@ export default function AddPhotosScreen() {
       } as any);
     }, 500);
   }, [isFindingProviders, selectedPhotos, photos, router, params]);
+
+  /** Falls back to a neutral search glyph when the category has no art. */
+  const categorySpinnerIcon = useMemo(
+    () => resolveCategoryImageSource(params.categoryName, params.serviceType),
+    [params.categoryName, params.serviceType],
+  );
 
   const goBackToDateTime = useCallback(() => {
     if (!params.requestId) {
@@ -527,7 +534,16 @@ export default function AddPhotosScreen() {
                 transform: [{ rotate: spin }],
               }}
             >
-              <Image source={require('../assets/images/plumbericon2.png')} style={{ width: 42, height: 42, resizeMode: 'contain' }} />
+              {/**
+                * The category being booked, not a plumber. This spinner shows
+                * while providers are being found, so for a tiling or cleaning
+                * job it was announcing the wrong trade back to the customer.
+                */}
+              {categorySpinnerIcon ? (
+                <Image source={categorySpinnerIcon} style={{ width: 42, height: 42, resizeMode: 'contain' }} />
+              ) : (
+                <Search size={34} color={Colors.accent} strokeWidth={2} />
+              )}
             </Animated.View>
             <Text
               style={{

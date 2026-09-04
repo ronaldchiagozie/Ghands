@@ -12,7 +12,6 @@ import { CallIconOutline } from '@/components/call/CallIcons';
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import {
   FlatList,
-  Image,
   Keyboard,
   type KeyboardEvent,
   type NativeScrollEvent,
@@ -48,6 +47,7 @@ import { buildChatListItems } from '@/utils/chatListItems';
 import { exitChatToJobHub } from '@/utils/navigation';
 import { formatLastActiveLabel, isPeerRecentlyActive } from '@/utils/chatFormatting';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AvatarCircle } from '@/components/AvatarCircle';
 
 type DirectionHint = 'outgoing' | 'incoming' | null;
 
@@ -983,6 +983,7 @@ export default function ChatScreen() {
 
       return (
         <ChatMessageRow
+          counterpartName={peerName}
           message={item.message}
           isFirstInGroup={item.isFirstInGroup}
           isLastInGroup={item.isLastInGroup}
@@ -1063,15 +1064,13 @@ height: MIN_TOUCH_TARGET,
                 borderColor: 'rgba(17, 24, 39, 0.045)',
               }}
             >
-              <Image
-                source={isProviderView ? require('../assets/images/userimg.jpg') : require('../assets/images/plumbericon2.png')}
-                style={{
-                  width: 42,
-                  height: 42,
-                  borderRadius: BorderRadius.full,
-                }}
-                resizeMode="cover"
-              />
+              {/**
+                * The person you are talking to. This was a stock photo one way
+                * and a plumber icon the other, so the header showed a stranger's
+                * face to providers and a wrench to customers — neither of which
+                * was the peer named directly beside it.
+                */}
+              <AvatarCircle name={peerName} size={42} borderColor="transparent" />
               {showActiveDot ? (
                 <View
                   style={{
@@ -1222,7 +1221,9 @@ height: MIN_TOUCH_TARGET,
           scrollEventThrottle={16}
             style={{ flex: 1, backgroundColor: Colors.sageSurface }}
             ListFooterComponent={
-              isPeerTyping ? <ChatTypingBubble isProviderView={isProviderView} /> : null
+              isPeerTyping ? (
+                <ChatTypingBubble isProviderView={isProviderView} counterpartName={peerName} />
+              ) : null
             }
             ListEmptyComponent={
               !isLoading ? <ChatThreadEmptyState peerName={peerName} /> : null

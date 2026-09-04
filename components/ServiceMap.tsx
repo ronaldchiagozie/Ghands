@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Image, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Animated, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE, Region } from 'react-native-maps';
 import { useRouter } from 'expo-router';
 import { Search, Star } from 'lucide-react-native';
@@ -7,6 +7,7 @@ import { BorderRadius, Colors, MIN_TOUCH_TARGET } from '@/lib/designSystem';
 import { SURFACE_STYLES } from '@/lib/surfaceStyles';
 
 import mapStyle from '@/lib/mapStyle';
+import { AvatarCircle } from '@/components/AvatarCircle';
 
 export type ProviderCategory = 'Plumber' | 'Electrician' | 'Car Wash' | 'Mechanic' | string;
 
@@ -19,7 +20,13 @@ export type ServiceProvider = {
   reviews: number;
   distance: string;
   availability: 'Available' | 'Busy' | 'Offline';
-  image: any;
+  /**
+   * The provider's own photo, when there is one. `/api/provider/nearby` does not
+   * return a photo today, so in practice this is usually empty and the avatar
+   * falls back to initials — which is the point: it used to fall back to a
+   * picture of a plumber regardless of trade.
+   */
+  imageUri?: string | null;
   coords: {
     latitude: number;
     longitude: number;
@@ -35,18 +42,7 @@ const DEFAULT_MAP_REGION: Region = {
   longitudeDelta: 0.04,
 };
 
-const categoryIcons: Record<string, any> = {
-  Plumber: require('../assets/images/plumbericon.png'),
-  Electrician: require('../assets/images/electricianicon.png'),
-  'Car Wash': require('../assets/images/cleanericon2.png'),
-  Mechanic: require('../assets/images/mechanicicon.png'),
-};
-
 const MAX_SELECTION = 3;
-
-function getIcon(category: ProviderCategory) {
-  return categoryIcons[category] ?? require('../assets/images/plumbericon2.png');
-}
 
 /** Numeric company id for API / ProviderDetailScreen (list id is often `provider-123`). */
 export function getBackendProviderNumericId(p: ServiceProvider): number | null {
@@ -163,17 +159,21 @@ const ServiceMap: React.FC<ServiceMapProps> = ({
               coordinate={provider.coords}
               onPress={() => setActiveProvider(provider)}
             >
+              {/**
+                * The marker is the person, not their trade. It used to be a
+                * trade icon drawn from a map of four categories, so every
+                * provider outside those four — tilers, roofers, cleaners —
+                * appeared on the map as a plumber.
+                */}
               <View
                 className="items-center justify-center bg-white rounded-full"
                 style={{ width: 56, height: 56, ...SURFACE_STYLES.homeTile }}
               >
-                <Image
-                  source={getIcon(provider.category)}
-                  style={{ width: 45, height: 45, resizeMode: 'contain' }}
-                  defaultSource={require('../assets/images/plumbericon2.png')}
-                  onError={(error) => {
-                    console.warn('Error loading marker image:', error);
-                  }}
+                <AvatarCircle
+                  uri={provider.imageUri}
+                  name={provider.name}
+                  size={48}
+                  borderColor="transparent"
                 />
               </View>
             </Marker>
@@ -314,13 +314,11 @@ const ServiceMap: React.FC<ServiceMapProps> = ({
                       className="flex-row items-center bg-white rounded-2xl px-3 py-3"
                       style={SURFACE_STYLES.homeTile}
                     >
-                      <Image
-                        source={provider.image}
-                        style={{ width: 54, height: 54, borderRadius: 27, marginRight: 12 }}
-                        defaultSource={require('../assets/images/plumbericon2.png')}
-                        onError={(error) => {
-                          console.warn('Error loading provider image:', error);
-                        }}
+                      <AvatarCircle
+                        uri={provider.imageUri}
+                        name={provider.name}
+                        size={54}
+                        style={{ marginRight: 12 }}
                       />
                       <View className="flex-1">
                         <Text className="text-base text-black" style={{ fontFamily: 'Poppins-SemiBold' }}>
@@ -379,13 +377,11 @@ const ServiceMap: React.FC<ServiceMapProps> = ({
         >
           <View className="bg-white rounded-3xl p-4" style={SURFACE_STYLES.homeCard}>
             <View className="flex-row items-center">
-              <Image
-                source={activeProvider.image}
-                style={{ width: 60, height: 60, borderRadius: 30, marginRight: 14 }}
-                defaultSource={require('../assets/images/plumbericon2.png')}
-                onError={(error) => {
-                  console.warn('Error loading active provider image:', error);
-                }}
+              <AvatarCircle
+                uri={activeProvider.imageUri}
+                name={activeProvider.name}
+                size={60}
+                style={{ marginRight: 14 }}
               />
               <View className="flex-1">
                 <Text className="text-lg text-black" style={{ fontFamily: 'Poppins-SemiBold' }}>
