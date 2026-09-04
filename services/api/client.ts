@@ -42,7 +42,14 @@ class ApiClient {
           ? Object.fromEntries(existingHeaders.entries())
           : { ...(existingHeaders as Record<string, string>) };
         const contentType = headersObj['Content-Type'] || headersObj['content-type'] || 'application/json';
+        /**
+         * Spread the caller's headers rather than replacing them. This used to
+         * build a fresh object from Content-Type and Authorization alone, so any
+         * custom header was silently dropped — Idempotency-Key included, which
+         * would have looked wired up in the client and never reached the server.
+         */
         config.headers = {
+          ...headersObj,
           'Content-Type': contentType,
           Authorization: `Bearer ${token}`,
         } as HeadersInit;
@@ -194,6 +201,7 @@ class ApiClient {
           err.status = statusCode;
           err.statusText = response.statusText;
           err.details = errorDetails;
+          err.code = extractErrorCode(errorDetails);
           throw err;
         }
         const processedResponse = await this.applyResponseInterceptors(response);
@@ -293,10 +301,51 @@ class ApiClient {
 
 export const apiClient = new ApiClient(API_BASE_URL);
 
+/**
+ * Pulls the payload out of the API envelope, tolerating either nesting depth.
+ *
+ * The API is moving from `{ success, message, data: { data: PAYLOAD } }` to
+ * `{ success, message, data: PAYLOAD }`. Callers that unwrap with their own
+ * `?.data?.data ?? ?.data ?? …` chain already survive both, but ones that use
+ * this helper alone did not: getRequestDetails returned the wrapper instead of
+ * the request under the old shape.
+ *
+ * A lone `{ data: X }` is an envelope layer and gets peeled. A payload that
+ * carries `data` alongside other fields is left alone, so nothing that
+ * legitimately has a `data` property is unwrapped by mistake. That makes the
+ * two server shapes indistinguishable to every caller, and the deploy order
+ * between server and apps no longer matters.
+ */
+function isBareDataWrapper(value: any): boolean {
+  return (
+    !!value &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    'data' in value &&
+    Object.keys(value).length === 1
+  );
+}
+
+/**
+ * Pulls the backend's stable error code off a failed response.
+ *
+ * The apps have been matching on English message text ("Invalid PIN"), which
+ * breaks the moment someone rewords a string. The backend now sends a machine
+ * readable `code` alongside the message; it is looked for at each nesting level
+ * because the error envelope has not been as consistent as the success one.
+ */
+export function extractErrorCode(body: any): string | undefined {
+  const candidates = [body?.code, body?.data?.code, body?.error?.code, body?.data?.error?.code];
+  const code = candidates.find((value) => typeof value === 'string' && value.trim());
+  return code ? code.trim() : undefined;
+}
+
 export function extractResponseData<T>(response: any): T {
   if (Array.isArray(response)) return response as T;
   if (Array.isArray(response?.data)) return response.data as T;
   if (Array.isArray(response?.data?.data)) return response.data.data as T;
-  if (response?.data !== undefined) return response.data as T;
+  if (response?.data !== undefined) {
+    return (isBareDataWrapper(response.data) ? response.data.data : response.data) as T;
+  }
   return response as T;
 }

@@ -165,9 +165,12 @@ export default function SignupScreen() {
       haptics.success();
 
       /**
-       * Signup can come back with a user but no token (backend returns the id
-       * only). Without one the profile step cannot save — its API call 401s —
-       * so send them to sign in rather than into a form that will fail.
+       * Kept as a guard, not an expectation: the backend has since confirmed
+       * signup always returns a token, so this should never fire. It stays
+       * because the cost of being wrong is asymmetric — without a token the
+       * profile step cannot save (its call 401s), and sending someone to sign in
+       * is a far better outcome than dropping them into a form that fails on
+       * submit with no explanation.
        */
       if (!signupResult?.token) {
         showSuccess('Account created. Please sign in to continue.');

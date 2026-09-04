@@ -168,6 +168,41 @@ const ServiceMapScreen = () => {
     }, [params.serviceType, params.selectedDateTime, params.selectedDate, params.selectedTime, params.photoCount, params.location])
   );
 
+  /**
+   * Publish the booking so providers can see it.
+   *
+   * A request is created as a draft while the customer fills it in, and the
+   * provider-facing lists exclude drafts. This screen is where the customer
+   * starts waiting for offers, so it is the point the request has to go live —
+   * and it is the one step every route into the booking flow passes through,
+   * including coming back from changing the location or the category.
+   *
+   * The ref keeps it to one call per request id: the screen re-renders as
+   * providers load and as the location resolves, and the effect must not fire
+   * again each time.
+   */
+  const confirmedRequestIdRef = React.useRef<string | null>(null);
+  useEffect(() => {
+    const requestIdParam = params.requestId;
+    if (!requestIdParam) return;
+    if (confirmedRequestIdRef.current === requestIdParam) return;
+
+    const requestId = parseInt(requestIdParam, 10);
+    if (!Number.isFinite(requestId) || requestId <= 0) return;
+
+    confirmedRequestIdRef.current = requestIdParam;
+    serviceRequestService.confirmRequest(requestId).catch((error) => {
+      /**
+       * Deliberately not shown to the customer. The request itself was saved;
+       * this is the publish step, which the service already treats a missing
+       * endpoint and a repeat call as success. Blocking the map on it would
+       * turn a backend deployment difference into a dead end.
+       */
+      console.error('Could not publish booking to providers:', error);
+      confirmedRequestIdRef.current = null;
+    });
+  }, [params.requestId]);
+
   // Update serviceLocation when savedLocation changes
   useEffect(() => {
     if (!savedLocation) return;

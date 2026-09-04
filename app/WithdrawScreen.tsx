@@ -1,4 +1,5 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { createIdempotencyKey } from '@/utils/idempotencyKey';
 import { navigateBack } from '@/utils/navigation';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { SageHeroPanel } from '@/components/provider/SageHeroPanel';
@@ -49,6 +50,8 @@ export default function WithdrawScreen() {
    * thing standing between a fumbled keystroke and a double transfer.
    */
   const withdrawInFlightRef = React.useRef(false);
+  /** Reused across retries so a re-submitted withdrawal cannot pay out twice. */
+  const idempotencyKeyRef = React.useRef<string>(createIdempotencyKey('withdraw'));
   const { amountFontSize } = useSageHeroPanelMetrics();
 
   const loadData = useCallback(async () => {
@@ -133,12 +136,15 @@ export default function WithdrawScreen() {
           amount,
         });
       }
-      const result = await walletService.withdraw({
-        bankAccountId: selectedAccount.id,
-        amount,
-        pin: pinValue,
-        narration: 'Withdrawal',
-      });
+      const result = await walletService.withdraw(
+        {
+          bankAccountId: selectedAccount.id,
+          amount,
+          pin: pinValue,
+          narration: 'Withdrawal',
+        },
+        idempotencyKeyRef.current,
+      );
       if (__DEV__) {
         console.log('✅ [Withdraw] success', { reference: result.reference, status: result.status });
       }

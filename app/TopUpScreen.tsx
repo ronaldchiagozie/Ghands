@@ -1,4 +1,5 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
+import { createIdempotencyKey } from '@/utils/idempotencyKey';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import Skeleton from '@/components/LoadingSkeleton';
 import AnimatedModal from '@/components/AnimatedModal';
@@ -855,13 +856,19 @@ export default function TopUpScreen() {
     try {
       const depositCallbackUrl = ExpoLinking.createURL('wallet-deposit-return');
 
-      // Initialize deposit - creates payment link (backend should pass callback into Korapay when supported
-      // so the in-app browser can dismiss automatically after paySuccess).
+      /**
+       * The server now forwards callbackUrl to Korapay as `redirect_url`, so the
+       * checkout page can close itself instead of leaving the user to tap X.
+       * A fresh idempotency key per tap makes the transport-level retries on
+       * this endpoint safe — the same key returns the original charge rather
+       * than minting a second one.
+       */
       const depositResponse = await walletService.initializeDeposit({
         amount,
         email: email.trim(),
         name: userName || undefined,
         callbackUrl: depositCallbackUrl,
+        idempotencyKey: createIdempotencyKey(`deposit-${amount}`),
       });
 
       haptics.success();

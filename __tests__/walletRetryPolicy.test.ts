@@ -71,6 +71,35 @@ describe('wallet retry policy', () => {
     });
     await walletService.initializeDeposit({ amount: 100, email: 'a@b.test' });
 
-    expect(configFor('/api/wallet/deposit')).toBeUndefined();
+    expect(configFor('/api/wallet/deposit')?.retries).toBeUndefined();
+  });
+
+  /**
+   * The server replays a repeated key rather than moving money again, so the
+   * header has to actually arrive. It reaches fetch only because the auth
+   * interceptor spreads caller headers instead of replacing them.
+   */
+  it('sends the idempotency key on each money endpoint', async () => {
+    await walletService.payForService({ requestId: 1, amount: 100, pin: '1234' } as any, 'key-pay');
+    expect(configFor('/api/wallet/pay')).toEqual(
+      expect.objectContaining({ retries: 0, headers: { 'Idempotency-Key': 'key-pay' } }),
+    );
+
+    await walletService.withdraw({ bankAccountId: 1, amount: 100, pin: '1234' }, 'key-wd');
+    expect(configFor('/api/wallet/withdraw')).toEqual(
+      expect.objectContaining({ retries: 0, headers: { 'Idempotency-Key': 'key-wd' } }),
+    );
+  });
+
+  /** Deposit carries the key but keeps retrying — a lost response should recover. */
+  it('sends the key on deposit without disabling its retries', async () => {
+    post.mockResolvedValue({
+      data: { authorizationUrl: 'https://kora.test/pay', reference: 'REF-1' },
+    });
+    await walletService.initializeDeposit({ amount: 100, email: 'a@b.test', idempotencyKey: 'key-dep' });
+
+    const config = configFor('/api/wallet/deposit');
+    expect(config).toEqual({ headers: { 'Idempotency-Key': 'key-dep' } });
+    expect(config?.retries).toBeUndefined();
   });
 });

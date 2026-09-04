@@ -10,13 +10,25 @@ describe('isSubmittedBooking', () => {
    * "Pending" — as though providers were being found for a booking that was
    * never actually made.
    */
-  it('rejects a request created by tapping a category and nothing else', () => {
+  it('rejects a bare row with no details, whatever its status', () => {
     expect(isSubmittedBooking({ status: 'pending' })).toBe(false);
+    expect(isSubmittedBooking({ status: 'draft' })).toBe(false);
   });
 
-  it('rejects details filled in but no provider ever chosen', () => {
-    expect(isSubmittedBooking(detailed)).toBe(false);
-    expect(isAbandonedDraft(detailed)).toBe(true);
+  /**
+   * Changed deliberately after the backend confirmed its list endpoint already
+   * excludes drafts. A `pending` row reaching us has left draft, so trusting it
+   * is correct — the old heuristic would have hidden a real job that simply had
+   * no quotes yet.
+   */
+  it('trusts a pending row the server chose to send', () => {
+    expect(isSubmittedBooking(detailed)).toBe(true);
+    expect(isAbandonedDraft(detailed)).toBe(false);
+  });
+
+  it('still rejects an explicit draft, which arrives when fetched by id', () => {
+    expect(isSubmittedBooking({ ...detailed, status: 'draft' })).toBe(false);
+    expect(isAbandonedDraft({ ...detailed, status: 'draft' })).toBe(true);
   });
 
   it('accepts once a provider has been selected', () => {

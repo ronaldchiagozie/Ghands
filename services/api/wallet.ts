@@ -14,6 +14,28 @@ export type { PayForServicePayload, PayForServiceResponse };
  */
 const NO_RETRY = { retries: 0 } as const;
 
+/**
+ * Config for a money-moving call: never auto-retried, and carrying the caller's
+ * idempotency key when one is supplied. The server replays the original response
+ * for a repeated key within ~24h rather than moving money again, so a user
+ * retrying after an uncertain failure cannot be charged twice.
+ */
+function moneyRequest(idempotencyKey?: string) {
+  return idempotencyKey
+    ? { ...NO_RETRY, headers: { 'Idempotency-Key': idempotencyKey } }
+    : NO_RETRY;
+}
+
+/**
+ * Deposit keeps its retries: no money has moved when this call is made, and a
+ * lost response here should recover rather than fail. It carries the key when
+ * one is supplied so those retries return the original charge instead of
+ * creating a second one.
+ */
+function depositRequest(idempotencyKey?: string) {
+  return idempotencyKey ? { headers: { 'Idempotency-Key': idempotencyKey } } : undefined;
+}
+
 export interface Bank {
   code: string;
   name: string;
@@ -270,11 +292,19 @@ export const walletService = {
     email: string;
     name?: string;
     phone?: string;
-    /** Used only client-side for openAuthSessionAsync — not sent to API. */
+    /**
+     * Watched locally by openAuthSessionAsync, and now also sent to the server,
+     * which passes it to Korapay as `redirect_url` so checkout closes itself.
+     */
     callbackUrl?: string;
+    idempotencyKey?: string;
   }): Promise<{ authorizationUrl: string; reference: string }> => {
-    const { callbackUrl: _callbackUrl, ...apiPayload } = payload;
-    const response = await apiClient.post<any>('/api/wallet/deposit', apiPayload);
+    const { idempotencyKey, ...apiPayload } = payload;
+    const response = await apiClient.post<any>(
+      '/api/wallet/deposit',
+      apiPayload,
+      depositRequest(idempotencyKey),
+    );
     const responseData = extractResponseData<any>(response);
     const depositData = responseData?.data || responseData;
     if (!depositData?.authorizationUrl || !depositData?.reference) {
@@ -320,9 +350,12 @@ export const walletService = {
     }
   },
 
-  payForService: async (payload: PayForServicePayload): Promise<PayForServiceResponse> => {
+  payForService: async (
+    payload: PayForServicePayload,
+    idempotencyKey?: string,
+  ): Promise<PayForServiceResponse> => {
     try {
-      const response = await apiClient.post<any>('/api/wallet/pay', payload, NO_RETRY);
+      const response = await apiClient.post<any>('/api/wallet/pay', payload, moneyRequest(idempotencyKey));
       const data = normalizePaymentResponse(response, payload.requestId);
       void logWalletApiResponse(
         'API POST /api/wallet/pay',
@@ -340,9 +373,12 @@ export const walletService = {
     }
   },
 
-  payLogisticsFee: async (payload: { requestId: number; amount: number; pin: string }): Promise<PayForServiceResponse> => {
+  payLogisticsFee: async (
+    payload: { requestId: number; amount: number; pin: string },
+    idempotencyKey?: string,
+  ): Promise<PayForServiceResponse> => {
     try {
-      const response = await apiClient.post<any>('/api/wallet/pay-logistics-fee', payload, NO_RETRY);
+      const response = await apiClient.post<any>('/api/wallet/pay-logistics-fee', payload, moneyRequest(idempotencyKey));
       const data = normalizePaymentResponse(response, payload.requestId);
       void logWalletApiResponse(
         'API POST /api/wallet/pay-logistics-fee',
@@ -360,13 +396,16 @@ export const walletService = {
     }
   },
 
-  withdraw: async (payload: { bankAccountId: number; amount: number; pin: string; narration?: string }): Promise<{
+  withdraw: async (
+    payload: { bankAccountId: number; amount: number; pin: string; narration?: string },
+    idempotencyKey?: string,
+  ): Promise<{
     reference: string;
     status: string;
     amount: number;
     balance: number;
   }> => {
-    const response = await apiClient.post<any>('/api/wallet/withdraw', payload, NO_RETRY);
+    const response = await apiClient.post<any>('/api/wallet/withdraw', payload, moneyRequest(idempotencyKey));
     const data = extractResponseData<any>(response)?.data || extractResponseData<any>(response);
     return {
       reference: data?.reference || '',

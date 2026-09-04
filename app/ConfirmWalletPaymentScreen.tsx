@@ -1,4 +1,5 @@
 import Skeleton from '@/components/LoadingSkeleton';
+import { createIdempotencyKey } from '@/utils/idempotencyKey';
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { SageHeroPanel } from '@/components/provider/SageHeroPanel';
@@ -85,6 +86,15 @@ export default function ConfirmWalletPaymentScreen() {
   const settlementRefRef = useRef<string | null>(null);
   /** Amount the API says it actually debited — the receipt's source of truth. */
   const debitedAmountRef = useRef<number | null>(null);
+  /**
+   * One idempotency key for this payment, reused across every attempt on this
+   * screen. A retry after an uncertain failure replays the original result on
+   * the server rather than debiting again; a genuinely new payment gets a new
+   * screen and therefore a new key.
+   */
+  const idempotencyKeyRef = useRef<string>(
+    createIdempotencyKey(`pay-${params.requestId ?? 'unknown'}`),
+  );
   /** Set on unmount so in-flight polling stops touching state. */
   const unmountedRef = useRef(false);
   const spinAnim = useRef(new Animated.Value(0)).current;
@@ -311,8 +321,14 @@ export default function ConfirmWalletPaymentScreen() {
         transactionId: String(requestId),
       });
       const response = isLogisticsFee
-        ? await walletService.payLogisticsFee({ requestId, amount: amountNum, pin: pinValue })
-        : await walletService.payForService({ requestId, amount: amountNum, pin: pinValue });
+        ? await walletService.payLogisticsFee(
+            { requestId, amount: amountNum, pin: pinValue },
+            idempotencyKeyRef.current,
+          )
+        : await walletService.payForService(
+            { requestId, amount: amountNum, pin: pinValue },
+            idempotencyKeyRef.current,
+          );
 
       settlementRefRef.current = response?.reference ?? null;
       debitedAmountRef.current = response?.amount ?? null;
@@ -409,16 +425,29 @@ export default function ConfirmWalletPaymentScreen() {
         return;
       }
 
-      const isPinError = /pin|wrong pin|invalid pin|incorrect pin|unauthorized pin|pin not set|no pin|not set up|create.*pin/i.test(
-        errorMessage
-      );
+      /**
+       * The backend now sends a stable `code` on these. Prefer it, and keep the
+       * text match only as a fallback for endpoints it has not reached yet —
+       * matching English breaks the moment a message is reworded, and the
+       * wording here decides whether someone is shown a PIN pad or an error.
+       */
+      const errorCode: string | undefined = error?.code;
+      const isPinError =
+        errorCode === 'PIN_INVALID' ||
+        errorCode === 'PIN_NOT_SET' ||
+        (!errorCode &&
+          /pin|wrong pin|invalid pin|incorrect pin|unauthorized pin|pin not set|no pin|not set up|create.*pin/i.test(
+            errorMessage
+          ));
       if (isPinError) {
         haptics.error();
         setIsProcessingPayment(false);
         setShowProcessingModal(false);
         setPin('');
         setShowPinModal(true);
-        const notSet = /pin not set|no pin|not been set|set up|create.*pin|must set/i.test(errorMessage);
+        const notSet =
+          errorCode === 'PIN_NOT_SET' ||
+          (!errorCode && /pin not set|no pin|not been set|set up|create.*pin|must set/i.test(errorMessage));
         showError(
           notSet
             ? 'Wallet PIN required. Create one below, then come back to pay, or try again if you already have a PIN.'
@@ -430,7 +459,14 @@ export default function ConfirmWalletPaymentScreen() {
       setIsProcessingPayment(false);
       const errorContext = params.paymentType === 'logistics_fee' ? 'pay_logistics_fee' : 'pay_for_service';
       const errorMsg = getSpecificErrorMessage(error, errorContext) || errorMessage || 'Payment failed. Please try again.';
-      const isInsufficientBalance = /insufficient|balance/i.test(errorMessage) || /insufficient|balance/i.test(errorMsg);
+      /**
+       * Was `/insufficient|balance/i`, which matched the bare word "balance" —
+       * so "could not verify your balance" told someone to top up an account
+       * that may already have had the money. The code decides it now.
+       */
+      const isInsufficientBalance =
+        errorCode === 'INSUFFICIENT_BALANCE' ||
+        (!errorCode && (/insufficient/i.test(errorMessage) || /insufficient/i.test(errorMsg)));
       haptics.error();
       showError(errorMsg);
       setPaymentError({
