@@ -12,6 +12,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Image, Modal, ScrollView, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { resolveCategoryImageSource } from '@/utils/categoryIcons';
+import { rememberBookingStep } from '@/utils/bookingResume';
 
 const BOOKING_PHOTO_URIS_KEY = '@ghands:booking_photo_uris';
 
@@ -249,6 +250,11 @@ export default function AddPhotosScreen() {
       } catch {
         // Non-fatal; preview just won't show
       }
+      void rememberBookingStep('providers', params.requestId, {
+        ...params,
+        photoCount: selectedPhotos.size.toString(),
+      });
+
       // Push so back from map returns to Add photos; booking stack stays intact
       router.push({
         pathname: '/ServiceMapScreen' as any,

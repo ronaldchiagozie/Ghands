@@ -1,5 +1,8 @@
 import { CoachMarkTarget } from '@/components/CoachMarkTarget';
 import AccountSetupCard from '@/components/home/AccountSetupCard';
+import ResumeBookingCard from '@/components/home/ResumeBookingCard';
+import { useBookingResume } from '@/hooks/useBookingResume';
+import { resumeRouteFor } from '@/utils/bookingResume';
 import { useAccountSetup, type SetupTaskId } from '@/hooks/useAccountSetup';
 import { enableNotifications, syncPushNotifications } from '@/utils/pushNotifications';
 import { isSubmittedBooking } from '@ghands/contract';
@@ -381,6 +384,13 @@ const HomeScreen = React.memo(() => {
     setRefreshing(false);
   }, [loadJobActivities, refreshLocation]);
 
+  const {
+    point: resumePoint,
+    stepLabel: resumeStepLabel,
+    discard: discardResumePoint,
+    refresh: refreshResume,
+  } = useBookingResume();
+
   useFocusEffect(
     useCallback(() => {
       if (router.canGoBack()) {
@@ -388,7 +398,13 @@ const HomeScreen = React.memo(() => {
       }
       refreshLocation();
       runAuthSafe(() => loadJobActivities(), router);
-    }, [refreshLocation, loadJobActivities, router])
+      /**
+       * Re-checked on every return to this tab, not just on mount. Coming back
+       * from finishing a booking has to make the card go away, and coming back
+       * from abandoning one has to make it appear.
+       */
+      void refreshResume();
+    }, [refreshLocation, loadJobActivities, router, refreshResume])
   );
 
 
@@ -547,6 +563,18 @@ const HomeScreen = React.memo(() => {
   const handleViewAllJobs = useCallback(() => {
     router.push('/(tabs)/jobs' as any);
   }, [router]);
+
+  const handleResumeBooking = useCallback(() => {
+    if (!resumePoint) return;
+    haptics.light();
+    const route = resumeRouteFor(resumePoint);
+    router.push({ pathname: route.pathname as any, params: route.params } as any);
+  }, [resumePoint, router]);
+
+  const handleDiscardBooking = useCallback(() => {
+    haptics.light();
+    void discardResumePoint();
+  }, [discardResumePoint]);
 
   const handleSetupTaskPress = useCallback(
     (id: SetupTaskId) => {
@@ -1022,6 +1050,21 @@ const HomeScreen = React.memo(() => {
             </View>
           </View>
           */}
+          {/**
+            * Above the setup checklist: an unfinished booking is something they
+            * started and were interrupted in, which is more urgent than a task
+            * they have not begun.
+            */}
+          {resumePoint ? (
+            <View style={{ paddingHorizontal: CLIENT_HOME_SCROLL_GUTTER }}>
+              <ResumeBookingCard
+                categoryName={resumePoint.categoryName}
+                stepLabel={resumeStepLabel ?? 'Finish your booking'}
+                onResume={handleResumeBooking}
+                onDiscard={handleDiscardBooking}
+              />
+            </View>
+          ) : null}
           <View style={{ paddingHorizontal: CLIENT_HOME_SCROLL_GUTTER }}>
             <AccountSetupCard
               outstanding={setupOutstanding}

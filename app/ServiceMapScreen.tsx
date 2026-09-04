@@ -24,6 +24,8 @@ import { useToast } from '@/hooks/useToast';
 import Toast from '@/components/Toast';
 import { Colors, Spacing, BorderRadius } from '@/lib/designSystem';
 import { MapPin, AlertCircle, ArrowLeft } from 'lucide-react-native';
+import { clearBookingResumePoint, rememberBookingStep } from '@/utils/bookingResume';
+import { navigateToClientHomeTab } from '@/utils/navigation';
 const MAX_SELECTION = 3;
 
 // Dummy providers - only used in development mode for testing
@@ -167,41 +169,6 @@ const ServiceMapScreen = () => {
         .catch(() => setBookingPhotoUris([]));
     }, [params.serviceType, params.selectedDateTime, params.selectedDate, params.selectedTime, params.photoCount, params.location])
   );
-
-  /**
-   * Publish the booking so providers can see it.
-   *
-   * A request is created as a draft while the customer fills it in, and the
-   * provider-facing lists exclude drafts. This screen is where the customer
-   * starts waiting for offers, so it is the point the request has to go live —
-   * and it is the one step every route into the booking flow passes through,
-   * including coming back from changing the location or the category.
-   *
-   * The ref keeps it to one call per request id: the screen re-renders as
-   * providers load and as the location resolves, and the effect must not fire
-   * again each time.
-   */
-  const confirmedRequestIdRef = React.useRef<string | null>(null);
-  useEffect(() => {
-    const requestIdParam = params.requestId;
-    if (!requestIdParam) return;
-    if (confirmedRequestIdRef.current === requestIdParam) return;
-
-    const requestId = parseInt(requestIdParam, 10);
-    if (!Number.isFinite(requestId) || requestId <= 0) return;
-
-    confirmedRequestIdRef.current = requestIdParam;
-    serviceRequestService.confirmRequest(requestId).catch((error) => {
-      /**
-       * Deliberately not shown to the customer. The request itself was saved;
-       * this is the publish step, which the service already treats a missing
-       * endpoint and a repeat call as success. Blocking the map on it would
-       * turn a backend deployment difference into a dead end.
-       */
-      console.error('Could not publish booking to providers:', error);
-      confirmedRequestIdRef.current = null;
-    });
-  }, [params.requestId]);
 
   // Update serviceLocation when savedLocation changes
   useEffect(() => {
@@ -428,6 +395,25 @@ const ServiceMapScreen = () => {
     []
   );
 
+  /**
+   * Gives up on this booking and goes home.
+   *
+   * The empty states offered "Change location" and "Try a different category" —
+   * both of which keep you inside a flow you may simply want to leave. The only
+   * way out was the back arrow, which walks back through the booking a screen at
+   * a time and never actually ends it.
+   *
+   * Nothing is sent to the server. The request stays a draft, and a draft is
+   * excluded from every list either app reads, so it costs nobody anything by
+   * existing. Clearing the local pointer is what makes it stay gone: without
+   * that, home would offer the booking straight back.
+   */
+  const handleAbandonBooking = useCallback(async () => {
+    haptics.light();
+    await clearBookingResumePoint();
+    navigateToClientHomeTab(router);
+  }, [router]);
+
   const handleMapBack = useCallback(() => {
     haptics.light();
     if (router.canGoBack()) {
@@ -602,6 +588,18 @@ const ServiceMapScreen = () => {
                     />
                   </>
                 )}
+                {/**
+                  * A way to stop, rather than another way to keep trying. Both
+                  * options above keep you inside the flow; leaving it was only
+                  * possible by walking back out with the arrow.
+                  */}
+                <Button
+                  title="Cancel and go home"
+                  onPress={() => void handleAbandonBooking()}
+                  variant="ghost"
+                  size="medium"
+                  fullWidth
+                />
               </View>
             </View>
           </View>
@@ -709,6 +707,13 @@ const ServiceMapScreen = () => {
                   size="medium"
                   fullWidth
                 />
+                <Button
+                  title="Cancel and go home"
+                  onPress={() => void handleAbandonBooking()}
+                  variant="ghost"
+                  size="medium"
+                  fullWidth
+                />
               </View>
             </View>
           </View>
@@ -796,6 +801,36 @@ const ServiceMapScreen = () => {
           setShowSummaryModal(false);
           await AsyncStorage.removeItem(BOOKING_PHOTO_URIS_KEY);
 
+          /**
+           * This is where the booking becomes real, so this is where it gets
+           * published. A request is created as a draft while it is being filled
+           * in, and the provider-facing lists exclude drafts.
+           *
+           * It was briefly done when this screen opened, which was wrong: the
+           * map is where you look at providers and decide, and backing out from
+           * it is a normal thing to do. Publishing on arrival would have turned
+           * every abandoned look into a live job nobody was waiting on — the
+           * exact phantom the draft status exists to prevent.
+           */
+          if (params.requestId) {
+            const requestId = parseInt(params.requestId, 10);
+            if (Number.isFinite(requestId) && requestId > 0) {
+              try {
+                await serviceRequestService.confirmRequest(requestId);
+              } catch (error) {
+                /**
+                 * Not fatal to the flow. The service already treats a missing
+                 * endpoint and a repeat call as success, so reaching here means
+                 * a real failure — but the customer has just committed, and
+                 * stopping them at this point helps nobody. The confirmation
+                 * screen polls the request, so a job that failed to publish
+                 * surfaces there rather than in a dead end here.
+                 */
+                console.error('Could not publish booking to providers:', error);
+              }
+            }
+          }
+
           // If user selected a provider and we have requestId, call selectProvider API
           if (selectedProviders.length > 0 && params.requestId) {
             try {
@@ -818,6 +853,9 @@ const ServiceMapScreen = () => {
             }
           }
           
+          /** Booked. There is nothing left to come back to. */
+          await clearBookingResumePoint();
+
           haptics.success();
           navigateBookingFlowToConfirmation(router, {
             requestId: params.requestId,

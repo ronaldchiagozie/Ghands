@@ -19,6 +19,7 @@ import { isConnectivityOrNetworkError } from '@/utils/isNetworkFailure';
 import { extractUserIdFromToken } from '@/utils/tokenUtils';
 import { BorderRadius, Colors, MIN_TOUCH_TARGET, Spacing, SHADOWS, useTabScrollContentPaddingTop, useTabScreenScrollBottomPadding } from '@/lib/designSystem';
 import { navigateBack, navigateToClientHomeTab, NAV_FALLBACK } from '@/utils/navigation';
+import { rememberBookingStep } from '@/utils/bookingResume';
 
 interface CategoryData extends ServiceCategory {
   IconComponent: React.ComponentType;
@@ -434,6 +435,16 @@ export default function CategoryPage() {
         if (!response || !response.requestId) {
           throw new Error('Invalid response: requestId not found');
         }
+
+        /**
+         * The draft exists on the server from this point, so the pointer back to
+         * it does too. Tapping a category and being interrupted immediately is
+         * the most common way to end up with a half-made booking.
+         */
+        void rememberBookingStep('details', response.requestId.toString(), {
+          requestId: response.requestId.toString(),
+          categoryName: isToggle,
+        });
 
         // Navigate to JobDetailsScreen with requestId
         routes.push({

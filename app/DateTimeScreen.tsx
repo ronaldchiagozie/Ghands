@@ -13,6 +13,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { rememberBookingStep } from '@/utils/bookingResume';
 
 const MONTHS = [
   'January',
@@ -252,6 +253,17 @@ export default function DateTimeScreen() {
       await serviceRequestService.updateDateTime(requestId, {
         scheduledDate,
         scheduledTime,
+      });
+
+      /**
+       * Written as they move on, with the date they just chose in it, so an
+       * interruption on the next screen brings them back here with it intact.
+       */
+      void rememberBookingStep('photos', params.requestId, {
+        ...params,
+        selectedDate: selectedDate?.toISOString() ?? '',
+        selectedTime: selectedTime ?? '',
+        selectedDateTime: formattedDateTime,
       });
 
       showSuccess('Date and time updated');

@@ -16,6 +16,7 @@ import { haptics } from '@/hooks/useHaptics';
 import { getSpecificErrorMessage } from '@/utils/errorMessages';
 import { generateHandyJobDraft } from '@/utils/handyJobDraft';
 import { navigateBack, NAV_FALLBACK } from '@/utils/navigation';
+import { rememberBookingStep } from '@/utils/bookingResume';
 
 const MAX_DESCRIPTION_LENGTH = 500;
 const MIN_DESCRIPTION_LENGTH = 10;
@@ -269,6 +270,10 @@ export default function JobDetailsScreen() {
       });
 
       hasSubmittedRef.current = true;
+      void rememberBookingStep('schedule', params.requestId, {
+        ...params,
+        bookingOrigin: 'jobDetails',
+      });
       showSuccess('Job details updated');
       haptics.success();
 
