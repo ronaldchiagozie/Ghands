@@ -122,6 +122,21 @@ function parseCategoriesResponse(response: unknown): ServiceCategory[] {
   return Array.isArray(nestedData) ? nestedData : [];
 }
 
+/**
+ * Codes the publish call returns when the booking itself is not ready.
+ *
+ * Distinguished from a transport failure because they mean opposite things: one
+ * says go back and fill something in, the other says try a different endpoint.
+ */
+const PUBLISH_REJECTION_CODES = new Set([
+  'MISSING_JOB_DETAILS',
+  'MISSING_SCHEDULE',
+  'MISSING_LOCATION',
+  'PROVIDER_NOT_SELECTED',
+  'PROVIDER_NOT_VERIFIED',
+  'REQUEST_NOT_SELECTABLE',
+]);
+
 export const serviceRequestService = {
   getCategories: async (): Promise<ServiceCategory[]> => {
     try {
@@ -232,12 +247,19 @@ export const serviceRequestService = {
       );
       const data = extractResponseData<any>(response);
       published = String(data?.status ?? '').toLowerCase() === 'pending';
-    } catch {
+    } catch (error: any) {
       /**
-       * A deployment without the endpoint, or one that refuses the extra field.
-       * Neither tells us the booking is bad, only that confirm did not publish
-       * it. If the request really is incomplete, the call below applies the same
-       * field checks and surfaces the same failure.
+       * A rejection carrying one of the publish codes is confirm doing its job:
+       * the booking is genuinely incomplete, and falling back to select-provider
+       * would only produce the same refusal with a vaguer message. Raise it so
+       * the screen can send them to the step that is missing.
+       */
+      if (PUBLISH_REJECTION_CODES.has(String(error?.code ?? ''))) throw error;
+
+      /**
+       * Anything else is a deployment without the endpoint, or one that refuses
+       * the extra field. Neither says the booking is bad, only that confirm did
+       * not publish it.
        */
       published = false;
     }

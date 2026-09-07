@@ -97,4 +97,32 @@ describe('publishBooking', () => {
       'Select a date and time',
     );
   });
+
+  /**
+   * A code naming what is missing means the booking is genuinely incomplete.
+   * Falling back to select-provider would only produce the same refusal with a
+   * vaguer message, and would lose the code the screen needs to send the
+   * customer to the step that is empty.
+   */
+  describe('when the booking itself is not ready', () => {
+    const rejection = (code: string) =>
+      Object.assign(new Error('Add the job title and description'), { status: 400, code });
+
+    it.each([
+      'MISSING_JOB_DETAILS',
+      'MISSING_SCHEDULE',
+      'MISSING_LOCATION',
+      'PROVIDER_NOT_SELECTED',
+      'PROVIDER_NOT_VERIFIED',
+      'REQUEST_NOT_SELECTABLE',
+    ])('raises %s instead of retrying the other endpoint', async (code) => {
+      post.mockImplementation(async (path: string) => {
+        if (path === CONFIRM) throw rejection(code);
+        return { data: { requestId: 418, status: 'pending' } };
+      });
+
+      await expect(serviceRequestService.publishBooking(418, 31)).rejects.toMatchObject({ code });
+      expect(pathsCalled()).toEqual([CONFIRM]);
+    });
+  });
 });

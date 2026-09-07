@@ -5,6 +5,28 @@ import BookingSummaryModal, { BookingSummaryData } from '@/components/BookingSum
 import { haptics } from '@/hooks/useHaptics';
 
 const BOOKING_PHOTO_URIS_KEY = '@ghands:booking_photo_uris';
+
+/**
+ * Where to send somebody when the publish call says the booking is incomplete.
+ *
+ * The backend returns a code naming the missing piece, which is the whole point
+ * of having asked for codes: "Select a date and time before selecting a
+ * provider" is not actionable from the map, but the date screen is.
+ */
+const BOOKING_STEP_FOR_CODE: Record<string, string> = {
+  MISSING_JOB_DETAILS: '/JobDetailsScreen',
+  MISSING_SCHEDULE: '/DateTimeScreen',
+  MISSING_LOCATION: '/LocationSearchScreen',
+};
+
+const PUBLISH_ERROR_COPY: Record<string, string> = {
+  MISSING_JOB_DETAILS: 'Add a title and description for the job first.',
+  MISSING_SCHEDULE: 'Choose a date and time first.',
+  MISSING_LOCATION: 'Set the address for this job first.',
+  PROVIDER_NOT_SELECTED: 'Choose a provider before confirming.',
+  PROVIDER_NOT_VERIFIED: 'That provider is not available right now. Please choose another.',
+  REQUEST_NOT_SELECTABLE: 'This booking has already been sent. Check your jobs.',
+};
 import { useUserLocation } from '@/hooks/useUserLocation';
 import * as Location from 'expo-location';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
@@ -263,10 +285,19 @@ const ServiceMapScreen = () => {
             categoryLabel: categoryName || normalizedCategory,
           });
 
-          // Calculate approximate provider coordinates based on distance and angle
-          // API doesn't return exact coordinates, so we distribute providers around service location
-          const angle = (index * 45) * (Math.PI / 180); // Distribute providers around service location
-          const distanceInDegrees = provider.distanceKm / 111; // Rough conversion: 1km ≈ 0.009 degrees
+          /**
+           * Real coordinates when the server sends them, which it now does.
+           *
+           * The fallback below is the old behaviour: providers arranged in a
+           * ring at `index * 45` degrees around the customer, because /nearby
+           * returned a distance and no position. It is kept only so a provider
+           * missing coordinates still gets a pin rather than vanishing, and it
+           * is no longer what anybody normally sees.
+           */
+          const angle = (index * 45) * (Math.PI / 180);
+          const distanceInDegrees = provider.distanceKm / 111;
+          const hasRealPosition =
+            Number.isFinite(provider.latitude) && Number.isFinite(provider.longitude);
           
           return {
             id: `provider-${provider.id}`,
@@ -274,14 +305,19 @@ const ServiceMapScreen = () => {
             name: rawName,
             category: categoryDisplayName as ProviderCategory,
             /**
-             * No rating, rather than an invented one. This was hardcoded to 4.5
-             * for every provider, and the card renders it as
-             * "4.5 (0 reviews)" - a score nobody gave them, shown to somebody
-             * deciding who to let into their home. /nearby returns no rating
-             * today, so the app says nothing until it does.
+             * The provider's real rating, or nothing. Never the hardcoded 4.5
+             * this used to carry, which the card rendered as "4.5 (0 reviews)":
+             * a score nobody gave them, shown to somebody deciding who to let
+             * into their home.
              */
-            rating: null,
-            reviews: 0,
+            rating:
+              typeof provider.rating === 'number' && Number.isFinite(provider.rating)
+                ? provider.rating
+                : null,
+            reviews:
+              typeof provider.reviewCount === 'number' && Number.isFinite(provider.reviewCount)
+                ? provider.reviewCount
+                : 0,
             distance:
               provider.distanceKm != null && Number.isFinite(provider.distanceKm) && provider.distanceKm >= 0
                 ? `${formatDistance(provider.distanceKm)} away`
@@ -292,17 +328,15 @@ const ServiceMapScreen = () => {
              * provider awaiting approval was "Busy".
              */
             verified: Boolean(provider.verified),
-            /**
-             * No photo to show: /api/provider/nearby returns no image field at
-             * all, so the avatar falls back to the provider's initials. It used
-             * to be hardcoded to plumbericon2.png, which meant every provider on
-             * this map was drawn as a plumber.
-             */
-            imageUri: null,
-            coords: {
-              latitude: serviceLocationCoords.latitude + (Math.cos(angle) * distanceInDegrees),
-              longitude: serviceLocationCoords.longitude + (Math.sin(angle) * distanceInDegrees),
-            },
+            /** Their own profile photo now that the field exists; initials otherwise. */
+            imageUri: provider.profileImageUrl ?? null,
+            isOnline: provider.isOnline,
+            coords: hasRealPosition
+              ? { latitude: provider.latitude as number, longitude: provider.longitude as number }
+              : {
+                  latitude: serviceLocationCoords.latitude + Math.cos(angle) * distanceInDegrees,
+                  longitude: serviceLocationCoords.longitude + Math.sin(angle) * distanceInDegrees,
+                },
           };
         });
 
@@ -816,8 +850,22 @@ const ServiceMapScreen = () => {
              * selection all intact, so trying again is one tap.
              */
             haptics.error();
+
+            /**
+             * The backend names what is missing, so send them to it rather than
+             * showing a sentence they cannot act on from a screen that cannot
+             * fix it.
+             */
+            const step = BOOKING_STEP_FOR_CODE[String(error?.code ?? '')];
+            if (step) {
+              showError(PUBLISH_ERROR_COPY[String(error?.code)] ?? error?.message);
+              router.push({ pathname: step as any, params: { ...params } } as any);
+              return;
+            }
+
             showError(
-              error?.message ||
+              PUBLISH_ERROR_COPY[String(error?.code ?? '')] ||
+                error?.message ||
                 'Could not send your booking to the provider. Please try again.',
             );
             return;

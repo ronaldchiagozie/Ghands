@@ -147,6 +147,7 @@ export interface UpdateJobDetailsPayload {
 export interface NearbyProvider {
   id: number;
   name: string;
+  /** Admin approval, not availability. See isOnline for whether they are taking work. */
   verified: boolean;
   age: number;
   phoneNumber: string;
@@ -157,6 +158,18 @@ export interface NearbyProvider {
   };
   distanceKm: number;
   minutesAway: number;
+  /**
+   * Added by the backend after the booking-contract spec. Everything below was
+   * missing, which is why the map used to invent it: a hardcoded 4.5 rating, a
+   * ring of made-up pin positions, and a stock photo for every provider.
+   */
+  latitude?: number;
+  longitude?: number;
+  rating?: number | null;
+  reviewCount?: number | null;
+  profileImageUrl?: string | null;
+  /** The provider's own online/offline toggle. */
+  isOnline?: boolean;
 }
 
 export interface UpdateJobDetailsResponse {
