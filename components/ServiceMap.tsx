@@ -19,7 +19,17 @@ export type ServiceProvider = {
   rating: number;
   reviews: number;
   distance: string;
-  availability: 'Available' | 'Busy' | 'Offline';
+  /**
+   * Identity approval, which is what `verified` on /api/provider/nearby actually
+   * means — the backend confirmed it is set by admin approve/reject, not by the
+   * provider's own availability. It was being rendered as an Available/Busy
+   * chip, so an approved provider taking no work read as free, and a provider
+   * still awaiting approval read as merely busy.
+   *
+   * There is no availability field on that endpoint today, so the app no longer
+   * claims to know.
+   */
+  verified: boolean;
   /**
    * The provider's own photo, when there is one. `/api/provider/nearby` does not
    * return a photo today, so in practice this is usually empty and the avatar
@@ -334,7 +344,7 @@ const ServiceMap: React.FC<ServiceMapProps> = ({
                           </Text>
                           <View className="ml-2 rounded-full bg-[rgba(79,103,57,0.14)] px-2 py-0.5">
                             <Text className="text-xs text-[#166534]" style={{ fontFamily: 'Poppins-Medium' }}>
-                              {provider.availability}
+                              {provider.verified ? 'Verified' : 'Unverified'}
                             </Text>
                           </View>
                         </View>
@@ -397,7 +407,7 @@ const ServiceMap: React.FC<ServiceMapProps> = ({
                   </Text>
                   <View className="ml-2 rounded-full bg-[rgba(79,103,57,0.14)] px-2 py-0.5">
                     <Text className="text-xs text-[#166534]" style={{ fontFamily: 'Poppins-Medium' }}>
-                      {activeProvider.availability}
+                      {activeProvider.verified ? 'Verified' : 'Unverified'}
                     </Text>
                   </View>
                 </View>

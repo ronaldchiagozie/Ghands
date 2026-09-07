@@ -4,7 +4,6 @@ import { isAlreadyReviewedApiError } from '@/utils/reviewSync';
 
 import { AuthError } from '../../utils/errors';
 import { apiClient, extractResponseData } from './client';
-import { isDuplicateActionError } from '../../utils/idempotentSubmit';
 import type {
   ServiceCategory,
   CreateServiceRequestPayload,
@@ -190,43 +189,6 @@ export const serviceRequestService = {
     return extractResponseData<UpdateDateTimeResponse>(
       await apiClient.put<any>(`/api/request-service/requests/${requestId}/date-time`, payload)
     );
-  },
-
-  /**
-   * Publishes a finished booking so providers can see it.
-   *
-   * The backend creates a request as `draft` and its list endpoints exclude
-   * drafts, so without this call a booking is complete on the customer's screen
-   * and invisible to every provider — the customer waits for offers that were
-   * never requested. The app had no equivalent call; it went straight from
-   * setting the date to showing the map.
-   *
-   * Deliberately forgiving, because it runs on a screen the customer can reach
-   * more than once:
-   *  - 404 means a deployment without the endpoint, where the request was
-   *    already live on creation. Nothing to do.
-   *  - "already confirmed" means we are re-entering the screen. Also nothing.
-   * Anything else is re-thrown, because a booking nobody can see is worse than
-   * an error the customer can act on.
-   */
-  confirmRequest: async (requestId: number): Promise<void> => {
-    try {
-      await apiClient.post<any>(`/api/request-service/requests/${requestId}/confirm`, {});
-    } catch (error: any) {
-      if (error?.status === 404) return;
-      if (
-        isDuplicateActionError(error, [
-          // Both wordings, since the server's phrasing here is not pinned down.
-          'already confirmed',
-          'already been confirmed',
-          'already published',
-          'already been published',
-        ])
-      ) {
-        return;
-      }
-      throw error;
-    }
   },
 
   getRequestDetails: async (requestId: number): Promise<ServiceRequest> => {

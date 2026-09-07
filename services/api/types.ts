@@ -199,7 +199,23 @@ export interface ServiceRequest {
   };
   scheduledDate?: string;
   scheduledTime?: string;
-  status: 'pending' | 'accepted' | 'inspecting' | 'quoting' | 'scheduled' | 'in_progress' | 'reviewing' | 'completed' | 'cancelled';
+  /**
+   * `draft` is a real value the server sends and the app checks for, and it was
+   * missing here — the booking flow reads a request back by id while it is still
+   * being filled in, and that record is a draft. The list endpoints exclude it,
+   * which is why the gap went unnoticed.
+   */
+  status:
+    | 'draft'
+    | 'pending'
+    | 'accepted'
+    | 'inspecting'
+    | 'quoting'
+    | 'scheduled'
+    | 'in_progress'
+    | 'reviewing'
+    | 'completed'
+    | 'cancelled';
   nearbyProviders?: NearbyProvider[];
   user?: {
     id: number;

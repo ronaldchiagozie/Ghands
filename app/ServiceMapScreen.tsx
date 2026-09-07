@@ -37,7 +37,7 @@ const SAMPLE_PROVIDERS: ServiceProvider[] = __DEV__ ? [
     rating: 0,
     reviews: 0,
     distance: '0.8 miles away',
-    availability: 'Available',
+    verified: true,
     imageUri: null,
     coords: { latitude: 6.6018, longitude: 3.3515 },
   },
@@ -48,7 +48,7 @@ const SAMPLE_PROVIDERS: ServiceProvider[] = __DEV__ ? [
     rating: 0,
     reviews: 0,
     distance: '1.1 miles away',
-    availability: 'Available',
+    verified: true,
     imageUri: null,
     coords: { latitude: 6.6128, longitude: 3.3615 },
   },
@@ -59,7 +59,7 @@ const SAMPLE_PROVIDERS: ServiceProvider[] = __DEV__ ? [
     rating: 0,
     reviews: 0,
     distance: '1.4 miles away',
-    availability: 'Available',
+    verified: true,
     imageUri: null,
     coords: { latitude: 6.5965, longitude: 3.3472 },
   },
@@ -70,7 +70,7 @@ const SAMPLE_PROVIDERS: ServiceProvider[] = __DEV__ ? [
     rating: 0,
     reviews: 0,
     distance: '1.6 miles away',
-    availability: 'Available',
+    verified: true,
     imageUri: null,
     coords: { latitude: 6.609, longitude: 3.3312 },
   },
@@ -81,7 +81,7 @@ const SAMPLE_PROVIDERS: ServiceProvider[] = __DEV__ ? [
     rating: 0,
     reviews: 0,
     distance: '2.1 miles away',
-    availability: 'Available',
+    verified: true,
     imageUri: null,
     coords: { latitude: 6.593, longitude: 3.3674 },
   },
@@ -315,7 +315,12 @@ const ServiceMapScreen = () => {
               provider.distanceKm != null && Number.isFinite(provider.distanceKm) && provider.distanceKm >= 0
                 ? `${formatDistance(provider.distanceKm)} away`
                 : 'Distance unavailable',
-            availability: provider.verified ? 'Available' : 'Busy',
+            /**
+             * Passed through as what it is. The backend confirmed `verified` is
+             * identity approval, so reading it as availability told customers a
+             * provider awaiting approval was "Busy".
+             */
+            verified: Boolean(provider.verified),
             /**
              * No photo to show: /api/provider/nearby returns no image field at
              * all, so the avatar falls back to the provider's initials. It used
@@ -802,61 +807,59 @@ const ServiceMapScreen = () => {
           await AsyncStorage.removeItem(BOOKING_PHOTO_URIS_KEY);
 
           /**
-           * This is where the booking becomes real, so this is where it gets
-           * published. A request is created as a draft while it is being filled
-           * in, and the provider-facing lists exclude drafts.
+           * Selecting the provider is what publishes the booking.
            *
-           * It was briefly done when this screen opened, which was wrong: the
-           * map is where you look at providers and decide, and backing out from
-           * it is a normal thing to do. Publishing on arrival would have turned
-           * every abandoned look into a live job nobody was waiting on — the
-           * exact phantom the draft status exists to prevent.
+           * Not `/confirm`, which we briefly called here — the backend confirmed
+           * it only validates and returns the request unchanged, so it never
+           * moved anything out of draft. `select-provider` performs the same
+           * field checks and is the call that flips draft to pending and lets
+           * the provider see the job.
+           *
+           * So this is the one request in the flow that must not fail quietly.
            */
-          if (params.requestId) {
-            const requestId = parseInt(params.requestId, 10);
-            if (Number.isFinite(requestId) && requestId > 0) {
-              try {
-                await serviceRequestService.confirmRequest(requestId);
-              } catch (error) {
-                /**
-                 * Not fatal to the flow. The service already treats a missing
-                 * endpoint and a repeat call as success, so reaching here means
-                 * a real failure — but the customer has just committed, and
-                 * stopping them at this point helps nobody. The confirmation
-                 * screen polls the request, so a job that failed to publish
-                 * surfaces there rather than in a dead end here.
-                 */
-                console.error('Could not publish booking to providers:', error);
-              }
-            }
+          const requestId = parseInt(params.requestId ?? '', 10);
+          const providerId = selectedProviders[0]?.providerId;
+
+          if (!Number.isFinite(requestId) || requestId <= 0 || !providerId) {
+            /**
+             * Previously an `if (requestId && providerId)` that simply skipped
+             * the call and carried on to the confirmation screen, so a provider
+             * row missing its backend id produced a booking that was never
+             * published and a customer who was told it had been.
+             */
+            haptics.error();
+            showError('Something went wrong with this booking. Please choose your provider again.');
+            return;
           }
 
-          // If user selected a provider and we have requestId, call selectProvider API
-          if (selectedProviders.length > 0 && params.requestId) {
-            try {
-              const requestId = parseInt(params.requestId, 10);
-              const firstSelectedProvider = selectedProviders[0];
-              
-              // Use the real provider ID stored in providerId field
-              const providerId = firstSelectedProvider.providerId;
-              
-              if (requestId && providerId) {
-                await serviceRequestService.selectProvider(requestId, providerId);
-                
-                haptics.success();
-                showSuccess('Provider selected. They have 5 minutes to accept.');
-              }
-            } catch (error: any) {
-              // Show error but still proceed to confirmation screen
-              showError('Failed to select provider. You can select one later from job details.');
-              haptics.error();
-            }
+          try {
+            await serviceRequestService.selectProvider(requestId, providerId);
+          } catch (error: any) {
+            /**
+             * Stop here. This used to show a toast and continue to the
+             * confirmation screen anyway, which was the worst possible outcome:
+             * the job stayed a draft, so it was invisible to providers and
+             * absent from the customer's own jobs list, the resume pointer was
+             * cleared so nothing offered it back, and the screen said it was
+             * booked. An unrecoverable job, reported as a success.
+             *
+             * Returning leaves the draft, the resume pointer and their provider
+             * selection all intact, so trying again is one tap.
+             */
+            haptics.error();
+            showError(
+              error?.message ||
+                'Could not send your booking to the provider. Please try again.',
+            );
+            return;
           }
-          
-          /** Booked. There is nothing left to come back to. */
-          await clearBookingResumePoint();
 
           haptics.success();
+          showSuccess('Provider selected. They have 5 minutes to accept.');
+
+          /** Published. Only now is there nothing left to come back to. */
+          await clearBookingResumePoint();
+
           navigateBookingFlowToConfirmation(router, {
             requestId: params.requestId,
             serviceType: params.serviceType || params.categoryName,

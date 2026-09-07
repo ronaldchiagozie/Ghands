@@ -25,6 +25,7 @@ import { JOB_TIMELINE } from '@/lib/jobTimelineTheme';
 import { CLIENT_HOME_SCROLL_GUTTER } from '@/lib/tabletLayout';
 import { formatTimeAgo } from '@/utils/dateFormatting';
 import { logRatingDebug, logRatingError } from '@/utils/ratingDebugLog';
+import { API_BASE_URL } from '@/lib/apiConfig';
 import {
   extractMyRatingFromRequest,
   isAlreadyReviewedApiError,
@@ -189,9 +190,13 @@ export default function CompletedJobDetail() {
       }
 
       const requestIdNum = parseInt(params.requestId ?? '', 10);
-      const apiBase =
-        (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_API_URL) ||
-        'https://bamibuildit-backend-v1.onrender.com';
+      /**
+       * The shared base, not a second hardcoded host. This pointed at
+       * bamibuildit-backend-v1 while every other call goes to
+       * bamibuildit-backend-v1-euv6, so debug output named a deployment the app
+       * was not actually talking to.
+       */
+      const apiBase = API_BASE_URL;
       let detailsSafe: string | Record<string, unknown> | null = null;
       try {
         const d = error?.details;
