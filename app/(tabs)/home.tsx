@@ -86,11 +86,20 @@ const CategoryItem = React.memo(({
         marginRight: 12,
         zIndex: 2,
         backgroundColor: Colors.white,
-        borderRadius: BorderRadius.lg,
+        /** The same corner as every other card on this page. */
+        borderRadius: BorderRadius.default,
         paddingVertical: 12,
         paddingHorizontal: 10,
         alignItems: 'center',
-        borderWidth: 0,
+        /**
+         * A hairline, because a white tile on a white page with no border and
+         * no shadow has no edge at all - the icons and labels were floating in
+         * the row rather than sitting in anything. Lighter than the cards
+         * below it: these are small, there are a lot of them in a row, and the
+         * same weight repeated eight times across would read as a grid.
+         */
+        borderWidth: 1,
+        borderColor: 'rgba(17, 24, 39, 0.08)',
         elevation: 0,
         shadowColor: 'transparent',
         shadowOffset: { width: 0, height: 0 },
