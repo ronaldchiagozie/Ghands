@@ -1,6 +1,8 @@
 import { CoachMarkTarget } from '@/components/CoachMarkTarget';
 import AccountSetupCard from '@/components/home/AccountSetupCard';
 import ResumeBookingModal from '@/components/home/ResumeBookingModal';
+import HomeQuickActions, { type QuickActionId } from '@/components/home/HomeQuickActions';
+import { useWalletBalance } from '@/hooks/useWalletBalance';
 import { useBookingResume } from '@/hooks/useBookingResume';
 import { bookingStepLabels, resumeRouteFor } from '@/utils/bookingResume';
 import { useAccountSetup, type SetupTaskId } from '@/hooks/useAccountSetup';
@@ -15,8 +17,6 @@ import JobActivityCard from '@/components/home/JobActivityCard';
 import { useErrorSheet } from '@/hooks/useErrorSheet';
 import { useSkeletonGate } from '@/hooks/useSkeletonGate';
 // import PromoCodeCard from '@/components/home/PromoCodeCard';
-import TodoCard from '@/components/home/TodoCard';
-import { quickActions, todoItems, type QuickAction } from '@/components/home/data';
 import useCoachMarks from '@/hooks/useCoachMarks';
 import { haptics } from '@/hooks/useHaptics';
 import { useOnNetworkRestore } from '@/hooks/useNetworkConnectivity';
@@ -601,6 +601,36 @@ const HomeScreen = React.memo(() => {
     void discardResumePoint();
   }, [discardResumePoint]);
 
+  const { balance: walletBalance } = useWalletBalance({ refreshOnFocus: true });
+
+  /**
+   * The service from their most recent job, so Book again names the thing it
+   * would book rather than sending them to a list to work it out.
+   */
+  const lastBookedService = useMemo(
+    () => jobActivities.find((job) => job.category?.trim())?.category?.trim() ?? null,
+    [jobActivities],
+  );
+
+  const handleQuickAction = useCallback(
+    (id: QuickActionId) => {
+      haptics.light();
+      if (id === 'urgent') {
+        router.push({
+          pathname: '/request-service',
+          params: { emergency: 'true', fromHome: '1' },
+        });
+        return;
+      }
+      if (id === 'rebook') {
+        router.push('/(tabs)/jobs' as any);
+        return;
+      }
+      router.push('/WalletScreen' as any);
+    },
+    [router],
+  );
+
   const handleSetupTaskPress = useCallback(
     (id: SetupTaskId) => {
       haptics.light();
@@ -889,108 +919,17 @@ const HomeScreen = React.memo(() => {
           {/* Quick Actions */}
           <CoachMarkTarget name="quick-actions">
             <View style={{ paddingHorizontal: CLIENT_HOME_SCROLL_GUTTER, marginBottom: HOME_SECTION_VERTICAL_GAP }}>
-              <View
-                style={{
-                  borderWidth: 1,
-                  borderColor: HOME_QUICK_ACTIONS_PANEL_BORDER,
-                  borderRadius: BorderRadius.default,
-                  backgroundColor: HOME_QUICK_ACTIONS_PANEL_BG,
-                  paddingHorizontal: 16,
-                  paddingTop: 20,
-                  paddingBottom: 20,
-                }}
-              >
-                <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 12 }}>
-                  <View>
-                    <Text
-                      className="text-lg font-bold"
-                      style={{
-                        fontFamily: 'Poppins-Bold',
-                        letterSpacing: -0.2,
-                        color: Colors.white,
-                      }}
-                    >
-                      Quick actions
-                    </Text>
-                    <Text
-                      style={{
-                        fontSize: 12,
-                        fontFamily: 'Poppins-Regular',
-                        color: 'rgba(255, 255, 255, 0.9)',
-                        marginTop: 5,
-                        lineHeight: 18,
-                      }}
-                    >
-                      Start common tasks in one tap.
-                    </Text>
-                  </View>
-                </View>
-                <View style={{ flexDirection: 'row', gap: 10 }}>
-                  {(quickActions || []).map((action: QuickAction) => (
-                    <TouchableOpacity
-                      key={action.id}
-                      onPress={() => {
-                        haptics.light();
-                        if (action.id === 'emergency') {
-                          router.push({
-                            pathname: '/request-service',
-                            params: { emergency: 'true', fromHome: '1' },
-                          });
-                        } else if (action.id === 'book-again') {
-                          router.push('/(tabs)/jobs' as any);
-                        } else if (action.id === 'wallet') {
-                          router.push('/WalletScreen' as any);
-                        }
-                      }}
-                      activeOpacity={0.88}
-                      style={{
-                        flex: 1,
-                        backgroundColor: HOME_QUICK_ACTION_TILE_BG,
-                        borderRadius: BorderRadius.default,
-                        paddingVertical: 13,
-                        paddingHorizontal: 6,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        borderWidth: 1,
-                        borderColor: HOME_QUICK_ACTION_TILE_BORDER,
-                        shadowColor: 'transparent',
-                        shadowOffset: { width: 0, height: 0 },
-                        shadowOpacity: 0,
-                        shadowRadius: 0,
-                        elevation: 0,
-                      }}
-                    >
-                      <View
-                        style={{
-                          width: 36,
-                          height: 36,
-                          borderRadius: BorderRadius.full,
-                          backgroundColor: action.backgroundColor,
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          marginBottom: 8,
-                          borderWidth: 1,
-                          borderColor: 'rgba(255, 255, 255, 0.45)',
-                        }}
-                      >
-                        <action.Icon size={20} color={action.color} />
-                      </View>
-                      <Text
-                        style={{
-                          fontSize: 12,
-                          fontFamily: 'Poppins-SemiBold',
-                          color: HOME_QUICK_ACTION_LABEL,
-                          textAlign: 'center',
-                          lineHeight: 16,
-                        }}
-                        numberOfLines={2}
-                      >
-                        {action.id === 'emergency' ? 'Urgent help' : action.title}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
+              {/**
+                * No panel and no caption. A solid sage block was the heaviest
+                * thing on this screen and it was wrapping three shortcuts, and
+                * the caption underneath explained what quick actions are, which
+                * is what you write when the tiles are not explaining themselves.
+                */}
+              <HomeQuickActions
+                balance={walletBalance}
+                lastService={lastBookedService}
+                onPress={handleQuickAction}
+              />
             </View>
           </CoachMarkTarget>
 
