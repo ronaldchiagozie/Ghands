@@ -2,10 +2,13 @@ import { RotateCcw, Siren, Wallet } from 'lucide-react-native';
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 
-import { BorderRadius, Colors, Spacing } from '@/lib/designSystem';
+import { BorderRadius, Colors } from '@/lib/designSystem';
 import { SURFACE_STYLES } from '@/lib/surfaceStyles';
 
 type QuickActionId = 'wallet' | 'rebook' | 'urgent';
+
+/** Shared so the two-line block and the type it holds cannot drift apart. */
+const VALUE_LINE_HEIGHT = 19;
 
 type HomeQuickActionsProps = {
   /** Null while loading, so nothing is shown rather than a wrong number. */
@@ -38,6 +41,17 @@ type HomeQuickActionsProps = {
  *
  * And it had a caption explaining what quick actions are, which is the tell
  * that the tiles were not explaining themselves.
+ *
+ * The first pass at this then argued with itself: it said the value mattered
+ * more than the label and set the label larger and darker anyway. The label is
+ * the caption now and the value is the content, which is what was meant all
+ * along.
+ *
+ * Values also get two lines. Three cards across a phone leave about eighty-six
+ * points of content width, which "Air Conditioning" and "Repairs only" both
+ * overrun, and a row of shortcuts that ellipsises its own content reads as
+ * broken. The block is held at two lines whether or not the second is used, so
+ * the three cards stay level.
  */
 export default function HomeQuickActions({
   balance,
@@ -102,7 +116,7 @@ export default function HomeQuickActions({
   ];
 
   return (
-    <View style={{ flexDirection: 'row', gap: 10 }}>
+    <View style={{ flexDirection: 'row', gap: 10, alignItems: 'stretch' }}>
       {actions.map((action) => (
         <Pressable
           key={action.id}
@@ -126,44 +140,54 @@ export default function HomeQuickActions({
               backgroundColor: Colors.white,
               borderRadius: BorderRadius.lg,
               paddingHorizontal: 12,
-              paddingTop: 12,
+              paddingTop: 11,
               paddingBottom: 11,
             }}
           >
-            <action.Icon size={19} color={action.tone} strokeWidth={2.1} />
+            {/**
+              * Icon and label share a line. It reads as one caption rather than
+              * two stacked things, and the row it saves is the room the value
+              * needs to wrap.
+              */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <action.Icon size={14} color={action.tone} strokeWidth={2.2} />
+              <Text
+                numberOfLines={1}
+                style={{
+                  fontSize: 9.5,
+                  lineHeight: 13,
+                  fontFamily: 'Poppins-Medium',
+                  color: Colors.textSecondaryDark,
+                  letterSpacing: 0.5,
+                  textTransform: 'uppercase',
+                  flexShrink: 1,
+                }}
+              >
+                {action.label}
+              </Text>
+            </View>
 
             {/**
-              * Left-aligned, not centred. A centred label in a small box reads
-              * as a button; a label with a value beneath it reads as something
-              * you already know, which is what these are.
+              * The content, and typeset like it. Held to a two-line block so a
+              * long service name has somewhere to go and the cards still line
+              * up when it does not.
               */}
-            <Text
-              numberOfLines={1}
-              style={{
-                fontSize: 12.5,
-                fontFamily: 'Poppins-SemiBold',
-                color: Colors.textPrimary,
-                letterSpacing: -0.1,
-                marginTop: 10,
-              }}
-            >
-              {action.label}
-            </Text>
-
-            <Text
-              numberOfLines={1}
-              style={{
-                fontSize: 11.5,
-                lineHeight: 16,
-                fontFamily: 'Poppins-Medium',
-                color: action.id === 'urgent' ? Colors.error : Colors.textSecondaryDark,
-                marginTop: 1,
-                /** Digits line up across the row when the balance is showing. */
-                fontVariant: ['tabular-nums'],
-              }}
-            >
-              {action.value}
-            </Text>
+            <View style={{ minHeight: VALUE_LINE_HEIGHT * 2, marginTop: 7 }}>
+              <Text
+                numberOfLines={2}
+                style={{
+                  fontSize: 14.5,
+                  lineHeight: VALUE_LINE_HEIGHT,
+                  fontFamily: 'Poppins-SemiBold',
+                  color: action.id === 'urgent' ? Colors.error : Colors.textPrimary,
+                  letterSpacing: -0.2,
+                  /** Digits line up across the row when the balance is showing. */
+                  fontVariant: ['tabular-nums'],
+                }}
+              >
+                {action.value}
+              </Text>
+            </View>
           </View>
         </Pressable>
       ))}
