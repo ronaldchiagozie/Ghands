@@ -85,21 +85,23 @@ const CategoryItem = React.memo(({
         width: 98,
         marginRight: 12,
         zIndex: 2,
-        backgroundColor: Colors.white,
-        /** The same corner as every other card on this page. */
-        borderRadius: BorderRadius.default,
-        paddingVertical: 12,
-        paddingHorizontal: 10,
-        alignItems: 'center',
         /**
-         * A hairline, because a white tile on a white page with no border and
-         * no shadow has no edge at all - the icons and labels were floating in
-         * the row rather than sitting in anything. Lighter than the cards
-         * below it: these are small, there are a lot of them in a row, and the
-         * same weight repeated eight times across would read as a grid.
+         * No card, no border, no fill.
+         *
+         * These held one icon and one word, which is not enough to group and
+         * so not a card - and there are eight of them in a row, so bordering
+         * each one gave the strip eight rectangles of repetition rather than
+         * structure. It also blurred the page: the job cards and quick actions
+         * are containers because they hold real information, and a shortcut
+         * that looks like the same object stops the page saying which things
+         * are things and which are doors.
+         *
+         * Spacing groups them instead, which is what spacing is for. They had
+         * no edge before because they do not need one.
          */
-        borderWidth: 1,
-        borderColor: 'rgba(17, 24, 39, 0.08)',
+        paddingVertical: 8,
+        paddingHorizontal: 4,
+        alignItems: 'center',
         elevation: 0,
         shadowColor: 'transparent',
         shadowOffset: { width: 0, height: 0 },
