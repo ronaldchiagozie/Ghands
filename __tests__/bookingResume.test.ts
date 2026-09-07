@@ -78,22 +78,23 @@ describe('booking resume pointer', () => {
   });
 
   /**
-   * A month-old half-booking is not worth offering back - the date they picked
-   * has passed and they have long since moved on.
+   * Twenty hours, matching the server-side retention we asked for. The two have
+   * to agree: offering a draft the server has already deleted lands the
+   * customer on an error, which is worse than never offering it.
    */
-  it('forgets a booking older than a week', async () => {
+  it('forgets a booking older than twenty hours', async () => {
     await rememberBookingStep('schedule', '418', { requestId: '418' });
     const stored = JSON.parse(store[KEY]);
-    stored.savedAt = Date.now() - 8 * 24 * 60 * 60 * 1000;
+    stored.savedAt = Date.now() - 21 * 60 * 60 * 1000;
     store[KEY] = JSON.stringify(stored);
 
     expect(await readBookingResumePoint()).toBeNull();
   });
 
-  it('keeps one that is still inside the week', async () => {
+  it('keeps one that is still inside the window', async () => {
     await rememberBookingStep('schedule', '418', { requestId: '418' });
     const stored = JSON.parse(store[KEY]);
-    stored.savedAt = Date.now() - 6 * 24 * 60 * 60 * 1000;
+    stored.savedAt = Date.now() - 19 * 60 * 60 * 1000;
     store[KEY] = JSON.stringify(stored);
 
     expect(await readBookingResumePoint()).not.toBeNull();

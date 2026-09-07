@@ -43,11 +43,16 @@ const STEP_LABEL: Record<BookingStep, string> = {
 /**
  * How long a half-finished booking is worth offering back.
  *
- * A week. Long enough to cover a weekend and a busy Monday, short enough that
- * nobody is offered a job they thought about in another month - and the
- * scheduled date they picked has usually passed by then anyway.
+ * Twenty hours, matching the server-side retention we have asked for. The two
+ * numbers have to agree: if the app offers a draft the server has already
+ * deleted, the customer taps Continue and lands on an error, which is worse
+ * than never being offered it.
+ *
+ * It is deliberately short. A half-made booking is a job somebody wanted doing
+ * today or tomorrow, and an unfinished plumbing request from last week is not
+ * something anyone wants handed back to them.
  */
-const RESUME_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const RESUME_TTL_MS = 20 * 60 * 60 * 1000;
 
 export type BookingResumePoint = {
   requestId: string;
