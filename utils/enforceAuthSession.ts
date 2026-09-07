@@ -1,7 +1,6 @@
 import { authService } from '@/services/authService';
 import { AuthError } from '@/utils/errors';
 import { isInAuthTransition } from '@/utils/authNavigationGuard';
-import { isAccessTokenExpired } from '@/utils/jwtExpiry';
 import { notifySessionExpired } from '@/utils/sessionExpiredEvents';
 
 let expireInFlight: Promise<void> | null = null;
@@ -50,10 +49,22 @@ export async function expireAuthSession(): Promise<void> {
   await expireInFlight;
 }
 
-/** Returns a valid access token or clears session and throws AuthError. */
+/**
+ * Returns the stored token, or ends the session when there is not one.
+ *
+ * A token that looks expired to us is returned anyway. Our clock is not the
+ * server's: a device with the wrong date, a token the server still honours, or
+ * a grace period we know nothing about all end with somebody thrown out of a
+ * working session. The server answers this with a 401 and the API client acts
+ * on that, which is the only authoritative reading.
+ *
+ * This mattered the moment the expiry check started working. It had been
+ * returning false for the life of the app, because React Native has no atob and
+ * the decoder gave up without one.
+ */
 export async function assertValidAuthToken(): Promise<string> {
   const token = await authService.getAuthToken();
-  if (!token || isAccessTokenExpired(token)) {
+  if (!token) {
     return getOrCreateInvalidTokenGate();
   }
   return token;
@@ -62,7 +73,8 @@ export async function assertValidAuthToken(): Promise<string> {
 /** Proactive check for background polling - returns true when session was expired. */
 export async function expireAuthSessionIfInvalid(): Promise<boolean> {
   const token = await authService.getAuthToken();
-  if (!token || isAccessTokenExpired(token)) {
+  /** No token is unambiguous. A locally computed expiry is not; see above. */
+  if (!token) {
     await getOrCreateInvalidTokenGate().catch(() => {
       /* gate always rejects - callers await expireAuthSession side effects */
     });
