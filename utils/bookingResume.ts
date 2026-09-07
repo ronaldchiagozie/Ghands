@@ -174,6 +174,11 @@ export function resumeStepLabel(point: BookingResumePoint): string {
   return STEP_LABEL[point.step];
 }
 
+/** Every step, in order, for the timeline to name its stops. */
+export function bookingStepLabels(): string[] {
+  return BOOKING_STEPS.map((step) => STEP_LABEL[step]);
+}
+
 /**
  * How far through the flow they are, as a countable position.
  *

@@ -2,7 +2,7 @@ import { CoachMarkTarget } from '@/components/CoachMarkTarget';
 import AccountSetupCard from '@/components/home/AccountSetupCard';
 import ResumeBookingModal from '@/components/home/ResumeBookingModal';
 import { useBookingResume } from '@/hooks/useBookingResume';
-import { resumeRouteFor } from '@/utils/bookingResume';
+import { bookingStepLabels, resumeRouteFor } from '@/utils/bookingResume';
 import { useAccountSetup, type SetupTaskId } from '@/hooks/useAccountSetup';
 import { enableNotifications } from '@/utils/pushNotifications';
 import { isSubmittedBooking } from '@ghands/contract';
@@ -1088,6 +1088,7 @@ const HomeScreen = React.memo(() => {
               jobTitle={resumeDraft?.jobTitle}
               scheduleLabel={resumeScheduleLabel}
               stepLabel={resumeStepLabel ?? 'Finish your booking'}
+              steps={bookingStepLabels()}
               progress={resumeProgress ?? { done: 0, total: 4 }}
               onResume={handleResumeBooking}
               onDismiss={() => void dismissResumePrompt()}

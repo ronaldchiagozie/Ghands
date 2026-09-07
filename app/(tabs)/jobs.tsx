@@ -47,8 +47,15 @@ import { formatDateShort } from '@/utils/dateFormatting';
 import { resumeRouteFor } from '@/utils/bookingResume';
 import { useBookingResume } from '@/hooks/useBookingResume';
 import ResumeBookingCard from '@/components/home/ResumeBookingCard';
+import { FileClock } from 'lucide-react-native';
 
+/**
+ * 'Drafts' is not a job status the server knows about. It is a tab that exists
+ * only while this device is holding an unfinished booking, so the row does not
+ * carry a permanently empty section for something most people never have.
+ */
 type JobStatus = 'Pending' | 'Ongoing' | 'Completed';
+type JobTab = JobStatus | 'Drafts';
 
 type JobItem = {
   id: number;
@@ -192,7 +199,7 @@ const JobListItem = React.memo(function JobListItem({
                 : Colors.accent,
           }}
           activeOpacity={0.85}
-          onPress={() => onPrimaryAction(activeTab, job)}
+          onPress={() => onPrimaryAction(activeTab as JobStatus, job)}
         >
           <Text
             className={`text-sm text-center ${
@@ -274,7 +281,7 @@ export default function JobsScreen() {
   const tabScrollTop = useTabScrollContentPaddingTop(20);
   const scrollBottomPad = useTabScreenScrollBottomPadding(16);
   const params = useLocalSearchParams<{ initialTab?: string; requestId?: string }>();
-  const [activeTab, setActiveTab] = useState<JobStatus>(() => {
+  const [activeTab, setActiveTab] = useState<JobTab>(() => {
     const tab = params.initialTab;
     if (tab === 'Completed') return 'Completed';
     if (tab === 'Pending' || tab === 'Cancelled') return 'Pending';
@@ -304,6 +311,20 @@ export default function JobsScreen() {
     const time = resumeDraft?.scheduledTime?.trim();
     return time ? `${day} at ${time}` : day;
   }, [resumeDraft?.scheduledDate, resumeDraft?.scheduledTime]);
+
+  /**
+   * Drafts only appears while there is one. A tab that is empty for almost
+   * everybody almost always is a tab that teaches people to ignore the row.
+   */
+  const visibleTabs = useMemo<JobTab[]>(
+    () => (resumePoint ? ['Drafts', 'Pending', 'Ongoing', 'Completed'] : ['Pending', 'Ongoing', 'Completed']),
+    [resumePoint],
+  );
+
+  /** Finishing or discarding the draft takes the tab away underneath them. */
+  useEffect(() => {
+    if (activeTab === 'Drafts' && !resumePoint) setActiveTab('Pending');
+  }, [activeTab, resumePoint]);
 
   const handleResumeDraft = useCallback(() => {
     if (!resumePoint) return;
@@ -477,7 +498,8 @@ export default function JobsScreen() {
     ({ item }: { item: JobItem }) => (
       <JobListItem
         job={item}
-        activeTab={activeTab}
+        /** Drafts renders no job rows, so this is always a real status here. */
+        activeTab={activeTab as JobStatus}
         onPrimaryAction={handlePrimaryAction}
         onCancelRequest={handleCancelRequest}
       />
@@ -498,7 +520,7 @@ export default function JobsScreen() {
         </Text>
 
         <View className="flex flex-row justify-around mb-5">
-          {(['Pending', 'Ongoing', 'Completed'] as JobStatus[]).map((status) => {
+          {visibleTabs.map((status) => {
             const isActive = activeTab === status;
             return (
               <TouchableOpacity
@@ -511,11 +533,15 @@ export default function JobsScreen() {
                 style={{ alignItems: 'center' }}
               >
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <JobTabIcon
-                    tab={status}
-                    size={18}
-                    color={isActive ? Colors.accent : Colors.textMuted}
-                  />
+                  {status === 'Drafts' ? (
+                    <FileClock size={18} color={isActive ? Colors.accent : Colors.textMuted} />
+                  ) : (
+                    <JobTabIcon
+                      tab={status}
+                      size={18}
+                      color={isActive ? Colors.accent : Colors.textMuted}
+                    />
+                  )}
                   <Text
                     className="text-base"
                     style={{ fontFamily: 'Poppins-Medium', color: isActive ? Colors.textPrimary : Colors.iconMuted }}
@@ -542,7 +568,8 @@ export default function JobsScreen() {
           />
         ) : (
           <FlatList
-            data={jobs}
+            /** The drafts tab is its own list: one unfinished booking, no jobs. */
+            data={activeTab === 'Drafts' ? [] : jobs}
             keyExtractor={jobKeyExtractor}
             renderItem={renderJobItem}
             style={{ flex: 1 }}
@@ -567,7 +594,7 @@ export default function JobsScreen() {
               * something half-done on the one screen that should feel calm.
               */
             ListHeaderComponent={
-              activeTab === 'Pending' && resumePoint ? (
+              activeTab === 'Drafts' && resumePoint ? (
                 <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
                   <ResumeBookingCard
                     categoryName={resumePoint.categoryName}
@@ -583,8 +610,8 @@ export default function JobsScreen() {
               ) : null
             }
             ListEmptyComponent={
-              activeTab === 'Pending' && resumePoint ? null : (
-                <JobsTabEmptyState audience="client" activeTab={activeTab} />
+              activeTab === 'Drafts' ? null : (
+                <JobsTabEmptyState audience="client" activeTab={activeTab as JobStatus} />
               )
             }
             initialNumToRender={6}

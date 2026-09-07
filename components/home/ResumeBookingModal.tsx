@@ -1,8 +1,9 @@
-import { ArrowRight, Hammer } from 'lucide-react-native';
+import { BlurView } from 'expo-blur';
+import { ArrowRight, Check, Hammer } from 'lucide-react-native';
 import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, Image, Modal, Pressable, Text, View } from 'react-native';
+import { Animated, Easing, Image, Modal, Platform, Pressable, Text, View } from 'react-native';
 
-import { BorderRadius, Colors, Spacing, useReducedMotion } from '@/lib/designSystem';
+import { BorderRadius, Colors, useReducedMotion } from '@/lib/designSystem';
 import { resolveCategoryImageSource } from '@/utils/categoryIcons';
 
 type ResumeBookingModalProps = {
@@ -11,29 +12,28 @@ type ResumeBookingModalProps = {
   jobTitle?: string | null;
   scheduleLabel?: string | null;
   stepLabel: string;
+  /** Named steps, so the timeline says what each one was. */
+  steps: string[];
   progress: { done: number; total: number };
   onResume: () => void;
   onDismiss: () => void;
 };
 
+const GLASS_SURFACE = 'rgba(255, 255, 255, 0.82)';
+const GLASS_EDGE = 'rgba(255, 255, 255, 0.66)';
+const TRACK = 'rgba(79, 103, 57, 0.20)';
+
 /**
  * Offers a half-finished booking back on the way into the app.
  *
- * This interrupts, which is a real cost. An interstitial on launch is the most
- * resented pattern on a phone: it blocks the app to talk about something the
- * person may not have opened it for. Three things are what make it worth it
- * here, and removing any of them would make it the pattern everybody hates:
+ * It interrupts, which is a real cost, so it is gated hard: once per booking,
+ * never for one barely started, and saying no keeps the draft. Those rules live
+ * in bookingResume; this is only the surface.
  *
- *  - It appears once per booking, not once per launch. Dismissing is an answer,
- *    not a snooze.
- *  - It only appears for a booking with real work in it. Tapping a category and
- *    closing the app has cost nothing, so offering that back is an interruption
- *    about nothing.
- *  - Dismissing keeps the draft. The home card is still there, so saying "not
- *    now" costs the customer nothing either.
- *
- * Centred rather than a sheet because it is a question, not a surface to work
- * on, and because a sheet reads as somewhere you were already heading.
+ * Glass rather than a solid card. The point of frosting the backdrop instead of
+ * blacking it out is that the app stays visible underneath: this reads as a
+ * note laid over what you were doing rather than a wall put in front of it,
+ * which is the honest weight for something you can wave away.
  */
 export default function ResumeBookingModal({
   visible,
@@ -41,6 +41,7 @@ export default function ResumeBookingModal({
   jobTitle,
   scheduleLabel,
   stepLabel,
+  steps,
   progress,
   onResume,
   onDismiss,
@@ -60,7 +61,6 @@ export default function ResumeBookingModal({
       opacity.setValue(reducedMotion ? 1 : 0);
       return;
     }
-
     if (reducedMotion) {
       scale.setValue(1);
       opacity.setValue(1);
@@ -70,12 +70,12 @@ export default function ResumeBookingModal({
     /**
      * Settles rather than bounces. This arrives unasked for, and a spring with
      * visible overshoot reads as pleased with itself when the honest tone is
-     * "this was kept for you".
+     * that something was kept for them.
      */
     Animated.parallel([
       Animated.timing(opacity, {
         toValue: 1,
-        duration: 180,
+        duration: 190,
         easing: Easing.out(Easing.quad),
         useNativeDriver: true,
       }),
@@ -90,165 +90,214 @@ export default function ResumeBookingModal({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onDismiss}>
-      <Pressable
-        onPress={onDismiss}
-        accessibilityRole="button"
-        accessibilityLabel="Not now"
-        style={{
-          flex: 1,
-          backgroundColor: 'rgba(0,0,0,0.42)',
-          alignItems: 'center',
-          justifyContent: 'center',
-          paddingHorizontal: 28,
-        }}
+      <BlurView
+        intensity={Platform.OS === 'android' ? 40 : 26}
+        tint="dark"
+        /** Android has no native backdrop blur without this. */
+        experimentalBlurMethod="dimezisBlurView"
+        style={{ flex: 1 }}
       >
-        <Animated.View style={{ width: '100%', opacity, transform: [{ scale }] }}>
-          <Pressable onPress={(event) => event.stopPropagation()}>
-            <View
-              style={{
-                backgroundColor: Colors.white,
-                borderRadius: BorderRadius.xl,
-                paddingHorizontal: 22,
-                paddingTop: 24,
-                paddingBottom: 18,
-              }}
-            >
+        <Pressable
+          onPress={onDismiss}
+          accessibilityRole="button"
+          accessibilityLabel="Not now"
+          style={{
+            flex: 1,
+            /**
+             * A little darkness under the blur, not instead of it. Blur alone
+             * leaves light content underneath too bright to read the card over.
+             */
+            backgroundColor: 'rgba(12, 16, 10, 0.28)',
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingHorizontal: 26,
+          }}
+        >
+          <Animated.View style={{ width: '100%', opacity, transform: [{ scale }] }}>
+            <Pressable onPress={(event) => event.stopPropagation()}>
               <View
                 style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 18,
-                  backgroundColor: Colors.successLight,
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  backgroundColor: GLASS_SURFACE,
+                  borderRadius: 26,
+                  borderWidth: 1,
+                  borderColor: GLASS_EDGE,
+                  paddingHorizontal: 22,
+                  paddingTop: 24,
+                  paddingBottom: 16,
+                  shadowColor: '#0B0F08',
+                  shadowOffset: { width: 0, height: 18 },
+                  shadowOpacity: 0.22,
+                  shadowRadius: 30,
+                  elevation: 12,
                   overflow: 'hidden',
-                  marginBottom: 16,
                 }}
               >
-                {categoryIcon ? (
-                  <Image
-                    source={categoryIcon}
-                    style={{ width: 34, height: 34, resizeMode: 'contain' }}
-                  />
-                ) : (
-                  <Hammer size={26} color={Colors.accent} strokeWidth={2} />
-                )}
-              </View>
-
-              <Text
-                style={{
-                  fontSize: 19,
-                  lineHeight: 26,
-                  fontFamily: 'Poppins-Bold',
-                  color: Colors.textPrimary,
-                  letterSpacing: -0.3,
-                }}
-              >
-                Carry on where you stopped?
-              </Text>
-
-              <Text
-                numberOfLines={2}
-                style={{
-                  fontSize: 14,
-                  lineHeight: 21,
-                  fontFamily: 'Poppins-Regular',
-                  color: Colors.textSecondaryDark,
-                  marginTop: 6,
-                }}
-              >
-                {heading}. {detail}.
-              </Text>
-
-              <View
-                style={{ flexDirection: 'row', gap: 4, marginTop: 18 }}
-                accessibilityRole="progressbar"
-                accessibilityValue={{ min: 0, max: progress.total, now: progress.done }}
-              >
-                {Array.from({ length: progress.total }).map((_, index) => (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 13 }}>
                   <View
-                    key={index}
                     style={{
-                      flex: 1,
-                      height: 4,
-                      borderRadius: 2,
-                      backgroundColor:
-                        index < progress.done ? Colors.accent : 'rgba(79, 103, 57, 0.18)',
+                      width: 50,
+                      height: 50,
+                      borderRadius: 16,
+                      backgroundColor: 'rgba(255, 255, 255, 0.78)',
+                      borderWidth: 1,
+                      borderColor: 'rgba(255, 255, 255, 0.9)',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      overflow: 'hidden',
                     }}
-                  />
-                ))}
-              </View>
+                  >
+                    {categoryIcon ? (
+                      <Image
+                        source={categoryIcon}
+                        style={{ width: 30, height: 30, resizeMode: 'contain' }}
+                      />
+                    ) : (
+                      <Hammer size={23} color={Colors.accent} strokeWidth={2} />
+                    )}
+                  </View>
 
-              <Text
-                style={{
-                  fontSize: 11.5,
-                  fontFamily: 'Poppins-Medium',
-                  color: Colors.successForeground,
-                  marginTop: 7,
-                  fontVariant: ['tabular-nums'],
-                }}
-              >
-                {progress.done} of {progress.total} done
-              </Text>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text
+                      numberOfLines={1}
+                      style={{
+                        fontSize: 17,
+                        fontFamily: 'Poppins-Bold',
+                        color: Colors.textPrimary,
+                        letterSpacing: -0.3,
+                      }}
+                    >
+                      {heading}
+                    </Text>
+                    <Text
+                      numberOfLines={1}
+                      style={{
+                        fontSize: 12.5,
+                        lineHeight: 18,
+                        fontFamily: 'Poppins-Regular',
+                        color: Colors.textSecondaryDark,
+                        marginTop: 1,
+                      }}
+                    >
+                      {detail}
+                    </Text>
+                  </View>
+                </View>
 
-              <Pressable
-                onPress={onResume}
-                accessibilityRole="button"
-                accessibilityLabel={`Continue ${heading}`}
-                style={{ marginTop: 20 }}
-              >
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 8,
-                    backgroundColor: Colors.accent,
-                    borderRadius: BorderRadius.default,
-                    paddingVertical: 14,
-                  }}
+                {/**
+                  * A timeline rather than a bar. The booking is a route with
+                  * named stops, so the shape that tells the truth is the one
+                  * that shows which stops are behind you and what the next one
+                  * is called.
+                  */}
+                <View style={{ marginTop: 20, marginBottom: 4 }}>
+                  {steps.map((label, index) => {
+                    const done = index < progress.done;
+                    const current = index === progress.done;
+                    const last = index === steps.length - 1;
+
+                    return (
+                      <View key={label} style={{ flexDirection: 'row' }}>
+                        <View style={{ width: 22, alignItems: 'center' }}>
+                          <View
+                            style={{
+                              width: done || current ? 18 : 12,
+                              height: done || current ? 18 : 12,
+                              borderRadius: 9,
+                              marginTop: done || current ? 0 : 3,
+                              backgroundColor: done ? Colors.accent : 'transparent',
+                              borderWidth: current ? 2.5 : done ? 0 : 2,
+                              borderColor: current ? Colors.accent : TRACK,
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            {done ? <Check size={11} color={Colors.white} strokeWidth={3.2} /> : null}
+                          </View>
+                          {!last ? (
+                            <View
+                              style={{
+                                width: 2,
+                                flex: 1,
+                                minHeight: 14,
+                                backgroundColor: done ? Colors.accent : TRACK,
+                                marginVertical: 2,
+                              }}
+                            />
+                          ) : null}
+                        </View>
+
+                        <Text
+                          style={{
+                            flex: 1,
+                            fontSize: 13,
+                            lineHeight: 18,
+                            fontFamily: current ? 'Poppins-SemiBold' : 'Poppins-Regular',
+                            color: current
+                              ? Colors.textPrimary
+                              : done
+                                ? Colors.successForeground
+                                : Colors.textTertiary,
+                            marginLeft: 10,
+                            paddingBottom: last ? 0 : 10,
+                          }}
+                        >
+                          {label}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
+
+                <Pressable
+                  onPress={onResume}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Continue ${heading}`}
+                  style={{ marginTop: 18 }}
                 >
-                  <Text
+                  <View
                     style={{
-                      fontSize: 15,
-                      fontFamily: 'Poppins-SemiBold',
-                      color: Colors.white,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      backgroundColor: Colors.accent,
+                      borderRadius: BorderRadius.default,
+                      paddingVertical: 14,
                     }}
                   >
-                    Continue booking
-                  </Text>
-                  <ArrowRight size={17} color={Colors.white} strokeWidth={2.4} />
-                </View>
-              </Pressable>
+                    <Text
+                      style={{ fontSize: 15, fontFamily: 'Poppins-SemiBold', color: Colors.white }}
+                    >
+                      Continue booking
+                    </Text>
+                    <ArrowRight size={17} color={Colors.white} strokeWidth={2.4} />
+                  </View>
+                </Pressable>
 
-              {/**
-                * Not "Discard". Saying no here means "not right now", and the
-                * draft survives on the home card. Offering to delete somebody's
-                * work inside an interruption they did not ask for is the wrong
-                * moment to put that button in front of them.
-                */}
-              <Pressable
-                onPress={onDismiss}
-                accessibilityRole="button"
-                accessibilityLabel="Not now"
-                style={{ marginTop: 4 }}
-              >
-                <View style={{ alignItems: 'center', paddingVertical: 12 }}>
-                  <Text
-                    style={{
-                      fontSize: 14,
-                      fontFamily: 'Poppins-Medium',
-                      color: Colors.textSecondaryDark,
-                    }}
-                  >
-                    Not now
-                  </Text>
-                </View>
-              </Pressable>
-            </View>
-          </Pressable>
-        </Animated.View>
-      </Pressable>
+                {/**
+                  * Not "Discard". Saying no here means "not right now", and the
+                  * draft is waiting in Jobs. Offering to delete somebody's work
+                  * inside an interruption they did not ask for is the wrong
+                  * moment to put that in front of them.
+                  */}
+                <Pressable onPress={onDismiss} accessibilityRole="button" accessibilityLabel="Not now">
+                  <View style={{ alignItems: 'center', paddingVertical: 12 }}>
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        fontFamily: 'Poppins-Medium',
+                        color: Colors.textSecondaryDark,
+                      }}
+                    >
+                      Not now
+                    </Text>
+                  </View>
+                </Pressable>
+              </View>
+            </Pressable>
+          </Animated.View>
+        </Pressable>
+      </BlurView>
     </Modal>
   );
 }
