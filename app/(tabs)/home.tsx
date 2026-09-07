@@ -54,7 +54,12 @@ const HOME_QUICK_ACTION_LABEL = 'rgba(255, 255, 255, 0.96)';
 /** Vertical gap between major home sections (Popular · Quick actions · Job activity). */
 const HOME_SECTION_VERTICAL_GAP = 24;
 /** Softer mint well for category icons (lighter than accent-tinted gray). */
-const HOME_CATEGORY_ICON_WELL = Colors.sageTint;
+/**
+ * No well behind a category icon. The sage square and the tile border were two
+ * frames around one small picture: a box inside a box, on a row of eight. The
+ * icons carry their own colour, so what they needed was room, not a mount.
+ */
+const HOME_CATEGORY_ICON_WELL = 'transparent';
 
 const CategoryItem = React.memo(({
   category,
@@ -83,8 +88,7 @@ const CategoryItem = React.memo(({
         paddingVertical: 12,
         paddingHorizontal: 10,
         alignItems: 'center',
-        borderWidth: 1,
-        borderColor: 'rgba(17, 24, 39, 0.055)',
+        borderWidth: 0,
         elevation: 0,
         shadowColor: 'transparent',
         shadowOffset: { width: 0, height: 0 },
@@ -94,13 +98,12 @@ const CategoryItem = React.memo(({
     >
       <View
         style={{
-          width: 48,
-          height: 48,
-          borderRadius: BorderRadius.default,
+          width: 52,
+          height: 52,
           backgroundColor: HOME_CATEGORY_ICON_WELL,
           alignItems: 'center',
           justifyContent: 'center',
-          marginBottom: 8,
+          marginBottom: 6,
         }}
       >
         <IconComponent />

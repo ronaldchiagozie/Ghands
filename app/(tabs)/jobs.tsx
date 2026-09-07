@@ -9,10 +9,10 @@ import { getSpecificErrorMessage } from '@/utils/errorMessages';
 import { AuthError } from '@/utils/errors';
 import { isConnectivityOrNetworkError } from '@/utils/isNetworkFailure';
 import { handleAuthErrorRedirect } from '@/utils/authRedirect';
-import { Star } from 'lucide-react-native';
+import { CircleCheckBig, FileClock, Hourglass, Star, Wrench } from 'lucide-react-native';
 import { useFocusEffect, useRouter, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, Platform, RefreshControl, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, Platform, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { JobHistoryCardSkeleton } from '@/components/LoadingSkeleton';
 import { JobsTabEmptyState } from '@/components/JobsTabEmptyState';
 import {
@@ -20,7 +20,6 @@ import {
   JobMetaIconLocation,
   JobMetaIconPerson,
   JobMetaIconQuotes,
-  JobTabIcon,
 } from '@/components/jobs/JobStatusIcons';
 import { useSkeletonGate } from '@/hooks/useSkeletonGate';
 import { Colors, REFRESH_CONTROL, useTabScrollContentPaddingTop, useTabScreenScrollBottomPadding } from '@/lib/designSystem';
@@ -47,7 +46,6 @@ import { formatDateShort } from '@/utils/dateFormatting';
 import { resumeRouteFor } from '@/utils/bookingResume';
 import { useBookingResume } from '@/hooks/useBookingResume';
 import ResumeBookingCard from '@/components/home/ResumeBookingCard';
-import { FileClock } from 'lucide-react-native';
 
 /**
  * 'Drafts' is not a job status the server knows about. It is a tab that exists
@@ -56,6 +54,21 @@ import { FileClock } from 'lucide-react-native';
  */
 type JobStatus = 'Pending' | 'Ongoing' | 'Completed';
 type JobTab = JobStatus | 'Drafts';
+
+/**
+ * One drawing language across all four tabs. The first three were hand-drawn
+ * SVGs packing a clock inside a ring inside a ring, which at twenty pixels is
+ * more detail than the pixels can carry, so they read as smudges beside the
+ * crisp draft icon. These share a family and a weight, and each says what its
+ * tab is: an hourglass for waiting, a wrench for work under way, a tick for
+ * done.
+ */
+const JOB_TAB_ICON: Record<JobTab, typeof Hourglass> = {
+  Drafts: FileClock,
+  Pending: Hourglass,
+  Ongoing: Wrench,
+  Completed: CircleCheckBig,
+};
 
 type JobItem = {
   id: number;
@@ -519,9 +532,21 @@ export default function JobsScreen() {
           Jobs
         </Text>
 
-        <View className="flex flex-row justify-around mb-5">
+        {/**
+          * Scrollable and spaced, rather than four items squeezed into one row.
+          * A fourth tab appeared and justify-around answered by shrinking every
+          * gap, so the labels ran into each other. Scrolling costs nothing when
+          * everything fits and saves the layout when it does not.
+          */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 6, gap: 26, alignItems: 'flex-end' }}
+          style={{ flexGrow: 0, marginBottom: 18 }}
+        >
           {visibleTabs.map((status) => {
             const isActive = activeTab === status;
+            const TabIcon = JOB_TAB_ICON[status];
             return (
               <TouchableOpacity
                 key={status}
@@ -530,33 +555,39 @@ export default function JobsScreen() {
                   setActiveTab(status);
                 }}
                 activeOpacity={0.8}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: isActive }}
                 style={{ alignItems: 'center' }}
               >
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  {status === 'Drafts' ? (
-                    <FileClock size={18} color={isActive ? Colors.accent : Colors.textMuted} />
-                  ) : (
-                    <JobTabIcon
-                      tab={status}
-                      size={18}
-                      color={isActive ? Colors.accent : Colors.textMuted}
-                    />
-                  )}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+                  <TabIcon
+                    size={20}
+                    color={isActive ? Colors.accent : Colors.textMuted}
+                    strokeWidth={isActive ? 2.3 : 2}
+                  />
                   <Text
-                    className="text-base"
-                    style={{ fontFamily: 'Poppins-Medium', color: isActive ? Colors.textPrimary : Colors.iconMuted }}
+                    style={{
+                      fontSize: 15,
+                      fontFamily: isActive ? 'Poppins-SemiBold' : 'Poppins-Medium',
+                      color: isActive ? Colors.accent : Colors.textMuted,
+                    }}
                   >
                     {status}
                   </Text>
                 </View>
                 <View
-                  className="mt-2 h-0.5 rounded-full"
-                  style={{ width: 88, backgroundColor: isActive ? Colors.accent : 'transparent' }}
+                  style={{
+                    height: 2.5,
+                    borderRadius: 2,
+                    marginTop: 7,
+                    alignSelf: 'stretch',
+                    backgroundColor: isActive ? Colors.accent : 'transparent',
+                  }}
                 />
               </TouchableOpacity>
             );
           })}
-        </View>
+        </ScrollView>
 
         {showJobsSkeleton || isJobsLoadingEmpty ? (
           <FlatList

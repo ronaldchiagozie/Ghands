@@ -19,7 +19,6 @@ import { isConnectivityOrNetworkError } from '@/utils/isNetworkFailure';
 import { extractUserIdFromToken } from '@/utils/tokenUtils';
 import { BorderRadius, Colors, MIN_TOUCH_TARGET, Spacing, SHADOWS, useTabScrollContentPaddingTop, useTabScreenScrollBottomPadding } from '@/lib/designSystem';
 import { navigateBack, navigateToClientHomeTab, NAV_FALLBACK } from '@/utils/navigation';
-import { rememberBookingStep } from '@/utils/bookingResume';
 
 interface CategoryData extends ServiceCategory {
   IconComponent: React.ComponentType;
@@ -437,14 +436,14 @@ export default function CategoryPage() {
         }
 
         /**
-         * The draft exists on the server from this point, so the pointer back to
-         * it does too. Tapping a category and being interrupted immediately is
-         * the most common way to end up with a half-made booking.
+         * Deliberately no resume pointer yet.
+         *
+         * A category tap creates the request, but the person has told us
+         * nothing: no title, no description, no date. Offering that back later
+         * is offering back a tap. The pointer starts once they have written the
+         * job down, which is the first point at which leaving costs them
+         * something worth keeping.
          */
-        void rememberBookingStep('details', response.requestId.toString(), {
-          requestId: response.requestId.toString(),
-          categoryName: isToggle,
-        });
 
         // Navigate to JobDetailsScreen with requestId
         routes.push({
@@ -706,24 +705,27 @@ export default function CategoryPage() {
                     }}
                     style={{
                       width: '100%',
-                      backgroundColor: isToggle === category.name ? Colors.sageTint : Colors.white,
+                      backgroundColor: Colors.white,
                       borderRadius: BorderRadius.lg,
                       padding: 12,
                       marginBottom: 16,
-                      borderWidth: isToggle === category.name ? 2 : 1,
+                      /** Selection is the border alone, not a fill as well. */
+                      borderWidth: isToggle === category.name ? 1.5 : 1,
                       borderColor: isToggle === category.name ? Colors.accent : Colors.border,
                       flexDirection: 'row',
                       alignItems: 'center'
                     }}
                     activeOpacity={0.8}
                   >
+                    {/**
+                      * No box around the icon. The row already has a border and
+                      * a selected state, so ringing the picture inside it was a
+                      * frame within a frame, repeated down the whole list.
+                      */}
                     <View style={{
-                      backgroundColor: 'transparent',
-                      borderRadius: 12,
-                      borderWidth: 1,
-                      borderColor: isToggle === category.name ? Colors.accent : Colors.border,
-                      padding: 16,
-                      marginRight: 16,
+                      width: 56,
+                      height: 56,
+                      marginRight: 14,
                       alignItems: 'center',
                       justifyContent: 'center'
                     }}>
