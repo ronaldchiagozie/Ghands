@@ -20,9 +20,14 @@ const BG = '#F9F9F7';
 
 type NoInternetScreenProps = {
   onRetry: () => void | Promise<void | boolean>;
+  /** 'device' when their link is down, 'server' when ours did not answer. */
+  reason?: 'device' | 'server';
 };
 
-export default function NoInternetScreen({ onRetry }: NoInternetScreenProps) {
+export default function NoInternetScreen({
+  onRetry,
+  reason = 'device',
+}: NoInternetScreenProps) {
   const [busy, setBusy] = useState(false);
   const { width: windowWidth } = useWindowDimensions();
 
@@ -62,13 +67,29 @@ export default function NoInternetScreen({ onRetry }: NoInternetScreenProps) {
             resizeMode="contain"
             fadeDuration={0}
             accessible
-            accessibilityLabel="No internet connection illustration"
+            accessibilityLabel={
+              reason === 'server'
+                ? 'Cannot reach GHands illustration'
+                : 'No internet connection illustration'
+            }
           />
         </View>
 
-        <Text style={styles.title}>No connection</Text>
+        {/**
+          * Two different problems, two different sentences. The server not
+          * answering was being reported as "You're offline. Check your
+          * connection" — to somebody whose connection was working, since the
+          * latch behind this screen only fires when the device link is up.
+          * Telling people to fix something that is not broken is worse than
+          * admitting the fault is ours.
+          */}
+        <Text style={styles.title}>
+          {reason === 'server' ? 'Can’t reach GHands' : 'No connection'}
+        </Text>
         <Text style={styles.body}>
-          You’re offline. Check your connection and try again.
+          {reason === 'server'
+            ? 'Your internet is fine — we can’t reach our servers right now. This usually passes in a moment.'
+            : 'You’re offline. Check your connection and try again.'}
         </Text>
         <TouchableOpacity
           style={styles.button}

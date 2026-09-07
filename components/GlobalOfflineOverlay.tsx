@@ -11,7 +11,7 @@ import { isPublicUnauthenticatedRoute } from '@/utils/authPublicRoutes';
  * App-wide offline gate — same No Internet UI on every tab/screen (not per-tab empty states).
  */
 export default function GlobalOfflineOverlay() {
-  const { isOnline, isInitialized, recheck } = useNetworkConnectivity();
+  const { isOnline, isInitialized, offlineReason, recheck } = useNetworkConnectivity();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
 
@@ -36,7 +36,7 @@ export default function GlobalOfflineOverlay() {
       accessibilityViewIsModal
     >
       <View style={styles.content}>
-        <NoInternetScreen onRetry={recheck} />
+        <NoInternetScreen onRetry={recheck} reason={offlineReason ?? 'device'} />
       </View>
     </View>
   );

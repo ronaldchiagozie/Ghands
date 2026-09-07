@@ -4,7 +4,7 @@ import {
   mapWalletTransactionStatus,
   type WalletTransactionRow,
 } from '@/utils/walletTransactions';
-import { normalizeNotificationType } from '@/utils/notificationNavigation';
+import { normalizeNotificationType } from '@/utils/notificationType';
 
 export type WalletNotificationContext = {
   transactionById?: ReadonlyMap<number, WalletTransactionRow>;

@@ -8,7 +8,25 @@ type ApiUnreachableListener = () => void;
 const apiUnreachableListeners = new Set<ApiUnreachableListener>();
 let apiUnreachable = false;
 
-/** Call when authenticated API traffic fails due to connectivity (not auth). */
+/**
+ * Why the app thinks it cannot talk to the server.
+ *
+ * These are different situations and they need different words. The device
+ * being offline is something the person can act on; our server not answering is
+ * not, and telling them to check a connection that is working is worse than
+ * saying nothing.
+ */
+export type OfflineReason = 'device' | 'server';
+
+/**
+ * Call when authenticated API traffic fails due to connectivity (not auth).
+ *
+ * Note what this deliberately does not do: if the device link is down it returns
+ * without latching, because NetInfo already covers that. So this latch always
+ * means "the device has a connection and our server did not answer" — which is
+ * exactly the case that was being shown as "You're offline. Check your
+ * connection", to somebody whose connection was fine.
+ */
 export function reportApiUnreachable(): void {
   void NetInfo.fetch().then((state) => {
     if (!deriveOnlineFromNetInfo(state)) return;

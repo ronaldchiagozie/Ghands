@@ -126,7 +126,14 @@ class ApiClient {
 
   private isNetworkError(error: any): boolean {
     if (!error) return false;
-    if (error.name === 'NetworkError' || error.name === 'TypeError') return true;
+    /**
+     * `TypeError` used to count on its own. A failed fetch in React Native is a
+     * TypeError, so that caught the real case — along with every ordinary bug
+     * that throws one inside this try block, which would then be reported to the
+     * user as "you have no internet". The message check below already catches
+     * the genuine fetch failures by name.
+     */
+    if (error.name === 'NetworkError') return true;
     const errorMessage = (error.message || error.toString() || '').toLowerCase();
     return errorMessage.includes('network request failed') || errorMessage.includes('failed to fetch') ||
       errorMessage.includes('networkerror') || errorMessage.includes('network error') ||

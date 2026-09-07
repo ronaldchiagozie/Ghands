@@ -1,5 +1,9 @@
 import type { Notification } from '@/services/api';
 import { shouldOpenWalletTransactionReceipt } from '@/utils/walletNotificationCopy';
+import { normalizeNotificationType } from '@/utils/notificationType';
+
+/** Re-exported so existing imports of this module keep working. */
+export { normalizeNotificationType };
 
 export type NotificationUserRole = 'client' | 'provider';
 
@@ -58,12 +62,6 @@ const CALL_TYPES = new Set([
   'call_started',
 ]);
 
-export function normalizeNotificationType(type: unknown): string {
-  return String(type ?? '')
-    .trim()
-    .toLowerCase()
-    .replace(/[\s-]+/g, '_');
-}
 
 function parsePositiveInt(value: unknown): number | null {
   if (value == null || value === '') return null;

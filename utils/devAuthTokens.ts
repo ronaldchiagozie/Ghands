@@ -20,6 +20,22 @@ export async function cacheDevAuthTokenForRole(
   await setSecureItem(key, token.trim());
 }
 
+/**
+ * Enough of a token to tell two of them apart, and no more.
+ *
+ * This log printed whole bearer tokens. It is __DEV__ only, so nothing reaches
+ * production — but Metro output gets screenshotted, pasted into chats and
+ * attached to bug reports, and a full token in any of those is a working
+ * credential in somebody else's hands. Nothing about comparing tokens across a
+ * role switch needs more than the ends.
+ */
+function maskToken(token: string | null | undefined): string | null {
+  if (!token) return null;
+  const trimmed = token.trim();
+  if (trimmed.length <= 12) return '***';
+  return `${trimmed.slice(0, 4)}…${trimmed.slice(-4)} (${trimmed.length} chars)`;
+}
+
 export async function logDevAuthTokens(context?: string): Promise<void> {
   if (!__DEV__) return;
 
@@ -47,9 +63,11 @@ export async function logDevAuthTokens(context?: string): Promise<void> {
       activeUserId: userId,
       activeCompanyId: companyId,
       activeTokenUserId: activeToken ? extractUserIdFromToken(activeToken) : null,
-      activeToken,
-      clientToken,
-      providerToken,
+      activeToken: maskToken(activeToken),
+      clientToken: maskToken(clientToken),
+      providerToken: maskToken(providerToken),
+      /** UUID-shaped tokens carry no exp, so expiry is only knowable from a 401. */
+      activeTokenLooksLikeJwt: activeToken ? activeToken.split('.').length === 3 : null,
       clientTokenUserId: clientToken ? extractUserIdFromToken(clientToken) : null,
       providerTokenUserId: providerToken ? extractUserIdFromToken(providerToken) : null,
     });

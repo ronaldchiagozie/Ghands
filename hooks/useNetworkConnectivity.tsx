@@ -6,6 +6,7 @@ import {
   deriveOnlineFromNetInfo,
   isApiUnreachable,
   subscribeApiUnreachable,
+  type OfflineReason,
 } from '@/utils/connectivityCheck';
 
 export { deriveOnlineFromNetInfo } from '@/utils/connectivityCheck';
@@ -13,23 +14,28 @@ export { deriveOnlineFromNetInfo } from '@/utils/connectivityCheck';
 type NetworkContextValue = {
   isOnline: boolean;
   isInitialized: boolean;
+  /** Which of the two problems it is, so the screen can say the true one. */
+  offlineReason: OfflineReason | null;
   recheck: () => Promise<boolean>;
 };
 
 const NetworkContext = createContext<NetworkContextValue>({
   isOnline: true,
   isInitialized: false,
+  offlineReason: null,
   recheck: async () => true,
 });
 
 export function NetworkProvider({ children }: { children: React.ReactNode }) {
   const [isOnline, setIsOnline] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [offlineReason, setOfflineReason] = useState<OfflineReason | null>(null);
   const wasOnlineRef = useRef(true);
 
   const applyNetState = useCallback((state: NetInfoState) => {
     const linkUp = deriveOnlineFromNetInfo(state);
     const online = linkUp && !isApiUnreachable();
+    setOfflineReason(online ? null : linkUp ? 'server' : 'device');
     if (wasOnlineRef.current && !online) {
       /* offline transition */
     }
@@ -49,7 +55,9 @@ export function NetworkProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     return subscribeApiUnreachable(() => {
+      /** This latch only fires with the device link up, so it is always the server. */
       wasOnlineRef.current = false;
+      setOfflineReason('server');
       setIsOnline(false);
       setIsInitialized(true);
     });
@@ -60,6 +68,7 @@ export function NetworkProvider({ children }: { children: React.ReactNode }) {
       void NetInfo.fetch().then((state) => {
         if (deriveOnlineFromNetInfo(state) && !isApiUnreachable()) {
           wasOnlineRef.current = true;
+          setOfflineReason(null);
           setIsOnline(true);
           setIsInitialized(true);
         }
@@ -69,6 +78,8 @@ export function NetworkProvider({ children }: { children: React.ReactNode }) {
 
   const recheck = useCallback(async () => {
     const online = await checkConnectivity();
+    const state = await NetInfo.fetch();
+    setOfflineReason(online ? null : deriveOnlineFromNetInfo(state) ? 'server' : 'device');
     if (!wasOnlineRef.current && online) {
       notifyNetworkRestored();
     }
@@ -79,8 +90,8 @@ export function NetworkProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ isOnline, isInitialized, recheck }),
-    [isOnline, isInitialized, recheck]
+    () => ({ isOnline, isInitialized, offlineReason, recheck }),
+    [isOnline, isInitialized, offlineReason, recheck]
   );
 
   return <NetworkContext.Provider value={value}>{children}</NetworkContext.Provider>;
