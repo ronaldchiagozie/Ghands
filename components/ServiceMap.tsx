@@ -16,7 +16,8 @@ export type ServiceProvider = {
   providerId?: number; // Real backend provider ID for API calls
   name: string;
   category: ProviderCategory;
-  rating: number;
+  /** Null until the API returns one — never a stand-in value. */
+  rating: number | null;
   reviews: number;
   distance: string;
   /**
@@ -340,7 +341,9 @@ const ServiceMap: React.FC<ServiceMapProps> = ({
                         <View className="flex-row items-center mt-1">
                           <Star size={12} color="#F59E0B" fill="#F59E0B" strokeWidth={0} />
                           <Text className="text-xs text-gray-500 ml-1" style={{ fontFamily: 'Poppins-Medium' }}>
-                            {provider.rating.toFixed(1)} ({provider.reviews} reviews)
+                            {provider.rating != null
+                              ? `${provider.rating.toFixed(1)} (${provider.reviews} reviews)`
+                              : 'No reviews yet'}
                           </Text>
                           <View className="ml-2 rounded-full bg-[rgba(79,103,57,0.14)] px-2 py-0.5">
                             <Text className="text-xs text-[#166534]" style={{ fontFamily: 'Poppins-Medium' }}>
@@ -403,7 +406,9 @@ const ServiceMap: React.FC<ServiceMapProps> = ({
                 <View className="flex-row items-center mt-1">
                   <Star size={12} color="#F59E0B" fill="#F59E0B" strokeWidth={0} />
                   <Text className="text-xs text-gray-500 ml-1" style={{ fontFamily: 'Poppins-Medium' }}>
-                    {activeProvider.rating.toFixed(1)} ({activeProvider.reviews} reviews)
+                    {activeProvider.rating != null
+                      ? `${activeProvider.rating.toFixed(1)} (${activeProvider.reviews} reviews)`
+                      : 'No reviews yet'}
                   </Text>
                   <View className="ml-2 rounded-full bg-[rgba(79,103,57,0.14)] px-2 py-0.5">
                     <Text className="text-xs text-[#166534]" style={{ fontFamily: 'Poppins-Medium' }}>

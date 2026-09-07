@@ -28,64 +28,6 @@ import { clearBookingResumePoint, rememberBookingStep } from '@/utils/bookingRes
 import { navigateToClientHomeTab } from '@/utils/navigation';
 const MAX_SELECTION = 3;
 
-// Dummy providers - only used in development mode for testing
-const SAMPLE_PROVIDERS: ServiceProvider[] = __DEV__ ? [
-  {
-    id: 'provider-1',
-    name: "Mike's Plumbing",
-    category: 'Plumber',
-    rating: 0,
-    reviews: 0,
-    distance: '0.8 miles away',
-    verified: true,
-    imageUri: null,
-    coords: { latitude: 6.6018, longitude: 3.3515 },
-  },
-  {
-    id: 'provider-2',
-    name: 'Spark Electric Co.',
-    category: 'Electrician',
-    rating: 0,
-    reviews: 0,
-    distance: '1.1 miles away',
-    verified: true,
-    imageUri: null,
-    coords: { latitude: 6.6128, longitude: 3.3615 },
-  },
-  {
-    id: 'provider-3',
-    name: 'Shine Auto Spa',
-    category: 'Car Wash',
-    rating: 0,
-    reviews: 0,
-    distance: '1.4 miles away',
-    verified: true,
-    imageUri: null,
-    coords: { latitude: 6.5965, longitude: 3.3472 },
-  },
-  {
-    id: 'provider-4',
-    name: 'Rapid Fix Plumbing',
-    category: 'Plumber',
-    rating: 0,
-    reviews: 0,
-    distance: '1.6 miles away',
-    verified: true,
-    imageUri: null,
-    coords: { latitude: 6.609, longitude: 3.3312 },
-  },
-  {
-    id: 'provider-5',
-    name: 'Bright Sparks',
-    category: 'Electrician',
-    rating: 0,
-    reviews: 0,
-    distance: '2.1 miles away',
-    verified: true,
-    imageUri: null,
-    coords: { latitude: 6.593, longitude: 3.3674 },
-  },
-] : [];
 
 
 const ServiceMapScreen = () => {
@@ -286,8 +228,25 @@ const ServiceMapScreen = () => {
           return;
         }
 
+        /**
+         * Identity-approved providers only. `verified` is admin approval, and
+         * somebody who has not passed it is dispatched to a customer's home on
+         * the strength of nothing. The server should exclude them from /nearby
+         * as well — this is the app refusing to display them, not a security
+         * control.
+         */
+        const eligibleProviders = providersArray.filter((provider) => Boolean(provider?.verified));
+
+        if (eligibleProviders.length === 0) {
+          setProviders([]);
+          setProviderError(
+            `No providers found nearby for "${categoryName}". Try expanding your search radius or selecting a different service category.`,
+          );
+          return;
+        }
+
         // Map API NearbyProvider to ServiceProvider format
-        const mappedProviders: ServiceProvider[] = providersArray.map((provider, index) => {
+        const mappedProviders: ServiceProvider[] = eligibleProviders.map((provider, index) => {
           // Get icon for category
           const IconComponent = getCategoryIcon(normalizedCategory, categoryName, '');
           const categoryDisplayName = formatSkillLabel(
@@ -309,8 +268,15 @@ const ServiceMapScreen = () => {
             providerId: provider.id, // Store real backend provider ID for API calls
             name: rawName,
             category: categoryDisplayName as ProviderCategory,
-            rating: 4.5, // Default rating (API doesn't provide this yet)
-            reviews: 0, // Default reviews (API doesn't provide this yet)
+            /**
+             * No rating, rather than an invented one. This was hardcoded to 4.5
+             * for every provider, and the card renders it as
+             * "4.5 (0 reviews)" — a score nobody gave them, shown to somebody
+             * deciding who to let into their home. /nearby returns no rating
+             * today, so the app says nothing until it does.
+             */
+            rating: null,
+            reviews: 0,
             distance:
               provider.distanceKm != null && Number.isFinite(provider.distanceKm) && provider.distanceKm >= 0
                 ? `${formatDistance(provider.distanceKm)} away`

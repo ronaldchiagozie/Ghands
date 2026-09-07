@@ -192,9 +192,13 @@ export default function ProviderDetailScreen() {
           image: rev.jobImageUrl ?? rev.jobPhoto ?? rev.photoUrl ?? rev.imageUrl,
         }))
       );
-      const localDemoImage = await AsyncStorage.getItem('@ghands:provider_profile_image_demo');
-
-      const primaryAvatar = imageUrls[0] || localDemoImage || '';
+      /**
+       * The provider's own photo or nothing. Two demo keys used to be consulted
+       * here — a locally stored avatar and bio — which neither app has ever
+       * written, so they were dead reads that only made it look as though demo
+       * data were expected to fill the gaps.
+       */
+      const primaryAvatar = imageUrls[0] || '';
       const galleryFromImageEndpoint = imageUrls.slice(1);
       const uniqueRecent = [
         ...new Set([...profileWorkUrls, ...fromAnalyticsReviews, ...galleryFromImageEndpoint]),
@@ -220,13 +224,8 @@ export default function ProviderDetailScreen() {
       const onTimePercentage =
         onTimeRaw != null && !Number.isNaN(Number(onTimeRaw)) ? Number(onTimeRaw) : null;
 
-      const localAbout = (await AsyncStorage.getItem('@ghands:provider_about_demo')) || '';
       const aboutText =
-        typeof p.about === 'string' && p.about.trim().length > 0
-          ? p.about.trim()
-          : localAbout.trim().length > 0
-            ? localAbout.trim()
-            : 'No bio yet.';
+        typeof p.about === 'string' && p.about.trim().length > 0 ? p.about.trim() : 'No bio yet.';
 
       const mapped: ProviderDetail = {
         ...EMPTY_PROVIDER,
