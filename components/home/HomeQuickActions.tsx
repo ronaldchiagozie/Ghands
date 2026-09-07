@@ -10,8 +10,10 @@ type QuickActionId = 'wallet' | 'rebook' | 'urgent';
 type HomeQuickActionsProps = {
   /** Null while loading, so nothing is shown rather than a wrong number. */
   balance?: number | null;
-  /** The service from their most recent job, when there is one. */
+  /** The service from their last finished job, when there is one. */
   lastService?: string | null;
+  /** True while the repeat booking is being raised, which needs the server. */
+  rebookBusy?: boolean;
   onPress: (id: QuickActionId) => void;
 };
 
@@ -40,6 +42,7 @@ type HomeQuickActionsProps = {
 export default function HomeQuickActions({
   balance,
   lastService,
+  rebookBusy = false,
   onPress,
 }: HomeQuickActionsProps) {
   const service = lastService?.trim();
@@ -54,6 +57,7 @@ export default function HomeQuickActions({
     label: string;
     value: string;
     tone: string;
+    busy?: boolean;
   }[] = [
     {
       id: 'wallet',
@@ -72,8 +76,14 @@ export default function HomeQuickActions({
             id: 'rebook' as const,
             Icon: RotateCcw,
             label: 'Book again',
-            value: service,
+            /**
+             * Raising the booking needs the server, and a cold instance can
+             * take several seconds. The card says so in place of the service
+             * name rather than sitting there looking ignored.
+             */
+            value: rebookBusy ? 'Setting up' : service,
             tone: Colors.accent,
+            busy: rebookBusy,
           },
         ]
       : []),
@@ -97,10 +107,12 @@ export default function HomeQuickActions({
         <Pressable
           key={action.id}
           onPress={() => onPress(action.id)}
+          disabled={action.busy}
           accessibilityRole="button"
+          accessibilityState={{ disabled: !!action.busy, busy: !!action.busy }}
           accessibilityLabel={`${action.label}. ${action.value}`}
           android_ripple={{ color: 'rgba(17, 24, 39, 0.06)' }}
-          style={{ flex: 1 }}
+          style={{ flex: 1, opacity: action.busy ? 0.6 : 1 }}
         >
           {/**
             * Everything visual on this inner View. NativeWind wraps every

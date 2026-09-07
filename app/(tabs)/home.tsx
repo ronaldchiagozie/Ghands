@@ -35,6 +35,8 @@ import { isConnectivityOrNetworkError } from '@/utils/isNetworkFailure';
 import { resolveJobDisplayStatus } from '@/utils/jobDisplayStatus';
 import { navigateToClientHomeTab } from '@/utils/navigation';
 import { countSentQuotations, jobHasSentQuotation } from '@/utils/quotationStatus';
+import { pickRebookSeed, type RebookSeed } from '@/utils/rebook';
+import { resolveUserId } from '@/utils/resolveUserId';
 import { mergeCachedVisitRequest } from '@/utils/visitRequestCache';
 import { healJobStatusAfterVisitDecline } from '@/utils/visitStatus';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -159,6 +161,12 @@ const HomeScreen = React.memo(() => {
   const [showLocationModal, setShowLocationModal] = useState(false);
   const { location, isLoading, refreshLocation } = useUserLocation();
   const [jobActivities, setJobActivities] = useState<JobActivity[]>([]);
+  /**
+   * The finished job Book again would repeat, held whole rather than as a
+   * label, so the tap can raise the booking instead of opening a list.
+   */
+  const [rebookSeed, setRebookSeed] = useState<RebookSeed | null>(null);
+  const [isRebooking, setIsRebooking] = useState(false);
   const [isLoadingJobs, setIsLoadingJobs] = useState(true);
   /** The thrown error itself - ErrorSheet needs the status/kind, not just a string. */
   const [jobsLoadError, setJobsLoadError] = useState<unknown>(null);
@@ -288,9 +296,17 @@ const HomeScreen = React.memo(() => {
       const requests = await serviceRequestService.getUserRequests();
       if (!Array.isArray(requests) || requests.length === 0) {
         setJobActivities([]);
+        setRebookSeed(null);
         setJobsLoadError(null);
         return;
       }
+      /**
+       * Taken from the full list, not the two shown below. The activity cards
+       * are the newest couple of jobs and a finished one can easily sit below
+       * them, but that is still the job somebody means by "again".
+       */
+      setRebookSeed(pickRebookSeed(requests as unknown as Parameters<typeof pickRebookSeed>[0]));
+
       /** Same rule as the Jobs tab - an unfinished booking is not activity. */
       const confirmedRequests = requests.filter((request) => {
         return isSubmittedBooking(request);
@@ -604,13 +620,63 @@ const HomeScreen = React.memo(() => {
   const { balance: walletBalance } = useWalletBalance({ refreshOnFocus: true });
 
   /**
-   * The service from their most recent job, so Book again names the thing it
-   * would book rather than sending them to a list to work it out.
+   * Books the same work again.
+   *
+   * This raises a new request rather than reopening the finished one, which is
+   * the only honest reading of "again": the old job has its own history, its
+   * own provider and its own receipt, and none of that should move.
+   *
+   * What carries forward is the description of the work - the category, the
+   * title, the write-up - and nothing else. Not the photos, which were of a
+   * problem that has since been fixed, and not the price, which was quoted for
+   * that visit by a provider who has not seen this one. Both would look like
+   * the app promising terms it cannot keep.
+   *
+   * It lands on the details step rather than skipping ahead, so the job can be
+   * corrected before anybody is asked to quote for it. Nothing is sent to a
+   * provider until they finish the flow exactly as they would any other time.
    */
-  const lastBookedService = useMemo(
-    () => jobActivities.find((job) => job.category?.trim())?.category?.trim() ?? null,
-    [jobActivities],
-  );
+  const handleRebook = useCallback(async () => {
+    if (!rebookSeed || isRebooking) return;
+    setIsRebooking(true);
+    try {
+      const userId = await resolveUserId();
+      if (!userId) {
+        Alert.alert(
+          'Could not start that booking',
+          'We could not confirm your account. Sign out and sign back in, then try again.',
+        );
+        return;
+      }
+
+      const response = await serviceRequestService.createRequest({
+        userId,
+        categoryName: rebookSeed.categoryName,
+        jobTitle: rebookSeed.jobTitle || undefined,
+        description: rebookSeed.description || undefined,
+      });
+
+      if (!response?.requestId) throw new Error('Invalid response: requestId not found');
+
+      router.push({
+        pathname: '/JobDetailsScreen' as any,
+        params: {
+          requestId: response.requestId.toString(),
+          categoryName: rebookSeed.categoryName,
+          prefillTitle: rebookSeed.jobTitle,
+          prefillDescription: rebookSeed.description,
+        },
+      } as any);
+    } catch {
+      haptics.error();
+      Alert.alert(
+        'Could not start that booking',
+        'Check your connection and try again, or pick the service yourself from the categories.',
+      );
+    } finally {
+      setIsRebooking(false);
+    }
+  }, [isRebooking, rebookSeed, router]);
 
   const handleQuickAction = useCallback(
     (id: QuickActionId) => {
@@ -623,12 +689,12 @@ const HomeScreen = React.memo(() => {
         return;
       }
       if (id === 'rebook') {
-        router.push('/(tabs)/jobs' as any);
+        void handleRebook();
         return;
       }
       router.push('/WalletScreen' as any);
     },
-    [router],
+    [handleRebook, router],
   );
 
   const handleSetupTaskPress = useCallback(
@@ -927,7 +993,8 @@ const HomeScreen = React.memo(() => {
                 */}
               <HomeQuickActions
                 balance={walletBalance}
-                lastService={lastBookedService}
+                lastService={rebookSeed?.categoryName ?? null}
+                rebookBusy={isRebooking}
                 onPress={handleQuickAction}
               />
             </View>

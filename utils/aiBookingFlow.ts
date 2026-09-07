@@ -1,6 +1,6 @@
 import { aiService, authService, locationService } from '@/services/api';
 import type { AiBookingPrefill } from '@/components/ai/chat/types';
-import { extractUserIdFromToken } from '@/utils/tokenUtils';
+import { resolveUserId } from '@/utils/resolveUserId';
 import { getSpecificErrorMessage } from '@/utils/errorMessages';
 import { handleApiAuthFailure } from '@/utils/authRedirect';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -14,23 +14,6 @@ const GPS_LOCATION_TIMEOUT_MS = 4500;
 export type AiBookingStartResult =
   | { ok: true; requestId: number }
   | { ok: false; error: string };
-
-async function resolveUserId(): Promise<number | null> {
-  let userId = await authService.getUserId();
-
-  if (!userId) {
-    const token = await authService.getAuthToken();
-    if (token) {
-      const extracted = extractUserIdFromToken(token);
-      if (extracted) {
-        userId = extracted;
-        await authService.setUserId(userId);
-      }
-    }
-  }
-
-  return userId;
-}
 
 type BookingLocationPayload = {
   formattedAddress: string;

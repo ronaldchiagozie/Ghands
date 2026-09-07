@@ -25,12 +25,31 @@ const MAX_JOB_TITLE_LENGTH = 200;
 
 export default function JobDetailsScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ requestId?: string; categoryName?: string }>();
+  const params = useLocalSearchParams<{
+    requestId?: string;
+    categoryName?: string;
+    /**
+     * Set only by Book again, which carries the finished job's write-up
+     * forward so this step opens filled in rather than blank. Both are
+     * ordinary editable values from here on: the point is to save retyping a
+     * job they have already described once, not to lock it.
+     */
+    prefillTitle?: string;
+    prefillDescription?: string;
+  }>();
+  /**
+   * Read once, at first render. Reading these on every render would fight the
+   * person as they type, since the params outlive the screen's own state.
+   */
+  const prefill = useRef({
+    jobTitle: typeof params.prefillTitle === 'string' ? params.prefillTitle : '',
+    description: typeof params.prefillDescription === 'string' ? params.prefillDescription : '',
+  }).current;
   const { location, refreshLocation } = useUserLocation();
   const { toast, showError, showSuccess, hideToast } = useToast();
   const keyboardOffset = useKeyboardAvoidingOffset();
-  const [jobTitle, setJobTitle] = useState('');
-  const [description, setDescription] = useState('');
+  const [jobTitle, setJobTitle] = useState(prefill.jobTitle);
+  const [description, setDescription] = useState(prefill.description);
   const [errors, setErrors] = useState<{ jobTitle?: string; description?: string }>({});
   const [isUpdating, setIsUpdating] = useState(false);
   const [locationData, setLocationData] = useState<any>(null);
