@@ -2,9 +2,10 @@ import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { runSpring, runTiming } from '@/lib/motion';
 import { Image as ImageIcon, Images, User } from 'lucide-react-native';
 import { Image } from 'expo-image';
-import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Easing, Pressable, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
+import ImageLightbox from '@/components/ImageLightbox';
 import type { AiImageAttachment } from './types';
 
 const TILE_SIZE = 76;
@@ -65,7 +66,15 @@ function LoadingRing() {
   );
 }
 
-function AiChatImageTile({ item, index }: { item: AiImageAttachment; index: number }) {
+function AiChatImageTile({
+  item,
+  index,
+  onPress,
+}: {
+  item: AiImageAttachment;
+  index: number;
+  onPress?: () => void;
+}) {
   const reducedMotion = useReducedMotion();
   const opacity = useRef(new Animated.Value(reducedMotion ? 1 : 0)).current;
   const translateY = useRef(new Animated.Value(reducedMotion ? 0 : 8)).current;
@@ -96,6 +105,18 @@ function AiChatImageTile({ item, index }: { item: AiImageAttachment; index: numb
 
   return (
     <Animated.View style={{ opacity, transform: [{ translateY }] }}>
+      {/**
+        * Tappable once it has actually loaded. A 76px tile is enough to know a
+        * photo is there and not enough to see what is in it, and the whole
+        * reason somebody sends Handy a picture of a leak is so it can be looked
+        * at.
+        */}
+      <Pressable
+        onPress={showLoading ? undefined : onPress}
+        disabled={showLoading || !onPress}
+        accessibilityRole={onPress ? 'imagebutton' : undefined}
+        accessibilityLabel={onPress ? 'View photo' : undefined}
+      >
       <View
         style={{
           width: TILE_SIZE,
@@ -131,6 +152,7 @@ function AiChatImageTile({ item, index }: { item: AiImageAttachment; index: numb
           />
         )}
       </View>
+      </Pressable>
     </Animated.View>
   );
 }
@@ -141,6 +163,8 @@ export default function AiChatImageRow({
   visible,
 }: AiChatImageRowProps) {
   const reducedMotion = useReducedMotion();
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState(0);
   const containerOpacity = useRef(new Animated.Value(reducedMotion || visible ? 1 : 0)).current;
   const containerTranslateY = useRef(new Animated.Value(reducedMotion || visible ? 0 : 12)).current;
 
@@ -170,6 +194,23 @@ export default function AiChatImageRow({
     });
   }, [containerOpacity, containerTranslateY, reducedMotion, visible]);
 
+  /**
+   * Only loaded images can be opened, and the viewer is indexed against that
+   * same list so tapping the third tile does not open the second picture when
+   * one of them is still uploading.
+   */
+  const viewableUris = items
+    .filter((item): item is AiImageAttachment & { uri: string } =>
+      !item.loading && typeof item.uri === 'string' && item.uri.trim().length > 0,
+    )
+    .map((item) => item.uri);
+  const openViewerAt = (id: string) => {
+    const target = items.find((item) => item.id === id);
+    if (!target || target.loading || !target.uri) return;
+    setViewerIndex(Math.max(viewableUris.indexOf(target.uri), 0));
+    setViewerOpen(true);
+  };
+
   if (!visible || items.length === 0) return null;
 
   return (
@@ -186,7 +227,11 @@ export default function AiChatImageRow({
           <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
             {items.map((item, index) => (
               <View key={item.id} style={{ position: 'relative', marginLeft: 10 }}>
-                <AiChatImageTile item={item} index={index} />
+                <AiChatImageTile
+                  item={item}
+                  index={index}
+                  onPress={() => openViewerAt(item.id)}
+                />
                 {index === 1 ? (
                   <View
                     style={{
@@ -235,6 +280,13 @@ export default function AiChatImageRow({
           <User size={16} color="#FFFFFF" strokeWidth={2.2} />
         </View>
       </View>
+
+      <ImageLightbox
+        uris={viewableUris}
+        initialIndex={viewerIndex}
+        visible={viewerOpen}
+        onClose={() => setViewerOpen(false)}
+      />
     </Animated.View>
   );
 }

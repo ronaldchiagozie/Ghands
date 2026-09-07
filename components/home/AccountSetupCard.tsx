@@ -1,4 +1,4 @@
-import { ChevronRight, CreditCard, MapPin, ShieldCheck, Sparkles, User } from 'lucide-react-native';
+import { Bell, ChevronRight, CreditCard, MapPin, ShieldCheck, User } from 'lucide-react-native';
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 
@@ -11,7 +11,9 @@ const TASK_ICON: Record<SetupTaskId, typeof User> = {
   location: MapPin,
   pin: ShieldCheck,
   bank: CreditCard,
-  notifications: Sparkles,
+  // A bell, because the row is about notifications. The sparkle it replaces
+  // meant nothing here beyond decoration.
+  notifications: Bell,
 };
 
 type AccountSetupCardProps = {

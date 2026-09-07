@@ -1,152 +1,58 @@
+import { HandHelping } from 'lucide-react-native';
 import React from 'react';
-import { View, type StyleProp, type ViewStyle } from 'react-native';
-import Svg, { G, Path } from 'react-native-svg';
+import { View } from 'react-native';
 
-const SPARKLE_LIME = '#E4FF5C';
-const SPARKLE_BLACK = '#101010';
-const SPARKLE_TEAL = '#003D4D';
+/**
+ * Handy's mark.
+ *
+ * It was three four-point stars, which is the house style of every AI feature
+ * shipped in the last two years and says nothing about this one. The assistant
+ * is called Handy, the product is GHands, and the job is somebody turning up to
+ * fix your sink. A helping hand is the thing it actually means, and it belongs
+ * to this app rather than to the category.
+ *
+ * The file name and the exported names are unchanged on purpose: they are
+ * referenced from the home FAB, the draft chip and the provider app, and a
+ * rename would be churn across three call sites for no gain. The variants keep
+ * their meanings so nothing above has to know the drawing changed.
+ */
 
-/** Four-point star - viewBox 0 0 24 24, center at (12, 12). */
-const STAR_PATH =
-  'M12 1.5L13.8 10.2L22.5 12L13.8 13.8L12 22.5L10.2 13.8L1.5 12L10.2 10.2Z';
+const HANDY_LIME = '#E4FF5C';
+const HANDY_TEAL = '#003D4D';
 
-type AiSparkleIconProps = {
+type AiHandyIconProps = {
   variant?: 'default' | 'fab' | 'fab-shoulder' | 'lg' | 'chip';
   /** `chip` only - rendered edge length. */
   size?: number;
-  /** `chip` only - overrides the teal fill. */
+  /** `chip` only - overrides the teal stroke. */
   tint?: string;
 };
 
-function SparkleStar({
-  size,
-  fill,
-  style,
-}: {
-  size: number;
-  fill: string;
-  style?: StyleProp<ViewStyle>;
-}) {
-  return (
-    <View style={style}>
-      <Svg width={size} height={size} viewBox="0 0 24 24">
-        <Path d={STAR_PATH} fill={fill} />
-      </Svg>
-    </View>
-  );
-}
-
-/** Star drawn with its center at (x, y) inside the SVG viewBox. */
-function CenteredStar({
-  x,
-  y,
-  scale,
-  fill,
-}: {
-  x: number;
-  y: number;
-  scale: number;
-  fill: string;
-}) {
-  return (
-    <G transform={`translate(${x}, ${y})`}>
-      <G transform={`translate(-12, -12) scale(${scale})`}>
-        <Path d={STAR_PATH} fill={fill} />
-      </G>
-    </G>
-  );
-}
-
 /**
- * All sparkles in one SVG - cluster centroid locked to viewBox center (15, 15).
+ * Kept as a named export because the shoulder layout imports it directly.
+ * There is nothing to place beside the mark now that it is a single glyph, so
+ * it renders the mark itself rather than an empty decoration.
  */
-function FabCenterSparkleCluster() {
-  const size = 30;
-
-  return (
-    <Svg width={size} height={size} viewBox="0 0 30 30">
-      <CenteredStar x={15} y={15} scale={0.92} fill={SPARKLE_LIME} />
-      <CenteredStar x={21} y={10} scale={0.66} fill={SPARKLE_BLACK} />
-      <CenteredStar x={10} y={20} scale={0.56} fill={SPARKLE_LIME} />
-    </Svg>
-  );
-}
-
-/**
- * Two stars rather than three - the third star collapses into noise below ~20px,
- * which is the size this variant is meant for.
- */
-function ChipSparkleCluster({ size, tint }: { size: number; tint: string }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 30 30">
-      <CenteredStar x={13} y={17} scale={1} fill={tint} />
-      <CenteredStar x={22} y={8} scale={0.52} fill={tint} />
-    </Svg>
-  );
-}
-
-/** Shoulder variant - kept for reference layouts. */
 export function AiFabShoulderSparkles() {
   return (
-    <View
-      pointerEvents="none"
-      style={{
-        position: 'absolute',
-        top: -11,
-        left: -9,
-        width: 34,
-        height: 30,
-      }}
-    >
-      <SparkleStar
-        size={22}
-        fill={SPARKLE_LIME}
-        style={{ position: 'absolute', left: 2, top: 10 }}
-      />
-      <SparkleStar
-        size={16}
-        fill={SPARKLE_BLACK}
-        style={{ position: 'absolute', left: 10, top: 0 }}
-      />
-      <SparkleStar
-        size={14}
-        fill={SPARKLE_LIME}
-        style={{ position: 'absolute', left: 16, top: 14 }}
-      />
+    <View pointerEvents="none">
+      <HandHelping size={22} color={HANDY_LIME} strokeWidth={2} />
     </View>
   );
 }
 
-export default function AiSparkleIcon({ variant = 'default', size, tint }: AiSparkleIconProps) {
+export default function AiSparkleIcon({ variant = 'default', size, tint }: AiHandyIconProps) {
   if (variant === 'fab' || variant === 'lg') {
-    return <FabCenterSparkleCluster />;
+    return <HandHelping size={28} color={HANDY_LIME} strokeWidth={2} />;
   }
 
   if (variant === 'chip') {
-    return <ChipSparkleCluster size={size ?? 15} tint={tint ?? SPARKLE_TEAL} />;
+    return <HandHelping size={size ?? 15} color={tint ?? HANDY_TEAL} strokeWidth={2.2} />;
   }
 
   if (variant === 'fab-shoulder') {
     return <AiFabShoulderSparkles />;
   }
 
-  return (
-    <View style={{ width: 28, height: 28, position: 'relative' }}>
-      <SparkleStar
-        size={12}
-        fill={SPARKLE_LIME}
-        style={{ position: 'absolute', left: 0, top: 1 }}
-      />
-      <SparkleStar
-        size={10}
-        fill={SPARKLE_BLACK}
-        style={{ position: 'absolute', right: 0, top: 0 }}
-      />
-      <SparkleStar
-        size={9}
-        fill={SPARKLE_LIME}
-        style={{ position: 'absolute', left: 3, bottom: 0 }}
-      />
-    </View>
-  );
+  return <HandHelping size={24} color={HANDY_LIME} strokeWidth={2} />;
 }
