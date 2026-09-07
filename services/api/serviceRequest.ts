@@ -205,6 +205,48 @@ export const serviceRequestService = {
    * server that rejects the key leaves us exactly where we were - with photos
    * that do not reach the provider - rather than breaking the booking.
    */
+  /**
+   * Publishes a finished booking, whichever endpoint this deployment publishes with.
+   *
+   * Today `select-provider` is what moves a request out of draft. Under the
+   * agreed change it will only record the choice, and `/confirm` takes the
+   * provider and publishes. Those are opposite behaviours on the same two
+   * endpoints, so a coordinated release would be needed: ship ours early and
+   * nothing publishes, ship ours late and nothing publishes.
+   *
+   * We can tell which deployment we are talking to instead, because the two
+   * versions of `/confirm` answer differently. The current one validates and
+   * returns the request unchanged, so it comes back still `draft`. The new one
+   * publishes, so it comes back `pending`.
+   *
+   * Try confirm, look at what came back, and fall back when it did not publish.
+   * Both orders of deploy then work with nobody having to hold anything.
+   */
+  publishBooking: async (requestId: number, providerId: number): Promise<void> => {
+    let published = false;
+
+    try {
+      const response = await apiClient.post<any>(
+        `/api/request-service/requests/${requestId}/confirm`,
+        { providerId },
+      );
+      const data = extractResponseData<any>(response);
+      published = String(data?.status ?? '').toLowerCase() === 'pending';
+    } catch {
+      /**
+       * A deployment without the endpoint, or one that refuses the extra field.
+       * Neither tells us the booking is bad, only that confirm did not publish
+       * it. If the request really is incomplete, the call below applies the same
+       * field checks and surfaces the same failure.
+       */
+      published = false;
+    }
+
+    if (published) return;
+
+    await serviceRequestService.selectProvider(requestId, providerId);
+  },
+
   attachRequestImages: async (requestId: number, imageUrls: string[]): Promise<void> => {
     const urls = imageUrls.map((url) => url.trim()).filter(Boolean);
     if (urls.length === 0) return;

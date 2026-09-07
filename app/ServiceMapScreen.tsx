@@ -778,15 +778,13 @@ const ServiceMapScreen = () => {
           await AsyncStorage.removeItem(BOOKING_PHOTO_URIS_KEY);
 
           /**
-           * Selecting the provider is what publishes the booking.
+           * Publishing the booking. This is the one request in the flow that
+           * must not fail quietly.
            *
-           * Not `/confirm`, which we briefly called here - the backend confirmed
-           * it only validates and returns the request unchanged, so it never
-           * moved anything out of draft. `select-provider` performs the same
-           * field checks and is the call that flips draft to pending and lets
-           * the provider see the job.
-           *
-           * So this is the one request in the flow that must not fail quietly.
+           * Which endpoint does the publishing is deliberately not decided here.
+           * `select-provider` does it today and `/confirm` will once the backend
+           * change lands; publishBooking works out which deployment it is
+           * talking to, so neither side has to hold a release for the other.
            */
           const requestId = parseInt(params.requestId ?? '', 10);
           const providerId = selectedProviders[0]?.providerId;
@@ -804,7 +802,7 @@ const ServiceMapScreen = () => {
           }
 
           try {
-            await serviceRequestService.selectProvider(requestId, providerId);
+            await serviceRequestService.publishBooking(requestId, providerId);
           } catch (error: any) {
             /**
              * Stop here. This used to show a toast and continue to the
