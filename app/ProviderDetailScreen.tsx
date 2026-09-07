@@ -9,6 +9,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Images, MapPin, MessageCircleMore, Star, User, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AvatarCircle } from '@/components/AvatarCircle';
 import {
   ActivityIndicator,
   Image,
@@ -391,30 +392,20 @@ export default function ProviderDetailScreen() {
             >
               {/* Profile Picture */}
               <View style={{ position: 'relative' }}>
-                {provider.image ? (
-                  <Image
-                    source={{ uri: provider.image }}
-                    style={{
-                      width: 100,
-                      height: 100,
-                      borderRadius: BorderRadius.full,
-                      backgroundColor: Colors.backgroundGray,
-                    }}
-                  />
-                ) : (
-                  <View
-                    style={{
-                      width: 100,
-                      height: 100,
-                      borderRadius: BorderRadius.full,
-                      backgroundColor: Colors.backgroundGray,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <User size={42} color={Colors.textSecondaryDark} />
-                  </View>
-                )}
+                {/**
+                  * Their photo, else their initials, else a neutral glyph — the
+                  * same avatar the map and the chat use. The bare User glyph
+                  * this replaced said nothing; initials at least say who you are
+                  * looking at, which matters most on the screen where somebody
+                  * decides whether to let this person into their home.
+                  */}
+                <AvatarCircle
+                  uri={provider.image}
+                  name={provider.name}
+                  size={100}
+                  backgroundColor={Colors.backgroundGray}
+                  borderColor="transparent"
+                />
                 {provider.isOnline && (
                   <View
                     style={{

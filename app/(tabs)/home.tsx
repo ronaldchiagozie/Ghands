@@ -4,7 +4,7 @@ import ResumeBookingCard from '@/components/home/ResumeBookingCard';
 import { useBookingResume } from '@/hooks/useBookingResume';
 import { resumeRouteFor } from '@/utils/bookingResume';
 import { useAccountSetup, type SetupTaskId } from '@/hooks/useAccountSetup';
-import { enableNotifications, syncPushNotifications } from '@/utils/pushNotifications';
+import { enableNotifications } from '@/utils/pushNotifications';
 import { isSubmittedBooking } from '@ghands/contract';
 import { CategoryChipSkeleton, JobCardSkeleton } from '@/components/LoadingSkeleton';
 import LocationSearchModal from '@/components/LocationSearchModal';

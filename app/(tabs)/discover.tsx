@@ -8,7 +8,7 @@ import {
   useTabScrollContentPaddingTop,
 } from '@/lib/designSystem';
 import { useRouter } from 'expo-router';
-import { ChevronRight, Gift, MapPin, TrendingUp } from 'lucide-react-native';
+import { MapPin, TrendingUp } from 'lucide-react-native';
 import React, { useCallback, useMemo, useRef } from 'react';
 import { Animated, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useUserLocation } from '@/hooks/useUserLocation';
@@ -19,18 +19,8 @@ interface TrendingService {
   id: string;
   title: string;
   category: string;
-  bookings: number;
   image: any;
   categoryId: string;
-}
-
-interface SpecialOffer {
-  id: string;
-  title: string;
-  description: string;
-  discount: string;
-  expiry: string;
-  image: any;
 }
 
 interface ServiceTip {
@@ -38,7 +28,6 @@ interface ServiceTip {
   title: string;
   description: string;
   category: string;
-  readTime: string;
 }
 
 /** Saved location is a string (address); map always needs lat/lng (see useUserLocation). */
@@ -51,7 +40,6 @@ const trendingServices: TrendingService[] = [
     id: 'trend-1',
     title: 'Plumbing',
     category: 'Emergency Repairs',
-    bookings: 245,
     image: require('../../assets/images/plumbericon2.png'),
     categoryId: 'plumber',
   },
@@ -59,7 +47,6 @@ const trendingServices: TrendingService[] = [
     id: 'trend-2',
     title: 'Electrical',
     category: 'Installations',
-    bookings: 189,
     image: require('../../assets/images/electricianicon2.png'),
     categoryId: 'electrician',
   },
@@ -67,7 +54,6 @@ const trendingServices: TrendingService[] = [
     id: 'trend-3',
     title: 'Cleaning',
     category: 'Deep Cleaning',
-    bookings: 312,
     image: require('../../assets/images/cleanericon2.png'),
     categoryId: 'cleaning',
   },
@@ -75,28 +61,8 @@ const trendingServices: TrendingService[] = [
     id: 'trend-4',
     title: 'Painting',
     category: 'Interior',
-    bookings: 156,
     image: require('../../assets/images/paintericon2.png'),
     categoryId: 'painter',
-  },
-];
-
-const specialOffers: SpecialOffer[] = [
-  {
-    id: 'offer-1',
-    title: 'Weekend Special',
-    description: 'Get 20% off on all weekend bookings',
-    discount: '20% OFF',
-    expiry: 'Ends in 2 days',
-    image: require('../../assets/images/plumbericon2.png'),
-  },
-  {
-    id: 'offer-2',
-    title: 'First Time Customer',
-    description: 'Enjoy 25% discount on your first service',
-    discount: '25% OFF',
-    expiry: 'Limited time',
-    image: require('../../assets/images/electricianicon2.png'),
   },
 ];
 
@@ -106,21 +72,18 @@ const serviceTips: ServiceTip[] = [
     title: 'How to Choose the Right Plumber',
     description: 'Learn what to look for when hiring a plumbing professional',
     category: 'Plumbing',
-    readTime: '3 min read',
   },
   {
     id: 'tip-2',
     title: 'Electrical Safety Tips for Homeowners',
     description: 'Essential safety guidelines for electrical work in your home',
     category: 'Electrical',
-    readTime: '5 min read',
   },
   {
     id: 'tip-3',
     title: 'When to Call a Professional',
     description: 'Know when DIY is safe and when to call the experts',
     category: 'General',
-    readTime: '4 min read',
   },
 ];
 
@@ -161,13 +124,6 @@ export default function DiscoverScreen() {
     });
   }, [router]);
 
-  const handleOfferPress = useCallback((offerId: string) => {
-    haptics.light();
-    router.push({
-      pathname: '/(tabs)/categories',
-    });
-  }, [router]);
-
   const animatedStyles = useMemo(() => ({
     opacity: fadeAnim,
     transform: [{ translateY: slideAnim }],
@@ -191,83 +147,7 @@ export default function DiscoverScreen() {
             </Text>
           </View>
 
-          {/* Hero Banner - Featured Deal/Provider */}
-          <View style={{ paddingHorizontal: 16, marginBottom: 24 }}>
-            <TouchableOpacity
-              activeOpacity={0.9}
-              onPress={() => handleOfferPress('hero-offer')}
-              style={{
-                backgroundColor: Colors.white,
-                borderRadius: BorderRadius.xl,
-                padding: 18,
-                elevation: 0,
-                shadowOpacity: 0,
-                shadowRadius: 0,
-                shadowOffset: { width: 0, height: 0 },
-              }}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                <View
-                  style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: BorderRadius.full,
-                    backgroundColor: Colors.backgroundGray,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginRight: 12,
-                  }}
-                >
-                  <Gift size={22} color={Colors.textPrimary} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text
-                    style={{
-                      fontSize: 15,
-                      fontFamily: 'Poppins-Bold',
-                      color: Colors.textPrimary,
-                      marginBottom: 4,
-                      letterSpacing: -0.2,
-                    }}
-                  >
-                    Featured Deal
-                  </Text>
-                  <Text
-                    style={{
-                      fontSize: 13,
-                      fontFamily: 'Poppins-Regular',
-                      color: Colors.textSecondaryDark,
-                      lineHeight: 20,
-                    }}
-                  >
-                    Get 30% off your first booking
-                  </Text>
-                </View>
-              </View>
-              <View
-                style={{
-                  backgroundColor: Colors.black,
-                  borderRadius: BorderRadius.default,
-                  paddingVertical: 10,
-                  paddingHorizontal: 16,
-                  alignSelf: 'flex-start',
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 14,
-                    fontFamily: 'Poppins-SemiBold',
-                    color: Colors.white,
-                    letterSpacing: 0.2,
-                  }}
-                >
-                  Claim Offer →
-                </Text>
-              </View>
-            </TouchableOpacity>
-          </View>
-
-          {/* Trending Services */}
+          {/* Services to browse */}
           <View style={{ paddingHorizontal: 16, marginBottom: 24 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
               <TrendingUp size={18} color={Colors.textPrimary} style={{ marginRight: 8 }} />
@@ -279,7 +159,7 @@ export default function DiscoverScreen() {
                   letterSpacing: -0.2,
                 }}
               >
-                Trending Services
+                Browse services
               </Text>
             </View>
             <ScrollView
@@ -344,121 +224,6 @@ export default function DiscoverScreen() {
                   >
                     {service.category}
                   </Text>
-                  <View
-                    style={{
-                      backgroundColor: Colors.backgroundGray,
-                      borderRadius: BorderRadius.sm,
-                      paddingHorizontal: 10,
-                      paddingVertical: 6,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      alignSelf: 'flex-start',
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 10,
-                        fontFamily: 'Poppins-Medium',
-                        color: Colors.textSecondaryDark,
-                        letterSpacing: 0.1,
-                      }}
-                    >
-                      {service.bookings} bookings
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-
-          {/* Special Offers */}
-          <View style={{ paddingHorizontal: 16, marginBottom: 24 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <Text
-                style={{
-                  fontSize: 16,
-                  fontFamily: 'Poppins-SemiBold',
-                  color: Colors.textPrimary,
-                  letterSpacing: -0.2,
-                }}
-              >
-                Special Offers
-              </Text>
-            </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingRight: 16 }}
-            >
-              {specialOffers.map((offer) => (
-                <TouchableOpacity
-                  key={offer.id}
-                  onPress={() => handleOfferPress(offer.id)}
-                  activeOpacity={0.9}
-                  style={{
-                    width: 260,
-                    marginRight: 10,
-                    backgroundColor: Colors.black,
-                    borderRadius: BorderRadius.xl,
-                    padding: 18,
-                  }}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                    <View style={{ flex: 1, marginRight: 12 }}>
-                      <Text
-                        style={{
-                          fontSize: 16,
-                          fontFamily: 'Poppins-Bold',
-                          color: Colors.white,
-                          marginBottom: 6,
-                          letterSpacing: -0.2,
-                        }}
-                      >
-                        {offer.title}
-                      </Text>
-                      <Text
-                        style={{
-                          fontSize: 11,
-                          fontFamily: 'Poppins-Regular',
-                          color: 'rgba(255, 255, 255, 0.8)',
-                          lineHeight: 18,
-                        }}
-                      >
-                        {offer.description}
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <View
-                      style={{
-                        backgroundColor: Colors.accent,
-                        borderRadius: BorderRadius.sm,
-                        paddingHorizontal: 10,
-                        paddingVertical: 5,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 12,
-                          fontFamily: 'Poppins-Bold',
-                          color: Colors.black,
-                          letterSpacing: 0.2,
-                        }}
-                      >
-                        {offer.discount}
-                      </Text>
-                    </View>
-                    <Text
-                      style={{
-                        fontSize: 9,
-                        fontFamily: 'Poppins-Regular',
-                        color: 'rgba(255, 255, 255, 0.7)',
-                        letterSpacing: 0.1,
-                      }}
-                    >
-                      {offer.expiry}
-                    </Text>
-                  </View>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -478,10 +243,14 @@ export default function DiscoverScreen() {
                 Service Tips
               </Text>
             </View>
+            {/**
+              * Static advice, not articles. These were TouchableOpacity with a
+              * chevron and a "3 min read", so they looked like links to writing
+              * that does not exist — tapping one did nothing at all.
+              */}
             {serviceTips.map((tip, index) => (
-              <TouchableOpacity
+              <View
                 key={tip.id}
-                activeOpacity={0.8}
                 style={{
                   backgroundColor: Colors.white,
                   borderRadius: BorderRadius.xl,
@@ -540,20 +309,10 @@ export default function DiscoverScreen() {
                           {tip.category}
                         </Text>
                       </View>
-                      <Text
-                        style={{
-                          fontSize: 10,
-                          fontFamily: 'Poppins-Regular',
-                          color: Colors.textTertiary,
-                        }}
-                      >
-                        {tip.readTime}
-                      </Text>
                     </View>
                   </View>
-                  <ChevronRight size={14} color={Colors.textTertiary} style={{ marginTop: 1 }} />
                 </View>
-              </TouchableOpacity>
+              </View>
             ))}
           </View>
 
