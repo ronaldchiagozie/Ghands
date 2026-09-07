@@ -28,8 +28,26 @@ export type OfflineReason = 'device' | 'server';
  * connection", to somebody whose connection was fine.
  */
 export function reportApiUnreachable(): void {
-  void NetInfo.fetch().then((state) => {
+  void (async () => {
+    const state = await NetInfo.fetch();
     if (!deriveOnlineFromNetInfo(state)) return;
+    if (apiUnreachable) return;
+
+    /**
+     * Confirm before taking over the screen.
+     *
+     * One failed request is not proof the server is unreachable. The backend
+     * sleeps when idle and its first request after that can time out while it
+     * wakes — which is most cold starts — and that was enough to throw a
+     * full-screen "no connection" over an app that was about to work fine.
+     *
+     * A single cheap request settles it: any HTTP reply at all, including a 404
+     * or a 500, means we can reach them and the original failure was a one-off
+     * worth retrying quietly rather than announcing.
+     */
+    const reachable = await pingBackend();
+    if (reachable) return;
+
     if (apiUnreachable) return;
     apiUnreachable = true;
     apiUnreachableListeners.forEach((listener) => {
@@ -39,7 +57,7 @@ export function reportApiUnreachable(): void {
         /* best effort */
       }
     });
-  });
+  })();
 }
 
 /** Call when any API request succeeds — clears a stale "API unreachable" latch. */

@@ -29,13 +29,17 @@ export default function NoInternetScreen({
   reason = 'device',
 }: NoInternetScreenProps) {
   const [busy, setBusy] = useState(false);
-  const { width: windowWidth } = useWindowDimensions();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
 
+  /**
+   * Capped against the window height as well as its width. Centred content on a
+   * short screen otherwise pushes the retry button below the fold, and the one
+   * control on this screen is the one thing that must always be reachable.
+   */
   const heroHeight = useMemo(() => {
-    if (windowWidth < 375) return 260;
-    if (windowWidth < 414) return 280;
-    return 300;
-  }, [windowWidth]);
+    const byWidth = windowWidth < 375 ? 260 : windowWidth < 414 ? 280 : 300;
+    return Math.min(byWidth, Math.round(windowHeight * 0.34));
+  }, [windowWidth, windowHeight]);
 
   const handlePress = async () => {
     haptics.light();
@@ -121,17 +125,27 @@ const styles = StyleSheet.create({
     backgroundColor: BG,
   },
   scrollContent: {
+    /**
+     * flexGrow lets the content container fill the scroll view, which is what
+     * makes justifyContent mean anything here — without it the container is only
+     * as tall as its children and centring does nothing, which is why this sat
+     * against the top of the screen.
+     *
+     * It still scrolls when the illustration and text are taller than the
+     * viewport, so a small phone in landscape can reach the retry button.
+     */
+    flexGrow: 1,
+    justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 24,
-    paddingTop: 32,
-    paddingBottom: 48,
+    paddingVertical: 32,
     backgroundColor: BG,
   },
   heroZone: {
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 28,
+    marginBottom: 24,
     backgroundColor: BG,
   },
   title: {
