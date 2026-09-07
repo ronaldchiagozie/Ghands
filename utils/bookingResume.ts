@@ -20,6 +20,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const STORAGE_KEY = '@ghands:booking_resume';
 
 /**
+ * The draft we have already interrupted somebody about.
+ *
+ * Kept separate from the pointer because the pointer is rewritten at every
+ * step, and resetting this with it would mean prompting again each time they
+ * moved forward and stopped. Keyed by request id, so a genuinely new booking
+ * gets its one prompt and the same one never gets a second.
+ */
+const PROMPTED_KEY = '@ghands:booking_resume_prompted';
+
+/**
  * The steps of the booking flow, in order. Named after what the customer was
  * doing, not the route, so the copy on the resume card can use them.
  */
@@ -142,7 +152,7 @@ export async function readBookingResumePoint(): Promise<BookingResumePoint | nul
  */
 export async function clearBookingResumePoint(): Promise<void> {
   try {
-    await AsyncStorage.removeItem(STORAGE_KEY);
+    await AsyncStorage.multiRemove([STORAGE_KEY, PROMPTED_KEY]);
   } catch {
     /* ignore */
   }
@@ -190,4 +200,39 @@ export function resumeHoursLeft(point: BookingResumePoint): number | null {
   const remaining = RESUME_TTL_MS - (Date.now() - point.savedAt);
   if (remaining > EXPIRY_WARNING_MS || remaining <= 0) return null;
   return Math.max(1, Math.round(remaining / (60 * 60 * 1000)));
+}
+
+/**
+ * Whether the interrupting prompt is worth showing for this draft.
+ *
+ * Two conditions, and both matter. An interstitial on launch is the most
+ * resented pattern on a phone: it blocks the app to talk about something the
+ * person may not have opened it for. It only earns that by being rare and by
+ * being about something they would mind losing.
+ *
+ *  - Once per booking. Dismissing it is an answer, not a snooze, and the home
+ *    card is still there for whenever they do want it.
+ *  - Not for a booking that is barely started. Tapping a category and closing
+ *    the app has cost them nothing, so interrupting to offer it back is
+ *    interrupting to offer nothing.
+ */
+export async function shouldPromptResume(point: BookingResumePoint): Promise<boolean> {
+  if (point.step === 'details') return false;
+
+  try {
+    const prompted = await AsyncStorage.getItem(PROMPTED_KEY);
+    return prompted !== point.requestId;
+  } catch {
+    /* if we cannot tell, do not interrupt */
+    return false;
+  }
+}
+
+/** Called when the prompt is shown, so it is not shown for this booking again. */
+export async function markResumePrompted(requestId: string): Promise<void> {
+  try {
+    await AsyncStorage.setItem(PROMPTED_KEY, requestId);
+  } catch {
+    /* worst case is one repeated prompt, which is better than a crash */
+  }
 }

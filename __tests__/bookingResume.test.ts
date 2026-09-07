@@ -18,16 +18,21 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
   removeItem: jest.fn(async (k: string) => {
     delete store[k];
   }),
+  multiRemove: jest.fn(async (keys: string[]) => {
+    keys.forEach((k) => delete store[k]);
+  }),
 }));
 
 import {
   clearBookingResumePoint,
   readBookingResumePoint,
   rememberBookingStep,
+  markResumePrompted,
   resumeHoursLeft,
   resumeProgress,
   resumeRouteFor,
   resumeStepLabel,
+  shouldPromptResume,
 } from '@/utils/bookingResume';
 
 const KEY = '@ghands:booking_resume';
@@ -197,6 +202,65 @@ describe('booking resume pointer', () => {
       store[KEY] = JSON.stringify(stored);
       const point = (await readBookingResumePoint())!;
       expect(resumeHoursLeft(point)).toBe(1);
+    });
+  });
+
+  /**
+   * The prompt interrupts on the way into the app, which is the most resented
+   * pattern on a phone. It only earns that by being rare and by being about
+   * something somebody would mind losing.
+   */
+  describe('whether to interrupt on entry', () => {
+    it('offers a booking with real work in it', async () => {
+      await rememberBookingStep('photos', '418', { requestId: '418' });
+      const point = (await readBookingResumePoint())!;
+      await expect(shouldPromptResume(point)).resolves.toBe(true);
+    });
+
+    /** A category tap and nothing else has cost them nothing to lose. */
+    it('does not interrupt for a booking barely started', async () => {
+      await rememberBookingStep('details', '418', { requestId: '418' });
+      const point = (await readBookingResumePoint())!;
+      await expect(shouldPromptResume(point)).resolves.toBe(false);
+    });
+
+    it('asks once per booking, not once per launch', async () => {
+      await rememberBookingStep('schedule', '418', { requestId: '418' });
+      const point = (await readBookingResumePoint())!;
+
+      await expect(shouldPromptResume(point)).resolves.toBe(true);
+      await markResumePrompted(point.requestId);
+      await expect(shouldPromptResume(point)).resolves.toBe(false);
+    });
+
+    /** Answering about one booking must not silence the next one. */
+    it('asks again for a different booking', async () => {
+      await rememberBookingStep('schedule', '418', { requestId: '418' });
+      await markResumePrompted('418');
+
+      await rememberBookingStep('schedule', '999', { requestId: '999' });
+      const next = (await readBookingResumePoint())!;
+      await expect(shouldPromptResume(next)).resolves.toBe(true);
+    });
+
+    /** Moving forward and stopping again is not a reason to ask twice. */
+    it('stays quiet after they advance a step', async () => {
+      await rememberBookingStep('schedule', '418', { requestId: '418' });
+      await markResumePrompted('418');
+
+      await rememberBookingStep('photos', '418', { requestId: '418' });
+      const later = (await readBookingResumePoint())!;
+      await expect(shouldPromptResume(later)).resolves.toBe(false);
+    });
+
+    it('forgets it was asked once the booking is gone', async () => {
+      await rememberBookingStep('schedule', '418', { requestId: '418' });
+      await markResumePrompted('418');
+      await clearBookingResumePoint();
+
+      await rememberBookingStep('schedule', '418', { requestId: '418' });
+      const fresh = (await readBookingResumePoint())!;
+      await expect(shouldPromptResume(fresh)).resolves.toBe(true);
     });
   });
 });

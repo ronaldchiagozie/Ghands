@@ -1,6 +1,7 @@
 import { CoachMarkTarget } from '@/components/CoachMarkTarget';
 import AccountSetupCard from '@/components/home/AccountSetupCard';
 import ResumeBookingCard from '@/components/home/ResumeBookingCard';
+import ResumeBookingModal from '@/components/home/ResumeBookingModal';
 import { useBookingResume } from '@/hooks/useBookingResume';
 import { resumeRouteFor } from '@/utils/bookingResume';
 import { useAccountSetup, type SetupTaskId } from '@/hooks/useAccountSetup';
@@ -391,6 +392,8 @@ const HomeScreen = React.memo(() => {
     stepLabel: resumeStepLabel,
     progress: resumeProgress,
     hoursLeft: resumeHoursLeft,
+    shouldPrompt: shouldPromptResume,
+    dismissPrompt: dismissResumePrompt,
     discard: discardResumePoint,
     refresh: refreshResume,
   } = useBookingResume();
@@ -585,9 +588,11 @@ const HomeScreen = React.memo(() => {
   const handleResumeBooking = useCallback(() => {
     if (!resumePoint) return;
     haptics.light();
+    /** Taking the offer answers it, so it does not reappear on the next entry. */
+    void dismissResumePrompt();
     const route = resumeRouteFor(resumePoint);
     router.push({ pathname: route.pathname as any, params: route.params } as any);
-  }, [resumePoint, router]);
+  }, [resumePoint, router, dismissResumePrompt]);
 
   const handleDiscardBooking = useCallback(() => {
     haptics.light();
@@ -1086,6 +1091,24 @@ const HomeScreen = React.memo(() => {
                 onDiscard={handleDiscardBooking}
               />
             </View>
+          ) : null}
+
+          {/**
+            * The same offer, made once, on the way in. It interrupts, so it is
+            * gated: only for a booking with real work in it, only once per
+            * booking, and saying no leaves the card above untouched.
+            */}
+          {resumePoint ? (
+            <ResumeBookingModal
+              visible={shouldPromptResume}
+              categoryName={resumePoint.categoryName}
+              jobTitle={resumeDraft?.jobTitle}
+              scheduleLabel={resumeScheduleLabel}
+              stepLabel={resumeStepLabel ?? 'Finish your booking'}
+              progress={resumeProgress ?? { done: 0, total: 4 }}
+              onResume={handleResumeBooking}
+              onDismiss={() => void dismissResumePrompt()}
+            />
           ) : null}
           <View style={{ paddingHorizontal: CLIENT_HOME_SCROLL_GUTTER }}>
             <AccountSetupCard

@@ -6,9 +6,11 @@ import type { ServiceRequest } from '@/services/api';
 import {
   clearBookingResumePoint,
   readBookingResumePoint,
+  markResumePrompted,
   resumeHoursLeft,
   resumeProgress,
   resumeStepLabel,
+  shouldPromptResume,
   type BookingResumePoint,
 } from '@/utils/bookingResume';
 
@@ -33,6 +35,8 @@ export function useBookingResume() {
    * "you have an unfinished booking" is a notice about anything.
    */
   const [draft, setDraft] = useState<ServiceRequest | null>(null);
+  /** Whether this booking has earned an interruption on the way in. */
+  const [shouldPrompt, setShouldPrompt] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   const refresh = useCallback(async () => {
@@ -66,6 +70,7 @@ export function useBookingResume() {
       if (isAbandonedDraft(request)) {
         setPoint(stored);
         setDraft(request);
+        setShouldPrompt(await shouldPromptResume(stored));
       } else {
         await clearBookingResumePoint();
         setPoint(null);
@@ -96,7 +101,17 @@ export function useBookingResume() {
     await clearBookingResumePoint();
     setPoint(null);
     setDraft(null);
+    setShouldPrompt(false);
   }, []);
+
+  /**
+   * Closes the prompt without touching the draft. Saying "not now" is an
+   * answer about this moment, not about the booking, so the home card stays.
+   */
+  const dismissPrompt = useCallback(async () => {
+    setShouldPrompt(false);
+    if (point) await markResumePrompted(point.requestId);
+  }, [point]);
 
   return {
     point,
@@ -108,6 +123,9 @@ export function useBookingResume() {
     progress: point ? resumeProgress(point) : null,
     /** Hours remaining, only once it is close enough to matter. */
     hoursLeft: point ? resumeHoursLeft(point) : null,
+    /** True the first time an app entry finds a booking worth interrupting for. */
+    shouldPrompt: shouldPrompt && !!point,
+    dismissPrompt,
     isLoading,
     refresh,
     discard,
