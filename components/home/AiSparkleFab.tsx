@@ -27,10 +27,21 @@ export default function AiSparkleFab() {
 
   const handlePress = useCallback(() => {
     haptics.light();
-    router.push({
-      pathname: '/AiAssistantScreen' as any,
-      params: { newChat: 'true' },
-    } as any);
+    /**
+     * Deliberately no newChat flag.
+     *
+     * This button used to send one, and it is the way almost everybody opens
+     * Handy - so the screen wiped the remembered conversation and greeted them
+     * from scratch every single time. The code that reopens the last thread
+     * was sitting right underneath, unreachable, because the only door into
+     * the room announced itself as a new conversation.
+     *
+     * Asking for nothing lets the screen decide: it reopens what you were in
+     * the middle of, and falls back to a greeting when there is nothing recent
+     * worth reopening. Starting fresh on purpose still lives in the history
+     * drawer, where somebody who wants it goes looking.
+     */
+    router.push('/AiAssistantScreen' as any);
   }, [router]);
 
   return (

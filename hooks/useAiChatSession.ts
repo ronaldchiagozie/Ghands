@@ -18,6 +18,7 @@ import { handleApiAuthFailure } from '@/utils/authRedirect';
 import { getSpecificErrorMessage } from '@/utils/errorMessages';
 import { usePathname, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
+import { markChatEntrancesSeen, resetChatEntrances } from '@/components/ai/chat/AiChatEnter';
 
 function wait(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -74,6 +75,8 @@ export function useAiChatSession() {
 
   const resetChatState = useCallback(() => {
     replyTokenRef.current += 1;
+    /** A cleared chat starts over, so the next messages get their entrance. */
+    resetChatEntrances();
     setConversationId(null);
     conversationIdRef.current = null;
     setMessages([]);
@@ -203,6 +206,13 @@ export function useAiChatSession() {
           }
         });
 
+        /**
+         * Restored history arrives at rest. It was read hours ago, and flying
+         * twenty old messages in at once would be a performance rather than a
+         * return - only what comes next should move. Marked in the same tick
+         * as the state update, so the list never renders them unmarked.
+         */
+        markChatEntrancesSeen(mappedMessages.map((message) => message.id));
         setMessages(mappedMessages);
 
         if (lastSuggestion && lastSuggestionMessageId && isRenderableUiSuggestion(lastSuggestion)) {

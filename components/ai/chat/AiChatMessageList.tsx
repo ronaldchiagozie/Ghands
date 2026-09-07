@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef } from 'react';
 import { FlatList } from 'react-native';
 import { isRenderableUiSuggestion } from '@/utils/aiChatMappers';
 import AiChatBotBubble from './AiChatBotBubble';
+import AiChatEnter from './AiChatEnter';
 import AiChatImageRow from './AiChatImageRow';
 import AiChatUserBubble from './AiChatUserBubble';
 import AiSuggestionCard from './AiSuggestionCard';
@@ -153,16 +154,27 @@ export default function AiChatMessageList({
       renderItem={({ item }) => {
         if (item.kind === 'message') {
           if (item.message.role === 'user') {
-            return <AiChatUserBubble message={item.message} />;
+            return (
+              <AiChatEnter entranceKey={item.message.id} from="right">
+                <AiChatUserBubble message={item.message} />
+              </AiChatEnter>
+            );
           }
           if (!item.message.text.trim()) {
             return null;
           }
+          /**
+            * Only the bubbles. The typing indicator, the image row and the
+            * suggestion card each animate on their own terms already, and
+            * wrapping them would have two things moving one thing.
+            */
           return (
-            <AiChatBotBubble
-              message={item.message}
-              onRevealComplete={handleRevealComplete}
-            />
+            <AiChatEnter entranceKey={item.message.id} from="left">
+              <AiChatBotBubble
+                message={item.message}
+                onRevealComplete={handleRevealComplete}
+              />
+            </AiChatEnter>
           );
         }
 

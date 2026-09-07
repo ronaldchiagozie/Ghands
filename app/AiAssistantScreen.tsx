@@ -5,11 +5,11 @@ import AiPromptInput from '@/components/ai/AiPromptInput';
 import Toast from '@/components/Toast';
 import AiQuickActionCarousel from '@/components/ai/AiQuickActionCarousel';
 import AiBotUnavailableView from '@/components/ai/chat/AiBotUnavailableView';
+import AiThinkingOrb from '@/components/ai/AiThinkingOrb';
 import AiChatMessageList from '@/components/ai/chat/AiChatMessageList';
 import type { AiSuggestion } from '@/components/ai/chat/types';
 import {
   AI_ANIMATION,
-  AI_CHAT_UI,
   AI_COLORS,
   AI_ASSISTANT_TEXT,
   buildAiGreeting,
@@ -31,7 +31,6 @@ import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { History } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Animated,
   Dimensions,
   Easing,
@@ -361,17 +360,8 @@ export default function AiAssistantScreen() {
           {isUnavailable ? (
             <AiBotUnavailableView />
           ) : isCheckingStatus ? (
-            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14 }}>
-              <ActivityIndicator size="large" color={AI_CHAT_UI.spinnerOnGradient} />
-              <Text
-                style={{
-                  fontFamily: 'Poppins-Regular',
-                  fontSize: 14,
-                  color: AI_COLORS.subtle,
-                }}
-              >
-                {`Connecting to ${botName}…`}
-              </Text>
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+              <AiThinkingOrb label={`Connecting to ${botName}…`} />
             </View>
           ) : (
             <>
@@ -486,19 +476,15 @@ export default function AiAssistantScreen() {
             zIndex: 50,
           }}
         >
-          <ActivityIndicator size="large" color={AI_CHAT_UI.spinnerOnGradient} />
-          {isStartingBooking ? (
-            <Text
-              style={{
-                marginTop: 12,
-                fontFamily: 'Poppins-Medium',
-                fontSize: 14,
-                color: AI_COLORS.primary,
-              }}
-            >
-              Starting your booking...
-            </Text>
-          ) : null}
+          {/**
+            * Says which wait this is. The overlay covers two of them, and
+            * "starting your booking" while a conversation is merely reopening
+            * would be the app narrating something that is not happening.
+            */}
+          <AiThinkingOrb
+            size={64}
+            label={isStartingBooking ? 'Starting your booking…' : 'Picking up where you left off…'}
+          />
         </View>
       ) : null}
 
