@@ -1,6 +1,5 @@
 import { CoachMarkTarget } from '@/components/CoachMarkTarget';
 import AccountSetupCard from '@/components/home/AccountSetupCard';
-import ResumeBookingCard from '@/components/home/ResumeBookingCard';
 import ResumeBookingModal from '@/components/home/ResumeBookingModal';
 import { useBookingResume } from '@/hooks/useBookingResume';
 import { resumeRouteFor } from '@/utils/bookingResume';
@@ -1074,29 +1073,13 @@ const HomeScreen = React.memo(() => {
           </View>
           */}
           {/**
-            * Above the setup checklist: an unfinished booking is something they
-            * started and were interrupted in, which is more urgent than a task
-            * they have not begun.
-            */}
-          {resumePoint ? (
-            <View style={{ paddingHorizontal: CLIENT_HOME_SCROLL_GUTTER }}>
-              <ResumeBookingCard
-                categoryName={resumePoint.categoryName}
-                jobTitle={resumeDraft?.jobTitle}
-                scheduleLabel={resumeScheduleLabel}
-                stepLabel={resumeStepLabel ?? 'Finish your booking'}
-                progress={resumeProgress ?? { done: 0, total: 4 }}
-                hoursLeft={resumeHoursLeft}
-                onResume={handleResumeBooking}
-                onDiscard={handleDiscardBooking}
-              />
-            </View>
-          ) : null}
-
-          {/**
-            * The same offer, made once, on the way in. It interrupts, so it is
-            * gated: only for a booking with real work in it, only once per
-            * booking, and saying no leaves the card above untouched.
+            * The whole surface for an unfinished booking on this screen: a
+            * prompt on the way in, and nothing left behind afterwards.
+            *
+            * There was a card here too, which made the home screen carry a
+            * permanent reminder of something half-done. A home screen earns its
+            * calm by not keeping every outstanding thing in view, so the draft
+            * lives in Jobs, where bookings live, and this asks once.
             */}
           {resumePoint ? (
             <ResumeBookingModal

@@ -43,6 +43,10 @@ import {
 } from '@/utils/jobDisplayStatus';
 import { mergeCachedVisitRequest } from '@/utils/visitRequestCache';
 import { healJobStatusAfterVisitDecline } from '@/utils/visitStatus';
+import { formatDateShort } from '@/utils/dateFormatting';
+import { resumeRouteFor } from '@/utils/bookingResume';
+import { useBookingResume } from '@/hooks/useBookingResume';
+import ResumeBookingCard from '@/components/home/ResumeBookingCard';
 
 type JobStatus = 'Pending' | 'Ongoing' | 'Completed';
 
@@ -280,6 +284,34 @@ export default function JobsScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
+
+  const {
+    point: resumePoint,
+    draft: resumeDraft,
+    stepLabel: resumeStepLabel,
+    progress: resumeProgress,
+    hoursLeft: resumeHoursLeft,
+    discard: discardResumePoint,
+    refresh: refreshResume,
+  } = useBookingResume();
+
+  /** The day they picked, when they got that far. */
+  const resumeScheduleLabel = useMemo(() => {
+    const date = resumeDraft?.scheduledDate;
+    if (!date) return null;
+    const day = formatDateShort(date);
+    if (!day) return null;
+    const time = resumeDraft?.scheduledTime?.trim();
+    return time ? `${day} at ${time}` : day;
+  }, [resumeDraft?.scheduledDate, resumeDraft?.scheduledTime]);
+
+  const handleResumeDraft = useCallback(() => {
+    if (!resumePoint) return;
+    haptics.light();
+    const route = resumeRouteFor(resumePoint);
+    router.push({ pathname: route.pathname as any, params: route.params } as any);
+  }, [resumePoint, router]);
+
   const { showError } = useToast();
 
   // Load user requests from API
@@ -384,14 +416,16 @@ export default function JobsScreen() {
   useFocusEffect(
     useCallback(() => {
       loadRequests();
-    }, [loadRequests])
+      /** So the draft disappears the moment they finish or discard it. */
+      void refreshResume();
+    }, [loadRequests, refreshResume])
   );
 
   // Pull to refresh
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     haptics.light();
-    await loadRequests();
+    await Promise.all([loadRequests(), refreshResume()]);
     setRefreshing(false);
     haptics.success();
   }, [loadRequests]);
@@ -526,7 +560,33 @@ export default function JobsScreen() {
                 colors={REFRESH_CONTROL.colors as unknown as string[]}
               />
             }
-            ListEmptyComponent={<JobsTabEmptyState audience="client" activeTab={activeTab} />}
+            /**
+              * The unfinished booking sits at the top of Pending, which is where
+              * somebody looks for a booking they think they made. It used to
+              * live on the home screen, where it was a permanent reminder of
+              * something half-done on the one screen that should feel calm.
+              */
+            ListHeaderComponent={
+              activeTab === 'Pending' && resumePoint ? (
+                <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
+                  <ResumeBookingCard
+                    categoryName={resumePoint.categoryName}
+                    jobTitle={resumeDraft?.jobTitle}
+                    scheduleLabel={resumeScheduleLabel}
+                    stepLabel={resumeStepLabel ?? 'Finish your booking'}
+                    progress={resumeProgress ?? { done: 0, total: 4 }}
+                    hoursLeft={resumeHoursLeft}
+                    onResume={handleResumeDraft}
+                    onDiscard={() => void discardResumePoint()}
+                  />
+                </View>
+              ) : null
+            }
+            ListEmptyComponent={
+              activeTab === 'Pending' && resumePoint ? null : (
+                <JobsTabEmptyState audience="client" activeTab={activeTab} />
+              )
+            }
             initialNumToRender={6}
             maxToRenderPerBatch={8}
             windowSize={7}
