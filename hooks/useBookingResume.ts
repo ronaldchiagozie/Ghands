@@ -2,9 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { serviceRequestService } from '@/services/api';
 import { isAbandonedDraft } from '@/contract/src/bookingDraft';
+import type { ServiceRequest } from '@/services/api';
 import {
   clearBookingResumePoint,
   readBookingResumePoint,
+  resumeHoursLeft,
+  resumeProgress,
   resumeStepLabel,
   type BookingResumePoint,
 } from '@/utils/bookingResume';
@@ -23,6 +26,13 @@ import {
  */
 export function useBookingResume() {
   const [point, setPoint] = useState<BookingResumePoint | null>(null);
+  /**
+   * The draft itself, not just the pointer. The card shows the actual booking -
+   * the job they described, the day they picked - rather than a generic label,
+   * because "your Plumbing booking, Saturday 10am" is recognisably theirs and
+   * "you have an unfinished booking" is a notice about anything.
+   */
+  const [draft, setDraft] = useState<ServiceRequest | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const refresh = useCallback(async () => {
@@ -31,6 +41,7 @@ export function useBookingResume() {
 
     if (!stored) {
       setPoint(null);
+      setDraft(null);
       setIsLoading(false);
       return;
     }
@@ -39,6 +50,7 @@ export function useBookingResume() {
     if (!Number.isFinite(requestId) || requestId <= 0) {
       await clearBookingResumePoint();
       setPoint(null);
+      setDraft(null);
       setIsLoading(false);
       return;
     }
@@ -53,9 +65,11 @@ export function useBookingResume() {
        */
       if (isAbandonedDraft(request)) {
         setPoint(stored);
+        setDraft(request);
       } else {
         await clearBookingResumePoint();
         setPoint(null);
+        setDraft(null);
       }
     } catch (error: any) {
       /**
@@ -68,6 +82,7 @@ export function useBookingResume() {
         await clearBookingResumePoint();
       }
       setPoint(null);
+      setDraft(null);
     } finally {
       setIsLoading(false);
     }
@@ -80,12 +95,19 @@ export function useBookingResume() {
   const discard = useCallback(async () => {
     await clearBookingResumePoint();
     setPoint(null);
+    setDraft(null);
   }, []);
 
   return {
     point,
+    /** The draft record, for showing what they were actually booking. */
+    draft,
     /** What they were about to do, for the card's copy. */
     stepLabel: point ? resumeStepLabel(point) : null,
+    /** Position in the flow, so the card can show how far in they are. */
+    progress: point ? resumeProgress(point) : null,
+    /** Hours remaining, only once it is close enough to matter. */
+    hoursLeft: point ? resumeHoursLeft(point) : null,
     isLoading,
     refresh,
     discard,

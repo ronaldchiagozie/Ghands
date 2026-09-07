@@ -24,6 +24,8 @@ import {
   clearBookingResumePoint,
   readBookingResumePoint,
   rememberBookingStep,
+  resumeHoursLeft,
+  resumeProgress,
   resumeRouteFor,
   resumeStepLabel,
 } from '@/utils/bookingResume';
@@ -145,5 +147,56 @@ describe('booking resume pointer', () => {
     await rememberBookingStep('photos', '418', { requestId: '418' });
 
     expect((await readBookingResumePoint())?.step).toBe('photos');
+  });
+
+  /**
+   * The card shows position, not a percentage, because the steps are discrete
+   * and unequal: "three of four" is something somebody can hold in their head
+   * while deciding whether finishing is worth starting now.
+   */
+  describe('progress through the flow', () => {
+    it('counts the steps already behind them', async () => {
+      await rememberBookingStep('details', '418', { requestId: '418' });
+      expect(resumeProgress((await readBookingResumePoint())!)).toEqual({ done: 0, total: 4 });
+
+      await rememberBookingStep('providers', '418', { requestId: '418' });
+      expect(resumeProgress((await readBookingResumePoint())!)).toEqual({ done: 3, total: 4 });
+    });
+  });
+
+  /**
+   * A countdown running the whole twenty hours is pressure applied to somebody
+   * who has done nothing wrong. It appears only once the draft is close to
+   * being deleted, which is the point at which it is information.
+   */
+  describe('the expiry warning', () => {
+    const at = async (agoMs: number) => {
+      await rememberBookingStep('schedule', '418', { requestId: '418' });
+      const stored = JSON.parse(store[KEY]);
+      stored.savedAt = Date.now() - agoMs;
+      store[KEY] = JSON.stringify(stored);
+      return (await readBookingResumePoint())!;
+    };
+
+    it('says nothing while there is plenty of time', async () => {
+      expect(resumeHoursLeft(await at(60 * 60 * 1000))).toBeNull();
+    });
+
+    it('speaks up once it is close', async () => {
+      const hours = resumeHoursLeft(await at(16 * 60 * 60 * 1000));
+      expect(hours).not.toBeNull();
+      expect(hours).toBeLessThanOrEqual(6);
+      expect(hours).toBeGreaterThan(0);
+    });
+
+    /** Never "0h left", and never a countdown on something already gone. */
+    it('never shows a zero or a negative', async () => {
+      await rememberBookingStep('schedule', '418', { requestId: '418' });
+      const stored = JSON.parse(store[KEY]);
+      stored.savedAt = Date.now() - 19.99 * 60 * 60 * 1000;
+      store[KEY] = JSON.stringify(stored);
+      const point = (await readBookingResumePoint())!;
+      expect(resumeHoursLeft(point)).toBe(1);
+    });
   });
 });

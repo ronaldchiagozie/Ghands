@@ -163,3 +163,31 @@ export function resumeRouteFor(point: BookingResumePoint): {
 export function resumeStepLabel(point: BookingResumePoint): string {
   return STEP_LABEL[point.step];
 }
+
+/**
+ * How far through the flow they are, as a countable position.
+ *
+ * Discrete rather than a percentage, because the steps are discrete: "3 of 4"
+ * is a thing somebody can hold in their head and "68 per cent" is not. It is
+ * also the honest shape, since the steps are not equal in effort.
+ */
+export function resumeProgress(point: BookingResumePoint): { done: number; total: number } {
+  const index = BOOKING_STEPS.indexOf(point.step);
+  return { done: Math.max(index, 0), total: BOOKING_STEPS.length };
+}
+
+/**
+ * How long is left before the draft is deleted, in hours, or null when that is
+ * far enough away to be worth not mentioning.
+ *
+ * Only surfaced near the end. A countdown from twenty hours is pressure applied
+ * to somebody who has done nothing wrong; a few hours before it disappears is
+ * information they would want.
+ */
+const EXPIRY_WARNING_MS = 6 * 60 * 60 * 1000;
+
+export function resumeHoursLeft(point: BookingResumePoint): number | null {
+  const remaining = RESUME_TTL_MS - (Date.now() - point.savedAt);
+  if (remaining > EXPIRY_WARNING_MS || remaining <= 0) return null;
+  return Math.max(1, Math.round(remaining / (60 * 60 * 1000)));
+}

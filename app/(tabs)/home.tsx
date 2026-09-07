@@ -42,6 +42,7 @@ import { Bell, Briefcase, ChevronDown, ChevronRight, Gift, MapPin, Search, Tag, 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Animated, Linking, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { ServiceCategory } from '../../data/serviceCategories';
+import { formatDateShort } from '@/utils/dateFormatting';
 
 /** Deep olive: Quick actions panel + matching CTAs (pin, search, badges) on home. */
 const HOME_QUICK_ACTIONS_PANEL_BG = Colors.accent;
@@ -386,10 +387,27 @@ const HomeScreen = React.memo(() => {
 
   const {
     point: resumePoint,
+    draft: resumeDraft,
     stepLabel: resumeStepLabel,
+    progress: resumeProgress,
+    hoursLeft: resumeHoursLeft,
     discard: discardResumePoint,
     refresh: refreshResume,
   } = useBookingResume();
+
+  /**
+   * The day they picked, when they got that far. Shown instead of the next
+   * step, because a booking with a date on it reads as a real thing they
+   * arranged rather than a task still outstanding.
+   */
+  const resumeScheduleLabel = useMemo(() => {
+    const date = resumeDraft?.scheduledDate;
+    if (!date) return null;
+    const day = formatDateShort(date);
+    if (!day) return null;
+    const time = resumeDraft?.scheduledTime?.trim();
+    return time ? `${day} at ${time}` : day;
+  }, [resumeDraft?.scheduledDate, resumeDraft?.scheduledTime]);
 
   useFocusEffect(
     useCallback(() => {
@@ -1059,7 +1077,11 @@ const HomeScreen = React.memo(() => {
             <View style={{ paddingHorizontal: CLIENT_HOME_SCROLL_GUTTER }}>
               <ResumeBookingCard
                 categoryName={resumePoint.categoryName}
+                jobTitle={resumeDraft?.jobTitle}
+                scheduleLabel={resumeScheduleLabel}
                 stepLabel={resumeStepLabel ?? 'Finish your booking'}
+                progress={resumeProgress ?? { done: 0, total: 4 }}
+                hoursLeft={resumeHoursLeft}
                 onResume={handleResumeBooking}
                 onDiscard={handleDiscardBooking}
               />
