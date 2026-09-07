@@ -22,7 +22,7 @@ const IMAGE_FIELD_KEYS = [
   'profile_picture',
 ] as const;
 
-/** Profile avatar only — avoids unrelated API `image` / banner fields. */
+/** Profile avatar only - avoids unrelated API `image` / banner fields. */
 const PROFILE_AVATAR_FIELD_KEYS = [
   'profileImageUri',
   'profileImage',

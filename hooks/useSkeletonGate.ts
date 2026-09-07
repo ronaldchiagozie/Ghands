@@ -4,7 +4,7 @@ const DEFAULT_DELAY_MS = 220;
 const DEFAULT_MIN_VISIBLE_MS = 380;
 
 type SkeletonGateOptions = {
-  /** Wait before showing skeleton — skips flash on fast loads */
+  /** Wait before showing skeleton - skips flash on fast loads */
   delayMs?: number;
   /** Minimum time skeleton stays visible once shown */
   minVisibleMs?: number;
@@ -13,7 +13,7 @@ type SkeletonGateOptions = {
 export type SkeletonGateState = {
   /** Gated shimmer placeholders (delayed to avoid flash on very fast loads) */
   showSkeleton: boolean;
-  /** Loading with no data yet — use to hide empty states and reserve the section */
+  /** Loading with no data yet - use to hide empty states and reserve the section */
   isLoadingEmpty: boolean;
 };
 

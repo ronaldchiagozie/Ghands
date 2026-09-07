@@ -9,7 +9,7 @@ interface Props {
 }
 
 interface State {
-  /** Reserved — auth failures redirect silently (no error toast). */
+  /** Reserved - auth failures redirect silently (no error toast). */
 }
 
 /**

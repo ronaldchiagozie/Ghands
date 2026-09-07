@@ -64,7 +64,7 @@ describe('wallet retry policy', () => {
     expect(configFor('/api/wallet/pin/verify')).toEqual(expect.objectContaining({ retries: 0 }));
   });
 
-  /** No money has moved yet — a lost response here should still be retried. */
+  /** No money has moved yet - a lost response here should still be retried. */
   it('still retries deposit initialization', async () => {
     post.mockResolvedValue({
       data: { authorizationUrl: 'https://kora.test/pay', reference: 'REF-1' },
@@ -91,7 +91,7 @@ describe('wallet retry policy', () => {
     );
   });
 
-  /** Deposit carries the key but keeps retrying — a lost response should recover. */
+  /** Deposit carries the key but keeps retrying - a lost response should recover. */
   it('sends the key on deposit without disabling its retries', async () => {
     post.mockResolvedValue({
       data: { authorizationUrl: 'https://kora.test/pay', reference: 'REF-1' },

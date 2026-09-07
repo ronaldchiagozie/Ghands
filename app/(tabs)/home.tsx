@@ -156,7 +156,7 @@ const HomeScreen = React.memo(() => {
   const { location, isLoading, refreshLocation } = useUserLocation();
   const [jobActivities, setJobActivities] = useState<JobActivity[]>([]);
   const [isLoadingJobs, setIsLoadingJobs] = useState(true);
-  /** The thrown error itself — ErrorSheet needs the status/kind, not just a string. */
+  /** The thrown error itself - ErrorSheet needs the status/kind, not just a string. */
   const [jobsLoadError, setJobsLoadError] = useState<unknown>(null);
   const [categoriesLoadError, setCategoriesLoadError] = useState<unknown>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -275,7 +275,7 @@ const HomeScreen = React.memo(() => {
     };
   }, [formatTimeAgo]);
 
-  // Load job activities – after mapRequestToJobActivity
+  // Load job activities - after mapRequestToJobActivity
   const loadJobActivities = useCallback(async () => {
     if (!jobsReadyRef.current) {
       setIsLoadingJobs(true);
@@ -287,7 +287,7 @@ const HomeScreen = React.memo(() => {
         setJobsLoadError(null);
         return;
       }
-      /** Same rule as the Jobs tab — an unfinished booking is not activity. */
+      /** Same rule as the Jobs tab - an unfinished booking is not activity. */
       const confirmedRequests = requests.filter((request) => {
         return isSubmittedBooking(request);
       });
@@ -595,7 +595,7 @@ const HomeScreen = React.memo(() => {
         case 'notifications':
           /**
            * Prompts if the OS will still prompt, and opens system settings if it
-           * will not — which is the case for anyone who has already declined
+           * will not - which is the case for anyone who has already declined
            * once, and so for most people still looking at this row.
            *
            * Nothing is said on success: the row disappears from the checklist,
@@ -821,7 +821,7 @@ const HomeScreen = React.memo(() => {
                   </View>
                 ) : categoriesLoadError && filteredCategories.length === 0 ? (
                   // Failed: hold the row's real shape, dimmed and still. ErrorSheet
-                  // explains it over the top — the section never collapses into a card.
+                  // explains it over the top - the section never collapses into a card.
                   <View
                     style={{ flexDirection: 'row', marginTop: 0, marginBottom: 0, paddingVertical: 6, overflow: 'visible', opacity: 0.35 }}
                     pointerEvents="none"

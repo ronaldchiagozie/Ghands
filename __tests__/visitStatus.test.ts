@@ -10,7 +10,7 @@ import {
   resolveVisitOccurred,
 } from '@/utils/visitStatus';
 
-/** Client booking date/time only (no provider visit request) — reproduces request #55-style payloads. */
+/** Client booking date/time only (no provider visit request) - reproduces request #55-style payloads. */
 const CLIENT_JOB_SCHEDULE_ONLY = {
   scheduledDate: '2026-06-01T00:00:00.000Z',
   scheduledTime: '3:00 PM',
@@ -118,7 +118,7 @@ describe('canClientDeclineVisit', () => {
 });
 
 describe('resolveVisitOccurred vs provider visit (UI copy gates)', () => {
-  it('may be true for client schedule via meaningful engagement — do not use alone for pay/decline', () => {
+  it('may be true for client schedule via meaningful engagement - do not use alone for pay/decline', () => {
     const occurred = resolveVisitOccurred({
       visitRequest: CLIENT_JOB_SCHEDULE_ONLY,
       requestStatus: 'accepted',
@@ -141,7 +141,7 @@ describe('visit fee paid vocabulary (client ↔ provider parity)', () => {
   /**
    * The provider app accepts paid | confirmed | completed | success. The client
    * accepted only `paid`, so a visit the provider considered settled still
-   * offered "Pay visit fee" here — a second charge for the same fee.
+   * offered "Pay visit fee" here - a second charge for the same fee.
    * These four must stay in lockstep with the provider's VISIT_PAID_STATUSES.
    */
   const PAID = ['paid', 'confirmed', 'completed', 'success'];

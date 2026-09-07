@@ -26,7 +26,7 @@ export const getErrorMessage = (error: ApiError | Error | any, defaultMessage: s
     return formatApiErrorMessage(error);
   }
 
-  // 1. Network errors – handle first (user has no connection)
+  // 1. Network errors - handle first (user has no connection)
   const errorMessage = (error?.message || '').toLowerCase();
   if (error?.isNetworkError ||
       errorMessage.includes('network') ||
@@ -54,7 +54,7 @@ export const getErrorMessage = (error: ApiError | Error | any, defaultMessage: s
 
   if (
     rawBackendMessage &&
-    // Ignore very generic wrappers – we want real validation text like `"field" must be a positive number`
+    // Ignore very generic wrappers - we want real validation text like `"field" must be a positive number`
     !rawBackendMessageLower.includes('request failed with status') &&
     !rawBackendMessageLower.includes('something went wrong') &&
     !rawBackendMessageLower.includes('invalid information provided') &&
@@ -63,25 +63,25 @@ export const getErrorMessage = (error: ApiError | Error | any, defaultMessage: s
     return formatApiErrorMessage(rawBackendMessage);
   }
 
-  // 3. HTTP status codes – use explicit user messages before raw backend text
+  // 3. HTTP status codes - use explicit user messages before raw backend text
   const status = error?.status ?? error?.response?.status;
   if (typeof status === 'number') {
-    // 401 / 403 – invalid credentials or forbidden
+    // 401 / 403 - invalid credentials or forbidden
     if (status === 401 || status === 403) {
       return 'Invalid email or password. Please try again.';
     }
-    // 500+ – server error, avoid exposing technical details
+    // 500+ - server error, avoid exposing technical details
     if (status >= 500) {
       return 'We could not complete that just now. Please try again in a moment.';
     }
-    // 4xx – use status-specific messages
+    // 4xx - use status-specific messages
     if (status >= 400 && status < 500) {
       const statusMsg = getStatusErrorMessage(status);
       if (statusMsg) return statusMsg;
     }
   }
 
-  // 3. Technical backend errors (e.g. DB schema) – treat as server error
+  // 3. Technical backend errors (e.g. DB schema) - treat as server error
   const rawMsg = (error?.message || error?.details?.data?.error || error?.details?.error || '').toLowerCase();
   if (rawMsg.includes('column') && (rawMsg.includes('does not exist') || rawMsg.includes('do not exist'))) {
     return 'We could not complete that just now. Please try again in a moment.';
@@ -335,8 +335,8 @@ export const getSpecificErrorMessage = (error: ApiError | Error | any, context?:
 /**
  * Turns a raw server error string into something worth showing a user.
  *
- * Backend messages arrive wrapped in internal prefixes — "Withdrawal failed:
- * Kora API Error: ..." — and some describe a platform problem in words that
+ * Backend messages arrive wrapped in internal prefixes - "Withdrawal failed:
+ * Kora API Error: ..." - and some describe a platform problem in words that
  * sound like the user's fault. "You are not authorized to access this resource"
  * comes from our payment gateway credentials, not from anything they did.
  *
@@ -355,7 +355,7 @@ export function presentServerError(raw: string | null | undefined): string | nul
 
   const lower = stripped.toLowerCase();
 
-  /** Gateway/credential problems — our side, never the user's. */
+  /** Gateway/credential problems - our side, never the user's. */
   if (
     /not authorized to access this resource|unauthorized|invalid (api )?key|forbidden|merchant|credential/.test(
       lower,
@@ -371,7 +371,7 @@ export function presentServerError(raw: string | null | undefined): string | nul
   }
   if (/limit|exceed/.test(lower)) return stripped;
 
-  /** Internal noise — stack-ish text or bare codes are no use to anyone. */
+  /** Internal noise - stack-ish text or bare codes are no use to anyone. */
   if (stripped.length > 140 || /^[A-Z_]+$/.test(stripped) || /\bat\s+\w+\.\w+/.test(stripped)) {
     return null;
   }

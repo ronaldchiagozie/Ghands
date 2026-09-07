@@ -25,14 +25,14 @@ export default function WalletDepositReturnScreen() {
           getHandledDepositReference(),
         ]);
         if (handled || !pending) {
-          void logWalletDeposit('Deep link return — no pending verify', {
+          void logWalletDeposit('Deep link return - no pending verify', {
             reference: pending ?? handled ?? undefined,
             detail: handled ? 'already handled → Wallet' : 'no pending ref → Wallet',
           });
           router.replace('/WalletScreen' as any);
           return;
         }
-        void logWalletDeposit('Deep link return — resume Top Up verify', { reference: pending });
+        void logWalletDeposit('Deep link return - resume Top Up verify', { reference: pending });
         router.replace('/TopUpScreen' as any);
       })();
     }, 100);

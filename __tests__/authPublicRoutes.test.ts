@@ -5,7 +5,7 @@ describe('signup-flow routes must survive a missing token', () => {
    * The regression this guards: ProfileCompletionScreen was NOT listed, so the
    * 2-second session poll in useSessionTimeout saw "no token on a protected
    * route", fired notifySessionExpired, and the root layout replaced the screen
-   * with /LoginScreen — mid-form, right after signup. From there "Sign up" sent
+   * with /LoginScreen - mid-form, right after signup. From there "Sign up" sent
    * users to /onboarding and back to Choose Your Account Type.
    */
   it.each([

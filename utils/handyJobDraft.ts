@@ -12,7 +12,7 @@ export type HandyDraftResult =
 
 export type HandyDraftInput = {
   categoryName?: string;
-  /** Whatever the user has typed so far — used as steering, not as a requirement. */
+  /** Whatever the user has typed so far - used as steering, not as a requirement. */
   jobTitleHint?: string;
   descriptionHint?: string;
   minTitleLength: number;

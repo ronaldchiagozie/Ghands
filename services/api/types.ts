@@ -89,7 +89,7 @@ export interface CompanySignupPayload {
   password: string;
 }
 
-/** Client (book services) company account — POST /api/user/company-signup */
+/** Client (book services) company account - POST /api/user/company-signup */
 export interface ClientCompanySignupPayload {
   companyName: string;
   companyPhoneNumber: string;
@@ -201,7 +201,7 @@ export interface ServiceRequest {
   scheduledTime?: string;
   /**
    * `draft` is a real value the server sends and the app checks for, and it was
-   * missing here — the booking flow reads a request back by id while it is still
+   * missing here - the booking flow reads a request back by id while it is still
    * being filled in, and that record is a draft. The list endpoints exclude it,
    * which is why the gap went unnoticed.
    */

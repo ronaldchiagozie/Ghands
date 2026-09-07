@@ -13,7 +13,7 @@ const SESSION_POLL_MS = 2_000;
 const SESSION_BOOT_DELAY_MS = 200;
 
 /**
- * Proactive session validation — clears invalid tokens and emits ONE session-expired
+ * Proactive session validation - clears invalid tokens and emits ONE session-expired
  * event. Navigation is handled only by the root layout listener (redirectToAuthScreen).
  */
 export function useSessionTimeout(_router: unknown, pathname?: string | null) {

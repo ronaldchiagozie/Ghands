@@ -9,7 +9,7 @@ export type { PayForServicePayload, PayForServiceResponse };
 /**
  * Money-moving requests must never be auto-retried: these endpoints are not
  * idempotent and carry no idempotency key, so a retry after a lost response can
- * debit the wallet twice. `pin/verify` opts out too — a retry burns a PIN
+ * debit the wallet twice. `pin/verify` opts out too - a retry burns a PIN
  * attempt against the server's lockout counter.
  */
 const NO_RETRY = { retries: 0 } as const;
@@ -189,7 +189,7 @@ function mapDepositVerification(reference: string, verificationData: Record<stri
 /**
  * Payment status vocabulary, mirroring `normalizeDepositStatus`.
  *
- * Anything unrecognised — including a missing field — resolves to `pending`,
+ * Anything unrecognised - including a missing field - resolves to `pending`,
  * never `completed`. The screens poll the ledger on `pending` and reach a real
  * verdict; treating an unknown status as success would show a receipt for a
  * payment that may have failed.
@@ -219,8 +219,8 @@ function isPaymentResultShape(value: unknown): value is Record<string, unknown> 
 }
 
 /**
- * `/pay` and `/pay-logistics-fee` were unwrapped differently — one read
- * `response.data`, the other `response.data.data ?? response.data` — so one of
+ * `/pay` and `/pay-logistics-fee` were unwrapped differently - one read
+ * `response.data`, the other `response.data.data ?? response.data` - so one of
  * them was wrong for any given response shape. Getting it wrong is not a cosmetic
  * bug: a result read off the wrong layer has no `status`, and the payment screens
  * treat a statusless 2xx as a completed debit.

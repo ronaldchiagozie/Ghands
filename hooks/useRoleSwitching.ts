@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 
 export const ROLE_SWITCHING_KEY = '@ghands:role_switching';
 
-/** Safety net — never leave the app blank if the flag fails to clear. */
+/** Safety net - never leave the app blank if the flag fails to clear. */
 const STUCK_SWITCH_MS = 3500;
 
 export async function beginRoleSwitch(): Promise<void> {

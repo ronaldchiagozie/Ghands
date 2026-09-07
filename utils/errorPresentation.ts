@@ -1,7 +1,7 @@
 import { isAuthError } from './errors';
 import { isConnectivityOrNetworkError } from './isNetworkFailure';
 
-/** What the primary button actually does — chosen from the cause, never a blanket retry. */
+/** What the primary button actually does - chosen from the cause, never a blanket retry. */
 export type ErrorRecoveryKind = 'retry' | 'signIn' | 'dismiss';
 
 export type ErrorKind =
@@ -15,13 +15,13 @@ export type ErrorKind =
 
 export type ErrorPresentation = {
   kind: ErrorKind;
-  /** Short category shown above the title — names the class of problem at a glance. */
+  /** Short category shown above the title - names the class of problem at a glance. */
   label: string;
   title: string;
   /** Plain language: what happened, and what it means for the user. */
   message: string;
   action: { label: string; kind: ErrorRecoveryKind };
-  /** Tone of the sheet icon — semantic, not decorative. */
+  /** Tone of the sheet icon - semantic, not decorative. */
   tone: 'error' | 'warning' | 'neutral';
   /** Raw technical text, surfaced in __DEV__ only. Never shown in production. */
   debugMessage?: string;
@@ -59,7 +59,7 @@ function statusOf(error: unknown): number | undefined {
 }
 
 /**
- * True when an HTML page answered instead of the API — a host holding page, a
+ * True when an HTML page answered instead of the API - a host holding page, a
  * CDN challenge, a suspended-service notice. The status on those pages describes
  * the proxy, not the request, so it must not drive the message: a suspended
  * backend once returned 429 and the user was told they had made too many
@@ -96,7 +96,7 @@ export function presentError(
     ? [typeof scraped === 'string' ? scraped : '', raw].filter(Boolean).join(' · ') || undefined
     : undefined;
 
-  // Session first — a signed-out user cannot retry their way out of it.
+  // Session first - a signed-out user cannot retry their way out of it.
   if (isAuthError(error) || status === 401 || status === 403) {
     return {
       kind: 'session',
@@ -133,7 +133,7 @@ export function presentError(
     };
   }
 
-  // Anything 5xx, or a page that never reached the API, is our problem — checked
+  // Anything 5xx, or a page that never reached the API, is our problem - checked
   // before the status-specific branches so a proxy's code cannot mislead.
   const hasJunkText = raw.trim() !== '' && looksTechnical(raw);
   if (cameFromInfrastructure(error) || (status !== undefined && status >= 500) || hasJunkText) {
@@ -143,7 +143,7 @@ export function presentError(
       tone: 'error',
       title: 'Our end is having trouble',
       message:
-        "This one is on us — our server couldn't answer just now. Nothing you did caused it, and nothing was lost. Give it a few seconds and try again.",
+        "This one is on us. Our server couldn't answer just now. Nothing you did caused it, and nothing was lost. Give it a few seconds and try again.",
       action: { label: 'Try again', kind: 'retry' },
       debugMessage,
     };
@@ -178,7 +178,7 @@ export function presentError(
     label: 'Unexpected',
     tone: 'error',
     title: "That didn't load",
-    message: `We couldn't load ${subject}. Try again — if it keeps happening, reach us from Help & support.`,
+    message: `We couldn't load ${subject}. Try again. If it keeps happening, reach us from Help & support.`,
     action: { label: 'Try again', kind: 'retry' },
     debugMessage,
   };

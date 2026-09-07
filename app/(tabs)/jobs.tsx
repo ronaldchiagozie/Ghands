@@ -57,7 +57,7 @@ type JobItem = {
   requestId?: number;
   acceptedProvidersCount?: number;
   quotationsCount?: number;
-  /** Client’s rating (1–5) for this job when completed */
+  /** Client’s rating (1-5) for this job when completed */
   myRating?: number;
 };
 

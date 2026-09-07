@@ -49,7 +49,7 @@ type TimelineStatusCardProps = {
   mappedProviders: MappedProviderSummary[];
   request: ServiceRequest | null;
   requestId?: string | string[];
-  /** Logged-in client — used for avatar row when `header.provider` is missing. */
+  /** Logged-in client - used for avatar row when `header.provider` is missing. */
   clientIdentity?: ClientIdentity | null;
   /** Switch to Quotations tab from Updates when a quote is ready. */
   onViewQuotations?: () => void;

@@ -4,7 +4,7 @@ import {
   getQuotationNegotiationStep,
 } from '@/utils/timelineNegotiationSteps';
 
-describe('getInspectionNegotiationStep — declined visit', () => {
+describe('getInspectionNegotiationStep - declined visit', () => {
   it('marks inspection declined with correct copy for client', () => {
     const step = getInspectionNegotiationStep({
       audience: 'client',
@@ -56,7 +56,7 @@ describe('getInspectionNegotiationStep — declined visit', () => {
       hasVisitRequested: false,
       visitDeclined: false,
       visitPaid: false,
-      visitScheduleText: '—',
+      visitScheduleText: '-',
       visitRequest: { logisticsStatus: 'direct_quote' },
       visitOccurred: false,
     });
@@ -66,7 +66,7 @@ describe('getInspectionNegotiationStep — declined visit', () => {
   });
 });
 
-describe('getQuotationNegotiationStep — after visit decline', () => {
+describe('getQuotationNegotiationStep - after visit decline', () => {
   it('activates quotation step for client while waiting on provider', () => {
     const step = getQuotationNegotiationStep({
       audience: 'client',

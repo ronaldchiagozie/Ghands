@@ -77,7 +77,7 @@ export default function TopUpScreen() {
   const [selectedAmount, setSelectedAmount] = useState<number>(0);
   const [customAmount, setCustomAmount] = useState<string>('');
   const [balance, setBalance] = useState<number>(0);
-  /** First load only — later refreshes keep the current figure on screen instead of flashing. */
+  /** First load only - later refreshes keep the current figure on screen instead of flashing. */
   const [isLoadingBalance, setIsLoadingBalance] = useState(true);
   const [isVerifyingDeposit, setIsVerifyingDeposit] = useState(false);
   const [isProcessingCard, setIsProcessingCard] = useState(false);
@@ -94,7 +94,7 @@ export default function TopUpScreen() {
   const verificationInFlightRef = useRef(false);
   const pollCountRef = useRef(0);
   const depositCompletedRef = useRef(false);
-  /** True while Kora auth session / browser is open — suppresses premature “confirming” toast. */
+  /** True while Kora auth session / browser is open - suppresses premature “confirming” toast. */
   const awaitingGatewayReturnRef = useRef(false);
 
   const releasePaymentUi = useCallback(() => {
@@ -138,7 +138,7 @@ export default function TopUpScreen() {
     depositVerifyPhase !== 'checkout' &&
     depositVerifyPhase !== 'preparing';
 
-  /** No `checkout` case: the modal is hidden for that phase — the Kora window is on top. */
+  /** No `checkout` case: the modal is hidden for that phase - the Kora window is on top. */
   const paymentStatusCopy = useMemo(() => {
     switch (depositVerifyPhase) {
       case 'preparing':
@@ -302,7 +302,7 @@ export default function TopUpScreen() {
           void AsyncStorage.removeItem(TOPUP_RETURN_CTX_KEY);
           /**
            * Top Up was pushed on top of the screen that sent us here, so pop back
-           * to it rather than replacing — `replace` left a second copy of that
+           * to it rather than replacing - `replace` left a second copy of that
            * screen on the stack for back to land on, showing the pre-top-up
            * balance. `dismissTo` refreshes the existing entry's params, and falls
            * back to replace-like behaviour when it is not in the stack (cold start).
@@ -435,7 +435,7 @@ export default function TopUpScreen() {
 
     if (await isDepositReferenceAlreadyHandled(reference)) {
       depositCompletedRef.current = true;
-      void logWalletDeposit('Skipping verify — deposit already handled', { reference });
+      void logWalletDeposit('Skipping verify - deposit already handled', { reference });
       releasePaymentUi();
       invalidateWalletBalanceCache();
       void loadWalletBalance();
@@ -575,7 +575,7 @@ export default function TopUpScreen() {
       } else {
         /**
          * A transient verify failure is not a verdict. Keep the pending reference
-         * and the polling session alive so the next tick can still reconcile —
+         * and the polling session alive so the next tick can still reconcile -
          * releasing here used to strand an already-paid deposit after a single
          * network blip. Once the attempts run out we let the UI go, but the
          * persisted reference stays for the next app launch to pick up.
@@ -860,7 +860,7 @@ export default function TopUpScreen() {
        * The server now forwards callbackUrl to Korapay as `redirect_url`, so the
        * checkout page can close itself instead of leaving the user to tap X.
        * A fresh idempotency key per tap makes the transport-level retries on
-       * this endpoint safe — the same key returns the original charge rather
+       * this endpoint safe - the same key returns the original charge rather
        * than minting a second one.
        */
       const depositResponse = await walletService.initializeDeposit({
@@ -873,7 +873,7 @@ export default function TopUpScreen() {
 
       haptics.success();
 
-      // Store deposit reference for verification when user returns — persisted so a
+      // Store deposit reference for verification when user returns - persisted so a
       // cold start or the `wallet-deposit-return` deep link can still reconcile it.
       await clearHandledDepositReference();
       await persistPendingDepositReference(depositResponse.reference);
@@ -993,7 +993,7 @@ export default function TopUpScreen() {
         } else if (msgLower.includes('amount')) {
           errorMsg = 'Invalid amount. Minimum deposit is ₦100.';
         } else if (msgLower.includes('kora') || msgLower.includes('no authorization token') || msgLower.includes('authorization token found')) {
-          // Backend called Kora without API key – payment provider not configured on server
+          // Backend called Kora without API key - payment provider not configured on server
           errorMsg = 'Online payments are temporarily unavailable. Please try again later or contact support.';
         } else if (error?.status === 400) {
           errorMsg = 'Invalid payment information. Please check your details and try again.';
@@ -1117,7 +1117,7 @@ export default function TopUpScreen() {
             Choose Amount to Add
           </Text>
 
-          {/* Preset Amount Buttons — 2×2 grid avoids ₦ amount wrapping */}
+          {/* Preset Amount Buttons - 2×2 grid avoids ₦ amount wrapping */}
           <View
             style={{
               flexDirection: 'row',
@@ -1229,7 +1229,7 @@ export default function TopUpScreen() {
           )}
         </View>
 
-        {/* Pay — Korapay handles bank selection in checkout */}
+        {/* Pay - Korapay handles bank selection in checkout */}
         <View style={{ marginBottom: 32, opacity: isDepositAmountValid ? 1 : 0.72 }}>
           <Text
             style={{
@@ -1296,7 +1296,7 @@ export default function TopUpScreen() {
       </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* Payment status — auto-verifies, no manual check */}
+      {/* Payment status - auto-verifies, no manual check */}
       {showPaymentStatusModal ? (
       <AnimatedModal
         visible
@@ -1478,7 +1478,7 @@ export default function TopUpScreen() {
       </AnimatedModal>
       ) : null}
 
-      {/* Email — bottom sheet lifted above keyboard (same pattern as PIN modal) */}
+      {/* Email - bottom sheet lifted above keyboard (same pattern as PIN modal) */}
       <Modal
         visible={showEmailModal}
         transparent

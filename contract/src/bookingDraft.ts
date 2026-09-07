@@ -1,15 +1,15 @@
 /**
  * Telling a real booking apart from an abandoned draft.
  *
- * The client creates the service request the moment a category is tapped —
- * before job title, description, schedule, photos or provider exist — so a
+ * The client creates the service request the moment a category is tapped -
+ * before job title, description, schedule, photos or provider exist - so a
  * user who backs out mid-flow leaves a real row behind. Those rows were
  * surfacing in the jobs list as "Pending", which reads as "we are finding you a
  * provider" when in fact nothing was ever submitted.
  *
  * The backend has since confirmed it already models this: requests are created
  * as `draft` and its list endpoint excludes them. So this now defers to the
- * server — `draft` is filtered, everything else is trusted — and keeps only the
+ * server - `draft` is filtered, everything else is trusted - and keeps only the
  * noise filter for rows with no title or description. It stays because the
  * booking flow reads drafts back by id while filling them in, and because two
  * apps read this list.
@@ -60,7 +60,7 @@ export function isSubmittedBooking(
 
   /**
    * The server is authoritative about this now. Its request list excludes
-   * `draft` outright — it even overrides an explicit `?status=draft` — so
+   * `draft` outright - it even overrides an explicit `?status=draft` - so
    * anything that reaches us has been submitted, and second-guessing that here
    * would hide real jobs. A draft can still arrive when fetched by id, which
    * the booking flow does while filling one in, so the check stays.
@@ -83,7 +83,7 @@ export function isSubmittedBooking(
   return true;
 }
 
-/** Convenience inverse — a request the user started and never submitted. */
+/** Convenience inverse - a request the user started and never submitted. */
 export function isAbandonedDraft(
   request: DraftCandidate | null | undefined,
   progress: BookingProgress = {},

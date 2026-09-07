@@ -305,7 +305,7 @@ export default function ChatScreen() {
    * Convert API message to UI message format
    * Standard layout: my messages = right, received = left
    *
-   * Ownership must use senderId vs known party ids — backend often omits/wrong senderType,
+   * Ownership must use senderId vs known party ids - backend often omits/wrong senderType,
    * which previously marked all bubbles as "provider" (left) after refresh.
    */
   const mapApiMessageToUI = useCallback(
@@ -333,7 +333,7 @@ export default function ChatScreen() {
        * One shared rule, because the two apps are the two sides of this
        * conversation. It used to compare senderId against the logged-in id
        * directly, which ignores that user ids and provider ids are separate
-       * sequences — client #7 talking to provider #7 matched on every message
+       * sequences - client #7 talking to provider #7 matched on every message
        * and the whole thread stacked onto the right.
        */
       const ownership = resolveMessageOwnership({
@@ -447,7 +447,7 @@ export default function ChatScreen() {
             setResolvedProviderId(peerProviderForThread);
           }
         } catch {
-          /* non-fatal — alignment falls back to senderType */
+          /* non-fatal - alignment falls back to senderType */
         }
       }
 
@@ -501,7 +501,7 @@ export default function ChatScreen() {
         ? uiMessages.filter((m) => !deletedMessageIds.includes(m.id))
         : uiMessages;
 
-      // Don't overwrite with empty on background refresh – API may return bad/malformed data
+      // Don't overwrite with empty on background refresh - API may return bad/malformed data
       // and we'd wipe sent messages. Only overwrite if we got messages or this is initial load.
       setMessages((prev) => {
         if (filteredMessages.length > 0) return filteredMessages;
@@ -724,18 +724,18 @@ export default function ChatScreen() {
       };
       ownershipByMessageIdRef.current[String(sentMessage.id)] = true;
 
-      // Replace optimistic message with server message — always show as "mine" (this device sent it)
+      // Replace optimistic message with server message - always show as "mine" (this device sent it)
       setMessages((prev) =>
         prev.map((msg) => (msg.id === optimisticMessage.id ? finalMsg : msg))
       );
 
-      // Don't refresh here – backend may not include the new message yet, causing it to disappear.
+      // Don't refresh here - backend may not include the new message yet, causing it to disappear.
       // The 5s auto-refresh will pick up replies from the other party.
     } catch (error: any) {
       if (__DEV__) {
         console.error('Error sending message:', error);
       }
-      // Keep message visible but mark as failed – don't remove (so it doesn't disappear)
+      // Keep message visible but mark as failed - don't remove (so it doesn't disappear)
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === optimisticMessage.id ? { ...msg, status: 'failed' as const } : msg
@@ -1035,7 +1035,7 @@ height: MIN_TOUCH_TARGET,
               {/**
                 * The person you are talking to. This was a stock photo one way
                 * and a plumber icon the other, so the header showed a stranger's
-                * face to providers and a wrench to customers — neither of which
+                * face to providers and a wrench to customers - neither of which
                 * was the peer named directly beside it.
                 */}
               <AvatarCircle name={peerName} size={42} borderColor="transparent" />

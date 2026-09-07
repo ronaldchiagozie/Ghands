@@ -9,7 +9,7 @@ function secureKey(key: string): string {
 }
 
 /**
- * Sensitive values (tokens) — SecureStore on native, AsyncStorage on web.
+ * Sensitive values (tokens) - SecureStore on native, AsyncStorage on web.
  * Migrates legacy AsyncStorage entries on first read.
  */
 export async function getSecureItem(key: string): Promise<string | null> {

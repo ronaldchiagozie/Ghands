@@ -86,7 +86,7 @@ type DestructiveButtonProps = {
   fullWidth?: boolean;
 };
 
-/** Red destructive action — e.g. decline visit */
+/** Red destructive action - e.g. decline visit */
 export function DestructiveButton({ label, onPress, compact, fullWidth }: DestructiveButtonProps) {
   return (
     <TouchableOpacity

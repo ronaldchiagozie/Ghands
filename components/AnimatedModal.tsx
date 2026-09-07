@@ -21,9 +21,9 @@ interface AnimatedModalProps {
   children: React.ReactNode;
   animationType?: 'slide' | 'fade';
   dismissible?: boolean;
-  /** Backdrop darkness — default 0.38 */
+  /** Backdrop darkness - default 0.38 */
   backdropOpacity?: number;
-  /** Minimum sheet height as % of screen — default 75 */
+  /** Minimum sheet height as % of screen - default 75 */
   minHeightPercent?: number;
   /** Lifts sheet above the keyboard (email/forms) */
   keyboardAware?: boolean;

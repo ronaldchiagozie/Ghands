@@ -246,7 +246,7 @@ export default function DiscoverScreen() {
             {/**
               * Static advice, not articles. These were TouchableOpacity with a
               * chevron and a "3 min read", so they looked like links to writing
-              * that does not exist — tapping one did nothing at all.
+              * that does not exist - tapping one did nothing at all.
               */}
             {serviceTips.map((tip, index) => (
               <View

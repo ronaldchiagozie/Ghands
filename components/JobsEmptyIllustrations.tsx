@@ -17,7 +17,7 @@ export type JobsEmptyVariant = 'pending' | 'ongoing' | 'completed' | 'cancelled'
  * Empty-state mark: one icon, one soft disc, nothing else.
  *
  * The previous illustrations were bespoke SVGs stacking a halo, a dashed orbit
- * ring, a drawn briefcase and a floating tick — the visual signature of stock
+ * ring, a drawn briefcase and a floating tick - the visual signature of stock
  * "empty state" art, and out of step with the Lucide set the rest of the app
  * uses. A single well-chosen icon reads as considered; a scene reads as filler.
  */

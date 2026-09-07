@@ -28,7 +28,7 @@ export type AiStatus = {
 export type AiChatRequest = {
   message: string;
   conversationId?: number;
-  /** Public URLs after upload — sent when the chat API accepts image references. */
+  /** Public URLs after upload - sent when the chat API accepts image references. */
   imageUrls?: string[];
 };
 
@@ -156,7 +156,7 @@ export const aiService = {
           return unwrapAiData<AiChatResponse>(json);
         }
       } catch {
-        /* multipart not supported — fall back below */
+        /* multipart not supported - fall back below */
       }
     }
 

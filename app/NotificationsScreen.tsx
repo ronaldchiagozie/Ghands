@@ -320,7 +320,7 @@ export default function NotificationsScreen() {
   const { toast, showError, hideToast } = useToast();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  /** The thrown error itself — the sheet needs its status, not just a string. */
+  /** The thrown error itself - the sheet needs its status, not just a string. */
   const [loadError, setLoadError] = useState<unknown>(null);
   const [isClearing, setIsClearing] = useState(false);
   const [previewNotification, setPreviewNotification] = useState<UINotification | null>(null);

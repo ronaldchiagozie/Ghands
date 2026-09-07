@@ -20,14 +20,14 @@ import { computePhoneLaneHeight, isTabletSize } from './tabletLayout';
  * between the window top and the view's parent is therefore invisible to it, and the
  * padding comes up short by exactly that amount.
  *
- * Under `SafeAreaWrapper` that offset is the top safe-area inset — about 47pt on a
- * notched iPhone — which is enough to leave the last field or the submit button
+ * Under `SafeAreaWrapper` that offset is the top safe-area inset - about 47pt on a
+ * notched iPhone - which is enough to leave the last field or the submit button
  * under the keyboard. `keyboardVerticalOffset` adds it back.
  *
  * Android returns 0: `softwareKeyboardLayoutMode` is `pan` (see `app.config.js`), so
  * these screens pass `behavior={undefined}` and the view is inert.
  *
- * Do NOT use this for a `KeyboardAvoidingView` inside a `Modal` — a modal's root is
+ * Do NOT use this for a `KeyboardAvoidingView` inside a `Modal` - a modal's root is
  * the full window, so its frame is already screen-aligned and this would over-pad.
  */
 export function useKeyboardAvoidingOffset(): number {
@@ -49,7 +49,7 @@ export function useKeyboardAvoidingOffset(): number {
 }
 
 type ScrollViewKeyboardAssistOptions = {
-  /** Scroll padding while the keyboard is open — clears sticky footers. */
+  /** Scroll padding while the keyboard is open - clears sticky footers. */
   footerClearance?: number;
   baseBottomPad?: number;
 };

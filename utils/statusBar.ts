@@ -7,7 +7,7 @@ export const DEFAULT_STATUS_BAR_BACKGROUND = Colors.backgroundLight;
 export const HANDY_AI_STATUS_BAR_STYLE = 'light-content' as const;
 export const HANDY_AI_STATUS_BAR_BACKGROUND = '#003D4D';
 
-/** Handy AI — white status bar icons on the teal shell. */
+/** Handy AI - white status bar icons on the teal shell. */
 export function applyHandyAiStatusBar(): void {
   StatusBar.setHidden(false, 'fade');
   StatusBar.setBarStyle(HANDY_AI_STATUS_BAR_STYLE, true);
@@ -33,7 +33,7 @@ export function applyDefaultStatusBar(): void {
 
 let appStateSubscription: { remove: () => void } | null = null;
 
-/** Call once from root layout — restores status bar when returning from browser / background. */
+/** Call once from root layout - restores status bar when returning from browser / background. */
 export function installStatusBarRestore(getPathname?: () => string): () => void {
   applyDefaultStatusBar();
 

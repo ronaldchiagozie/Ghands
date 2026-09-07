@@ -7,7 +7,7 @@ describe('isSubmittedBooking', () => {
    * The bug this exists for: the service request row is created the moment a
    * category is tapped. A user who filled in the details and then quit before
    * choosing a provider still had a row, and the jobs list showed it as
-   * "Pending" — as though providers were being found for a booking that was
+   * "Pending" - as though providers were being found for a booking that was
    * never actually made.
    */
   it('rejects a bare row with no details, whatever its status', () => {
@@ -18,7 +18,7 @@ describe('isSubmittedBooking', () => {
   /**
    * Changed deliberately after the backend confirmed its list endpoint already
    * excludes drafts. A `pending` row reaching us has left draft, so trusting it
-   * is correct — the old heuristic would have hidden a real job that simply had
+   * is correct - the old heuristic would have hidden a real job that simply had
    * no quotes yet.
    */
   it('trusts a pending row the server chose to send', () => {

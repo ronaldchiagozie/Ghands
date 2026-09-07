@@ -2,7 +2,7 @@
  * Error codes replace English pattern-matching in the money flows.
  *
  * The backend sends a stable `code` now, but not from every endpoint yet, and
- * its error envelope is less consistent than its success one — so the code is
+ * its error envelope is less consistent than its success one - so the code is
  * looked for at each nesting level and the text match survives as a fallback.
  */
 import { extractErrorCode } from '@/services/api/client';
@@ -43,7 +43,7 @@ describe('extractErrorCode', () => {
 /**
  * The classification the payment screen performs. The old rule matched the bare
  * word "balance", so an error about *reading* the balance was shown as
- * "Insufficient wallet balance — top up", pointing someone at a payment they
+ * "Insufficient wallet balance - top up", pointing someone at a payment they
  * may not have needed to make.
  */
 describe('insufficient-balance classification', () => {

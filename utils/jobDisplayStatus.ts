@@ -6,7 +6,7 @@ import {
   isProviderVisitRequestSent,
 } from '@/utils/visitStatus';
 
-/** User-facing label on Home + Jobs cards — one per meaningful API job state. */
+/** User-facing label on Home + Jobs cards - one per meaningful API job state. */
 export type JobDisplayStatus =
   | 'Pending'
   | 'Accepted'
@@ -106,7 +106,7 @@ export function resolveJobDisplayStatus(
     mapped = 'Pending';
   }
 
-  // Once payment is secured or the job finishes, trust the API — never force Quoting/Inspecting.
+  // Once payment is secured or the job finishes, trust the API - never force Quoting/Inspecting.
   if (isPastQuotationPhase(normalized, mapped)) {
     return mapped;
   }
@@ -118,7 +118,7 @@ export function resolveJobDisplayStatus(
     return 'Quoting';
   }
 
-  // Quote on the table — still negotiating (not scheduled/paid yet).
+  // Quote on the table - still negotiating (not scheduled/paid yet).
   if (hasQuotationSent) {
     return 'Quoting';
   }

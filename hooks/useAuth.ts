@@ -93,7 +93,7 @@ export function useAuthRole(): UseAuthRoleReturn {
 
       setRoleState(newRole);
 
-      // Provider auth lives in the separate provider app — always land on client login here.
+      // Provider auth lives in the separate provider app - always land on client login here.
       router.replace('/LoginScreen');
     } catch (error) {
       console.error('Error switching role:', error);

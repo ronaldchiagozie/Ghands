@@ -343,8 +343,8 @@ export type EnableNotificationsResult = 'granted' | 'denied' | 'opened-settings'
  * The checklist row used to call syncPushNotifications and hope. That works
  * exactly once: iOS shows its permission prompt a single time, and every later
  * requestPermissionsAsync resolves "denied" without displaying anything. So for
- * anyone who had already said no — which is most people who still see this row,
- * since granting it removes the row — the button did nothing at all. No prompt,
+ * anyone who had already said no - which is most people who still see this row,
+ * since granting it removes the row - the button did nothing at all. No prompt,
  * no settings, no error. It just sat there.
  *
  * Now the only route back is the one that exists: the system settings screen.

@@ -14,7 +14,7 @@ type WalletPinInputProps = {
   autoFocus?: boolean;
 };
 
-/** Stable 4-digit PIN — single hidden field + fixed cells (avoids focus/box jitter). */
+/** Stable 4-digit PIN - single hidden field + fixed cells (avoids focus/box jitter). */
 export function WalletPinInput({
   value,
   onChange,

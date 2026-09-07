@@ -10,7 +10,7 @@ export type ButtonVariantStyles = {
   icon: string;
 };
 
-/** App buttons — primary: sage green + white text; secondary: black (destructive/emphasis). */
+/** App buttons - primary: sage green + white text; secondary: black (destructive/emphasis). */
 export function getButtonVariantStyles(
   variant: ButtonVariant,
   disabled: boolean,

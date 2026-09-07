@@ -191,6 +191,35 @@ export const serviceRequestService = {
     );
   },
 
+  /**
+   * Attaches uploaded photo URLs to a service request.
+   *
+   * The details endpoint is the only place the app can write to a request's
+   * content, and it requires the title and description, so the current values
+   * are read back first rather than being blanked. `images` is sent alongside
+   * them: the provider app looks for that key first when hunting for job
+   * photos, and the backend migration that introduced drafts was named for
+   * bookings *and images*, so the column exists.
+   *
+   * The exact field is not confirmed, which is why this tolerates failure. A
+   * server that rejects the key leaves us exactly where we were - with photos
+   * that do not reach the provider - rather than breaking the booking.
+   */
+  attachRequestImages: async (requestId: number, imageUrls: string[]): Promise<void> => {
+    const urls = imageUrls.map((url) => url.trim()).filter(Boolean);
+    if (urls.length === 0) return;
+
+    const current = await serviceRequestService.getRequestDetails(requestId);
+    const payload: Record<string, unknown> = {
+      jobTitle: current.jobTitle ?? '',
+      description: current.description ?? '',
+      images: urls,
+    };
+    if (current.location) payload.location = current.location;
+
+    await apiClient.put<any>(`/api/request-service/requests/${requestId}/details`, payload);
+  },
+
   getRequestDetails: async (requestId: number): Promise<ServiceRequest> => {
     try {
       const response = await apiClient.get<any>(`/api/request-service/requests/${requestId}`);
@@ -203,7 +232,7 @@ export const serviceRequestService = {
 
   /**
    * Client job detail: same as getRequestDetails, but if GET /requests/:id returns 5xx (backend crash),
-   * try GET /requests (list) and use the matching row — often still works when single-resource handler breaks.
+   * try GET /requests (list) and use the matching row - often still works when single-resource handler breaks.
    * `usedListFallback` is true when the single GET failed and list data was used (caller should warn user).
    */
   getRequestDetailsWithListFallback: async (

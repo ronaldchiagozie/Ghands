@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const DEPOSIT_REFERENCE_KEY = '@ghands:pending_deposit_reference';
-/** Set as soon as a reference is verified completed — prevents duplicate verify calls (double credit). */
+/** Set as soon as a reference is verified completed - prevents duplicate verify calls (double credit). */
 export const DEPOSIT_HANDLED_REF_KEY = '@ghands:deposit_handled_reference';
 
 export async function getPendingDepositReference(): Promise<string | null> {

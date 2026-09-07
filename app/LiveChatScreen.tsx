@@ -274,7 +274,7 @@ export default function LiveChatScreen() {
           >
             {/**
               * Support is a desk, not a person, so it gets the brand mark rather
-              * than userimg.jpg — a stock portrait that read as a named human
+              * than userimg.jpg - a stock portrait that read as a named human
               * agent nobody could actually ask for.
               */}
             <Headphones size={20} color={Colors.accent} />

@@ -6,7 +6,7 @@ import { resolveClientProfileComplete } from '@/utils/profileCompletion';
 /**
  * Where a half-finished signup should resume.
  *
- * Signing up is several screens long — account type, credentials, then the
+ * Signing up is several screens long - account type, credentials, then the
  * profile (name, phone, gender). If the app is closed between them the account
  * already exists, so the next launch has a valid token and used to land on Home
  * with a profile that was never filled in. Nothing brought the user back.
@@ -14,7 +14,7 @@ import { resolveClientProfileComplete } from '@/utils/profileCompletion';
  * The resume point is *derived* from what is actually true (is there a token, is
  * the profile complete) rather than replayed from a breadcrumb, so a stale or
  * missing marker can never strand someone. The recorded step is kept alongside
- * it for support and analytics — it tells us where people drop off.
+ * it for support and analytics - it tells us where people drop off.
  */
 
 const STEP_KEY = '@ghands:signup_step';
@@ -57,7 +57,7 @@ export async function getSignupStep(): Promise<SignupStep | null> {
   }
 }
 
-/** How long the user has been mid-signup — useful when diagnosing drop-off. */
+/** How long the user has been mid-signup - useful when diagnosing drop-off. */
 export async function getSignupStartedAt(): Promise<string | null> {
   try {
     return await AsyncStorage.getItem(STARTED_KEY);
@@ -82,7 +82,7 @@ export type SignupResume =
 /**
  * What the app should do on launch for a signup that may be half-finished.
  *
- * Fails open to `complete` — if the profile check cannot run (offline, API
+ * Fails open to `complete` - if the profile check cannot run (offline, API
  * down), sending someone to Home is recoverable; trapping them in an
  * onboarding screen they cannot get past is not.
  */

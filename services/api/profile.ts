@@ -29,7 +29,7 @@ export const profileService = {
     return apiClient.put<UserProfile>(`/users/${userId}/profile`, payload);
   },
 
-  /** PUT /api/user/complete-signup — official client profile completion. */
+  /** PUT /api/user/complete-signup - official client profile completion. */
   completeClientSignup: async (payload: CompleteClientSignupPayload): Promise<any> => {
     const { firstName, lastName } = splitFullName(payload.fullName);
     const body = {
@@ -44,7 +44,7 @@ export const profileService = {
     return extractResponseData<any>(response);
   },
 
-  /** Edit Profile + any name/phone update — same PUT as first-time completion. */
+  /** Edit Profile + any name/phone update - same PUT as first-time completion. */
   updateCurrentUserProfile: async (payload: UpdateProfilePayload): Promise<any> => {
     if (payload.profileImageUri?.trim()) {
       logClientProfilePhoto('save_profile_image_skipped_on_api', {

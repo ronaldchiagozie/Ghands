@@ -22,7 +22,7 @@ type ResumeBookingCardProps = {
  * started again from the category.
  *
  * Sage rather than white so it reads as a live thing to act on, against the
- * white cards around it. Dismissing it is as easy as continuing — an offer that
+ * white cards around it. Dismissing it is as easy as continuing - an offer that
  * cannot be refused becomes clutter by the second day.
  */
 export default function ResumeBookingCard({
@@ -54,7 +54,7 @@ export default function ResumeBookingCard({
         android_ripple={{ color: 'rgba(255,255,255,0.12)' }}
       >
         {/**
-         * Layout on an inner View, never a function style on the Pressable —
+         * Layout on an inner View, never a function style on the Pressable -
          * NativeWind wraps every element here and flattens those, which is what
          * stacked AccountSetupCard's rows and stripped the alert buttons.
          */}

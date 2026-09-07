@@ -33,14 +33,14 @@ export default function PaymentPendingScreen() {
   }>();
 
   const receiptData = useMemo((): ClientReceiptData => {
-    const serviceDate = params.serviceDate || params.initiatedDate?.split('·')[0]?.trim() || '—';
-    const serviceTime = params.serviceTime || params.initiatedDate?.split('·')[1]?.trim() || '—';
+    const serviceDate = params.serviceDate || params.initiatedDate?.split('·')[0]?.trim() || '-';
+    const serviceTime = params.serviceTime || params.initiatedDate?.split('·')[1]?.trim() || '-';
     const amount = formatNairaAmount(params.totalAmount || params.amount);
     const title = params.serviceName || params.providerName || 'Wallet transaction';
     const providerName = params.providerName || 'GHands Wallet';
 
     return {
-      transactionId: params.transactionId || '—',
+      transactionId: params.transactionId || '-',
       reference: params.reference,
       jobTitle: title,
       providerName,
@@ -59,7 +59,7 @@ export default function PaymentPendingScreen() {
   const sharePayload = useMemo(
     () =>
       [
-        'GHands — Receipt (Pending)',
+        'GHands Receipt (Pending)',
         `Description: ${receiptData.jobTitle}`,
         `Amount: ₦${receiptData.totalAmount}`,
         `Transaction ID: ${receiptData.transactionId}`,

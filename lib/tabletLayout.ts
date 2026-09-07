@@ -11,7 +11,7 @@ export const PHONE_LANE_MAX_WIDTH = 520;
 export const PHONE_LANE_MIN_HEIGHT = 600;
 /** Upper cap (pt) for the framed app height on tablets (large iPads can approach this) */
 export const PHONE_LANE_MAX_HEIGHT = 960;
-/** Share of available height (between safe insets) used for the phone lane — keep below 1 so UI doesn’t feel oversized on iPad */
+/** Share of available height (between safe insets) used for the phone lane - keep below 1 so UI doesn’t feel oversized on iPad */
 export const PHONE_LANE_HEIGHT_FRACTION = 0.94;
 
 /** Space from top of lane to content after skipping device top safe inset (tab shell). */
@@ -20,7 +20,7 @@ export const PHONE_LANE_OUTER_TOP = 14;
 /** Horizontal padding for client home scroll sections. */
 export const CLIENT_HOME_SCROLL_GUTTER = 16;
 
-/** Provider tab screens — same gutter as client home for aligned content width. */
+/** Provider tab screens - same gutter as client home for aligned content width. */
 export const PROVIDER_TAB_GUTTER = CLIENT_HOME_SCROLL_GUTTER;
 
 /** Shared top padding for main vertical scroll content on tab screens (tablet). */
@@ -64,7 +64,7 @@ export function useNarrowOverlayMaxWidth(horizontalGutter: number = 32): number 
 }
 
 /**
- * Whether the shortest side is phone-sized (narrow) — useful for tightening padding on small Android phones.
+ * Whether the shortest side is phone-sized (narrow) - useful for tightening padding on small Android phones.
  */
 export function useIsCompactPhone(): boolean {
   const { width, height } = useWindowDimensions();
@@ -73,7 +73,7 @@ export function useIsCompactPhone(): boolean {
 
 /**
  * Bottom tab bar content row height (icons + labels), before the home-indicator inset.
- * `paddingBottom` on the tab bar should be only `insets.bottom` — no extra band below labels.
+ * `paddingBottom` on the tab bar should be only `insets.bottom` - no extra band below labels.
  */
 export const CLIENT_TAB_BAR_BASE_HEIGHT = Platform.OS === 'ios' ? 50 : 46;
 /** @deprecated Use safe-area inset only for tab bar paddingBottom in layouts */

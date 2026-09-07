@@ -97,7 +97,7 @@ export const communicationService = {
       const callReference = data?.callReference ?? data?.call_reference ?? data?.callId ?? data?.call_id ?? data?.id ?? '';
 
       if (!callId) {
-        logCallWarn('initiateCall: success HTTP body but empty callId — check backend field names', {
+        logCallWarn('initiateCall: success HTTP body but empty callId - check backend field names', {
           requestId,
           extractedRawSample: raw && typeof raw === 'object' ? JSON.stringify(raw).slice(0, 1200) : raw,
           dataSample: data && typeof data === 'object' ? JSON.stringify(data).slice(0, 800) : data,

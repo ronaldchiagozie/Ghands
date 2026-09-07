@@ -5,8 +5,8 @@
  * disagreement here is visible to both people at once: the same message sits on
  * the right for one of them and on the left for the other.
  *
- * The rule the UI wants is the ordinary one — mine on the right, theirs on the
- * left — and everything below exists because the API does not answer "is this
+ * The rule the UI wants is the ordinary one - mine on the right, theirs on the
+ * left - and everything below exists because the API does not answer "is this
  * mine" directly, and each of the signals it does give is unreliable on its own.
  */
 
@@ -39,7 +39,7 @@ export type MessageOwnershipBranch =
 
 export type MessageOwnership = {
   isFromCurrentUser: boolean;
-  /** Which rule decided it — logged in dev builds, and asserted in tests. */
+  /** Which rule decided it - logged in dev builds, and asserted in tests. */
   branch: MessageOwnershipBranch;
 };
 

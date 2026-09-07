@@ -40,7 +40,7 @@ export default function ProfileCompletionModal({
   const [phoneNumber, setPhoneNumber] = useState('');
   const [gender, setGender] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  /** Shown inside the modal — toasts are often hidden behind nested modals */
+  /** Shown inside the modal - toasts are often hidden behind nested modals */
   const [inlineError, setInlineError] = useState('');
 
   useEffect(() => {
@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins-SemiBold',
     color: Colors.textSecondaryDark,
   },
-  /** Left-aligned with the form, like a screen — not centred like a sheet. */
+  /** Left-aligned with the form, like a screen - not centred like a sheet. */
   iconContainer: {
     width: 56,
     height: 56,

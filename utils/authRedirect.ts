@@ -4,7 +4,7 @@ import { expireAuthSession } from '@/utils/enforceAuthSession';
 import { isAuthError } from '@/utils/errors';
 
 /**
- * Auth failure (401 / expired JWT) — clears session once.
+ * Auth failure (401 / expired JWT) - clears session once.
  * When `router` is passed, also forces navigation to login (avoids getting stuck
  * on screens that swallow AuthError, e.g. AI chat).
  */
@@ -19,7 +19,7 @@ export async function handleAuthErrorRedirect(
     if (router) {
       /**
        * Not forced. This is an involuntary expiry, and several screens reach it
-       * at once when their fetches 401 together — deduping is the entire point.
+       * at once when their fetches 401 together - deduping is the entire point.
        * Forcing here is what made a single expired session redirect to login
        * once per mounted screen.
        */
@@ -41,7 +41,7 @@ export async function handleApiAuthFailure(
   return true;
 }
 
-/** Fire-and-forget async work — auth failures redirect instead of uncaught rejections. */
+/** Fire-and-forget async work - auth failures redirect instead of uncaught rejections. */
 export function runAuthSafe(
   task: () => Promise<void>,
   router?: { replace: (href: any) => void },

@@ -6,8 +6,8 @@
  * uncertain failure cannot debit twice.
  *
  * The key must therefore be *stable across retries of the same intent* and
- * fresh for a genuinely new one. Callers mint one per attempt session — e.g.
- * when a payment screen opens for a given request — and reuse it for every
+ * fresh for a genuinely new one. Callers mint one per attempt session - e.g.
+ * when a payment screen opens for a given request - and reuse it for every
  * attempt on that screen.
  *
  * No crypto dependency: these only need to be unique, not unguessable. The

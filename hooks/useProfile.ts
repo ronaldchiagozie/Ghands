@@ -96,7 +96,7 @@ export function mapApiProfileToClientView(raw: unknown): ClientProfileView {
   };
 }
 
-/** Logged-in user profile from `GET /api/user/profile` — avoids fake `/users/:id/profile` slowness. */
+/** Logged-in user profile from `GET /api/user/profile` - avoids fake `/users/:id/profile` slowness. */
 export function useCurrentUserProfile() {
   return useQuery({
     queryKey: [PROFILE_QUERY_KEY, 'current'],

@@ -16,13 +16,13 @@ export type ServiceProvider = {
   providerId?: number; // Real backend provider ID for API calls
   name: string;
   category: ProviderCategory;
-  /** Null until the API returns one — never a stand-in value. */
+  /** Null until the API returns one - never a stand-in value. */
   rating: number | null;
   reviews: number;
   distance: string;
   /**
    * Identity approval, which is what `verified` on /api/provider/nearby actually
-   * means — the backend confirmed it is set by admin approve/reject, not by the
+   * means - the backend confirmed it is set by admin approve/reject, not by the
    * provider's own availability. It was being rendered as an Available/Busy
    * chip, so an approved provider taking no work read as free, and a provider
    * still awaiting approval read as merely busy.
@@ -34,7 +34,7 @@ export type ServiceProvider = {
   /**
    * The provider's own photo, when there is one. `/api/provider/nearby` does not
    * return a photo today, so in practice this is usually empty and the avatar
-   * falls back to initials — which is the point: it used to fall back to a
+   * falls back to initials - which is the point: it used to fall back to a
    * picture of a plumber regardless of trade.
    */
   imageUri?: string | null;
@@ -173,7 +173,7 @@ const ServiceMap: React.FC<ServiceMapProps> = ({
               {/**
                 * The marker is the person, not their trade. It used to be a
                 * trade icon drawn from a map of four categories, so every
-                * provider outside those four — tilers, roofers, cleaners —
+                * provider outside those four - tilers, roofers, cleaners -
                 * appeared on the map as a plumber.
                 */}
               <View

@@ -20,7 +20,7 @@ export type AiMessage = {
 
 export type AiSuggestionVariant = 'booking' | 'draft';
 
-/** Pre-filled booking data — skips category & job details, lands on date/time. */
+/** Pre-filled booking data - skips category & job details, lands on date/time. */
 export type AiBookingPrefill = {
   categoryName: string;
   jobTitle: string;

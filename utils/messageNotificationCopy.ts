@@ -36,7 +36,7 @@ export type MessageNotificationPerspective = {
   currentUserId?: number | null;
   currentCompanyId?: number | null;
   metadata?: Record<string, unknown> | null;
-  /** From notification row — job provider / company for peer matching (client view). */
+  /** From notification row - job provider / company for peer matching (client view). */
   notificationProviderId?: number | null;
   notificationCompanyId?: number | null;
   bodyText?: string;
@@ -185,7 +185,7 @@ function isFromClientSender(ctx: MessageNotificationPerspective): boolean {
 }
 
 /**
- * Message alerts only for messages from the other party — never for your own sends,
+ * Message alerts only for messages from the other party - never for your own sends,
  * and not for ambiguous backend echoes (wrong template, missing sender).
  */
 export function shouldShowMessageNotification(input: MessageNotificationPerspective): boolean {

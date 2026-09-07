@@ -1,4 +1,4 @@
-/** Used when GET /api/wallet/banks is empty or fails — same list as provider onboarding. */
+/** Used when GET /api/wallet/banks is empty or fails - same list as provider onboarding. */
 export const NIGERIA_FALLBACK_BANKS = [
   { code: '044', name: 'Access Bank' },
   { code: '014', name: 'Afrigo' },

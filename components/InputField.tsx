@@ -26,7 +26,7 @@ interface InputFieldProps {
   returnKeyType?: 'done' | 'next' | 'search' | 'send' | 'go';
   onSubmitEditing?: () => void;
   autoFocus?: boolean;
-  /** iOS autofill hint — lets Keychain/password managers offer and save the value. */
+  /** iOS autofill hint - lets Keychain/password managers offer and save the value. */
   textContentType?: TextInputProps['textContentType'];
   /** Android autofill hint. Pair with textContentType for cross-platform coverage. */
   autoComplete?: TextInputProps['autoComplete'];

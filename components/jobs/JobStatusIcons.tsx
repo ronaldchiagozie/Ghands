@@ -14,7 +14,7 @@ function sw(size: number, fine = false): number {
   return Math.max(1.25, Math.round((size / 24) * ratio * 100) / 100);
 }
 
-/** Jobs tab — waiting for providers / action. */
+/** Jobs tab - waiting for providers / action. */
 export function JobTabIconPending({ size = 20, color = '#4F6739', strokeWidth }: IconProps) {
   const s = strokeWidth ?? sw(size, true);
   return (
@@ -28,7 +28,7 @@ export function JobTabIconPending({ size = 20, color = '#4F6739', strokeWidth }:
   );
 }
 
-/** Jobs tab — active work in progress. */
+/** Jobs tab - active work in progress. */
 export function JobTabIconOngoing({ size = 20, color = '#4F6739', strokeWidth }: IconProps) {
   const s = strokeWidth ?? sw(size, true);
   return (
@@ -63,7 +63,7 @@ export function JobTabIconOngoing({ size = 20, color = '#4F6739', strokeWidth }:
   );
 }
 
-/** Jobs tab — finished jobs. */
+/** Jobs tab - finished jobs. */
 export function JobTabIconCompleted({ size = 20, color = '#4F6739', strokeWidth }: IconProps) {
   const s = strokeWidth ?? sw(size, true);
   return (

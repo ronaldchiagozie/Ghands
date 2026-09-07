@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  * Where someone had got to when their booking was interrupted.
  *
  * The draft status on the server made abandoned bookings invisible, which was
- * the right fix for the phantom pending jobs — but invisible is not the same as
+ * the right fix for the phantom pending jobs - but invisible is not the same as
  * recoverable. Someone who gets a phone call while picking a time currently
  * loses the category, the description, the date and the photos, and starts over
  * from the home screen with no idea any of it was kept.
@@ -44,7 +44,7 @@ const STEP_LABEL: Record<BookingStep, string> = {
  * How long a half-finished booking is worth offering back.
  *
  * A week. Long enough to cover a weekend and a busy Monday, short enough that
- * nobody is offered a job they thought about in another month — and the
+ * nobody is offered a job they thought about in another month - and the
  * scheduled date they picked has usually passed by then anyway.
  */
 const RESUME_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -74,7 +74,7 @@ function cleanParams(params: Record<string, unknown>): Record<string, string> {
 
 /**
  * Records where they are. Called on each booking step as it opens, so the
- * pointer is already written before anything can interrupt them — waiting until
+ * pointer is already written before anything can interrupt them - waiting until
  * they leave a screen would miss the case this exists for.
  */
 export async function rememberBookingStep(

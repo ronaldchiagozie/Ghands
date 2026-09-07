@@ -167,7 +167,7 @@ export default function SignupScreen() {
       /**
        * Kept as a guard, not an expectation: the backend has since confirmed
        * signup always returns a token, so this should never fire. It stays
-       * because the cost of being wrong is asymmetric — without a token the
+       * because the cost of being wrong is asymmetric - without a token the
        * profile step cannot save (its call 401s), and sending someone to sign in
        * is a far better outcome than dropping them into a form that fails on
        * submit with no explanation.

@@ -48,7 +48,7 @@ export default function BookingConfirmationScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
-  /** The thrown error itself — the sheet needs its status, not just a flag. */
+  /** The thrown error itself - the sheet needs its status, not just a flag. */
   const [loadError, setLoadError] = useState<unknown>(null);
 
   const exitToJobs = useCallback(() => {

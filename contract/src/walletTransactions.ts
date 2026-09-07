@@ -14,7 +14,7 @@ export type WalletTransactionRow = {
   requestId?: number | null;
 };
 
-/** Abandoned checkouts — not real payment failures. */
+/** Abandoned checkouts - not real payment failures. */
 export function isCancelledWalletTransaction(tx: WalletTransactionRow): boolean {
   const status = String(tx.status ?? '').toLowerCase();
   return status === 'cancelled' || status === 'canceled';
@@ -67,7 +67,7 @@ export function mapWalletTransactionStatus(
 ): 'completed' | 'pending' | 'failed' {
   /**
    * Callers already pass `paymentStatus` / `transactionStatus` alongside `status`
-   * — they were silently ignored here, so a row carrying only one of the aliases
+   * - they were silently ignored here, so a row carrying only one of the aliases
    * read as `pending` no matter what it actually said. First non-empty wins, so a
    * present `status` still takes precedence.
    */

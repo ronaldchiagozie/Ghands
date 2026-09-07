@@ -1,6 +1,6 @@
 import { summarizeForLog } from '@/utils/logSanitize';
 
-/** Dev-only Metro logs — never shown in the app UI. */
+/** Dev-only Metro logs - never shown in the app UI. */
 function writeDevLog(entry: {
   event: string;
   detail?: string;
@@ -89,7 +89,7 @@ export async function logActivityTap(
   });
 }
 
-/** Top-up / Kora deposit flow — same Metro channel, easy to filter. */
+/** Top-up / Kora deposit flow - same Metro channel, easy to filter. */
 export async function logWalletDeposit(event: string, context: {
   reference?: string;
   detail?: string;

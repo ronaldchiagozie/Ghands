@@ -94,7 +94,7 @@ function previewForLog(obj: unknown, maxLen = 1800): string {
 
 /**
  * react-native-webrtc rejects candidates where both sdpMid and sdpMLineIndex are missing.
- * Many backends only send the candidate string — default sdpMLineIndex to 0.
+ * Many backends only send the candidate string - default sdpMLineIndex to 0.
  */
 function parseIceCandidatePayload(raw: unknown): RTCIceCandidateInit | null {
   if (!raw || typeof raw !== 'object') return null;
@@ -118,7 +118,7 @@ function parseIceCandidatePayload(raw: unknown): RTCIceCandidateInit | null {
 
 /**
  * In-app WebRTC voice using backend session + ICE candidate polling.
- * Requires a dev / production native build (`expo run:ios` / `expo run:android`) — not Expo Go.
+ * Requires a dev / production native build (`expo run:ios` / `expo run:android`) - not Expo Go.
  */
 export function useVoiceCallWebRtc(): VoiceCallWebRtcControls {
   const [status, setStatus] = useState<VoiceStatus>('idle');
@@ -184,7 +184,7 @@ export function useVoiceCallWebRtc(): VoiceCallWebRtcControls {
       const webrtc = await loadWebRtcModule();
       if (!webrtc) {
         logCallError('useVoiceCallWebRtc: native module unavailable', {
-          hint: 'Use expo run:ios / expo run:android — not Expo Go',
+          hint: 'Use expo run:ios / expo run:android - not Expo Go',
         });
         setError(WEBRTC_UNAVAILABLE_MESSAGE);
         setStatus('failed');
@@ -284,7 +284,7 @@ export function useVoiceCallWebRtc(): VoiceCallWebRtcControls {
           await pc.setLocalDescription(offer);
           if (__DEV__) {
             logCallWarn(
-              'WebRTC: no remote SDP in session response — created local offer. Backend may need to accept this via POST for full P2P.',
+              'WebRTC: no remote SDP in session response - created local offer. Backend may need to accept this via POST for full P2P.',
               { keys: Object.keys(session) }
             );
           }
@@ -318,7 +318,7 @@ export function useVoiceCallWebRtc(): VoiceCallWebRtcControls {
               if (seenCandidateKeysRef.current.has(key)) continue;
               seenCandidateKeysRef.current.add(key);
               try {
-                // Pass init object — native addIceCandidate clones it; avoids RTCIceCandidate ctor edge cases
+                // Pass init object - native addIceCandidate clones it; avoids RTCIceCandidate ctor edge cases
                 await pc.addIceCandidate(init);
                 added += 1;
               } catch (iceErr) {

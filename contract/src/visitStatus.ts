@@ -110,7 +110,7 @@ export function healJobStatusAfterVisitDecline<T extends { status?: string; visi
  * Must stay identical to `VISIT_PAID_STATUSES` in the provider app's
  * utils/visitStatus.ts. The provider already accepted these four; the client
  * accepted only `paid`, so a backend answer of `confirmed` / `completed` /
- * `success` read as settled on the provider side and unpaid on the client side —
+ * `success` read as settled on the provider side and unpaid on the client side -
  * which left the client still offering "Pay visit fee" for a fee already taken.
  */
 const VISIT_PAID_STATUSES = new Set(['paid', 'confirmed', 'completed', 'success']);
@@ -170,7 +170,7 @@ function parseVisitMoney(value: unknown): number | undefined {
   return undefined;
 }
 
-/** True when a real inspection/visit was requested or completed — not a direct-quote placeholder. */
+/** True when a real inspection/visit was requested or completed - not a direct-quote placeholder. */
 export function hasMeaningfulVisitEngagement(visitRequest?: Record<string, unknown> | null): boolean {
   if (!visitRequest || isVisitBypassed(visitRequest)) return false;
   if (isVisitDeclined(visitRequest)) return false;
@@ -257,7 +257,7 @@ export function isProviderVisitRequestSent(visitRequest?: Record<string, unknown
     return true;
   }
 
-  // Client job date/time alone is not a provider visit request — backend decline-visit will 400.
+  // Client job date/time alone is not a provider visit request - backend decline-visit will 400.
   return false;
 }
 

@@ -6,15 +6,15 @@ const SPARKLE_LIME = '#E4FF5C';
 const SPARKLE_BLACK = '#101010';
 const SPARKLE_TEAL = '#003D4D';
 
-/** Four-point star — viewBox 0 0 24 24, center at (12, 12). */
+/** Four-point star - viewBox 0 0 24 24, center at (12, 12). */
 const STAR_PATH =
   'M12 1.5L13.8 10.2L22.5 12L13.8 13.8L12 22.5L10.2 13.8L1.5 12L10.2 10.2Z';
 
 type AiSparkleIconProps = {
   variant?: 'default' | 'fab' | 'fab-shoulder' | 'lg' | 'chip';
-  /** `chip` only — rendered edge length. */
+  /** `chip` only - rendered edge length. */
   size?: number;
-  /** `chip` only — overrides the teal fill. */
+  /** `chip` only - overrides the teal fill. */
   tint?: string;
 };
 
@@ -58,7 +58,7 @@ function CenteredStar({
 }
 
 /**
- * All sparkles in one SVG — cluster centroid locked to viewBox center (15, 15).
+ * All sparkles in one SVG - cluster centroid locked to viewBox center (15, 15).
  */
 function FabCenterSparkleCluster() {
   const size = 30;
@@ -73,7 +73,7 @@ function FabCenterSparkleCluster() {
 }
 
 /**
- * Two stars rather than three — the third star collapses into noise below ~20px,
+ * Two stars rather than three - the third star collapses into noise below ~20px,
  * which is the size this variant is meant for.
  */
 function ChipSparkleCluster({ size, tint }: { size: number; tint: string }) {
@@ -85,7 +85,7 @@ function ChipSparkleCluster({ size, tint }: { size: number; tint: string }) {
   );
 }
 
-/** Shoulder variant — kept for reference layouts. */
+/** Shoulder variant - kept for reference layouts. */
 export function AiFabShoulderSparkles() {
   return (
     <View

@@ -24,7 +24,7 @@ export async function cacheDevAuthTokenForRole(
  * Enough of a token to tell two of them apart, and no more.
  *
  * This log printed whole bearer tokens. It is __DEV__ only, so nothing reaches
- * production — but Metro output gets screenshotted, pasted into chats and
+ * production - but Metro output gets screenshotted, pasted into chats and
  * attached to bug reports, and a full token in any of those is a working
  * credential in somebody else's hands. Nothing about comparing tokens across a
  * role switch needs more than the ends.

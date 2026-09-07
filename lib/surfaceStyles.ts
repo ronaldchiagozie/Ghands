@@ -1,30 +1,30 @@
 import { Platform, type ViewStyle } from 'react-native';
 
 /**
- * Android: `elevation` adds a strong material shadow — keep it at a single low step.
+ * Android: `elevation` adds a strong material shadow - keep it at a single low step.
  * iOS: use the numeric value as-is with `shadow*` from the same style object.
  */
 export function surfaceElevation(value: number): number {
   if (value <= 0) return 0;
-  // Android: skip material elevation — shadows read heavy; use borders / hairlines instead.
+  // Android: skip material elevation - shadows read heavy; use borders / hairlines instead.
   if (Platform.OS === 'android') return 0;
   return Math.round(value);
 }
 
 /**
- * Minimal Android Material elevation (0–1). Use with iosOnlyShadow() for iOS depth.
+ * Minimal Android Material elevation (0-1). Use with iosOnlyShadow() for iOS depth.
  */
 export function androidElevation(level: 0 | 1 = 1): number {
   return Platform.OS === 'android' ? level : 0;
 }
 
-/** Apply shadow* only on iOS — Android uses elevation via androidElevation(). */
+/** Apply shadow* only on iOS - Android uses elevation via androidElevation(). */
 export function iosOnlyShadow(style: ViewStyle): ViewStyle {
   return Platform.OS === 'ios' ? style : {};
 }
 
 /**
- * Card / field elevation tokens — standalone module (no designSystem imports)
+ * Card / field elevation tokens - standalone module (no designSystem imports)
  * so map and tab screens never hit a partial-loaded barrel.
  */
 export const SURFACE_STYLES: {

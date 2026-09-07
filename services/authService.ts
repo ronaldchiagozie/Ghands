@@ -84,7 +84,7 @@ class AuthService {
       const { resetAuthSessionGate } = await import('../utils/enforceAuthSession');
       resetAuthSessionGate();
     } catch {
-      /* storage failure – caller handles missing token */
+      /* storage failure - caller handles missing token */
     }
   }
 

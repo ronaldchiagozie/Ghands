@@ -1,7 +1,7 @@
 /**
  * Routes where missing auth token should NOT trigger a forced redirect.
  * Keep in sync with app/index.tsx entry logic where possible.
- * Provider auth screens live in the separate provider app — do not list them here.
+ * Provider auth screens live in the separate provider app - do not list them here.
  */
 const PUBLIC_UNAUTHENTICATED_PREFIXES = [
   '/LoginScreen',
@@ -15,7 +15,7 @@ const PUBLIC_UNAUTHENTICATED_PREFIXES = [
   /**
    * Reached straight from signup, before the session is guaranteed. Signup can
    * return a user without a token, and this screen is where the profile is
-   * completed — leaving it protected let the 2s session poll evict people
+   * completed - leaving it protected let the 2s session poll evict people
    * mid-form and bounce them back to login / account type.
    */
   '/ProfileCompletionScreen',
@@ -32,7 +32,7 @@ function normalizePath(pathname: string): string {
   return p.startsWith('/') ? p : `/${p}`;
 }
 
-/** True when the app entry route is active — only these should run cold-start redirects. */
+/** True when the app entry route is active - only these should run cold-start redirects. */
 export function isAppEntryRoute(pathname: string | null | undefined): boolean {
   if (pathname == null || pathname === '') return true;
   const p = normalizePath(pathname);
@@ -41,7 +41,7 @@ export function isAppEntryRoute(pathname: string | null | undefined): boolean {
 
 /**
  * True if user may view this path without a stored access token (login/signup/onboarding).
- * Does NOT include `/` or `/index` — those are entry routes only (see isAppEntryRoute).
+ * Does NOT include `/` or `/index` - those are entry routes only (see isAppEntryRoute).
  */
 export function isPublicUnauthenticatedRoute(pathname: string | null | undefined): boolean {
   if (pathname == null || pathname === '') return false;
@@ -55,7 +55,7 @@ export function isPublicUnauthenticatedRoute(pathname: string | null | undefined
 
 /**
  * Where to send the user when token is missing but we know last role (no storage clear).
- * This is the client app — always client login.
+ * This is the client app - always client login.
  */
 export async function getLoginRouteForStoredRole(): Promise<string> {
   return '/LoginScreen';

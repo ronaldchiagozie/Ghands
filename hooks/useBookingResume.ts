@@ -60,7 +60,7 @@ export function useBookingResume() {
     } catch (error: any) {
       /**
        * A 404 means the request is gone and the pointer should go with it.
-       * Anything else — offline, a 500, a cold server — is not evidence about
+       * Anything else - offline, a 500, a cold server - is not evidence about
        * the booking, so the pointer stays and the card simply does not appear
        * this time.
        */

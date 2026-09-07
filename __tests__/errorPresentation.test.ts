@@ -2,7 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 import { presentError } from '@/utils/errorPresentation';
 import { AuthError } from '@/utils/errors';
 
-describe('presentError — what the user is told, and what the button does', () => {
+describe('presentError - what the user is told, and what the button does', () => {
   it('offers sign-in, not retry, when the session has expired', () => {
     const p = presentError(new AuthError('Your session has expired. Please sign in again.'));
     expect(p.kind).toBe('session');
@@ -26,7 +26,7 @@ describe('presentError — what the user is told, and what the button does', () 
     expect(p.kind).toBe('timeout');
   });
 
-  it('never shows scraped proxy HTML — the "Just a moment..." regression', () => {
+  it('never shows scraped proxy HTML - the "Just a moment..." regression', () => {
     const p = presentError({ message: 'Server error: Just a moment...', status: 503 });
     expect(p.kind).toBe('server');
     expect(p.message).not.toContain('Just a moment');
@@ -62,7 +62,7 @@ describe('presentError — what the user is told, and what the button does', () 
   });
 });
 
-describe('presentError — an infrastructure page must not blame the user', () => {
+describe('presentError - an infrastructure page must not blame the user', () => {
   const suspended = {
     status: 429,
     message: 'The server could not be reached. Please try again in a moment.',
@@ -90,7 +90,7 @@ describe('presentError — an infrastructure page must not blame the user', () =
   });
 });
 
-describe('presentError — an absent message is not evidence of anything', () => {
+describe('presentError - an absent message is not evidence of anything', () => {
   it('does not read a status-only 404 as a server outage', () => {
     expect(presentError({ status: 404 }).kind).toBe('notFound');
   });

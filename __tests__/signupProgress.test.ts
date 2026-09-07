@@ -18,7 +18,7 @@ describe('signup progress', () => {
   });
 
   /**
-   * Screens can be revisited — going back to the account-type picker after
+   * Screens can be revisited - going back to the account-type picker after
    * creating an account must not make the app think signup restarted.
    */
   it('never moves backwards', async () => {

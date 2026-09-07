@@ -45,7 +45,7 @@ class ApiClient {
         /**
          * Spread the caller's headers rather than replacing them. This used to
          * build a fresh object from Content-Type and Authorization alone, so any
-         * custom header was silently dropped — Idempotency-Key included, which
+         * custom header was silently dropped - Idempotency-Key included, which
          * would have looked wired up in the client and never reached the server.
          */
         config.headers = {
@@ -128,7 +128,7 @@ class ApiClient {
     if (!error) return false;
     /**
      * `TypeError` used to count on its own. A failed fetch in React Native is a
-     * TypeError, so that caught the real case — along with every ordinary bug
+     * TypeError, so that caught the real case - along with every ordinary bug
      * that throws one inside this try block, which would then be reported to the
      * user as "you have no internet". The message check below already catches
      * the genuine fetch failures by name.
@@ -274,7 +274,7 @@ class ApiClient {
     };
     const { retries, retryDelay = 1000 } = defaultConfig;
     /**
-     * An explicit `retries: 0` must be honoured — money-moving POSTs opt out of
+     * An explicit `retries: 0` must be honoured - money-moving POSTs opt out of
      * retries entirely (see NO_RETRY in services/api/wallet.ts). Treating 0 as
      * "unset" would silently re-send a debit the server may already have applied.
      */

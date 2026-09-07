@@ -13,6 +13,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Animated, Image, Modal, ScrollView, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { resolveCategoryImageSource } from '@/utils/categoryIcons';
 import { rememberBookingStep } from '@/utils/bookingResume';
+import { attachBookingPhotos } from '@/utils/bookingPhotoUpload';
 
 const BOOKING_PHOTO_URIS_KEY = '@ghands:booking_photo_uris';
 
@@ -249,6 +250,29 @@ export default function AddPhotosScreen() {
         await AsyncStorage.setItem(BOOKING_PHOTO_URIS_KEY, JSON.stringify(selectedUris));
       } catch {
         // Non-fatal; preview just won't show
+      }
+
+      /**
+       * Actually send them. Storing the local URIs above is only so the booking
+       * summary can preview them on this device; until now that was everything
+       * that happened to a customer's photos. They were never uploaded and never
+       * attached to the request, so the provider quoting the job never saw the
+       * burst pipe they were promised would help.
+       *
+       * Failures are surfaced but do not block: photos are optional here, and
+       * someone who has finished describing their job should not be stopped at
+       * the last step by a slow upload. Saying nothing is what got us here.
+       */
+      const requestIdNum = parseInt(params.requestId ?? '', 10);
+      if (selectedUris.length > 0 && Number.isFinite(requestIdNum) && requestIdNum > 0) {
+        const result = await attachBookingPhotos(requestIdNum, selectedUris);
+        if (!result.complete) {
+          showError(
+            result.uploaded.length > 0
+              ? 'Some photos could not be sent. You can add them again from the job later.'
+              : 'Your photos could not be sent. The booking will continue without them.',
+          );
+        }
       }
       void rememberBookingStep('providers', params.requestId, {
         ...params,

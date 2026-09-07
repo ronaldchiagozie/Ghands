@@ -2,7 +2,7 @@ import { DESIGN_TOKENS } from './assets';
 
 const Colors = DESIGN_TOKENS.colors;
 
-/** Shared job / activity status badge colors — use with AnimatedStatusChip or inline badges. */
+/** Shared job / activity status badge colors - use with AnimatedStatusChip or inline badges. */
 export const JOB_STATUS_BADGE = {
   completed: {
     bg: Colors.successLight,

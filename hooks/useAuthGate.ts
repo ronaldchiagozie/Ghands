@@ -4,7 +4,7 @@ import { useRoleSwitching } from '@/hooks/useRoleSwitching';
 import { useEffect, useState } from 'react';
 
 /**
- * Role + token for tab layouts — avoids sending logged-in users to login/auth by mistake.
+ * Role + token for tab layouts - avoids sending logged-in users to login/auth by mistake.
  */
 export function useAuthGate() {
   const { role, isLoading: roleLoading } = useAuthRole();

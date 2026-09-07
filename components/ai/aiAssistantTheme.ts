@@ -5,7 +5,7 @@ export const AI_COLORS = {
   primary: '#FFFFFF',
   accent: '#E4FF5C',
   accentInk: '#003D4D',
-  /** Teal neon green (gradient end) — use instead of lemon for readable accents on dark. */
+  /** Teal neon green (gradient end) - use instead of lemon for readable accents on dark. */
   neonGreen: '#00C996',
   overlay: 'rgba(0, 0, 0, 0.52)',
   drawerBorder: 'rgba(255, 255, 255, 0.1)',
@@ -21,7 +21,7 @@ export const AI_COLORS = {
   iconMuted: 'rgba(255, 255, 255, 0.38)',
 } as const;
 
-/** Chat bubbles, typing indicator, suggestions — no neon/lemon on white surfaces. */
+/** Chat bubbles, typing indicator, suggestions - no neon/lemon on white surfaces. */
 export const AI_CHAT_UI = {
   /** Grayscale typing dots (left → right: medium, light, dark) inside white pill bubble. */
   typingDots: ['#9CA3AF', '#D1D5DB', '#1F2937'] as const,

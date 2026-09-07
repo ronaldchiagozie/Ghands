@@ -278,7 +278,7 @@ export const WalletActivitySkeleton = ({ count = 3 }: { count?: number }) => (
   </>
 );
 
-/** Provider home — location row + welcome line */
+/** Provider home - location row + welcome line */
 export const ProviderDashboardHeaderSkeleton = () => (
   <View style={{ marginBottom: 4 }}>
     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
@@ -292,7 +292,7 @@ export const ProviderDashboardHeaderSkeleton = () => (
   </View>
 );
 
-/** Provider home — earnings sage card */
+/** Provider home - earnings sage card */
 export const ProviderEarningsSkeleton = ({ style }: { style?: StyleProp<ViewStyle> }) => (
   <SageHeroPanel style={[{ marginHorizontal: PROVIDER_TAB_GUTTER }, style]}>
     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
@@ -304,7 +304,7 @@ export const ProviderEarningsSkeleton = ({ style }: { style?: StyleProp<ViewStyl
   </SageHeroPanel>
 );
 
-/** Provider home — quick action row (matches Add Service / Invite Friends) */
+/** Provider home - quick action row (matches Add Service / Invite Friends) */
 export const ProviderQuickActionsSkeleton = () => (
   <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
     <Skeleton height={40} borderRadius={BorderRadius.default} style={{ flex: 1 }} />
@@ -312,7 +312,7 @@ export const ProviderQuickActionsSkeleton = () => (
   </View>
 );
 
-/** Provider home — job cards only (section titles stay real) */
+/** Provider home - job cards only (section titles stay real) */
 export const ProviderJobListSkeleton = ({ count = 2 }: { count?: number }) => (
   <View>
     {Array.from({ length: count }).map((_, i) => (
@@ -347,7 +347,7 @@ export const SageAmountSkeleton = () => (
   </View>
 );
 
-/** Compact job card — fewer blocks, cleaner silhouette */
+/** Compact job card - fewer blocks, cleaner silhouette */
 export const JobCardSkeleton = () => (
   <SkeletonCardShell style={{ marginBottom: 10 }}>
     <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
@@ -366,7 +366,7 @@ export const JobCardSkeleton = () => (
 /**
  * Job card placeholder.
  *
- * Laid out in three breathing groups — status, who/what, then details — rather
+ * Laid out in three breathing groups - status, who/what, then details - rather
  * than a dense stack. The action row is a normal flex child instead of being
  * absolutely positioned at `top: 52`, where it used to collide with the title on
  * narrow screens and made the whole card read as clutter.
@@ -439,7 +439,7 @@ export const NotificationCardSkeleton = () => (
   </View>
 );
 
-/** Fills notifications list while loading — matches real card height and count for viewport. */
+/** Fills notifications list while loading - matches real card height and count for viewport. */
 export const NotificationsListSkeleton = () => {
   const { height: windowHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -459,7 +459,7 @@ export const NotificationsListSkeleton = () => {
   );
 };
 
-/** Timeline rail — matches JobProgressTimeline (26px dots, PROGRESS section). */
+/** Timeline rail - matches JobProgressTimeline (26px dots, PROGRESS section). */
 export const JobDetailsTimelineSkeleton = ({
   steps = 6,
   fillRemaining = false,
@@ -557,7 +557,7 @@ export const JobDetailsTimelineSkeleton = ({
   );
 };
 
-/** Matches ClientJobUpdatesPanel — provider row, CURRENT STATUS, PROGRESS timeline. */
+/** Matches ClientJobUpdatesPanel - provider row, CURRENT STATUS, PROGRESS timeline. */
 export const ClientJobUpdatesPanelSkeleton = ({
   fillHeight,
 }: {
@@ -609,12 +609,12 @@ export const ClientJobUpdatesPanelSkeleton = ({
   </View>
 );
 
-/** Provider Updates tab — client row, status pill, timeline (matches ProviderJobDetailsScreen). */
+/** Provider Updates tab - client row, status pill, timeline (matches ProviderJobDetailsScreen). */
 export const ProviderJobUpdatesTabSkeleton = () => (
   <ClientJobUpdatesPanelSkeleton />
 );
 
-/** Scroll body — unified updates panel (client job details Updates tab) */
+/** Scroll body - unified updates panel (client job details Updates tab) */
 export const JobDetailsContentSkeleton = ({
   areaHeight,
 }: {
@@ -632,7 +632,7 @@ export const JobDetailsContentSkeleton = ({
   );
 };
 
-/** Quotations tab — banner, quote card, breakdown, findings, sticky footer (client job details). */
+/** Quotations tab - banner, quote card, breakdown, findings, sticky footer (client job details). */
 export const JobDetailsQuotationsTabSkeleton = ({
   areaHeight,
 }: {
@@ -787,7 +787,7 @@ export const JobDetailsTabsSkeleton = () => (
   </View>
 );
 
-/** Full job details loading shell — header, tabs, scroll content */
+/** Full job details loading shell - header, tabs, scroll content */
 export const JobDetailsScreenSkeleton = () => (
   <SafeAreaWrapper backgroundColor={Colors.white}>
     <View style={{ flex: 1 }}>

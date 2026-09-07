@@ -4,8 +4,8 @@
  * The bug this exists for: ownership was decided by `senderId === currentUserId`
  * with no regard for what kind of account the id named. User ids and provider
  * ids are separate sequences, so a client whose user id is 7, talking to the
- * provider whose id is 7, matched on every single message — incoming and
- * outgoing alike — and the whole thread stacked up on the right.
+ * provider whose id is 7, matched on every single message - incoming and
+ * outgoing alike - and the whole thread stacked up on the right.
  *
  * Low ids collide constantly early in a product's life, which is exactly when
  * people are forming an opinion of it.

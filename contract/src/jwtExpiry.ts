@@ -8,7 +8,7 @@
  * The decoder is hand-rolled for one reason: React Native has no `atob`. It is
  * not in Hermes, not in React Native's polyfills, and not in Expo's runtime.
  * Both apps' previous versions called it behind a `typeof atob` check and
- * returned "not expired" when it was missing — which it always was. The check
+ * returned "not expired" when it was missing - which it always was. The check
  * ran every two seconds and could never once return true, so neither app ever
  * expired a session on its own; they waited for a screen to make a call that
  * 401'd. In the client app the first screen that reliably does that is the
@@ -28,8 +28,8 @@ const BASE64_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012
  * Decodes one base64url segment to a byte string.
  *
  * JWT segments are base64**url**: `-` and `_` stand in for `+` and `/`, and the
- * padding is dropped. Decoding them as plain base64 — which the provider app was
- * doing — yields nonsense for any token whose payload happens to contain either
+ * padding is dropped. Decoding them as plain base64 - which the provider app was
+ * doing - yields nonsense for any token whose payload happens to contain either
  * character, and nonsense fails to parse, which reads as "not expired".
  *
  * Returns null rather than throwing, since a non-JWT token is a normal case.
@@ -59,7 +59,7 @@ function decodeBase64UrlSegment(segment: string): string | null {
 /**
  * True when the token is a JWT whose `exp` has passed (within the skew).
  *
- * False for anything it cannot read — an opaque token, a malformed one, a JWT
+ * False for anything it cannot read - an opaque token, a malformed one, a JWT
  * with no `exp`. Those are not evidence of expiry, and signing someone out
  * because we failed to parse their token would be worse than waiting for the
  * server to reject it.

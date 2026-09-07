@@ -56,7 +56,7 @@ export function UserLocationProvider({ children }: { children: React.ReactNode }
           if (savedLocation?.fullAddress) {
             const apiAddr = savedLocation.fullAddress.trim();
             const localAddr = (localStored || '').trim();
-            // If user just saved a new address locally, API can lag — don't overwrite UI with stale server row
+            // If user just saved a new address locally, API can lag - don't overwrite UI with stale server row
             const useAddr =
               localAddr && localAddr !== apiAddr ? localAddr : savedLocation.fullAddress;
             await AsyncStorage.setItem(USER_LOCATION_STORAGE_KEY, useAddr);

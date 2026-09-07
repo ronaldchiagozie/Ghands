@@ -25,7 +25,7 @@ type AccountSetupCardProps = {
  * Shows only what is actually left to do, and disappears when nothing is.
  *
  * The row this replaces was a fixed array of three cards shown to everyone
- * forever — someone who finished their profile a month ago still saw "Complete
+ * forever - someone who finished their profile a month ago still saw "Complete
  * Your Profile". A checklist that never changes stops being read.
  */
 export default function AccountSetupCard({

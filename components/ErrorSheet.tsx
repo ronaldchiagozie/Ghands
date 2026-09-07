@@ -12,7 +12,7 @@ import { Button } from './ui/Button';
 
 export type ErrorSheetRequest = {
   error: unknown;
-  /** What failed, in the user's words — "services", "your job activity". */
+  /** What failed, in the user's words - "services", "your job activity". */
   subject?: string;
   /** Runs when the user taps the recovery button. Sheet closes if it resolves. */
   onRetry?: () => Promise<unknown> | unknown;
@@ -30,7 +30,7 @@ let listener: Listener | null = null;
 /**
  * Raises the app-wide error sheet.
  *
- * Screens keep rendering their real layout — this explains the failure over the
+ * Screens keep rendering their real layout - this explains the failure over the
  * top of it, instead of a section collapsing into a red card.
  *
  * Requires `<ErrorSheetHost />` mounted once at the app root.
@@ -131,7 +131,7 @@ export default function ErrorSheetHost() {
       await request.onRetry();
       close();
     } catch (nextError) {
-      // Still broken — update the explanation in place rather than closing on a lie.
+      // Still broken - update the explanation in place rather than closing on a lie.
       setPresentation(presentError(nextError, request.subject ?? 'this'));
       setBusy(false);
     }

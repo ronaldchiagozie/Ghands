@@ -78,7 +78,7 @@ describe('booking resume pointer', () => {
   });
 
   /**
-   * A month-old half-booking is not worth offering back — the date they picked
+   * A month-old half-booking is not worth offering back - the date they picked
    * has passed and they have long since moved on.
    */
   it('forgets a booking older than a week', async () => {

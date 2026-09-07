@@ -13,7 +13,7 @@ import {
   View,
 } from 'react-native';
 
-/** Same file path as `lib/assets` — require here so Metro always bundles it for this screen. */
+/** Same file path as `lib/assets` - require here so Metro always bundles it for this screen. */
 const NO_INTERNET_IMG = require('../assets/images/nointernetimg.png');
 
 const BG = '#F9F9F7';
@@ -82,7 +82,7 @@ export default function NoInternetScreen({
         {/**
           * Two different problems, two different sentences. The server not
           * answering was being reported as "You're offline. Check your
-          * connection" — to somebody whose connection was working, since the
+          * connection" - to somebody whose connection was working, since the
           * latch behind this screen only fires when the device link is up.
           * Telling people to fix something that is not broken is worse than
           * admitting the fault is ours.
@@ -92,7 +92,7 @@ export default function NoInternetScreen({
         </Text>
         <Text style={styles.body}>
           {reason === 'server'
-            ? 'Your internet is fine — we can’t reach our servers right now. This usually passes in a moment.'
+            ? 'Your internet is fine. We can’t reach our servers right now, and this usually passes in a moment.'
             : 'You’re offline. Check your connection and try again.'}
         </Text>
         <TouchableOpacity
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     /**
      * flexGrow lets the content container fill the scroll view, which is what
-     * makes justifyContent mean anything here — without it the container is only
+     * makes justifyContent mean anything here - without it the container is only
      * as tall as its children and centring does nothing, which is why this sat
      * against the top of the screen.
      *

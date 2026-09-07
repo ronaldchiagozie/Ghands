@@ -19,7 +19,7 @@ export const MAX_FONT_SIZE_MULTIPLIER = 1.25;
 export const TOUCH_HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 } as const;
 
 /**
- * GHands ships light mode only — sage-on-warm-light is the brand contract.
+ * GHands ships light mode only - sage-on-warm-light is the brand contract.
  * Dark tokens are not defined; `userInterfaceStyle` is locked to light in app.config.js.
  */
 export const APP_COLOR_SCHEME = 'light' as const;
@@ -98,7 +98,7 @@ export const REFRESH_CONTROL = {
 export { getButtonVariantStyles, type ButtonVariant } from '@/lib/buttonTheme';
 
 /**
- * Legacy scale — kept at zero; use SURFACE_STYLES for UI depth.
+ * Legacy scale - kept at zero; use SURFACE_STYLES for UI depth.
  */
 export const SHADOWS = {
   sm: {

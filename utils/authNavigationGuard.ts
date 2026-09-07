@@ -13,7 +13,7 @@ const REDIRECT_COOLDOWN_MS = 3000;
 const SESSION_END_GRACE_MS = 3500;
 const REDIRECT_IN_FLIGHT_MS = 2500;
 
-/** Latest expo-router pathname — for auth redirects outside React (rejection handler, etc.). */
+/** Latest expo-router pathname - for auth redirects outside React (rejection handler, etc.). */
 let currentNavigationPath: string | null = null;
 
 export function setNavigationPath(pathname: string | null | undefined): void {
@@ -52,7 +52,7 @@ export function isInAuthTransition(): boolean {
 }
 
 /**
- * Single entry for forced navigation to login — prevents redirect loops.
+ * Single entry for forced navigation to login - prevents redirect loops.
  * Returns true when a navigation was performed.
  */
 export async function redirectToAuthScreen(
@@ -62,7 +62,7 @@ export async function redirectToAuthScreen(
     clearSession?: boolean;
     /**
      * Bypasses the time-based cooldown only. It never bypasses the in-flight
-     * check below — two navigations at once are never what anyone wants.
+     * check below - two navigations at once are never what anyone wants.
      */
     force?: boolean;
   } = {}
@@ -76,7 +76,7 @@ export async function redirectToAuthScreen(
 
   /**
    * Unconditional. This used to be `redirectInFlight && !force`, and both
-   * callers that reach here on an expired session pass force: true — the root
+   * callers that reach here on an expired session pass force: true - the root
    * layout's session-expired listener and every screen's AuthError handler. So
    * the guard was disabled on exactly the path it existed for. An expired token
    * on a tab screen produced one redirect from the listener and one from each

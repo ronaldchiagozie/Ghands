@@ -8,7 +8,7 @@ import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
  * Only filters with real data behind them live here. Status is owned by the
  * Activity tabs, so a second Status control would just contradict them.
  * Service Type, Amount Range and a custom date range were removed rather than
- * shipped as controls that silently do nothing — they need category data, a
+ * shipped as controls that silently do nothing - they need category data, a
  * real min/max from the transaction set, and a date picker respectively.
  */
 export interface FilterState {
@@ -37,7 +37,7 @@ export default function FilterTransactionsModal({
 }: FilterTransactionsModalProps) {
   const [filters, setFilters] = useState<FilterState>(appliedFilters);
 
-  // Re-seed from what is actually applied — closing with X must not leave the
+  // Re-seed from what is actually applied - closing with X must not leave the
   // controls showing a selection the list never received.
   useEffect(() => {
     if (visible) setFilters(appliedFilters);
@@ -118,7 +118,7 @@ height: MIN_TOUCH_TARGET,
                 <TouchableOpacity
                   key={range}
                   onPress={() =>
-                    // Tapping the active chip clears it — otherwise a date range
+                    // Tapping the active chip clears it - otherwise a date range
                     // can be selected but never removed.
                     setFilters({ ...filters, dateRange: filters.dateRange === range ? null : range })
                   }

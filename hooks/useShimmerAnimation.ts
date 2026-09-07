@@ -3,7 +3,7 @@ import { Animated, Dimensions, Easing } from 'react-native';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
-/** Long diagonal travel — highlight sweeps top-left → bottom-right */
+/** Long diagonal travel - highlight sweeps top-left → bottom-right */
 const SHIMMER_TRAVEL_X = SCREEN_W * 1.65;
 const SHIMMER_TRAVEL_Y = SCREEN_H * 0.22;
 const SHIMMER_STOP_GRACE_MS = 800;
@@ -48,7 +48,7 @@ function scheduleShimmerStop() {
   }, SHIMMER_STOP_GRACE_MS);
 }
 
-/** One shared shimmer wave — all skeleton blocks stay in sync. */
+/** One shared shimmer wave - all skeleton blocks stay in sync. */
 export function useShimmerAnimation() {
   const reducedMotion = useReducedMotion();
   const progressRef = useRef<Animated.Value | null>(null);
@@ -94,7 +94,7 @@ export function useShimmerAnimation() {
   };
 }
 
-/** Mature neutral shimmer — warm gray base, restrained highlight. */
+/** Mature neutral shimmer - warm gray base, restrained highlight. */
 export const SHIMMER_PALETTE = {
   default: {
     base: '#D8DEE3',

@@ -102,7 +102,7 @@ export default function AppAlertHost() {
     dismissingRef.current = true;
     setRequest(null);
     // Let the modal finish dismissing before a handler pushes a route or opens
-    // another alert — stacked native modals otherwise fail to present on iOS.
+    // another alert - stacked native modals otherwise fail to present on iOS.
     setTimeout(() => {
       void button.onPress?.();
     }, 0);
@@ -117,7 +117,7 @@ export default function AppAlertHost() {
       request.options?.onDismiss?.();
       return;
     }
-    // Without an explicit `cancelable`, only a cancel affordance dismisses —
+    // Without an explicit `cancelable`, only a cancel affordance dismisses -
     // same as the native alert's default on Android.
     if (!request.options?.cancelable) return;
     if (dismissingRef.current) return;
@@ -192,7 +192,7 @@ export default function AppAlertHost() {
 
           {message ? (
             <ScrollView
-              /** flexGrow:0 — a maxHeight alone lets a one-line message claim all 220px,
+              /** flexGrow:0 - a maxHeight alone lets a one-line message claim all 220px,
                   leaving a void between the text and the buttons. */
               style={{ maxHeight: 220, flexGrow: 0, flexShrink: 1 }}
               contentContainerStyle={{ paddingBottom: 2 }}

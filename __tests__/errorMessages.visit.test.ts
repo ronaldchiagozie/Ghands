@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 import { getSpecificErrorMessage } from '@/utils/errorMessages';
 
-describe('getSpecificErrorMessage — client visit actions', () => {
+describe('getSpecificErrorMessage - client visit actions', () => {
   it('maps backend “no visit requested” to a clear client message on decline', () => {
     const msg = getSpecificErrorMessage(
       {

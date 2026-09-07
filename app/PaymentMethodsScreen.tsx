@@ -20,7 +20,7 @@ export default function PaymentMethodsScreen() {
 
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [isLoadingBilling, setIsLoadingBilling] = useState(true);
-  /** The thrown error itself — the sheet needs its status, not just a string. */
+  /** The thrown error itself - the sheet needs its status, not just a string. */
   const [billingLoadError, setBillingLoadError] = useState<unknown>(null);
 
   const loadBillingData = useCallback(async () => {

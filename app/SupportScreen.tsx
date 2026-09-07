@@ -133,7 +133,7 @@ export default function SupportScreen() {
       await supportService.submitContactMessage({ name, email, message });
       setFormData({ name: '', email: '', message: '' });
       haptics.success();
-      showSuccess('Message sent. We will reply to your email within 1–2 business days.');
+      showSuccess('Message sent. We will reply to your email within 1-2 business days.');
     } catch (error: unknown) {
       haptics.error();
       const status = (error as { status?: number })?.status;

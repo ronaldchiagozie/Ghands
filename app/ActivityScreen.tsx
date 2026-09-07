@@ -34,7 +34,7 @@ interface Transaction {
   serviceDescription: string;
   date: string;
   time: string;
-  /** Raw ISO timestamp — `date`/`time` are display strings and can't be compared. */
+  /** Raw ISO timestamp - `date`/`time` are display strings and can't be compared. */
   timestamp: string;
   amount: number;
   status: 'completed' | 'pending' | 'failed';
@@ -202,9 +202,9 @@ export default function ActivityScreen() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  /** The thrown error itself — the sheet needs its status, not just a string. */
+  /** The thrown error itself - the sheet needs its status, not just a string. */
   const [transactionsError, setTransactionsError] = useState<unknown>(null);
-  /** Keeps loaded rows on screen when the tab is revisited — only the first load shows skeletons. */
+  /** Keeps loaded rows on screen when the tab is revisited - only the first load shows skeletons. */
   const transactionsReadyRef = useRef(false);
 
   // Helper function to format date

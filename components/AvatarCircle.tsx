@@ -23,7 +23,7 @@ type AvatarCircleProps = {
  * Pulls one or two initials out of a display name.
  *
  * Skips the things Nigerian names and directory data routinely carry that are
- * not part of someone's name — honorifics, and the trade suffix providers tend
+ * not part of someone's name - honorifics, and the trade suffix providers tend
  * to append ("Musa Ibrahim Plumbing"). "Mr Musa Ibrahim" should read MI, not MM.
  */
 const NON_NAME_WORDS = new Set([
@@ -56,7 +56,7 @@ export function getAvatarInitials(name?: string | null): string {
  *
  * Never category art. Provider photos are missing often enough that the
  * fallback is what most people actually see, and the app had been using
- * plumbericon2.png for it — so a carpenter with no photo was shown holding a
+ * plumbericon2.png for it - so a carpenter with no photo was shown holding a
  * wrench, and so was every customer in the chat list. The initials are the
  * ordinary fix, and they carry real information: you can tell two providers
  * apart in a list, which a repeated glyph cannot do.

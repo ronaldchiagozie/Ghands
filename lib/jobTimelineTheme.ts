@@ -1,6 +1,6 @@
 import { providerHomeSurfacePadding } from './providerSurfaceStyles';
 
-/** Vertical job progress timeline — sage olive for “done”, warm gold for “active”, calm neutrals for pending. */
+/** Vertical job progress timeline - sage olive for “done”, warm gold for “active”, calm neutrals for pending. */
 export const JOB_TIMELINE = {
   sage: '#4F6739',
   completeSoft: 'rgba(79, 103, 57, 0.1)',

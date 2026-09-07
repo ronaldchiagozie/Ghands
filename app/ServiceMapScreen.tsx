@@ -232,7 +232,7 @@ const ServiceMapScreen = () => {
          * Identity-approved providers only. `verified` is admin approval, and
          * somebody who has not passed it is dispatched to a customer's home on
          * the strength of nothing. The server should exclude them from /nearby
-         * as well — this is the app refusing to display them, not a security
+         * as well - this is the app refusing to display them, not a security
          * control.
          */
         const eligibleProviders = providersArray.filter((provider) => Boolean(provider?.verified));
@@ -271,7 +271,7 @@ const ServiceMapScreen = () => {
             /**
              * No rating, rather than an invented one. This was hardcoded to 4.5
              * for every provider, and the card renders it as
-             * "4.5 (0 reviews)" — a score nobody gave them, shown to somebody
+             * "4.5 (0 reviews)" - a score nobody gave them, shown to somebody
              * deciding who to let into their home. /nearby returns no rating
              * today, so the app says nothing until it does.
              */
@@ -369,7 +369,7 @@ const ServiceMapScreen = () => {
   /**
    * Gives up on this booking and goes home.
    *
-   * The empty states offered "Change location" and "Try a different category" —
+   * The empty states offered "Change location" and "Try a different category" -
    * both of which keep you inside a flow you may simply want to leave. The only
    * way out was the back arrow, which walks back through the booking a screen at
    * a time and never actually ends it.
@@ -775,7 +775,7 @@ const ServiceMapScreen = () => {
           /**
            * Selecting the provider is what publishes the booking.
            *
-           * Not `/confirm`, which we briefly called here — the backend confirmed
+           * Not `/confirm`, which we briefly called here - the backend confirmed
            * it only validates and returns the request unchanged, so it never
            * moved anything out of draft. `select-provider` performs the same
            * field checks and is the call that flips draft to pending and lets

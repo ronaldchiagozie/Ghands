@@ -5,8 +5,8 @@ export const MAX_FONT_SIZE_MULTIPLIER = 1.25;
 
 /**
  * React Native still honours `defaultProps` on its host components at runtime,
- * but the typings stopped exposing it. The behaviour is deliberate — only the
- * type is missing — so the cast lives here once instead of being scattered as
+ * but the typings stopped exposing it. The behaviour is deliberate - only the
+ * type is missing - so the cast lives here once instead of being scattered as
  * `as any` at each use.
  */
 type HostWithDefaults<P> = { defaultProps?: Partial<P> };

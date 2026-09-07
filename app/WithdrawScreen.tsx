@@ -45,7 +45,7 @@ export default function WithdrawScreen() {
   const pinRefs = React.useRef<TextInput[]>([]);
   /**
    * Re-entrancy guard for the debit. `isWithdrawing` is state, so two submits in
-   * the same tick would both read the stale `false` and fire two withdrawals —
+   * the same tick would both read the stale `false` and fire two withdrawals -
    * and the API client no longer retries this endpoint, so the UI is the only
    * thing standing between a fumbled keystroke and a double transfer.
    */
@@ -152,7 +152,7 @@ export default function WithdrawScreen() {
       loadData();
       /**
        * Bank transfers usually come back `pending`, so route on the real status
-       * rather than claiming success — the same dispatch Wallet and Activity use
+       * rather than claiming success - the same dispatch Wallet and Activity use
        * when you tap a withdrawal row. Handing the helper `replace` puts the
        * receipt in this screen's place, so back returns to the wallet rather than
        * to a withdrawal form that has already been submitted.
@@ -184,7 +184,7 @@ export default function WithdrawScreen() {
        * A wrong PIN is the most common failure here and the only one the user
        * can act on immediately. getSpecificErrorMessage always returns its
        * generic "check your PIN and balance" line, so the server's actual
-       * "Invalid PIN" was being swallowed and the sheet closed — leaving the
+       * "Invalid PIN" was being swallowed and the sheet closed - leaving the
        * user to start the whole withdrawal again to retry four digits.
        */
       const notSet = /pin not set|no pin|not been set|set up|create.*pin|must set/i.test(rawMsg);

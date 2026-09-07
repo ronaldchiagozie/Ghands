@@ -1,7 +1,7 @@
 import React from 'react';
 import { ScreenHeader } from '@/components/ScreenHeader';
 
-/** @deprecated Use ScreenHeader directly — kept for existing imports. */
+/** @deprecated Use ScreenHeader directly - kept for existing imports. */
 export default function HeaderComponent({
   name,
   onPress,

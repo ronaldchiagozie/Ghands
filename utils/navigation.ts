@@ -68,7 +68,7 @@ export function buildJobDetailsParams(opts: {
   return params;
 }
 
-/** Open active job hub — single entry point for job details navigation. */
+/** Open active job hub - single entry point for job details navigation. */
 export function navigateToJob(
   router: RouterWithReturn,
   opts: {
@@ -102,19 +102,19 @@ export function navigateToJob(
   router.push(route as never);
 }
 
-/** Jobs tab with Pending selected — new bookings and awaiting-provider jobs. */
+/** Jobs tab with Pending selected - new bookings and awaiting-provider jobs. */
 export function navigateToJobsPendingTab(
   router: RouterWithStackReset,
 ): void {
   resetToClientTab(router, NAV_FALLBACK.clientJobs, { initialTab: 'Pending' });
 }
 
-/** Main tab home — clears booking stack underneath tabs. */
+/** Main tab home - clears booking stack underneath tabs. */
 export function navigateToClientHomeTab(router: RouterWithStackReset): void {
   resetToClientTab(router, NAV_FALLBACK.clientHome);
 }
 
-/** After booking confirm on map — tab root + confirmation (no Add Photos under tabs on back). */
+/** After booking confirm on map - tab root + confirmation (no Add Photos under tabs on back). */
 export function navigateBookingFlowToConfirmation(
   router: RouterWithStackReset & Pick<Router, 'push'>,
   params: Record<string, string | undefined>,
@@ -132,13 +132,13 @@ export function navigateBookingFlowToConfirmation(
   } as never);
 }
 
-/** Job details opened right after booking — land on Pending jobs, not back through the booking stack. */
+/** Job details opened right after booking - land on Pending jobs, not back through the booking stack. */
 export function navigateBackFromBookingJob(router: RouterWithStackReset): void {
   navigateToJobsPendingTab(router);
 }
 
 /**
- * After in-flow payment — return to the job the payment was started from.
+ * After in-flow payment - return to the job the payment was started from.
  *
  * `replace` only swapped the receipt for a *second* OngoingJobDetails, leaving
  * the pre-payment copy underneath for back to land on.

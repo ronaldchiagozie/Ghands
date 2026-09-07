@@ -7,7 +7,7 @@ import {
   type WalletNotificationContext,
 } from '@/utils/walletNotificationCopy';
 
-/** Dev-only Metro logs — filter terminal with `[Notifications]`. */
+/** Dev-only Metro logs - filter terminal with `[Notifications]`. */
 function writeLog(event: string, context?: Record<string, unknown>, response?: unknown): void {
   if (!__DEV__) return;
   console.log(`[Notifications] ${event}`, context ?? {});

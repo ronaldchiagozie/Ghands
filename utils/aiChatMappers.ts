@@ -20,7 +20,7 @@ function bookingPrefillFromSuggestion(suggestion: AiBookingSuggestion) {
 function formatEstimateRange(estimate: AiEstimate): string {
   const min = estimate.minNgn.toLocaleString('en-NG');
   const max = estimate.maxNgn.toLocaleString('en-NG');
-  return `₦${min} – ₦${max}`;
+  return `₦${min} - ₦${max}`;
 }
 
 function hasValidEstimate(estimate?: AiEstimate): boolean {
@@ -31,7 +31,7 @@ function hasValidEstimate(estimate?: AiEstimate): boolean {
   );
 }
 
-/** API may include an empty suggestion object on plain text replies — ignore those. */
+/** API may include an empty suggestion object on plain text replies - ignore those. */
 export function isActionableApiSuggestion(
   suggestion: AiBookingSuggestion | undefined | null,
   options?: { estimate?: AiEstimate; responseType?: AiChatResponse['responseType'] }
@@ -56,7 +56,7 @@ export function isActionableApiSuggestion(
   return hasDescription || hasBookingFields;
 }
 
-/** UI card needs visible draft text or an estimate preview — not an empty shell. */
+/** UI card needs visible draft text or an estimate preview - not an empty shell. */
 export function isRenderableUiSuggestion(
   suggestion: AiSuggestion | null | undefined
 ): suggestion is AiSuggestion {

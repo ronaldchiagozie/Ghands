@@ -161,7 +161,7 @@ export default function ProviderDetailScreen() {
     return !!(id && !Number.isNaN(id));
   });
   const [showAllSkillsModal, setShowAllSkillsModal] = useState(false);
-  /** The thrown error itself — the sheet needs its status, not just a string. */
+  /** The thrown error itself - the sheet needs its status, not just a string. */
   const [loadError, setLoadError] = useState<unknown>(null);
 
   const loadProviderProfile = useCallback(async () => {
@@ -195,7 +195,7 @@ export default function ProviderDetailScreen() {
       );
       /**
        * The provider's own photo or nothing. Two demo keys used to be consulted
-       * here — a locally stored avatar and bio — which neither app has ever
+       * here - a locally stored avatar and bio - which neither app has ever
        * written, so they were dead reads that only made it look as though demo
        * data were expected to fill the gaps.
        */
@@ -393,7 +393,7 @@ export default function ProviderDetailScreen() {
               {/* Profile Picture */}
               <View style={{ position: 'relative' }}>
                 {/**
-                  * Their photo, else their initials, else a neutral glyph — the
+                  * Their photo, else their initials, else a neutral glyph - the
                   * same avatar the map and the chat use. The bare User glyph
                   * this replaced said nothing; initials at least say who you are
                   * looking at, which matters most on the screen where somebody

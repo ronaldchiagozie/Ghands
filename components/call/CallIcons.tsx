@@ -13,7 +13,7 @@ function strokeForSize(size: number, fine = false): number {
   return Math.max(1.35, Math.round((size / 24) * ratio * 100) / 100);
 }
 
-/** Classic handset — answer / call / callback. */
+/** Classic handset - answer / call / callback. */
 const HANDSET_PATH =
   'M7.42 11.08c1.49 2.98 3.94 5.43 6.92 6.92l1.08-1.08a1.65 1.65 0 0 1 1.74-.44c.92.24 1.88.4 2.86.46a1.65 1.65 0 0 1 1.42 1.68v1.41a1.65 1.65 0 0 1-1.8 1.65 15.2 15.2 0 0 1-6.54-2.35A15.05 15.05 0 0 1 3.8 5.36 1.65 1.65 0 0 1 5.45 3.8h1.41a1.65 1.65 0 0 1 1.68 1.42c.06.98.22 1.94.46 2.86a1.65 1.65 0 0 1-.44 1.74L7.42 11.08z';
 
@@ -32,7 +32,7 @@ export function CallIconAnswer({ size = 24, color = '#FFFFFF', strokeWidth }: Ca
   );
 }
 
-/** End / decline — handset oriented down (iOS-style). */
+/** End / decline - handset oriented down (iOS-style). */
 export function CallIconEnd({ size = 24, color = '#FFFFFF', strokeWidth }: CallIconProps) {
   const sw = strokeWidth ?? strokeForSize(size);
   return (
@@ -50,7 +50,7 @@ export function CallIconEnd({ size = 24, color = '#FFFFFF', strokeWidth }: CallI
   );
 }
 
-/** Toolbar / chat header — handset with subtle signal arcs. */
+/** Toolbar / chat header - handset with subtle signal arcs. */
 export function CallIconOutline({ size = 20, color = '#4F6739', strokeWidth }: CallIconProps) {
   const sw = strokeWidth ?? strokeForSize(size, true);
   return (

@@ -11,12 +11,12 @@ export function joinSubtitleParts(parts: string[]): string {
 
 /**
  * Normalize em/en dashes in user-facing copy to commas or periods.
- * Use when rendering API or legacy strings that may contain — or –.
+ * Use when rendering API or legacy strings that may contain - or -.
  */
 export function normalizeUiPunctuation(text: string): string {
   return text
-    .replace(/\s*—\s*/g, ', ')
-    .replace(/\s*–\s*/g, ', ')
+    .replace(/\s*-\s*/g, ', ')
+    .replace(/\s*-\s*/g, ', ')
     .replace(/,\s+([A-Z])/g, '. $1')
     .replace(/,\s*,/g, ',')
     .replace(/\.\s*\./g, '.')

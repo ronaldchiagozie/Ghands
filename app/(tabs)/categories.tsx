@@ -352,8 +352,8 @@ export default function CategoryPage() {
 
       /**
        * Browsing needs nothing, but a booking does: a provider cannot act on a
-       * job from someone with no name and no phone number. Ask here — at the
-       * point the data is actually needed — rather than walling the app on open.
+       * job from someone with no name and no phone number. Ask here - at the
+       * point the data is actually needed - rather than walling the app on open.
        */
       if (!(await resolveClientProfileComplete())) {
         showError('Add your name and phone so providers can reach you.');

@@ -2,7 +2,7 @@
  * Publishing a booking is selecting the provider.
  *
  * The backend confirmed `/confirm` only validates and returns the request
- * unchanged — it never leaves draft and never notifies anyone. The call that
+ * unchanged - it never leaves draft and never notifies anyone. The call that
  * flips draft to pending, and makes the job visible to the provider, is
  * `select-provider`. So that request is the one thing in the booking flow that
  * must not fail quietly.
@@ -54,7 +54,7 @@ describe('confirming a booking', () => {
    * The unrecoverable case. A failure here used to navigate to the confirmation
    * screen and clear the resume pointer, leaving a draft that no provider could
    * see, that was absent from the customer's own jobs list because drafts are
-   * excluded from it, and that nothing offered back — reported as a success.
+   * excluded from it, and that nothing offered back - reported as a success.
    */
   it('does not report success when the publish fails', async () => {
     post.mockRejectedValue(Object.assign(new Error('Request is no longer available'), { status: 400 }));
@@ -67,7 +67,7 @@ describe('confirming a booking', () => {
   });
 
   /**
-   * A provider row with no backend id used to skip the call silently — the
+   * A provider row with no backend id used to skip the call silently - the
    * guard was `if (requestId && providerId)` wrapped around the request, with
    * navigation outside it.
    */

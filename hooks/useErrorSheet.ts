@@ -6,13 +6,13 @@ import { useEffect, useRef } from 'react';
  * explains it and offers the one action that can fix it.
  *
  * Pass the screen's own error state. The sheet only appears when there is
- * nothing to show — a failed refresh over existing content stays silent, since
+ * nothing to show - a failed refresh over existing content stays silent, since
  * the user can still use the screen.
  */
 export function useErrorSheet(options: {
   /** The thrown error, or null when the last load succeeded. */
   error: unknown;
-  /** What failed, in the user's words — "your transactions", "this provider". */
+  /** What failed, in the user's words - "your transactions", "this provider". */
   subject: string;
   /** True when the screen already has content to show; suppresses the sheet. */
   hasContent?: boolean;

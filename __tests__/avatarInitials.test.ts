@@ -2,7 +2,7 @@
  * Initials for people with no profile photo.
  *
  * The fallback was plumbericon2.png, so a carpenter with no photo was shown
- * holding a wrench — and so was every customer in the chat list. Initials say
+ * holding a wrench - and so was every customer in the chat list. Initials say
  * something true instead, and let two providers be told apart in a list.
  */
 import { getAvatarInitials } from '@/components/AvatarCircle';

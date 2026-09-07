@@ -55,7 +55,7 @@ export default function WalletScreen() {
   const transactionsReadyRef = useRef(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoadingTransactions, setIsLoadingTransactions] = useState<boolean>(true);
-  /** The thrown error itself — the sheet needs its status, not just a string. */
+  /** The thrown error itself - the sheet needs its status, not just a string. */
   const [transactionsError, setTransactionsError] = useState<unknown>(null);
 
   // Helper function to format date
@@ -304,7 +304,7 @@ export default function WalletScreen() {
           paddingBottom: 100,
         }}
       >
-        {/* Balance — sage panel (matches provider wallet) */}
+        {/* Balance - sage panel (matches provider wallet) */}
         <View
           style={{
             borderRadius: 16,
@@ -486,7 +486,7 @@ export default function WalletScreen() {
                 {showTransactionsSkeleton || isTransactionsLoadingEmpty
                   ? '…'
                   : transactionsError && transactions.length === 0
-                    ? '—'
+                    ? '-'
                     : transactions.length}
               </Text>
             </View>

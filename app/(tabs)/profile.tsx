@@ -175,7 +175,7 @@ type ProfileMenuRowProps = {
   showBorderBottom?: boolean;
 };
 
-/** Same row pattern as Account settings — one list language across Profile. */
+/** Same row pattern as Account settings - one list language across Profile. */
 function ProfileMenuRow({
   title,
   subtitle,
@@ -528,7 +528,7 @@ const ProfileScreen = () => {
           >
             <TouchableOpacity onPress={openEditProfile} activeOpacity={0.85} style={{ marginRight: 18 }}>
               {/**
-                * Their initials when they have no photo, not userimg.jpg — a
+                * Their initials when they have no photo, not userimg.jpg - a
                 * stock portrait of somebody else, which is a stranger's face
                 * sitting where your own is supposed to be. Light-on-sage here
                 * because this panel is dark.

@@ -50,7 +50,7 @@ export default function OnboardingCarousel({
   const { width: winW, height: winH } = useWindowDimensions();
   const isTablet = useIsTablet();
   const insets = useSafeAreaInsets();
-  /** Measured phone-lane (tablet) or full screen — must match slide width or carousel looks “crooked” */
+  /** Measured phone-lane (tablet) or full screen - must match slide width or carousel looks “crooked” */
   const [lane, setLane] = useState<{ w: number; h: number } | null>(null);
   const contentW = lane?.w ?? (isTablet ? Math.min(winW, PHONE_LANE_MAX_WIDTH) : winW);
   const contentH = lane?.h ?? winH;
@@ -62,7 +62,7 @@ export default function OnboardingCarousel({
   /** True mid-drag so the incoming slide is rendered visible instead of blank. */
   const [dragging, setDragging] = useState(false);
 
-  /** Pan handlers are built once — read live values through refs. */
+  /** Pan handlers are built once - read live values through refs. */
   const indexRef = useRef(currentIndex);
   indexRef.current = currentIndex;
   const contentWRef = useRef(contentW);

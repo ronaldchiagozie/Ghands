@@ -2,7 +2,7 @@
  * Matching a wallet payment against its ledger row.
  *
  * Kept out of the screens so both the job-payment flow and the wallet checkout
- * read a settlement verdict the same way — and so the blank-reference case has
+ * read a settlement verdict the same way - and so the blank-reference case has
  * somewhere to be tested.
  */
 
@@ -17,7 +17,7 @@ function normalizeReference(value: unknown): string {
  *
  * Both sides are normalized through `String(value ?? '')`, so a row with no
  * reference and a payment that came back without one would both collapse to
- * `''` and compare equal — reading an unrelated transaction as the verdict for
+ * `''` and compare equal - reading an unrelated transaction as the verdict for
  * this payment. A blank on either side is never a match.
  */
 export function matchesSettlementReference(row: ReferencedRow, reference: unknown): boolean {

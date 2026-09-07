@@ -7,7 +7,7 @@ import { notifySessionExpired } from '@/utils/sessionExpiredEvents';
 let expireInFlight: Promise<void> | null = null;
 let invalidTokenGate: Promise<never> | null = null;
 
-/** After login — allow assertValidAuthToken to read the new JWT again. */
+/** After login - allow assertValidAuthToken to read the new JWT again. */
 export function resetAuthSessionGate(): void {
   invalidTokenGate = null;
 }
@@ -59,16 +59,16 @@ export async function assertValidAuthToken(): Promise<string> {
   return token;
 }
 
-/** Proactive check for background polling — returns true when session was expired. */
+/** Proactive check for background polling - returns true when session was expired. */
 export async function expireAuthSessionIfInvalid(): Promise<boolean> {
   const token = await authService.getAuthToken();
   if (!token || isAccessTokenExpired(token)) {
     await getOrCreateInvalidTokenGate().catch(() => {
-      /* gate always rejects — callers await expireAuthSession side effects */
+      /* gate always rejects - callers await expireAuthSession side effects */
     });
     // The gate memoises expireAuthSession(), so its single notify fires only the
     // first time a token is found expired. If that one emission lands during an
-    // auth transition it is dropped, and no later poll can ever re-emit it —
+    // auth transition it is dropped, and no later poll can ever re-emit it -
     // leaving the user stranded on any screen without its own AuthError handler.
     // Re-announce every tick instead; notifySessionExpired already coalesces.
     notifySessionExpired();

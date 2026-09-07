@@ -40,7 +40,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 /**
- * Reflects the real state of the wallet debit — never advanced on a timer.
+ * Reflects the real state of the wallet debit - never advanced on a timer.
  * `verifying` is only entered when the API answers `pending` and we are polling
  * the ledger for settlement; `timedOut` means the poll ran out without a verdict.
  */
@@ -84,7 +84,7 @@ export default function ConfirmWalletPaymentScreen() {
   const [settlementMessage, setSettlementMessage] = useState<string | null>(null);
   /** Reference of the in-flight payment, so `timedOut` can re-check the same one. */
   const settlementRefRef = useRef<string | null>(null);
-  /** Amount the API says it actually debited — the receipt's source of truth. */
+  /** Amount the API says it actually debited - the receipt's source of truth. */
   const debitedAmountRef = useRef<number | null>(null);
   /**
    * One idempotency key for this payment, reused across every attempt on this
@@ -182,7 +182,7 @@ export default function ConfirmWalletPaymentScreen() {
     (reference: string | undefined) => {
       /**
        * The route param is only what we asked to be charged. When the API reports
-       * what it actually debited, that figure is the receipt — a receipt showing
+       * what it actually debited, that figure is the receipt - a receipt showing
        * the requested amount would quietly misstate a charge that differed.
        */
       const debited = debitedAmountRef.current;
@@ -211,7 +211,7 @@ export default function ConfirmWalletPaymentScreen() {
     async (reference: string): Promise<'completed' | 'failed' | 'timedOut'> => {
       /**
        * No reference means nothing to match a ledger row against. Report it as
-       * unsettled rather than polling — matching on a blank would pick up any
+       * unsettled rather than polling - matching on a blank would pick up any
        * row that also lacks one and read it as this payment's verdict.
        */
       if (!canPollForSettlement(reference)) return 'timedOut';
@@ -236,7 +236,7 @@ export default function ConfirmWalletPaymentScreen() {
             return 'failed';
           }
         } catch {
-          // A single failed poll is not a verdict — keep trying until attempts run out.
+          // A single failed poll is not a verdict - keep trying until attempts run out.
         }
       }
       return 'timedOut';
@@ -347,12 +347,12 @@ export default function ConfirmWalletPaymentScreen() {
         });
       }
 
-      // A 2xx with an explicit `failed` is a real failure — it used to render as success.
+      // A 2xx with an explicit `failed` is a real failure - it used to render as success.
       const reportedStatus = String(response?.status ?? '').toLowerCase();
 
       void appendPaymentFlowLog({
         event: `Job payment: API responded ${reportedStatus || 'no status'}`,
-        detail: `reference=${response?.reference ?? '—'}`,
+        detail: `reference=${response?.reference ?? '-'}`,
         transactionId: String(requestId),
         reference: response?.reference,
       });
@@ -390,7 +390,7 @@ export default function ConfirmWalletPaymentScreen() {
         return;
       }
 
-      // `completed` (or a 2xx with no status field) — the debit is done.
+      // `completed` (or a 2xx with no status field) - the debit is done.
       setIsProcessingPayment(false);
       setPaymentStep('success');
       haptics.success();
@@ -427,7 +427,7 @@ export default function ConfirmWalletPaymentScreen() {
 
       /**
        * The backend now sends a stable `code` on these. Prefer it, and keep the
-       * text match only as a fallback for endpoints it has not reached yet —
+       * text match only as a fallback for endpoints it has not reached yet -
        * matching English breaks the moment a message is reworded, and the
        * wording here decides whether someone is shown a PIN pad or an error.
        */
@@ -460,7 +460,7 @@ export default function ConfirmWalletPaymentScreen() {
       const errorContext = params.paymentType === 'logistics_fee' ? 'pay_logistics_fee' : 'pay_for_service';
       const errorMsg = getSpecificErrorMessage(error, errorContext) || errorMessage || 'Payment failed. Please try again.';
       /**
-       * Was `/insufficient|balance/i`, which matched the bare word "balance" —
+       * Was `/insufficient|balance/i`, which matched the bare word "balance" -
        * so "could not verify your balance" told someone to top up an account
        * that may already have had the money. The code decides it now.
        */
@@ -559,7 +559,7 @@ export default function ConfirmWalletPaymentScreen() {
     timedOut: {
       title: 'Still confirming',
       subtitle:
-        'Your payment is taking longer than usual to confirm. It has not failed — you can check again, or close this and view it in your wallet activity.',
+        'Your payment is taking longer than usual to confirm. It has not failed. You can check again, or close this and view it in your wallet activity.',
     },
   };
   const stepMessage = stepMessages[paymentStep];
@@ -829,7 +829,7 @@ export default function ConfirmWalletPaymentScreen() {
         )}
       </ScrollView>
 
-      {/* Processing Modal — every state below reflects a real API verdict */}
+      {/* Processing Modal - every state below reflects a real API verdict */}
       <Modal
         visible={showProcessingModal}
         transparent
@@ -876,7 +876,7 @@ export default function ConfirmWalletPaymentScreen() {
         </View>
       </Modal>
 
-      {/* PIN Modal — bottom sheet with stable cells (no layout jump) */}
+      {/* PIN Modal - bottom sheet with stable cells (no layout jump) */}
       <Modal
         visible={showPinModal}
         transparent

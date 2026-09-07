@@ -23,7 +23,7 @@ export type OfflineReason = 'device' | 'server';
  *
  * Note what this deliberately does not do: if the device link is down it returns
  * without latching, because NetInfo already covers that. So this latch always
- * means "the device has a connection and our server did not answer" — which is
+ * means "the device has a connection and our server did not answer" - which is
  * exactly the case that was being shown as "You're offline. Check your
  * connection", to somebody whose connection was fine.
  */
@@ -38,7 +38,7 @@ export function reportApiUnreachable(): void {
      *
      * One failed request is not proof the server is unreachable. The backend
      * sleeps when idle and its first request after that can time out while it
-     * wakes — which is most cold starts — and that was enough to throw a
+     * wakes - which is most cold starts - and that was enough to throw a
      * full-screen "no connection" over an app that was about to work fine.
      *
      * A single cheap request settles it: any HTTP reply at all, including a 404
@@ -60,7 +60,7 @@ export function reportApiUnreachable(): void {
   })();
 }
 
-/** Call when any API request succeeds — clears a stale "API unreachable" latch. */
+/** Call when any API request succeeds - clears a stale "API unreachable" latch. */
 export function clearApiUnreachable(): void {
   if (!apiUnreachable) return;
   apiUnreachable = false;
@@ -79,7 +79,7 @@ export function isApiUnreachable(): boolean {
 }
 
 /**
- * NetInfo-only signal — avoids false offline from `isInternetReachable: false`
+ * NetInfo-only signal - avoids false offline from `isInternetReachable: false`
  * when the device is connected but NetInfo hasn't confirmed reachability yet.
  */
 export function deriveOnlineFromNetInfo(state: NetInfoState | null | undefined): boolean {
@@ -109,7 +109,7 @@ export async function pingBackend(): Promise<boolean> {
   }
 }
 
-/** Device link up + backend responds — used for manual "Try again" rechecks. */
+/** Device link up + backend responds - used for manual "Try again" rechecks. */
 export async function checkConnectivity(): Promise<boolean> {
   const state = await NetInfo.fetch();
   if (!deriveOnlineFromNetInfo(state)) {

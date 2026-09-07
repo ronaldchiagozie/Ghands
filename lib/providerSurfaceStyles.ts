@@ -12,7 +12,7 @@ export const providerHomeSurfacePadding = 14;
 
 export const providerStackGapMd = 12;
 
-/** Unified job-details panel — flat border, no shadow (provider job updates tab). */
+/** Unified job-details panel - flat border, no shadow (provider job updates tab). */
 export const providerJobDetailsPanel = {
   backgroundColor: '#FFFFFF',
   borderRadius: 12,
@@ -44,7 +44,7 @@ export const providerHeaderActionButton = {
   justifyContent: 'center' as const,
 };
 
-/** List cards — border only, no shadow/elevation. */
+/** List cards - border only, no shadow/elevation. */
 export const providerListCard = {
   ...providerHomeSurface,
   padding: providerHomeSurfacePadding,

@@ -2,8 +2,8 @@
  * Session expiry, decided on the device.
  *
  * The bug: both apps guarded the decode with `typeof atob` and returned "not
- * expired" when it was missing. React Native has no atob — not in Hermes, not
- * in RN's polyfills, not in Expo — so the two-second session poll could never
+ * expired" when it was missing. React Native has no atob - not in Hermes, not
+ * in RN's polyfills, not in Expo - so the two-second session poll could never
  * once return true. Neither app ever expired a session by itself; they waited
  * for a screen to make a call that 401'd.
  *
@@ -64,7 +64,7 @@ describe('isAccessTokenExpired', () => {
   /**
    * base64url, not base64. A payload containing - or _ decoded as plain base64
    * is nonsense, nonsense fails to parse, and a parse failure reads as "not
-   * expired" — an expired session that never ends.
+   * expired" - an expired session that never ends.
    */
   it('handles a payload whose base64 contains url-safe characters', () => {
     const payload = { exp: secondsFromNow(-60), sub: 'a~b?c>d', note: '<<>>??~~' };

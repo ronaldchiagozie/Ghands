@@ -32,7 +32,7 @@ describe('gender is part of a complete profile', () => {
   /**
    * ProfileCompletionModal refuses to submit without name, phone AND gender.
    * The check used to look at only name and phone, so an account missing gender
-   * counted as complete — the setup checklist hid the task while the form still
+   * counted as complete - the setup checklist hid the task while the form still
    * demanded it. These must not drift apart again.
    */
   it('rejects a profile with no gender when gender is known', () => {

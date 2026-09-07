@@ -17,7 +17,7 @@ import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 
-/** Same key as Top Up — optional fallback when `reference` param is omitted. */
+/** Same key as Top Up - optional fallback when `reference` param is omitted. */
 
 type VerifyPhase = 'idle' | 'verifying' | 'pending' | 'error';
 
@@ -74,7 +74,7 @@ export default function BankTransferScreen() {
       if (verification.status === 'pending') {
         setVerifyPhase('pending');
         setStatusMessage(
-          'Transfer not confirmed yet. Banks can take a few minutes — tap “Check payment” again shortly.',
+          'Transfer not confirmed yet. Banks can take a few minutes. Tap “Check payment” again shortly.',
         );
         return;
       }

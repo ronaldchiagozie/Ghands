@@ -9,7 +9,7 @@ import { navigateBack } from '@/utils/navigation';
 interface ScreenHeaderProps {
   title: string;
   onBack?: () => void;
-  /** Used when onBack is omitted — safe stack back with fallback route */
+  /** Used when onBack is omitted - safe stack back with fallback route */
   backFallback?: string;
   rightElement?: React.ReactNode;
   backgroundColor?: string;

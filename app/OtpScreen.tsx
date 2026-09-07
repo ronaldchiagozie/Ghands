@@ -56,7 +56,7 @@ export default function OtpScreen() {
     // Only allow numeric input
     const numericValue = value.replace(/[^0-9]/g, '');
 
-    // A paste or an OS code suggestion arrives as several digits in one box — spread
+    // A paste or an OS code suggestion arrives as several digits in one box - spread
     // them across the remaining boxes rather than dropping the input.
     if (numericValue.length > 1) {
       const digits = numericValue.slice(0, otp.length - index).split('');

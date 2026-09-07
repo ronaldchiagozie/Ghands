@@ -1,7 +1,7 @@
 /**
  * Two different problems that were being reported with the same sentence.
  *
- * The screen said "You're offline. Check your connection and try again." — but
+ * The screen said "You're offline. Check your connection and try again." - but
  * the latch that raises it deliberately returns early when the device link is
  * down, because NetInfo already covers that case. So it only ever appeared when
  * the person's connection was working and our server had not answered, and it

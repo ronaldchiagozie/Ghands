@@ -359,7 +359,7 @@ export default function ProviderLinkBankAccountScreen() {
                     color: Colors.textSecondaryDark,
                   }}
                 >
-                  Showing common Nigerian banks — server list unavailable.
+                  Showing common Nigerian banks - server list unavailable.
                 </Text>
               ) : null}
             </View>

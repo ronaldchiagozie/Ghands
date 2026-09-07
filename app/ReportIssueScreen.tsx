@@ -138,7 +138,7 @@ export default function ReportIssueScreen() {
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
       haptics.success();
-      showSuccess('Issue reported. We will review it within 24–48 hours.');
+      showSuccess('Issue reported. We will review it within 24-48 hours.');
 
       // Navigate back after a short delay
       setTimeout(() => {
@@ -528,7 +528,7 @@ height: MIN_TOUCH_TARGET,
           </View>
         </ScrollView>
 
-        {/* Submit button — a flex sibling, not absolute, so the keyboard lifts it */}
+        {/* Submit button - a flex sibling, not absolute, so the keyboard lifts it */}
         <View
           style={{
             paddingHorizontal: 20,

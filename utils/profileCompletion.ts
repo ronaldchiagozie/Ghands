@@ -18,7 +18,7 @@ export function profileCompleteKeyForUser(userId: string | number | null | undef
 /**
  * Must stay in step with what ProfileCompletionModal actually demands: name,
  * phone AND gender. It previously checked only name and phone, so an account
- * missing gender counted as complete — the setup checklist hid the task while
+ * missing gender counted as complete - the setup checklist hid the task while
  * the form still refused to submit without it.
  *
  * `gender` is optional in the signature so existing two-argument callers keep

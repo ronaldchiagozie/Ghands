@@ -229,7 +229,7 @@ export default function PaymentSuccessfulScreen() {
   }, [enrichReceiptFromRequest]);
 
   const handleDownloadReceipt = () => {
-    // No PDF endpoint exists yet — say so rather than implying a download started.
+    // No PDF endpoint exists yet - say so rather than implying a download started.
     showAppAlert(
       'Download',
       'A PDF receipt will be available in a future update. Use Share to send these details for now.',

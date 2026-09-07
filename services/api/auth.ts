@@ -52,7 +52,7 @@ export const authService = {
     }
   },
 
-  /** Company client — full business details at signup; no individual complete-signup step. */
+  /** Company client - full business details at signup; no individual complete-signup step. */
   clientCompanySignup: async (
     payload: ClientCompanySignupPayload,
   ): Promise<ClientCompanySignupResponse> => {

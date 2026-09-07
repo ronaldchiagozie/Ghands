@@ -76,7 +76,7 @@ function parseTransactionId(value: unknown): number | null {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
-/** Deposit / withdraw / wallet payment — open ledger receipt, not job quote. */
+/** Deposit / withdraw / wallet payment - open ledger receipt, not job quote. */
 export function shouldOpenWalletTransactionReceipt(notification: Notification): boolean {
   const type = normalizeNotificationType(notification.type);
   if (type.includes('released') || type.includes('payout')) return false;
@@ -102,7 +102,7 @@ function explicitWalletStatusFromMeta(
   });
 }
 
-/** Truthful status — ledger row wins, then metadata, then notification type. */
+/** Truthful status - ledger row wins, then metadata, then notification type. */
 export function resolveWalletNotificationStatus(
   notification: Notification,
   context?: WalletNotificationContext,

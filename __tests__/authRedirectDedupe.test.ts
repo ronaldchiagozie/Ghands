@@ -2,7 +2,7 @@
  * One expired session, one trip to the login screen.
  *
  * What went wrong: `force: true` skipped every guard in redirectToAuthScreen,
- * and both callers on the expiry path passed it — the root layout's
+ * and both callers on the expiry path passed it - the root layout's
  * session-expired listener, and every screen's AuthError handler. So the dedupe
  * was disabled on precisely the path it was written for. Tab screens stay
  * mounted, so an expired token 401'd several fetches at once and each one
@@ -42,7 +42,7 @@ describe('redirectToAuthScreen', () => {
 
   /**
    * The specific regression. force is for skipping the cooldown, never for
-   * skipping the in-flight check — concurrent navigations are always a bug.
+   * skipping the in-flight check - concurrent navigations are always a bug.
    */
   it('still navigates once when the callers force', async () => {
     await Promise.all([

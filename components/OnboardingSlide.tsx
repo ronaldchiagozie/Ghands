@@ -9,7 +9,7 @@ interface OnboardingSlideProps {
   isActive: boolean;
   /** True while a swipe is in flight and this is the incoming slide. */
   revealed?: boolean;
-  /** When set (e.g. tablet phone lane), use instead of full window — fixes clipped / crooked slides */
+  /** When set (e.g. tablet phone lane), use instead of full window - fixes clipped / crooked slides */
   contentWidth?: number;
   contentHeight?: number;
 }
@@ -112,7 +112,7 @@ export default function OnboardingSlide({
       }
 
       // Only replay the rise-into-place entrance when the slide isn't already on
-      // screen — committing a swipe would otherwise flash the text back to zero.
+      // screen - committing a swipe would otherwise flash the text back to zero.
       if (!isVisibleRef.current) {
         fadeAnim.setValue(0);
         titleSlideAnim.setValue(30);

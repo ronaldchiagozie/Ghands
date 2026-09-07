@@ -31,12 +31,12 @@ export const ONBOARDING_SLIDES: SlideData[] = [
   }
 ];
 
-/** Offline overlay — man with phone, no Wi‑Fi (`assets/images/nointernetimg.png`). */
+/** Offline overlay - man with phone, no Wi‑Fi (`assets/images/nointernetimg.png`). */
 export const NO_INTERNET_ILLUSTRATION = require('../assets/images/nointernetimg.png');
 
 export const DESIGN_TOKENS = {
   colors: {
-    // Primary colors — sage olive (panels, brand actions, tabs)
+    // Primary colors - sage olive (panels, brand actions, tabs)
     background: '#0b0b07',
     accent: '#4F6739',
     /** Border / depth for sage hero cards (profile, wallet, dashboard) */
@@ -50,22 +50,22 @@ export const DESIGN_TOKENS = {
     textSecondary: '#F5F0E8',
     textPrimary: '#000000',
     textSecondaryDark: '#666666',
-    /** Input placeholders — ≥4.5:1 on white and backgroundGray. Do not use textTertiary for placeholders. */
+    /** Input placeholders - ≥4.5:1 on white and backgroundGray. Do not use textTertiary for placeholders. */
     placeholder: '#666666',
     textTertiary: '#999999',
     
     // UI colors
     border: '#E5E7EB',
-    /** Second border weight — control rings (radio/checkbox), dashed dropzones, disabled outlines, where `border` is too faint. */
+    /** Second border weight - control rings (radio/checkbox), dashed dropzones, disabled outlines, where `border` is too faint. */
     borderStrong: '#D1D5DB',
     borderLight: '#F3F4F6',
     backgroundLight: '#FFFFFF',
     backgroundGray: '#F3F4F6',
-    /** Subtle surface fill, one step lighter than backgroundGray — inset rows and placeholder wells. */
+    /** Subtle surface fill, one step lighter than backgroundGray - inset rows and placeholder wells. */
     surfaceSubtle: '#F9FAFB',
     /** Dimming layer behind centred modals. */
     overlayScrim: 'rgba(0, 0, 0, 0.45)',
-    /** Outer margin on tablet “phone lane” — contrasts with backgroundLight inside the lane */
+    /** Outer margin on tablet “phone lane” - contrasts with backgroundLight inside the lane */
     tabletBackdrop: '#242420',
     
     // Status colors
@@ -152,7 +152,7 @@ export const DESIGN_TOKENS = {
     default: 12,
     lg: 16,
     xl: 18,
-    /** Sage wallet / earnings / profile hero panels — one consistent corner across the app */
+    /** Sage wallet / earnings / profile hero panels - one consistent corner across the app */
     sageHero: 16,
     full: 999
   }

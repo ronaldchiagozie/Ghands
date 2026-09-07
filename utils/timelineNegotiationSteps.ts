@@ -104,7 +104,7 @@ function declinedStep(description: string): NegotiationStepVisual {
   };
 }
 
-/** Inspection (visit) and quotation are parallel options — only one should be "active" at a time. */
+/** Inspection (visit) and quotation are parallel options - only one should be "active" at a time. */
 export function getInspectionNegotiationStep(input: {
   audience: Audience;
   providerHasAccepted: boolean;
@@ -150,7 +150,7 @@ export function getInspectionNegotiationStep(input: {
   if (quotationSent && visitHappened) {
     if (visitPaid || isVisitCompletedOrPaid(visitRequest)) {
       const schedule =
-        visitScheduleText && !/^(\s*—\s*|tbd|pending)$/i.test(visitScheduleText.trim())
+        visitScheduleText && !/^(\s*-\s*|tbd|pending)$/i.test(visitScheduleText.trim())
           ? visitScheduleText.replace(/^for\s+/i, '')
           : null;
       return completedStep(

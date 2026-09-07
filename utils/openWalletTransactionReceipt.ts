@@ -15,7 +15,7 @@ function formatTxDateTime(iso: string): { date: string; time: string } {
       time: d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
     };
   } catch {
-    return { date: '—', time: '—' };
+    return { date: '-', time: '-' };
   }
 }
 
@@ -70,7 +70,7 @@ export function openWalletTransactionReceipt(
   }
 
   if (status === 'pending') {
-    /** Same field set as the failed/completed receipts — all three render ClientPaymentReceipt. */
+    /** Same field set as the failed/completed receipts - all three render ClientPaymentReceipt. */
     router.push({
       pathname: '/PaymentPendingScreen',
       params: {

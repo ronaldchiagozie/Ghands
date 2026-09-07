@@ -3,7 +3,7 @@
  *
  * The backend sleeps when idle, and its first request after that can time out
  * while it wakes. That was enough to throw a full-screen takeover over an app
- * that was about to work fine — five seconds into a cold start, with nothing in
+ * that was about to work fine - five seconds into a cold start, with nothing in
  * the logs, because the error itself was swallowed by the caller.
  */
 const mockFetchState = jest.fn();
@@ -63,7 +63,7 @@ describe('the offline latch', () => {
 
   /**
    * NetInfo already covers a genuinely offline device, and this latch is what
-   * distinguishes "ours is down" from "yours is" — so it must not fire here, or
+   * distinguishes "ours is down" from "yours is" - so it must not fire here, or
    * the screen cannot tell the two apart.
    */
   it('leaves a genuinely offline device to NetInfo', async () => {

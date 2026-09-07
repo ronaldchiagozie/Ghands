@@ -873,7 +873,7 @@ export default function OngoingJobDetails() {
     } catch (error: any) {
       if (isConnectivityOrNetworkError(error)) {
         if (__DEV__) {
-          console.warn('Quotations: offline — staying on screen.');
+          console.warn('Quotations: offline - staying on screen.');
         }
         setQuotations([]);
         return;
@@ -984,7 +984,7 @@ export default function OngoingJobDetails() {
             await handleAuthErrorRedirect(router);
             return;
           }
-          // Backend may return 400 e.g. "column provider.image does not exist" – treat as non-fatal
+          // Backend may return 400 e.g. "column provider.image does not exist" - treat as non-fatal
           const msg = String(error?.message || '').toLowerCase();
           const isBackendSchemaError = error?.status === 400 && (msg.includes('provider.image') || msg.includes('does not exist'));
           if (__DEV__ && !isBackendSchemaError) {
@@ -1121,7 +1121,7 @@ export default function OngoingJobDetails() {
     }
   }, [params.requestId]);
 
-  // Initial load handled by useFocusEffect – avoids double load + flash
+  // Initial load handled by useFocusEffect - avoids double load + flash
 
   // Refresh when screen focuses + poll when job is active (scheduled, in_progress, reviewing)
   const loadRequestDataRef = useRef(loadRequestData);
@@ -1137,7 +1137,7 @@ export default function OngoingJobDetails() {
         hasLoadedRef.current = true;
       }, 50);
 
-      // Poll every 15s (was 5s – reduced to limit log spam when backend has errors)
+      // Poll every 15s (was 5s - reduced to limit log spam when backend has errors)
       const poll = () => loadRequestDataRef.current(true);
       const pollInterval = setInterval(poll, 15000);
       const firstPollTimer = setTimeout(poll, 5000);
@@ -1335,7 +1335,7 @@ export default function OngoingJobDetails() {
 
     showAppAlert(
       amountText ? `Release ${amountText}?` : 'Release payment?',
-      `${amountText ?? 'Payment'} goes to ${providerLabel} now. Only do this if the work is finished and you are happy with it — it cannot be reversed from here.`,
+      `${amountText ?? 'Payment'} goes to ${providerLabel} now. Only do this if the work is finished and you are happy with it. This cannot be reversed from here.`,
       [
         {
           text: 'Not yet',

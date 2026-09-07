@@ -15,7 +15,7 @@ type HandyDraftChipProps = {
 };
 
 /**
- * Sits on a field's label row rather than inside the input — an absolutely
+ * Sits on a field's label row rather than inside the input - an absolutely
  * positioned control would sit on top of the description text.
  */
 export default function HandyDraftChip({

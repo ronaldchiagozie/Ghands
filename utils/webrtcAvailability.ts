@@ -38,6 +38,6 @@ export function registerWebRtcGlobalsIfAvailable(): void {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     require('react-native-webrtc').registerGlobals();
   } catch {
-    /* native build without webrtc — calls will show unavailable in UI */
+    /* native build without webrtc - calls will show unavailable in UI */
   }
 }

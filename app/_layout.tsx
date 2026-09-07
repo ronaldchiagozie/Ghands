@@ -109,7 +109,7 @@ export default function RootLayout() {
     const redirectOnSessionExpired = async () => {
       if (await isRoleSwitchInProgress()) return;
       if (isInAuthTransition()) return;
-      /** Involuntary expiry — dedupe with the screens' own AuthError handlers. */
+      /** Involuntary expiry - dedupe with the screens' own AuthError handlers. */
       await redirectToAuthScreen(router, {
         pathname: pathnameRef.current,
         clearSession: false,
@@ -207,7 +207,7 @@ export default function RootLayout() {
                   <Stack.Screen
                     name="(tabs)"
                     options={{
-                      /** Tabs are the app shell — back swipe must not reveal booking screens below. */
+                      /** Tabs are the app shell - back swipe must not reveal booking screens below. */
                       gestureEnabled: false,
                     }}
                   />

@@ -59,7 +59,7 @@ export default function CompletedJobDetail() {
   const { showError, showSuccess, showInfo, showWarning } = useToast();
   
   const [request, setRequest] = useState<ServiceRequest | null>(null);
-  /** The thrown error itself — the sheet needs its status, not just a string. */
+  /** The thrown error itself - the sheet needs its status, not just a string. */
   const [loadError, setLoadError] = useState<unknown>(null);
   const [selectedProvider, setSelectedProvider] = useState<any | null>(null);
   // Start loading when a requestId is present so the first paint is the skeleton, not the
@@ -71,7 +71,7 @@ export default function CompletedJobDetail() {
   const [hasSubmittedReview, setHasSubmittedReview] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [postReviewThankYou, setPostReviewThankYou] = useState(false);
-  /** Your numeric rating (1–5) for this job — storage + API */
+  /** Your numeric rating (1-5) for this job - storage + API */
   const [myReviewRating, setMyReviewRating] = useState<number | null>(null);
   const completedContactToastShown = useRef(false);
 
@@ -123,7 +123,7 @@ export default function CompletedJobDetail() {
       } else {
         alreadySubmitted =
           (await AsyncStorage.getItem(reviewSubmittedLegacyKey(requestId))) === '1';
-        logRatingDebug('No userId for review flag — using legacy key only', { requestId });
+        logRatingDebug('No userId for review flag - using legacy key only', { requestId });
       }
 
       // Same account, other device: local flag is empty but server already has the review
@@ -798,7 +798,7 @@ export default function CompletedJobDetail() {
                       lineHeight: 18,
                     }}
                   >
-                    Tap stars (1–5), add an optional note, then submit to finish this booking.
+                    Tap stars (1-5), add an optional note, then submit to finish this booking.
                   </Text>
 
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>

@@ -1,4 +1,4 @@
-/** Persisted numeric rating (1–5) for jobs list + detail, per user + request */
+/** Persisted numeric rating (1-5) for jobs list + detail, per user + request */
 export function reviewRatingStorageKey(userId: number, requestId: number): string {
   return `@ghands:review_rating_u${userId}_r${requestId}`;
 }
@@ -22,7 +22,7 @@ export function extractMyRatingFromRequest(request: unknown): number | null {
 }
 
 /**
- * Review was submitted on another device / server already has it — not a user fault.
+ * Review was submitted on another device / server already has it - not a user fault.
  */
 export function isAlreadyReviewedApiError(error: unknown): boolean {
   const e = error as {

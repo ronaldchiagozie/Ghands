@@ -1,7 +1,7 @@
 import { Animated, Easing } from 'react-native';
 import { ANIMATION_DURATION } from './designSystem';
 
-/** Product UI easing — ease-out curves, no bounce/elastic. */
+/** Product UI easing - ease-out curves, no bounce/elastic. */
 export const MOTION_EASING = {
   outQuart: Easing.bezier(0.25, 1, 0.5, 1),
   outQuint: Easing.bezier(0.22, 1, 0.36, 1),
