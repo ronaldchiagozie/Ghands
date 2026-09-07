@@ -8,7 +8,7 @@ import {
   useTabScrollContentPaddingTop,
 } from '@/lib/designSystem';
 import { useRouter } from 'expo-router';
-import { MapPin, TrendingUp } from 'lucide-react-native';
+import { LayoutGrid, MapPin } from 'lucide-react-native';
 import React, { useCallback, useMemo, useRef } from 'react';
 import { Animated, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useUserLocation } from '@/hooks/useUserLocation';
@@ -150,7 +150,13 @@ export default function DiscoverScreen() {
           {/* Services to browse */}
           <View style={{ paddingHorizontal: 16, marginBottom: 24 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
-              <TrendingUp size={18} color={Colors.textPrimary} style={{ marginRight: 8 }} />
+              {/**
+                * A grid, not a rising arrow. The heading stopped being
+                * "Trending Services" when the invented booking counts went, so
+                * the trend icon was the last thing on screen still claiming we
+                * knew what was popular.
+                */}
+              <LayoutGrid size={18} color={Colors.textPrimary} style={{ marginRight: 8 }} />
               <Text
                 style={{
                   fontSize: 16,

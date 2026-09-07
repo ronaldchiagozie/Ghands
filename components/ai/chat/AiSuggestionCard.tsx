@@ -4,7 +4,7 @@ import { useToast } from '@/hooks/useToast';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { runSpring, runTiming } from '@/lib/motion';
 import { buildAiSuggestionCopyText, copyTextToClipboard } from '@/utils/clipboard';
-import { Copy, Lightbulb, Maximize2, Pencil } from 'lucide-react-native';
+import { Copy, HandHelping, Maximize2, Pencil } from 'lucide-react-native';
 import React, { useEffect, useRef } from 'react';
 import { Animated, Pressable, Text, View } from 'react-native';
 import type { AiSuggestion } from './types';
@@ -136,7 +136,13 @@ export default function AiSuggestionCard({
             }}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 6 }}>
-              <Lightbulb size={15} color={AI_COLORS.accentInk} strokeWidth={2.2} />
+              {/**
+                * The booking Handy is proposing, so it gets Handy's own mark.
+                * A lightbulb here was the other half of the sparkle: the
+                * universal "the AI had an idea" glyph, which says something
+                * about the technology and nothing about the job being booked.
+                */}
+              <HandHelping size={15} color={AI_COLORS.accentInk} strokeWidth={2.2} />
               <Text
                 style={{
                   flex: 1,
