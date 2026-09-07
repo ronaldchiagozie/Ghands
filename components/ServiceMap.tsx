@@ -286,7 +286,7 @@ const ServiceMap: React.FC<ServiceMapProps> = ({
         <View className="absolute inset-x-0 bottom-2 pb-6">
           <View
             className="mx-2 rounded-3xl bg-white p-4"
-            style={SURFACE_STYLES.homeCard}
+            style={SURFACE_STYLES.floatingSheet}
           >
             <View className="w-12 h-1.5 bg-gray-200 self-center rounded-full mb-4" />
             <ScrollView style={{ maxHeight: Platform.select({ ios: 380, android: 350 }) }}>

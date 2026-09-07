@@ -59,7 +59,7 @@ const JobActivityCardComponent = ({ activity }: JobActivityCardProps) => {
 
   return (
     <TouchableOpacity
-      className="bg-white rounded-2xl px-5 py-5"
+      className="bg-white rounded-xl px-5 py-5"
       activeOpacity={0.7}
       onPress={handlePress}
       style={SURFACE_STYLES.homeCard}

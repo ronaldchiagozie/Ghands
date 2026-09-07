@@ -123,20 +123,8 @@ export default function HomeQuickActions({
           <View
             style={{
               ...SURFACE_STYLES.homeCard,
-              /**
-                * Flat, unlike the cards below. A shadow says a surface is
-                * lifted off the page and worth reaching for, which is right
-                * for a job card you are being asked to read and wrong for
-                * three small shortcuts sitting in a row. Three of them side by
-                * side just made the row feel heavy. The hairline border is
-                * enough to hold each card's edge.
-                */
-              shadowOpacity: 0,
-              shadowRadius: 0,
-              shadowOffset: { width: 0, height: 0 },
-              elevation: 0,
               backgroundColor: Colors.white,
-              borderRadius: BorderRadius.lg,
+              borderRadius: BorderRadius.default,
               paddingHorizontal: 12,
               paddingTop: 12,
               paddingBottom: 11,

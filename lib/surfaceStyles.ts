@@ -30,6 +30,7 @@ export function iosOnlyShadow(style: ViewStyle): ViewStyle {
 export const SURFACE_STYLES: {
   homeTile: ViewStyle;
   homeCard: ViewStyle;
+  floatingSheet: ViewStyle;
   searchField: ViewStyle;
   chipOutline: ViewStyle;
 } = {
@@ -41,7 +42,24 @@ export const SURFACE_STYLES: {
     shadowRadius: 4,
     elevation: surfaceElevation(2),
   },
+  /**
+   * The home surface: a hairline edge and nothing else.
+   *
+   * These cards sit flat on the page rather than above it. A shadow says a
+   * surface is lifted and separate, which is worth spending on something that
+   * floats over other content - a sheet, a menu, a dialog. A column of cards
+   * that make up the page itself is not floating over anything, and giving
+   * every one of them a lift only makes the page feel heavy.
+   */
   homeCard: {
+    borderWidth: 1,
+    borderColor: 'rgba(17, 24, 39, 0.12)',
+  },
+  /**
+   * For surfaces that genuinely do float: the provider sheet over the map.
+   * This is what homeCard used to be, kept where the lift is doing its job.
+   */
+  floatingSheet: {
     borderWidth: 1,
     borderColor: 'rgba(17, 24, 39, 0.12)',
     shadowColor: '#101828',

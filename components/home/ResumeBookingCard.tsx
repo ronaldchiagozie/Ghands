@@ -63,7 +63,8 @@ export default function ResumeBookingCard({
         ...SURFACE_STYLES.homeCard,
         backgroundColor: Colors.successLight,
         borderColor: 'rgba(79, 103, 57, 0.22)',
-        borderRadius: BorderRadius.xl,
+        /** Same corner as the home cards, since it is the same kind of card. */
+        borderRadius: BorderRadius.default,
         marginBottom: Spacing.lg,
         overflow: 'hidden',
       }}

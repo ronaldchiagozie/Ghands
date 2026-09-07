@@ -46,7 +46,7 @@ export default function AccountSetupCard({
       style={{
         ...SURFACE_STYLES.homeCard,
         backgroundColor: Colors.white,
-        borderRadius: BorderRadius.xl,
+        borderRadius: BorderRadius.default,
         paddingTop: Spacing.lg,
         paddingBottom: Spacing.xs,
         marginBottom: Spacing.lg,
