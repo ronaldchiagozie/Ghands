@@ -263,4 +263,46 @@ describe('booking resume pointer', () => {
       await expect(shouldPromptResume(fresh)).resolves.toBe(true);
     });
   });
+
+  /**
+   * Closing the prompt and throwing the booking away are different answers,
+   * and the whole design rests on them staying different. "Not now" is about
+   * this moment; the booking has to survive it and stay in the Jobs tab, or
+   * the modal quietly becomes a way to lose work by tapping the wrong thing
+   * on the way into the app.
+   */
+  describe('what dismissing costs', () => {
+    it('keeps the booking when the prompt is closed', async () => {
+      await rememberBookingStep('schedule', '418', { requestId: '418' });
+      const point = (await readBookingResumePoint())!;
+
+      await markResumePrompted(point.requestId);
+
+      /** Still there, which is what keeps the Drafts tab in Jobs. */
+      const after = await readBookingResumePoint();
+      expect(after).not.toBeNull();
+      expect(after!.requestId).toBe('418');
+      expect(after!.step).toBe('schedule');
+    });
+
+    /**
+     * The answer is stored, not held in memory, so closing the app and
+     * opening it again does not start the asking over.
+     */
+    it('stays closed across a relaunch', async () => {
+      await rememberBookingStep('schedule', '418', { requestId: '418' });
+      await markResumePrompted('418');
+
+      const onNextLaunch = (await readBookingResumePoint())!;
+      await expect(shouldPromptResume(onNextLaunch)).resolves.toBe(false);
+      expect(onNextLaunch.requestId).toBe('418');
+    });
+
+    it('takes the booking with it only when it is actually discarded', async () => {
+      await rememberBookingStep('schedule', '418', { requestId: '418' });
+      await clearBookingResumePoint();
+
+      expect(await readBookingResumePoint()).toBeNull();
+    });
+  });
 });
