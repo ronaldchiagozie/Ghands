@@ -229,13 +229,18 @@ const ServiceMapScreen = () => {
         }
 
         /**
-         * Identity-approved providers only. `verified` is admin approval, and
-         * somebody who has not passed it is dispatched to a customer's home on
-         * the strength of nothing. The server should exclude them from /nearby
-         * as well - this is the app refusing to display them, not a security
-         * control.
+         * Refuse to draw a provider the server has told us is not approved.
+         *
+         * Only an explicit `false` counts. The backend now gates /nearby itself,
+         * so `verified` comes back true for everyone and it has told us the field
+         * is redundant there - which makes it exactly the kind of field that gets
+         * dropped in a tidy-up. Testing it for truthiness would then hide every
+         * provider on the map and report "none found nearby", with the server
+         * behaving perfectly.
+         *
+         * Absent means "the server already handled this", which is now true.
          */
-        const eligibleProviders = providersArray.filter((provider) => Boolean(provider?.verified));
+        const eligibleProviders = providersArray.filter((provider) => provider?.verified !== false);
 
         if (eligibleProviders.length === 0) {
           setProviders([]);
