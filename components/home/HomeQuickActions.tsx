@@ -7,9 +7,6 @@ import { SURFACE_STYLES } from '@/lib/surfaceStyles';
 
 type QuickActionId = 'wallet' | 'rebook' | 'urgent';
 
-/** Shared so the two-line block and the type it holds cannot drift apart. */
-const VALUE_LINE_HEIGHT = 19;
-
 type HomeQuickActionsProps = {
   /** Null while loading, so nothing is shown rather than a wrong number. */
   balance?: number | null;
@@ -41,17 +38,6 @@ type HomeQuickActionsProps = {
  *
  * And it had a caption explaining what quick actions are, which is the tell
  * that the tiles were not explaining themselves.
- *
- * The first pass at this then argued with itself: it said the value mattered
- * more than the label and set the label larger and darker anyway. The label is
- * the caption now and the value is the content, which is what was meant all
- * along.
- *
- * Values also get two lines. Three cards across a phone leave about eighty-six
- * points of content width, which "Air Conditioning" and "Repairs only" both
- * overrun, and a row of shortcuts that ellipsises its own content reads as
- * broken. The block is held at two lines whether or not the second is used, so
- * the three cards stay level.
  */
 export default function HomeQuickActions({
   balance,
@@ -116,7 +102,7 @@ export default function HomeQuickActions({
   ];
 
   return (
-    <View style={{ flexDirection: 'row', gap: 10, alignItems: 'stretch' }}>
+    <View style={{ flexDirection: 'row', gap: 10 }}>
       {actions.map((action) => (
         <Pressable
           key={action.id}
@@ -137,57 +123,59 @@ export default function HomeQuickActions({
           <View
             style={{
               ...SURFACE_STYLES.homeCard,
+              /**
+                * Flat, unlike the cards below. A shadow says a surface is
+                * lifted off the page and worth reaching for, which is right
+                * for a job card you are being asked to read and wrong for
+                * three small shortcuts sitting in a row. Three of them side by
+                * side just made the row feel heavy. The hairline border is
+                * enough to hold each card's edge.
+                */
+              shadowOpacity: 0,
+              shadowRadius: 0,
+              shadowOffset: { width: 0, height: 0 },
+              elevation: 0,
               backgroundColor: Colors.white,
               borderRadius: BorderRadius.lg,
               paddingHorizontal: 12,
-              paddingTop: 11,
+              paddingTop: 12,
               paddingBottom: 11,
             }}
           >
-            {/**
-              * Icon and label share a line. It reads as one caption rather than
-              * two stacked things, and the row it saves is the room the value
-              * needs to wrap.
-              */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-              <action.Icon size={14} color={action.tone} strokeWidth={2.2} />
-              <Text
-                numberOfLines={1}
-                style={{
-                  fontSize: 9.5,
-                  lineHeight: 13,
-                  fontFamily: 'Poppins-Medium',
-                  color: Colors.textSecondaryDark,
-                  letterSpacing: 0.5,
-                  textTransform: 'uppercase',
-                  flexShrink: 1,
-                }}
-              >
-                {action.label}
-              </Text>
-            </View>
+            <action.Icon size={19} color={action.tone} strokeWidth={2.1} />
 
             {/**
-              * The content, and typeset like it. Held to a two-line block so a
-              * long service name has somewhere to go and the cards still line
-              * up when it does not.
+              * Left-aligned, not centred. A centred label in a small box reads
+              * as a button; a label with a value beneath it reads as something
+              * you already know, which is what these are.
               */}
-            <View style={{ minHeight: VALUE_LINE_HEIGHT * 2, marginTop: 7 }}>
-              <Text
-                numberOfLines={2}
-                style={{
-                  fontSize: 14.5,
-                  lineHeight: VALUE_LINE_HEIGHT,
-                  fontFamily: 'Poppins-SemiBold',
-                  color: action.id === 'urgent' ? Colors.error : Colors.textPrimary,
-                  letterSpacing: -0.2,
-                  /** Digits line up across the row when the balance is showing. */
-                  fontVariant: ['tabular-nums'],
-                }}
-              >
-                {action.value}
-              </Text>
-            </View>
+            <Text
+              numberOfLines={1}
+              style={{
+                fontSize: 12.5,
+                fontFamily: 'Poppins-SemiBold',
+                color: Colors.textPrimary,
+                letterSpacing: -0.1,
+                marginTop: 10,
+              }}
+            >
+              {action.label}
+            </Text>
+
+            <Text
+              numberOfLines={1}
+              style={{
+                fontSize: 11.5,
+                lineHeight: 16,
+                fontFamily: 'Poppins-Medium',
+                color: action.id === 'urgent' ? Colors.error : Colors.textSecondaryDark,
+                marginTop: 1,
+                /** Digits line up across the row when the balance is showing. */
+                fontVariant: ['tabular-nums'],
+              }}
+            >
+              {action.value}
+            </Text>
           </View>
         </Pressable>
       ))}
