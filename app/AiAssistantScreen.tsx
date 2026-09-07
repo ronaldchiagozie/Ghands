@@ -46,6 +46,9 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { clearHandySession, readHandySession, rememberHandySession } from '@/utils/handySession';
+import { ArrowLeft } from 'lucide-react-native';
+import { NAV_FALLBACK, navigateBack } from '@/utils/navigation';
 
 const AI_BOT_HAPPY = require('../ghandsaibothappy.png');
 
@@ -126,6 +129,7 @@ export default function AiAssistantScreen() {
 
   useEffect(() => {
     if (params.newChat === 'true') {
+      void clearHandySession();
       startNewChat();
       return;
     }
@@ -133,8 +137,31 @@ export default function AiAssistantScreen() {
     const id = params.conversationId ? parseInt(params.conversationId, 10) : NaN;
     if (!Number.isNaN(id) && id > 0) {
       void loadConversation(id);
+      return;
     }
+
+    /**
+     * Nothing was asked for, so pick up where they left off.
+     *
+     * Coming back to Handy used to start from the greeting and the quick-action
+     * cards every time, with no sign that the conversation you were halfway
+     * through still existed. It did, in the history drawer, but you had to know
+     * to go and look; most people would simply start again and repeat
+     * themselves to an assistant that had already been told.
+     *
+     * Only within the session window. An answer to a question you have
+     * forgotten asking reads as broken rather than helpful, so an old thread
+     * gives way to a fresh greeting.
+     */
+    void readHandySession().then((remembered) => {
+      if (remembered) void loadConversation(remembered);
+    });
   }, [loadConversation, params.conversationId, params.newChat, startNewChat]);
+
+  /** Keeps the window open while they are actually using it. */
+  useEffect(() => {
+    if (conversationId) void rememberHandySession(conversationId);
+  }, [conversationId]);
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -284,7 +311,32 @@ export default function AiAssistantScreen() {
             paddingBottom: 4,
           }}
         >
-          <AiMenuButton onPress={() => void openDrawer()} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            {/**
+              * A way out that is not the system gesture. Handy is opened from
+              * the home screen and from a booking, and on Android there is no
+              * edge swipe to fall back on, so leaving meant the hardware button
+              * or nothing.
+              */}
+            <Pressable
+              onPress={() => {
+                haptics.light();
+                navigateBack(router, NAV_FALLBACK.clientHome);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={{
+                width: MIN_TOUCH_TARGET,
+                height: MIN_TOUCH_TARGET,
+                alignItems: 'flex-start',
+                justifyContent: 'center',
+              }}
+            >
+              <ArrowLeft size={24} color={AI_COLORS.primary} />
+            </Pressable>
+            <AiMenuButton onPress={() => void openDrawer()} />
+          </View>
           <Pressable
             onPress={() => {
               haptics.light();
