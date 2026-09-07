@@ -6,7 +6,6 @@ import { authService } from '@/services/authService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { isAppEntryRoute } from '@/utils/authPublicRoutes';
 import { ScreenBootLoader } from '@/components/ScreenBootLoader';
-import { isAccessTokenExpired } from '@/utils/jwtExpiry';
 import { getRoleLoginRoute, handleTokenExpiration } from '@/utils/tokenExpirationHandler';
 
 const AUTH_ROLE_KEY = '@ghands:user_role';
@@ -51,14 +50,16 @@ export default function ClientEntryPoint() {
         const token = await authService.getAuthToken();
 
         if (token) {
-          if (isAccessTokenExpired(token)) {
-            hasRedirectedRef.current = true;
-            await handleTokenExpiration();
-            const loginRoute = await getRoleLoginRoute();
-            router.replace(loginRoute as never);
-            return;
-          }
-
+          /**
+           * A token is a token. This used to send anyone whose token looked
+           * expired to us straight to the login screen at launch, and clear
+           * their session on the way, before a single request had been made.
+           *
+           * Our clock is not the server's. If the token really is dead the first
+           * authenticated call comes back 401 and the session ends then, on the
+           * server's word rather than the handset's. Being wrong here means
+           * greeting somebody with a login screen for an account they never left.
+           */
           hasRedirectedRef.current = true;
 
           /**
