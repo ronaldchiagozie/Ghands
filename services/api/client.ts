@@ -75,7 +75,8 @@ class ApiClient {
     const status = error?.status || error?.response?.status;
     const message = (error?.message || error?.details?.data?.error || error?.details?.error || '').toLowerCase();
     return (
-      status === 401 || status === 403 ||
+      // 403 is a permission failure, not a broken session; see the 401 handling below.
+      status === 401 ||
       message.includes('unauthorized') || message.includes('invalid token') ||
       message.includes('token expired') || message.includes('not authenticated') ||
       message.includes('no authorization token') || message.includes('no token') ||
@@ -239,7 +240,21 @@ class ApiClient {
           if (
             !isNetworkErr &&
             !config.skipAuth &&
-            ((statusCode === 401 && retriedAfterRefresh) || statusCode === 403)
+            /**
+             * 401 only. A 403 used to end the session too, which is wrong: it
+             * means "you are signed in and not allowed to do this", not "your
+             * session is invalid". Clearing the tokens on one signs somebody out
+             * of a working account because of a single forbidden request.
+             *
+             * The backend now returns 403 PROVIDER_NOT_VERIFIED on gated
+             * endpoints, which made this a trap: an unverified provider opening
+             * the jobs or profile tab was signed out on the spot, and could
+             * never stay in long enough to finish verifying. A 403 is thrown to
+             * the caller with its code so the screen can say what is actually
+             * wrong.
+             */
+            statusCode === 401 &&
+            retriedAfterRefresh
           ) {
             await expireAuthSession();
             throw new AuthError('Your session has expired. Please sign in again.');
