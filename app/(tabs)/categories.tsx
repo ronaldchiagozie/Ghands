@@ -33,6 +33,8 @@ export default function CategoryPage() {
     searchQuery?: string;
     fromAddButton?: string;
     fromHome?: string;
+    /** Set by the Urgent help action. Carried through to the request. */
+    emergency?: string;
     /** When set with requestId, Continue returns to ServiceMapScreen instead of creating a new request */
     returnToServiceMap?: string;
     requestId?: string;
@@ -428,12 +430,27 @@ export default function CategoryPage() {
         const response = await serviceRequestService.createRequest({
           userId,
           categoryName: isToggle,
+          /**
+           * The Urgent help action sends this, and until now nothing read it:
+           * the button was red, said "Urgent help", and produced an ordinary
+           * booking with the same providers and the same wait.
+           */
+          isUrgent: params.emergency === 'true',
           // Don't send jobTitle or description - they're optional and backend rejects empty strings
         });
 
         // Validate response has requestId
         if (!response || !response.requestId) {
           throw new Error('Invalid response: requestId not found');
+        }
+
+        /**
+         * Said plainly rather than quietly downgraded. Somebody who pressed
+         * Urgent help and picked a trade it does not cover should know their
+         * booking is an ordinary one before they wait on it.
+         */
+        if (response.urgentDeclined) {
+          showError('Urgent booking is only for repairs like plumbing and electrical. This is booked as normal.');
         }
 
         /**

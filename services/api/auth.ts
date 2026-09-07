@@ -3,6 +3,7 @@ import { setClientAccountType } from '../../utils/clientAccountType';
 import { extractUserIdFromToken } from '../../utils/tokenUtils';
 import { authService as authServiceInstance } from '../authService';
 import { apiClient } from './client';
+import { captureRefreshToken } from '@/utils/captureRefreshToken';
 import type {
   UserSignupPayload,
   UserSignupResponse,
@@ -39,6 +40,7 @@ export const authService = {
         throw new Error('Signup failed: No user data or token received from server.');
       }
       await authServiceInstance.setAuthToken(token);
+      await captureRefreshToken(response);
       await cacheDevAuthTokenForRole('client', token);
       const { schedulePushSyncAfterAuth } = await import('@/utils/pushNotifications');
       schedulePushSyncAfterAuth();
@@ -74,6 +76,7 @@ export const authService = {
       throw new Error('Signup failed: No token received from server.');
     }
     await authServiceInstance.setAuthToken(token);
+      await captureRefreshToken(response);
     await cacheDevAuthTokenForRole('client', token);
     const { schedulePushSyncAfterAuth } = await import('@/utils/pushNotifications');
     schedulePushSyncAfterAuth();
@@ -114,6 +117,7 @@ export const authService = {
       const companyId = companyData?.id || companyData?.companyId || (response as any)?.id;
       if (!token) throw new Error('Signup failed: No token received from server.');
       await authServiceInstance.setAuthToken(token);
+      await captureRefreshToken(response);
       const { schedulePushSyncAfterAuth } = await import('@/utils/pushNotifications');
       schedulePushSyncAfterAuth();
       let finalCompanyId: number | undefined = undefined;
@@ -157,6 +161,7 @@ export const authService = {
         throw new Error('Login failed: No user data or token received from server.');
       }
       await authServiceInstance.setAuthToken(token);
+      await captureRefreshToken(response);
       await cacheDevAuthTokenForRole('client', token);
       const { schedulePushSyncAfterAuth } = await import('@/utils/pushNotifications');
       schedulePushSyncAfterAuth();

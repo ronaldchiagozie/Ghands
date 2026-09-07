@@ -84,6 +84,28 @@ class ApiClient {
     );
   }
 
+  /**
+   * Asks one endpoint a signed-in customer can always reach.
+   *
+   * True means the token really is dead. False means the 401 belonged to
+   * whatever was being called, not to the session, and the caller gets an
+   * ordinary error to show instead of being thrown out.
+   */
+  private async confirmSessionRejected(): Promise<boolean> {
+    try {
+      const token = await authServiceInstance.getAuthToken();
+      if (!token) return true;
+
+      const response = await fetch(`${this.baseUrl}/api/user/profile`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return response.status === 401;
+    } catch {
+      return false;
+    }
+  }
+
   private async refreshAuthToken(): Promise<boolean> {
     try {
       const refreshToken = await authServiceInstance.getRefreshToken();
@@ -166,6 +188,27 @@ class ApiClient {
           if (refreshed) {
             return this.retryRequest<T>(url, config, retries, retryDelay, true);
           }
+
+          /**
+           * Confirm before ending the session.
+           *
+           * A single endpoint refusing us is not the server's verdict on the
+           * session. The provider app had exactly this block and it signed
+           * people out on the first 401 from anything, because the refresh
+           * above could never succeed until the backend started returning a
+           * refresh token at login.
+           *
+           * Asking one call a signed-in customer is known to reach settles it,
+           * and only a clean 401 there counts. A timeout or a cold server says
+           * nothing about a token.
+           */
+          const sessionReallyOver = await this.confirmSessionRejected();
+          if (!sessionReallyOver) {
+            const err = new Error('You do not have access to that.') as any;
+            err.status = 401;
+            throw err;
+          }
+
           await expireAuthSession();
           throw new AuthError('Your session has expired. Please sign in again.');
         }

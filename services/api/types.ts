@@ -128,9 +128,19 @@ export interface CreateServiceRequestPayload {
   jobTitle?: string;
   description?: string;
   comment?: string;
+  /**
+   * Only accepted for trades where waiting causes damage. The backend rejects
+   * anything else with CATEGORY_NOT_URGENT_ELIGIBLE, which is the guard that
+   * stops "urgent" becoming the default every customer picks.
+   */
+  isUrgent?: boolean;
 }
 
 export interface CreateServiceRequestResponse {
+  /** True when the booking was accepted as urgent. */
+  isUrgent?: boolean;
+  /** True when urgent was asked for and the category does not allow it. */
+  urgentDeclined?: boolean;
   requestId: number;
   categoryName: string;
   status: string;

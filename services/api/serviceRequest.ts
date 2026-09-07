@@ -171,7 +171,35 @@ export const serviceRequestService = {
       if (payload.jobTitle?.trim()) requestPayload.jobTitle = payload.jobTitle.trim();
       if (payload.description?.trim()) requestPayload.description = payload.description.trim();
       if (payload.comment?.trim()) requestPayload.comment = payload.comment.trim();
-      const response = await apiClient.post<any>('/api/request-service/requests', requestPayload);
+      /**
+       * Only sent when true. The backend rejects the flag outright for a
+       * category that is not urgent-eligible, so passing false everywhere would
+       * turn every ordinary booking into a request that can fail on a field
+       * nobody asked for.
+       */
+      if (payload.isUrgent) requestPayload.isUrgent = true;
+      let urgentDeclined = false;
+      let response: any;
+      try {
+        response = await apiClient.post<any>('/api/request-service/requests', requestPayload);
+      } catch (error: any) {
+        /**
+         * Urgent is only offered for trades where waiting causes damage, and
+         * the backend refuses it elsewhere. Somebody who tapped Urgent help and
+         * then chose cleaning should get a booking, not a dead end: the flag is
+         * dropped and the request goes through as an ordinary one.
+         *
+         * The caller is told through `urgentDeclined` so it can say so, rather
+         * than silently downgrading something the customer asked for.
+         */
+        if (error?.code === 'CATEGORY_NOT_URGENT_ELIGIBLE' && requestPayload.isUrgent) {
+          delete requestPayload.isUrgent;
+          response = await apiClient.post<any>('/api/request-service/requests', requestPayload);
+          urgentDeclined = true;
+        } else {
+          throw error;
+        }
+      }
       const responseData = (response as any).data?.data || (response as any).data || response;
       const requestId = responseData.requestId || responseData.id || responseData.data?.requestId;
       if (!requestId) throw new Error('Invalid response from API: requestId not found');
@@ -181,6 +209,8 @@ export const serviceRequestService = {
         categoryName: responseData.categoryName || payload.categoryName,
         status: responseData.status || 'pending',
         message: responseData.message || 'Service request created successfully',
+        isUrgent: Boolean(responseData.isUrgent),
+        urgentDeclined,
       };
     } catch (error) {
       throw error;
