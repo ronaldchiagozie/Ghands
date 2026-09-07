@@ -38,6 +38,15 @@ type HomeQuickActionsProps = {
  *
  * And it had a caption explaining what quick actions are, which is the tell
  * that the tiles were not explaining themselves.
+ *
+ * One card is filled sage, and only one. A row of three identical white cards
+ * on a white page has nothing to look at and nothing to look at first, but
+ * colouring all of them brings back the noise that was the original problem.
+ * One filled card gives the row an anchor and leaves the other two quiet.
+ *
+ * The wallet gets it because it is the one that always has something to say.
+ * Rebook is not always there and urgent is rare, so filling either would put
+ * the weight on the card least likely to matter today.
  */
 export default function HomeQuickActions({
   balance,
@@ -58,6 +67,8 @@ export default function HomeQuickActions({
     value: string;
     tone: string;
     busy?: boolean;
+    /** Exactly one card carries the sage. See the note on the row below. */
+    filled?: boolean;
   }[] = [
     {
       id: 'wallet',
@@ -68,7 +79,8 @@ export default function HomeQuickActions({
         typeof balance === 'number' && Number.isFinite(balance)
           ? `₦${Math.round(balance).toLocaleString('en-NG')}`
           : 'View balance',
-      tone: Colors.accent,
+      tone: Colors.white,
+      filled: true,
     },
     ...(service
       ? [
@@ -123,7 +135,9 @@ export default function HomeQuickActions({
           <View
             style={{
               ...SURFACE_STYLES.homeCard,
-              backgroundColor: Colors.white,
+              backgroundColor: action.filled ? Colors.accent : Colors.white,
+              /** Same weight of edge on all three, so only the fill differs. */
+              borderColor: action.filled ? 'rgba(30, 45, 18, 0.45)' : SURFACE_STYLES.homeCard.borderColor,
               borderRadius: BorderRadius.default,
               paddingHorizontal: 12,
               paddingTop: 12,
@@ -142,7 +156,7 @@ export default function HomeQuickActions({
               style={{
                 fontSize: 12.5,
                 fontFamily: 'Poppins-SemiBold',
-                color: Colors.textPrimary,
+                color: action.filled ? Colors.white : Colors.textPrimary,
                 letterSpacing: -0.1,
                 marginTop: 10,
               }}
@@ -156,7 +170,11 @@ export default function HomeQuickActions({
                 fontSize: 11.5,
                 lineHeight: 16,
                 fontFamily: 'Poppins-Medium',
-                color: action.id === 'urgent' ? Colors.error : Colors.textSecondaryDark,
+                color: action.filled
+                  ? 'rgba(255, 255, 255, 0.82)'
+                  : action.id === 'urgent'
+                    ? Colors.error
+                    : Colors.textSecondaryDark,
                 marginTop: 1,
                 /** Digits line up across the row when the balance is showing. */
                 fontVariant: ['tabular-nums'],
