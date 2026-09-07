@@ -110,11 +110,36 @@ export function useBookingResume() {
   }, []);
 
   const discard = useCallback(async () => {
+    const discarding = point;
+
+    /**
+     * Forget it here first, so the card goes the moment they tap. Waiting on
+     * the server would leave a discarded booking sitting on screen while a
+     * cold instance wakes up.
+     */
     await clearBookingResumePoint();
     setPoint(null);
     setDraft(null);
     setShouldPrompt(false);
-  }, []);
+
+    /**
+     * Then tell the server, which deletes a draft outright rather than marking
+     * it cancelled. Without this the row survives until the twenty-hour sweep,
+     * and a booking somebody threw away would still be waiting for them on
+     * another device.
+     *
+     * Best effort on purpose: the local copy is already gone, and a failure
+     * here means one row expires on its own rather than being removed early.
+     */
+    const requestId = discarding ? parseInt(discarding.requestId, 10) : NaN;
+    if (Number.isFinite(requestId) && requestId > 0) {
+      try {
+        await serviceRequestService.cancelRequest(requestId);
+      } catch {
+        /* it expires on its own */
+      }
+    }
+  }, [point]);
 
   /**
    * Closes the prompt without touching the draft. Saying "not now" is an
