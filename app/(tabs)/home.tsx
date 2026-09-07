@@ -783,7 +783,12 @@ const HomeScreen = React.memo(() => {
   });
 
   return (
-    <SafeAreaWrapper tabletShellTop>
+    /**
+      * Not white. Every card on this page is white and the shadows are gone,
+      * so the ground is the only thing left holding their edges - and a white
+      * card on a white page is a hairline and nothing else.
+      */
+    <SafeAreaWrapper tabletShellTop backgroundColor={Colors.pageGround}>
       <View style={{ flex: 1 }}>
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -876,7 +881,13 @@ const HomeScreen = React.memo(() => {
             <CoachMarkTarget name="search-bar">
               <View
                 className="rounded-xl px-4 py-0 flex-row items-center"
-                style={[searchBarStyle, SURFACE_STYLES.searchField, { backgroundColor: Colors.backgroundGray }]}
+                /**
+                  * White, like the cards. It used to be a cool grey that read
+                  * as inset against a white page; against the sage ground it
+                  * would be both the wrong temperature and almost the same
+                  * lightness as the page, which would sink it.
+                  */
+                style={[searchBarStyle, SURFACE_STYLES.searchField, { backgroundColor: Colors.white }]}
               >
                 <TextInput
                   placeholder="Search for services"

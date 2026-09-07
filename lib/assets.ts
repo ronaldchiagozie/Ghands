@@ -95,6 +95,19 @@ export const DESIGN_TOKENS = {
     sageTint: '#F2F8EA',
     /** Soft sage empty-state surface */
     sageSurface: '#F8FAF7',
+    /**
+     * The ground the cards sit on.
+     *
+     * White cards need somewhere to sit. On a white page a white card is only
+     * a hairline border, which is nothing to look at and less to hold a
+     * layout together - the page reads as one flat sheet with faint lines
+     * drawn on it. Four percent off white is enough to give every card an
+     * edge without anything looking grey.
+     *
+     * Biased toward the sage rather than a neutral grey, so the tint belongs
+     * to this app instead of being the default cool grey every app ships.
+     */
+    pageGround: '#F4F7F1',
     /** Dark hero panels and banners */
     surfaceDark: '#111827',
     /** Sage-tinted border on white cards */
