@@ -24,7 +24,7 @@ import { useToast } from '@/hooks/useToast';
 import Toast from '@/components/Toast';
 import { Colors, Spacing, BorderRadius } from '@/lib/designSystem';
 import { MapPin, AlertCircle, ArrowLeft } from 'lucide-react-native';
-import { clearBookingResumePoint, rememberBookingStep } from '@/utils/bookingResume';
+import { clearBookingResumePoint } from '@/utils/bookingResume';
 import { navigateToClientHomeTab } from '@/utils/navigation';
 const MAX_SELECTION = 3;
 
