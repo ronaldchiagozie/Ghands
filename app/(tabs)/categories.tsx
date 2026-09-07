@@ -19,6 +19,7 @@ import { isConnectivityOrNetworkError } from '@/utils/isNetworkFailure';
 import { extractUserIdFromToken } from '@/utils/tokenUtils';
 import { BorderRadius, Colors, MIN_TOUCH_TARGET, Spacing, SHADOWS, useTabScrollContentPaddingTop, useTabScreenScrollBottomPadding } from '@/lib/designSystem';
 import { navigateBack, navigateToClientHomeTab, NAV_FALLBACK } from '@/utils/navigation';
+import ExpandableDescription from '@/components/categories/ExpandableDescription';
 
 interface CategoryData extends ServiceCategory {
   IconComponent: React.ComponentType;
@@ -744,16 +745,16 @@ export default function CategoryPage() {
                       }}>
                         {category.displayName}
                       </Text>
-                      <Text style={{
-                        fontSize: 12,
-                        width: '80%',
-                        color: Colors.textSecondaryDark,
-                        lineHeight: 16,
-                        marginBottom: 4,
-                        fontFamily: 'Poppins-Regular'
-                      }}>
-                        {category.description}
-                      </Text>
+                      {/**
+                        * Full width, two lines, and a control only when there
+                        * is more. The description was pinned to 80% of its
+                        * column, which wrapped it earlier than it needed to and
+                        * made every card taller than its own content.
+                        */}
+                      <ExpandableDescription
+                        text={category.description}
+                        label={category.displayName}
+                      />
                       <View style={{
                         backgroundColor: 'transparent',
                         borderRadius: 12,
