@@ -46,6 +46,7 @@ export function useBookingResume() {
     if (!stored) {
       setPoint(null);
       setDraft(null);
+      setShouldPrompt(false);
       setIsLoading(false);
       return;
     }
@@ -55,47 +56,58 @@ export function useBookingResume() {
       await clearBookingResumePoint();
       setPoint(null);
       setDraft(null);
+      setShouldPrompt(false);
       setIsLoading(false);
       return;
     }
 
+    /**
+     * Show it from the stored pointer first, then check with the server.
+     *
+     * This used to wait for getRequestDetails before showing anything, so the
+     * draft only existed once the server had answered. The backend sleeps when
+     * idle and its first call can take twenty seconds or time out, which is
+     * exactly when somebody opens the app, so the prompt and the tab quietly
+     * failed to appear at all and the draft looked lost.
+     *
+     * The pointer is enough to render: it holds the category, the step and the
+     * answers already given. The server's job is to correct us, not to grant
+     * permission, and it does that a moment later.
+     */
+    setPoint(stored);
+    setShouldPrompt(await shouldPromptResume(stored));
+    setIsLoading(false);
+
     try {
       const request = await serviceRequestService.getRequestDetails(requestId);
 
-      /**
-       * Only offer it back while it is still unfinished. Anything that has left
-       * draft is a real booking and belongs in the jobs list, not behind a
-       * "continue where you left off".
-       */
       if (isAbandonedDraft(request)) {
-        setPoint(stored);
+        /** Fills in the job title and the date, which the pointer does not hold. */
         setDraft(request);
-        setShouldPrompt(await shouldPromptResume(stored));
       } else {
+        /**
+         * Finished, cancelled, or published from another device. Offering to
+         * reopen a job somebody already booked is worse than offering nothing.
+         */
         await clearBookingResumePoint();
         setPoint(null);
         setDraft(null);
+        setShouldPrompt(false);
       }
     } catch (error: any) {
       /**
        * A 404 means the request is gone and the pointer should go with it.
-       * Anything else - offline, a 500, a cold server - is not evidence about
-       * the booking, so the pointer stays and the card simply does not appear
-       * this time.
+       * Anything else - offline, a 500, a cold server - says nothing about the
+       * booking, so what is already on screen stays there.
        */
       if (error?.status === 404) {
         await clearBookingResumePoint();
+        setPoint(null);
+        setDraft(null);
+        setShouldPrompt(false);
       }
-      setPoint(null);
-      setDraft(null);
-    } finally {
-      setIsLoading(false);
     }
   }, []);
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
 
   const discard = useCallback(async () => {
     await clearBookingResumePoint();

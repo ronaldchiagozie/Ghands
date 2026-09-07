@@ -1075,28 +1075,6 @@ const HomeScreen = React.memo(() => {
             </View>
           </View>
           */}
-          {/**
-            * The whole surface for an unfinished booking on this screen: a
-            * prompt on the way in, and nothing left behind afterwards.
-            *
-            * There was a card here too, which made the home screen carry a
-            * permanent reminder of something half-done. A home screen earns its
-            * calm by not keeping every outstanding thing in view, so the draft
-            * lives in Jobs, where bookings live, and this asks once.
-            */}
-          {resumePoint ? (
-            <ResumeBookingModal
-              visible={shouldPromptResume}
-              categoryName={resumePoint.categoryName}
-              jobTitle={resumeDraft?.jobTitle}
-              scheduleLabel={resumeScheduleLabel}
-              stepLabel={resumeStepLabel ?? 'Finish your booking'}
-              steps={bookingStepLabels()}
-              progress={resumeProgress ?? { done: 0, total: 4 }}
-              onResume={handleResumeBooking}
-              onDismiss={() => void dismissResumePrompt()}
-            />
-          ) : null}
           <View style={{ paddingHorizontal: CLIENT_HOME_SCROLL_GUTTER }}>
             <AccountSetupCard
               outstanding={setupOutstanding}
@@ -1252,6 +1230,29 @@ const HomeScreen = React.memo(() => {
           <View style={{ height: bottomSpacerHeight }} />
         </Animated.View>
       </ScrollView>
+
+      {/**
+        * The whole surface for an unfinished booking on this screen: a
+        * prompt on the way in, and nothing left behind afterwards.
+        *
+        * There was a card here too, which made the home screen carry a
+        * permanent reminder of something half-done. A home screen earns its
+        * calm by not keeping every outstanding thing in view, so the draft
+        * lives in Jobs, where bookings live, and this asks once.
+        */}
+      {resumePoint ? (
+        <ResumeBookingModal
+          visible={shouldPromptResume}
+          categoryName={resumePoint.categoryName}
+          jobTitle={resumeDraft?.jobTitle}
+          scheduleLabel={resumeScheduleLabel}
+          stepLabel={resumeStepLabel ?? 'Finish your booking'}
+          steps={bookingStepLabels()}
+          progress={resumeProgress ?? { done: 0, total: 4 }}
+          onResume={handleResumeBooking}
+          onDismiss={() => void dismissResumePrompt()}
+        />
+      ) : null}
 
       <AiSparkleFab />
 

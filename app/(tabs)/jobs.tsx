@@ -541,8 +541,23 @@ export default function JobsScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 6, gap: 26, alignItems: 'flex-end' }}
-          style={{ flexGrow: 0, marginBottom: 18 }}
+          contentContainerStyle={{
+            paddingHorizontal: 6,
+            /**
+             * Real vertical padding, not none. A horizontal ScrollView sizes
+             * itself to its content, so a row with no room to breathe clipped
+             * the tops of the icons against its own edge.
+             */
+            paddingVertical: 6,
+            gap: 26,
+            alignItems: 'center',
+          }}
+          /**
+           * A fixed height rather than flexGrow: 0. Letting it size to content
+           * inside a flex column is what let the row collapse tighter than the
+           * icons it holds.
+           */
+          style={{ height: 62, flexGrow: 0, flexShrink: 0, marginBottom: 10 }}
         >
           {visibleTabs.map((status) => {
             const isActive = activeTab === status;
@@ -579,7 +594,7 @@ export default function JobsScreen() {
                   style={{
                     height: 2.5,
                     borderRadius: 2,
-                    marginTop: 7,
+                    marginTop: 8,
                     alignSelf: 'stretch',
                     backgroundColor: isActive ? Colors.accent : 'transparent',
                   }}
