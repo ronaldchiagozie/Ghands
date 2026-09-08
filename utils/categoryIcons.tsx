@@ -1,37 +1,29 @@
 import React from 'react';
 import { Image, ImageSourcePropType, Text, View } from 'react-native';
 import {
-  Armchair,
-  Bath,
-  Battery,
-  Bug,
-  Cable,
-  Camera,
-  Car,
-  Droplet,
-  Fan,
-  Flame,
-  GraduationCap,
-  HardHat,
-  KeyRound,
-  Layers,
-  type LucideIcon,
-  Microwave,
-  Paintbrush,
-  PanelsTopLeft,
-  Router,
-  SatelliteDish,
-  Scissors,
-  Shirt,
-  Snowflake,
-  SprayCan,
-  Sprout,
-  Truck,
-  Utensils,
-  Wallpaper,
-  WashingMachine,
-  Wrench,
-} from 'lucide-react-native';
+  AirConditioning,
+  Bathroom,
+  Catering,
+  Ceilings,
+  Construction,
+  Fumigation,
+  Furniture,
+  GeneralRepair,
+  Generator,
+  GlassWork,
+  Internet,
+  Landscaping,
+  Locksmith,
+  Moving,
+  Photography,
+  Salon,
+  Satellite,
+  Tailoring,
+  Tutoring,
+  Waterproofing,
+  Welding,
+  type TradeGlyph,
+} from '@/components/icons/TradeGlyphs';
 
 import { Colors } from '@/lib/designSystem';
 
@@ -492,42 +484,34 @@ export function resolveCategoryImageSource(
  * servicing" are all the same trade. Order matters - the first match wins, so
  * the more specific phrase is listed above the word it contains.
  */
-const GLYPH_RULES: { Icon: LucideIcon; keywords: string[] }[] = [
-  { Icon: Battery, keywords: ['generator', 'inverter', 'battery', 'power backup'] },
-  { Icon: Snowflake, keywords: ['air condition', 'aircondition', 'ac repair', 'acrepair', 'hvac', 'cooling', 'refrigerat', 'freezer', 'fridge', 'chiller'] },
-  { Icon: Fan, keywords: ['fan', 'ventilation', 'extractor'] },
-  { Icon: Droplet, keywords: ['waterproof', 'water proof', 'damp', 'drainage', 'soakaway', 'leak'] },
-  { Icon: PanelsTopLeft, keywords: ['glass', 'window', 'mirror', 'aluminium', 'aluminum', 'glazing'] },
-  { Icon: Flame, keywords: ['weld', 'metal', 'fabricat', 'iron', 'steel', 'blacksmith'] },
-  { Icon: Car, keywords: ['mechanic', 'vehicle', 'motor', 'tyre', 'tire', 'panel beat'] },
-  { Icon: Armchair, keywords: ['furniture', 'sofa', 'interior', 'joinery'] },
-  { Icon: Sprout, keywords: ['garden', 'landscap', 'lawn', 'horticultur', 'nursery', 'agric'] },
-  { Icon: Shirt, keywords: ['tailor', 'sewing', 'fashion', 'laundry', 'dry clean', 'drycleaning', 'ironing', 'clothing'] },
-  { Icon: Utensils, keywords: ['catering', 'chef', 'cook', 'food', 'kitchen staff'] },
-  { Icon: GraduationCap, keywords: ['tutor', 'lesson', 'teacher', 'teaching', 'coaching'] },
-  { Icon: Camera, keywords: ['photograph', 'videograph', 'filming'] },
-  { Icon: Scissors, keywords: ['hair', 'barber', 'salon', 'beauty', 'makeup', 'make up', 'nail', 'spa', 'massage'] },
-  { Icon: Truck, keywords: ['moving', 'relocat', 'haulage', 'logistics', 'delivery', 'dispatch', 'courier'] },
-  { Icon: KeyRound, keywords: ['locksmith', 'lock', 'key', 'door'] },
-  { Icon: SatelliteDish, keywords: ['satellite', 'dstv', 'gotv', 'antenna', 'aerial', 'decoder'] },
-  { Icon: Router, keywords: ['internet', 'wifi', 'wi fi', 'network', 'router', 'fibre', 'fiber'] },
-  { Icon: Cable, keywords: ['cabling', 'wiring', 'cable'] },
-  { Icon: WashingMachine, keywords: ['washing machine', 'washer', 'dryer'] },
-  { Icon: Microwave, keywords: ['microwave', 'oven', 'cooker', 'gas'] },
-  { Icon: Layers, keywords: ['pop ', 'ceiling', 'screed', 'plaster', 'partition', 'drywall'] },
-  { Icon: SprayCan, keywords: ['spray', 'coating', 'polish'] },
-  { Icon: Bath, keywords: ['bathroom', 'toilet', 'sanitary', 'shower'] },
-  { Icon: Bug, keywords: ['fumigat', 'termite', 'rodent'] },
-  { Icon: Wallpaper, keywords: ['wallpaper', 'wall paper'] },
-  { Icon: Paintbrush, keywords: ['decorat', 'finishing', 'texture'] },
-  { Icon: HardHat, keywords: ['construction', 'builder', 'building', 'contractor', 'renovat', 'civil', 'engineer'] },
-  { Icon: Wrench, keywords: ['repair', 'fix', 'maintenance', 'handyman', 'servicing', 'installation'] },
+const GLYPH_RULES: { Glyph: TradeGlyph; keywords: string[] }[] = [
+  { Glyph: AirConditioning, keywords: ['air condition', 'aircondition', 'ac repair', 'acrepair', 'ac installation', 'hvac', 'cooling', 'refrigerat', 'freezer', 'fridge', 'chiller', 'fan', 'ventilation'] },
+  { Glyph: Generator, keywords: ['generator', 'inverter', 'battery', 'power backup'] },
+  { Glyph: Waterproofing, keywords: ['waterproof', 'water proof', 'damp', 'drainage', 'soakaway', 'leak'] },
+  { Glyph: GlassWork, keywords: ['glass', 'window', 'mirror', 'aluminium', 'aluminum', 'glazing'] },
+  { Glyph: Welding, keywords: ['weld', 'metal', 'fabricat', 'iron work', 'steel', 'blacksmith'] },
+  { Glyph: Moving, keywords: ['moving', 'relocat', 'haulage', 'logistics', 'delivery', 'dispatch', 'courier', 'mechanic', 'vehicle', 'tyre', 'tire'] },
+  { Glyph: Furniture, keywords: ['furniture', 'sofa', 'interior', 'joinery'] },
+  { Glyph: Landscaping, keywords: ['garden', 'landscap', 'lawn', 'horticultur', 'nursery', 'agric'] },
+  { Glyph: Tailoring, keywords: ['tailor', 'sewing', 'fashion', 'laundry', 'dry clean', 'drycleaning', 'ironing', 'clothing'] },
+  { Glyph: Catering, keywords: ['catering', 'chef', 'cook', 'food', 'kitchen'] },
+  { Glyph: Tutoring, keywords: ['tutor', 'lesson', 'teacher', 'teaching', 'coaching'] },
+  { Glyph: Photography, keywords: ['photograph', 'videograph', 'filming'] },
+  { Glyph: Salon, keywords: ['hair', 'barber', 'salon', 'beauty', 'makeup', 'make up', 'nail', 'spa', 'massage'] },
+  { Glyph: Locksmith, keywords: ['locksmith', 'lock', 'key', 'door'] },
+  { Glyph: Satellite, keywords: ['satellite', 'dstv', 'gotv', 'antenna', 'aerial', 'decoder', 'cable'] },
+  { Glyph: Internet, keywords: ['internet', 'wifi', 'wi fi', 'network', 'router', 'fibre', 'fiber'] },
+  { Glyph: Ceilings, keywords: ['pop ', 'ceiling', 'screed', 'plaster', 'partition', 'drywall', 'wallpaper', 'wall paper'] },
+  { Glyph: Fumigation, keywords: ['fumigat', 'termite', 'rodent', 'spray', 'coating'] },
+  { Glyph: Bathroom, keywords: ['bathroom', 'toilet', 'sanitary', 'shower', 'washing machine', 'washer'] },
+  { Glyph: Construction, keywords: ['construction', 'builder', 'building', 'contractor', 'renovat', 'civil', 'engineer'] },
+  { Glyph: GeneralRepair, keywords: ['repair', 'fix', 'maintenance', 'handyman', 'servicing', 'installation', 'decorat', 'finishing'] },
 ];
 
-function resolveCategoryGlyph(text: string): LucideIcon | null {
-  for (const { Icon, keywords } of GLYPH_RULES) {
+function resolveCategoryGlyph(text: string): TradeGlyph | null {
+  for (const { Glyph, keywords } of GLYPH_RULES) {
     for (const keyword of keywords) {
-      if (text.includes(keyword.trim())) return Icon;
+      if (text.includes(keyword.trim())) return Glyph;
     }
   }
   return null;
@@ -540,25 +524,21 @@ export function getCategoryGlyphName(
   description?: string,
 ): string | null {
   const combined = normalizeKey([name, displayName, description].filter(Boolean).join(' '));
-  const Icon = combined ? resolveCategoryGlyph(combined) : null;
-  return Icon ? (Icon.displayName ?? Icon.name ?? 'glyph') : null;
+  const Glyph = combined ? resolveCategoryGlyph(combined) : null;
+  return Glyph ? (Glyph.name || 'glyph') : null;
 }
 
-/** The same tile the initials sit in, so the two fallbacks are one family. */
-const CategoryGlyphTile = ({ Icon }: { Icon: LucideIcon }) => (
-  <View
-    style={{
-      width: ICON_SIZE,
-      height: ICON_SIZE,
-      borderRadius: 10,
-      backgroundColor: '#F0F7E6',
-      borderWidth: 1,
-      borderColor: '#E0ECC8',
-      alignItems: 'center',
-      justifyContent: 'center',
-    }}
-  >
-    <Icon size={20} color={Colors.accent} strokeWidth={1.9} />
+/**
+ * On nothing at all, exactly like the painted icons.
+ *
+ * The first version drew a tinted green box with a border around the glyph,
+ * which was the other half of why it stood out: every painted icon sits
+ * directly on the page, so a fallback in a box announced itself as a
+ * different kind of object before anybody looked at the drawing inside it.
+ */
+const CategoryGlyphTile = ({ Glyph }: { Glyph: TradeGlyph }) => (
+  <View style={{ width: ICON_SIZE, height: ICON_SIZE, alignItems: 'center', justifyContent: 'center' }}>
+    <Glyph size={ICON_SIZE} />
   </View>
 );
 
@@ -624,7 +604,7 @@ export const getCategoryIcon = (
   const combined = normalizeKey([name, displayName, description].filter(Boolean).join(' '));
   const Glyph = combined ? resolveCategoryGlyph(combined) : null;
   if (Glyph) {
-    const Drawn = () => <CategoryGlyphTile Icon={Glyph} />;
+    const Drawn = () => <CategoryGlyphTile Glyph={Glyph} />;
     return Drawn;
   }
 

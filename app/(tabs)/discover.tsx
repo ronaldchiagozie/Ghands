@@ -8,7 +8,7 @@ import {
   useTabScrollContentPaddingTop,
 } from '@/lib/designSystem';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ArrowUpRight, LayoutGrid, MapPin, Users } from 'lucide-react-native';
+import { ArrowUpRight, MapPin, Users } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Linking, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useUserLocation } from '@/hooks/useUserLocation';
@@ -318,22 +318,18 @@ export default function DiscoverScreen() {
             </View>
           ) : null}
 
-          {/* Every category, from the same list the Categories tab reads. */}
+          {/**
+            * Every category, from the same list the Categories tab reads,
+            * wearing the card the row has always worn. The hardcoded four
+            * could not learn about a new trade and were guaranteed to drift
+            * from the Categories tab the first time anybody added one; the
+            * cards themselves were never the problem.
+            *
+            * No heading. A row of service cards under the word Discover does
+            * not need to be told it is services.
+            */}
           {browseCategories.length > 0 ? (
             <View style={{ paddingHorizontal: 16, marginBottom: 24 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
-                <LayoutGrid size={18} color={Colors.textPrimary} style={{ marginRight: 8 }} />
-                <Text
-                  style={{
-                    fontSize: 16,
-                    fontFamily: 'Poppins-SemiBold',
-                    color: Colors.textPrimary,
-                    letterSpacing: -0.2,
-                  }}
-                >
-                  Browse services
-                </Text>
-              </View>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -354,25 +350,53 @@ export default function DiscoverScreen() {
                       onPress={() => handleCategoryPress(name)}
                       activeOpacity={0.85}
                       style={{
-                        width: 96,
+                        width: 170,
                         marginRight: 10,
-                        alignItems: 'center',
-                        paddingVertical: 8,
+                        borderRadius: BorderRadius.xl,
+                        padding: 16,
+                        backgroundColor: Colors.white,
+                        borderWidth: 1,
+                        borderColor: Colors.border,
                       }}
                     >
-                      <Icon />
+                      <View
+                        style={{
+                          width: 48,
+                          height: 48,
+                          borderRadius: BorderRadius.default,
+                          backgroundColor: Colors.backgroundGray,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          marginBottom: 12,
+                        }}
+                      >
+                        <Icon />
+                      </View>
                       <Text
                         numberOfLines={1}
                         style={{
-                          fontSize: 11.5,
+                          fontSize: 14,
                           fontFamily: 'Poppins-SemiBold',
                           color: Colors.textPrimary,
-                          textAlign: 'center',
-                          marginTop: 8,
+                          marginBottom: 4,
+                          letterSpacing: -0.2,
                         }}
                       >
                         {label}
                       </Text>
+                      {category.description?.trim() ? (
+                        <Text
+                          numberOfLines={1}
+                          style={{
+                            fontSize: 11,
+                            fontFamily: 'Poppins-Regular',
+                            color: Colors.textSecondaryDark,
+                            lineHeight: 16,
+                          }}
+                        >
+                          {category.description.trim()}
+                        </Text>
+                      ) : null}
                     </TouchableOpacity>
                   );
                 })}

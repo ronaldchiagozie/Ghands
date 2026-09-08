@@ -88,9 +88,11 @@ describe('category icon coverage', () => {
   });
 
   it('draws the right thing, not just any thing', () => {
-    expect(getCategoryGlyphName('generatorRepair')).toMatch(/Battery/i);
-    expect(getCategoryGlyphName('waterProofing')).toMatch(/Droplet/i);
-    expect(getCategoryGlyphName('Tailoring')).toMatch(/Shirt/i);
-    expect(getCategoryGlyphName('Air Conditioning')).toMatch(/Snowflake/i);
+    expect(getCategoryGlyphName('generatorRepair')).toMatch(/Generator/i);
+    expect(getCategoryGlyphName('waterProofing')).toMatch(/Waterproofing/i);
+    expect(getCategoryGlyphName('Tailoring')).toMatch(/Tailoring/i);
+    /** A unit on the wall with air coming off it, not a snowflake. */
+    expect(getCategoryGlyphName('Air Conditioning')).toMatch(/AirConditioning/i);
+    expect(getCategoryGlyphName('glassWork')).toMatch(/GlassWork/i);
   });
 });

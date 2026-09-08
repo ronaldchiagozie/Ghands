@@ -53,11 +53,19 @@ export function useBookingResume() {
        * time. The drafts listing makes a half-finished booking something the
        * account has rather than something one handset remembers.
        *
-       * No prompt from this path. The modal interrupts on the way into the
-       * app, and that is only earned by a booking somebody abandoned on the
-       * device they are holding - being interrupted about something left on
-       * another one is a notice, not a rescue. It appears in the Drafts tab,
-       * where they can go and find it.
+       * This prompts like any other draft, and the first version of it did
+       * not - which is why the modal was never seen on the home screen at
+       * all. The reasoning was that a booking left on another device has not
+       * earned an interruption here. The reasoning was about the wrong case:
+       * the local pointer expires after twenty hours and the server's draft
+       * does not, so the common path is not another handset, it is this one
+       * the next morning. Suppressing it there meant a draft appeared in the
+       * Jobs tab and nowhere else, forever.
+       *
+       * Still once per booking. The rule that stops it nagging lives in
+       * shouldPromptResume, which is keyed on the request id, so a draft
+       * recovered from the account is asked about exactly as often as one
+       * remembered on the phone: once.
        */
       const remote = await serviceRequestService.getDrafts();
       const candidate = remote.find((row) => isAbandonedDraft(row));
@@ -73,7 +81,7 @@ export function useBookingResume() {
         };
         setPoint(recovered);
         setDraft(candidate);
-        setShouldPrompt(false);
+        setShouldPrompt(await shouldPromptResume(recovered));
         setIsLoading(false);
         return;
       }
