@@ -1,6 +1,7 @@
 import { CoachMarkTarget } from '@/components/CoachMarkTarget';
 import AccountSetupCard from '@/components/home/AccountSetupCard';
 import ResumeBookingModal from '@/components/home/ResumeBookingModal';
+import BrandPattern from '@/components/BrandPattern';
 import HomeQuickActions, { type QuickActionId } from '@/components/home/HomeQuickActions';
 import { useWalletBalance } from '@/hooks/useWalletBalance';
 import { useBookingResume } from '@/hooks/useBookingResume';
@@ -910,11 +911,28 @@ const HomeScreen = React.memo(() => {
                   </TouchableOpacity>
                 )}
                 <TouchableOpacity
-                  style={{ width: MIN_TOUCH_TARGET, height: MIN_TOUCH_TARGET, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginLeft: 8, backgroundColor: HOME_QUICK_ACTIONS_PANEL_BG }}
+                  style={{
+                    width: MIN_TOUCH_TARGET,
+                    height: MIN_TOUCH_TARGET,
+                    borderRadius: 12,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginLeft: 8,
+                    backgroundColor: HOME_QUICK_ACTIONS_PANEL_BG,
+                    /** Holds the lattice inside the corner. */
+                    overflow: 'hidden',
+                  }}
                   onPress={handleSearch}
                   activeOpacity={0.8}
                   accessibilityLabel="Search"
                 >
+                  {/**
+                    * A small tile, because the surface is small. At forty-four
+                    * points the card's twenty-six tile would show barely two
+                    * repeats and read as a stripe across the button; eleven
+                    * reads as texture, which is all it is for at this size.
+                    */}
+                  <BrandPattern color={Colors.white} opacity={0.2} tile={11} strokeWidth={1.4} />
                   <Search size={18} color={Colors.white} />
                 </TouchableOpacity>
               </View>

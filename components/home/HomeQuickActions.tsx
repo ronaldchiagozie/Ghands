@@ -2,10 +2,22 @@ import { RotateCcw, Siren, Wallet } from 'lucide-react-native';
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 
+import BrandPattern from '@/components/BrandPattern';
 import { BorderRadius, Colors } from '@/lib/designSystem';
 import { SURFACE_STYLES } from '@/lib/surfaceStyles';
 
 type QuickActionId = 'wallet' | 'rebook' | 'urgent';
+
+/**
+ * Tall enough to hold a real number and still breathe.
+ *
+ * Three equal boxes across a phone left about eighty points of content each,
+ * which is enough for a word and not enough for a balance at a size anybody
+ * would call designed.
+ */
+const ROW_HEIGHT = 118;
+/** Eight points is the floor between adjacent targets; ten leaves it airier. */
+const GAP = 10;
 
 type HomeQuickActionsProps = {
   /** Null while loading, so nothing is shown rather than a wrong number. */
@@ -17,36 +29,109 @@ type HomeQuickActionsProps = {
   onPress: (id: QuickActionId) => void;
 };
 
+/** Never a placeholder amount. Silence beats a number that is not theirs. */
+const formatBalance = (balance?: number | null): string =>
+  typeof balance === 'number' && Number.isFinite(balance)
+    ? `₦${Math.round(balance).toLocaleString('en-NG')}`
+    : 'View balance';
+
+/**
+ * A small card in the right-hand column. Urgent and Book again share a shape,
+ * because unlike the wallet they really are the same kind of thing.
+ */
+function SmallAction({
+  Icon,
+  label,
+  value,
+  valueColor,
+  iconColor,
+  onPress,
+  disabled = false,
+}: {
+  Icon: typeof Wallet;
+  label: string;
+  value: string;
+  valueColor: string;
+  iconColor: string;
+  onPress: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityState={{ disabled, busy: disabled }}
+      accessibilityLabel={`${label}. ${value}`}
+      android_ripple={{ color: 'rgba(17, 24, 39, 0.06)' }}
+      style={{ flex: 1, opacity: disabled ? 0.6 : 1 }}
+    >
+      {/**
+        * Everything visual on this inner View. NativeWind flattens a function
+        * style on a Pressable and drops it in silence, which is what stacked
+        * AccountSetupCard's rows and stripped a whole screen of its cards.
+        */}
+      <View
+        style={{
+          ...SURFACE_STYLES.homeCard,
+          flex: 1,
+          backgroundColor: Colors.white,
+          borderRadius: BorderRadius.default,
+          paddingHorizontal: 13,
+          justifyContent: 'center',
+        }}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+          <Icon size={17} color={iconColor} strokeWidth={2.2} />
+          <Text
+            numberOfLines={1}
+            style={{
+              fontSize: 13,
+              fontFamily: 'Poppins-SemiBold',
+              color: Colors.textPrimary,
+              letterSpacing: -0.1,
+            }}
+          >
+            {label}
+          </Text>
+        </View>
+        {/** Indented to the label, so the icon column stays a column. */}
+        <Text
+          numberOfLines={1}
+          style={{
+            fontSize: 11.5,
+            fontFamily: 'Poppins-Medium',
+            color: valueColor,
+            marginTop: 3,
+            marginLeft: 24,
+          }}
+        >
+          {value}
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
+
 /**
  * The three things worth reaching in one tap.
  *
- * Rebuilt from three identical tiles inside a solid sage panel. Four things
- * were wrong with it.
+ * Rebuilt twice. First from three identical tiles inside a solid sage panel,
+ * which were labels rather than shortcuts - "My Wallet" tells you where a tap
+ * goes, which a menu already does, while your balance is the thing you opened
+ * the app to find and fits in the same space. Every card carries something
+ * true about the account now instead of naming a destination.
  *
- * They were labels, not shortcuts. "My Wallet" tells you where a tap goes,
- * which a menu already does. Your balance is the thing you opened the app to
- * find, and it fits in the same space. Every card here carries something true
- * about your account rather than naming a destination.
+ * Then from three equal cards, which was the same mistake in a quieter voice.
+ * Urgent is rare and high-stakes, the wallet is frequent and informational,
+ * and rebooking means nothing until you have booked before - so matching boxes
+ * said they were the same kind of thing, and capped all three at a width where
+ * a balance could only ever be small.
  *
- * They pretended to be equal. Urgent is rare and high-stakes, the wallet is
- * frequent and informational, rebooking only means anything once you have
- * booked before. Three matching tiles say those are the same kind of thing.
- *
- * There were five colours in a row three hundred pixels wide: red, green and
- * amber circles, each with a white ring, on a sage field. Colour lives on the
- * type now, so urgent can be the exception without the row shouting.
- *
- * And it had a caption explaining what quick actions are, which is the tell
- * that the tiles were not explaining themselves.
- *
- * One card is filled sage, and only one. A row of three identical white cards
- * on a white page has nothing to look at and nothing to look at first, but
- * colouring all of them brings back the noise that was the original problem.
- * One filled card gives the row an anchor and leaves the other two quiet.
- *
- * The wallet gets it because it is the one that always has something to say.
- * Rebook is not always there and urgent is rare, so filling either would put
- * the weight on the card least likely to matter today.
+ * The wallet takes the larger half and the other two stack beside it. The size
+ * difference carries the hierarchy, so the row no longer needs colour on every
+ * card to establish one: sage sits on the wallet alone, and urgent stays the
+ * exception in red without competing for the same job.
  */
 export default function HomeQuickActions({
   balance,
@@ -56,135 +141,113 @@ export default function HomeQuickActions({
 }: HomeQuickActionsProps) {
   const service = lastService?.trim();
 
-  /**
-   * Rebooking is hidden until there is something to rebook. Shown to somebody
-   * on their first visit it is an instruction they cannot follow.
-   */
-  const actions: {
-    id: QuickActionId;
-    Icon: typeof Wallet;
-    label: string;
-    value: string;
-    tone: string;
-    busy?: boolean;
-    /** Exactly one card carries the sage. See the note on the row below. */
-    filled?: boolean;
-  }[] = [
-    {
-      id: 'wallet',
-      Icon: Wallet,
-      label: 'Wallet',
-      /** Never a placeholder amount. Silence beats a number that is not theirs. */
-      value:
-        typeof balance === 'number' && Number.isFinite(balance)
-          ? `₦${Math.round(balance).toLocaleString('en-NG')}`
-          : 'View balance',
-      tone: Colors.white,
-      filled: true,
-    },
-    ...(service
-      ? [
-          {
-            id: 'rebook' as const,
-            Icon: RotateCcw,
-            label: 'Book again',
-            /**
-             * Raising the booking needs the server, and a cold instance can
-             * take several seconds. The card says so in place of the service
-             * name rather than sitting there looking ignored.
-             */
-            value: rebookBusy ? 'Setting up' : service,
-            tone: Colors.accent,
-            busy: rebookBusy,
-          },
-        ]
-      : []),
-    {
-      id: 'urgent',
-      Icon: Siren,
-      label: 'Urgent',
-      /**
-       * Says what it covers, before they tap it and pick something it does not.
-       * Urgent is only allowed for trades where waiting causes damage, and
-       * finding that out at the end of a booking is the worst place to learn it.
-       */
-      value: 'Repairs only',
-      tone: Colors.error,
-    },
-  ];
-
   return (
-    <View style={{ flexDirection: 'row', gap: 10 }}>
-      {actions.map((action) => (
-        <Pressable
-          key={action.id}
-          onPress={() => onPress(action.id)}
-          disabled={action.busy}
-          accessibilityRole="button"
-          accessibilityState={{ disabled: !!action.busy, busy: !!action.busy }}
-          accessibilityLabel={`${action.label}. ${action.value}`}
-          android_ripple={{ color: 'rgba(17, 24, 39, 0.06)' }}
-          style={{ flex: 1, opacity: action.busy ? 0.6 : 1 }}
+    <View style={{ flexDirection: 'row', gap: GAP, height: ROW_HEIGHT }}>
+      {/**
+        * The wallet, filled and patterned.
+        *
+        * The one surface on this page carrying the brand colour, so it is the
+        * one that earns the lattice: a coloured rectangle with nothing in it
+        * is paint, and the same rectangle with the brand's own geometry
+        * running quietly through it reads as considered.
+        */}
+      <Pressable
+        onPress={() => onPress('wallet')}
+        accessibilityRole="button"
+        accessibilityLabel={`Wallet. ${formatBalance(balance)}`}
+        android_ripple={{ color: 'rgba(255, 255, 255, 0.12)' }}
+        style={{ flex: 1.22 }}
+      >
+        <View
+          style={{
+            ...SURFACE_STYLES.homeCard,
+            flex: 1,
+            backgroundColor: Colors.accent,
+            borderColor: 'rgba(30, 45, 18, 0.45)',
+            borderRadius: BorderRadius.default,
+            paddingHorizontal: 15,
+            paddingTop: 14,
+            paddingBottom: 14,
+            /** Keeps the lattice inside the corner radius. */
+            overflow: 'hidden',
+            justifyContent: 'space-between',
+          }}
         >
-          {/**
-            * Everything visual on this inner View. NativeWind wraps every
-            * element here and flattens a function style on a Pressable, which
-            * is what stacked AccountSetupCard's rows and stripped the alert
-            * buttons of their backgrounds.
-            */}
-          <View
-            style={{
-              ...SURFACE_STYLES.homeCard,
-              backgroundColor: action.filled ? Colors.accent : Colors.white,
-              /** Same weight of edge on all three, so only the fill differs. */
-              borderColor: action.filled ? 'rgba(30, 45, 18, 0.45)' : SURFACE_STYLES.homeCard.borderColor,
-              borderRadius: BorderRadius.default,
-              paddingHorizontal: 12,
-              paddingTop: 12,
-              paddingBottom: 11,
-            }}
-          >
-            <action.Icon size={19} color={action.tone} strokeWidth={2.1} />
+          <BrandPattern color={Colors.white} opacity={0.16} tile={26} />
 
+          <Wallet size={21} color={Colors.white} strokeWidth={2.1} />
+
+          <View>
+            <Text
+              numberOfLines={1}
+              style={{
+                fontSize: 12,
+                fontFamily: 'Poppins-Medium',
+                color: 'rgba(255, 255, 255, 0.78)',
+                letterSpacing: 0.1,
+              }}
+            >
+              Wallet
+            </Text>
             {/**
-              * Left-aligned, not centred. A centred label in a small box reads
-              * as a button; a label with a value beneath it reads as something
-              * you already know, which is what these are.
+              * The balance, at a size that says it is the point. This is what
+              * the extra width bought: three equal cards could not hold a
+              * naira figure this large without truncating it.
               */}
             <Text
               numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.72}
               style={{
-                fontSize: 12.5,
-                fontFamily: 'Poppins-SemiBold',
-                color: action.filled ? Colors.white : Colors.textPrimary,
-                letterSpacing: -0.1,
-                marginTop: 10,
-              }}
-            >
-              {action.label}
-            </Text>
-
-            <Text
-              numberOfLines={1}
-              style={{
-                fontSize: 11.5,
-                lineHeight: 16,
-                fontFamily: 'Poppins-Medium',
-                color: action.filled
-                  ? 'rgba(255, 255, 255, 0.82)'
-                  : action.id === 'urgent'
-                    ? Colors.error
-                    : Colors.textSecondaryDark,
+                fontSize: 20,
+                lineHeight: 27,
+                fontFamily: 'Poppins-Bold',
+                color: Colors.white,
+                letterSpacing: -0.5,
                 marginTop: 1,
-                /** Digits line up across the row when the balance is showing. */
                 fontVariant: ['tabular-nums'],
               }}
             >
-              {action.value}
+              {formatBalance(balance)}
             </Text>
           </View>
-        </Pressable>
-      ))}
+        </View>
+      </Pressable>
+
+      {/** Urgent first: it is the one that cannot wait. */}
+      <View style={{ flex: 1, gap: GAP }}>
+        <SmallAction
+          Icon={Siren}
+          label="Urgent"
+          /**
+            * Says what it covers, before they tap it and pick something it
+            * does not. Urgent is only allowed for trades where waiting causes
+            * damage, and the end of a booking is the worst place to find out.
+            */
+          value="Repairs only"
+          valueColor={Colors.error}
+          iconColor={Colors.error}
+          onPress={() => onPress('urgent')}
+        />
+
+        {/**
+          * Hidden until there is something to book again - shown on somebody's
+          * first visit it is an instruction they cannot follow. With it gone
+          * Urgent takes the whole column rather than leaving a hole.
+          */}
+        {service ? (
+          <SmallAction
+            Icon={RotateCcw}
+            label="Book again"
+            /** Raising the booking needs the server, and a cold instance is slow. */
+            value={rebookBusy ? 'Setting up' : service}
+            valueColor={Colors.textSecondaryDark}
+            iconColor={Colors.accent}
+            onPress={() => onPress('rebook')}
+            disabled={rebookBusy}
+          />
+        ) : null}
+      </View>
     </View>
   );
 }
