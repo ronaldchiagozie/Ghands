@@ -1,10 +1,10 @@
 import { BlurView } from 'expo-blur';
-import { ArrowRight, Check, Hammer } from 'lucide-react-native';
+import { ArrowRight, Check } from 'lucide-react-native';
 import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, Image, Modal, Platform, Pressable, Text, View } from 'react-native';
+import { Animated, Easing, Modal, Platform, Pressable, Text, View } from 'react-native';
 
 import { BorderRadius, Colors, useReducedMotion } from '@/lib/designSystem';
-import { resolveCategoryImageSource } from '@/utils/categoryIcons';
+import { getCategoryIcon } from '@/utils/categoryIcons';
 
 type ResumeBookingModalProps = {
   visible: boolean;
@@ -51,7 +51,17 @@ export default function ResumeBookingModal({
   const opacity = useRef(new Animated.Value(reducedMotion ? 1 : 0)).current;
 
   const service = categoryName?.trim();
-  const categoryIcon = resolveCategoryImageSource(service, jobTitle ?? undefined);
+  /**
+   * The trade's own icon, by the same route every other list uses: painted
+   * artwork where there is some, a drawn glyph where there is not, initials
+   * only for a name that means nothing.
+   *
+   * This used to reach for the painted artwork alone and fall back to a
+   * hammer, so a booking for any of the trades nobody has painted was offered
+   * back under a generic tool - the one card that has to be recognisably
+   * theirs, showing the one icon that belongs to nobody.
+   */
+  const CategoryIcon = getCategoryIcon(service, jobTitle ?? undefined);
   const heading = jobTitle?.trim() || (service ? `${service} booking` : 'Your booking');
   const detail = scheduleLabel?.trim() || stepLabel;
 
@@ -146,14 +156,7 @@ export default function ResumeBookingModal({
                       overflow: 'hidden',
                     }}
                   >
-                    {categoryIcon ? (
-                      <Image
-                        source={categoryIcon}
-                        style={{ width: 30, height: 30, resizeMode: 'contain' }}
-                      />
-                    ) : (
-                      <Hammer size={23} color={Colors.accent} strokeWidth={2} />
-                    )}
+                    <CategoryIcon />
                   </View>
 
                   <View style={{ flex: 1, minWidth: 0 }}>
