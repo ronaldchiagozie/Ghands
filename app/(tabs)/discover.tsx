@@ -14,6 +14,7 @@ import { Animated, Linking, ScrollView, Text, TouchableOpacity, View } from 'rea
 import { useUserLocation } from '@/hooks/useUserLocation';
 import ServiceMap, { type ServiceProvider } from '@/components/ServiceMap';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { DiscoverRowSkeleton, DiscoverTipSkeleton } from '@/components/LoadingSkeleton';
 import {
   authService,
   discoverService,
@@ -60,6 +61,16 @@ export default function DiscoverScreen() {
   const [popular, setPopular] = useState<PopularServices | null>(null);
   const [tips, setTips] = useState<ServiceTip[]>([]);
   const [providers, setProviders] = useState<ServiceProvider[]>([]);
+  /**
+   * Whether anything has come back yet.
+   *
+   * This tab loads four things from three endpoints and showed nothing at all
+   * while they arrived - a header over an empty page, which reads as a tab
+   * with nothing in it rather than one still filling. On a backend that sleeps
+   * when idle, that first wait is measured in seconds.
+   */
+  const [isLoadingCategories, setIsLoadingCategories] = useState(true);
+  const [isLoadingTips, setIsLoadingTips] = useState(true);
 
   const noopMapCategory = useCallback((_category: string) => {}, []);
   const noopProviderSelect = useCallback(() => {}, []);
@@ -87,11 +98,17 @@ export default function DiscoverScreen() {
       setCategories(Array.isArray(list) ? list : []);
     } catch {
       /* the row simply does not appear */
+    } finally {
+      setIsLoadingCategories(false);
     }
   }, []);
 
   const loadTips = useCallback(async () => {
-    setTips(await discoverService.getTips(3));
+    try {
+      setTips(await discoverService.getTips(3));
+    } finally {
+      setIsLoadingTips(false);
+    }
   }, []);
 
   /**
@@ -328,6 +345,12 @@ export default function DiscoverScreen() {
             * No heading. A row of service cards under the word Discover does
             * not need to be told it is services.
             */}
+          {isLoadingCategories && browseCategories.length === 0 ? (
+            <View style={{ paddingHorizontal: 16, marginBottom: 24 }}>
+              <DiscoverRowSkeleton />
+            </View>
+          ) : null}
+
           {browseCategories.length > 0 ? (
             <View style={{ paddingHorizontal: 16, marginBottom: 24 }}>
               <ScrollView
@@ -488,6 +511,24 @@ export default function DiscoverScreen() {
             * look like links, which they did not when they were three fixed
             * sentences that went nowhere.
             */}
+          {isLoadingTips && tips.length === 0 ? (
+            <View style={{ paddingHorizontal: 16, marginBottom: 24 }}>
+              <Text
+                style={{
+                  fontSize: 16,
+                  fontFamily: 'Poppins-SemiBold',
+                  color: Colors.textPrimary,
+                  letterSpacing: -0.2,
+                  marginBottom: 14,
+                }}
+              >
+                Service tips
+              </Text>
+              <DiscoverTipSkeleton />
+              <DiscoverTipSkeleton />
+            </View>
+          ) : null}
+
           {tips.length > 0 ? (
             <View style={{ paddingHorizontal: 16, marginBottom: 24 }}>
               <Text

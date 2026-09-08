@@ -142,6 +142,65 @@ export const CategoryChipSkeleton = () => (
   </View>
 );
 
+/**
+ * A Discover service card, waiting.
+ *
+ * Discover loads four things from three endpoints, and until now it showed
+ * nothing at all while they arrived - a header over an empty page, which reads
+ * as a tab with nothing in it rather than a tab still filling. The shapes here
+ * match the real card exactly, so the arrival is a card gaining its content
+ * rather than a layout jumping into place.
+ */
+export const DiscoverServiceCardSkeleton = () => (
+  <View
+    style={{
+      width: 170,
+      marginRight: 10,
+      borderRadius: 18,
+      padding: 16,
+      backgroundColor: Colors.white,
+      borderWidth: 1,
+      borderColor: Colors.border,
+    }}
+  >
+    <Skeleton width={48} height={48} borderRadius={12} style={{ marginBottom: 12 }} />
+    <Skeleton width="70%" height={14} borderRadius={7} style={{ marginBottom: 6 }} />
+    <Skeleton width="90%" height={11} borderRadius={5} />
+  </View>
+);
+
+/** The horizontal row of them. Three: enough to show the row scrolls. */
+export const DiscoverRowSkeleton = ({ count = 3 }: { count?: number }) => (
+  <View style={{ flexDirection: 'row' }}>
+    {Array.from({ length: count }).map((_, index) => (
+      <DiscoverServiceCardSkeleton key={index} />
+    ))}
+  </View>
+);
+
+/** A tip: a title, two lines of body, and the arrow that says it opens. */
+export const DiscoverTipSkeleton = () => (
+  <View
+    style={{
+      backgroundColor: Colors.white,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: Colors.border,
+      padding: 16,
+      marginBottom: 10,
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+    }}
+  >
+    <View style={{ flex: 1, marginRight: 12 }}>
+      <Skeleton width="65%" height={14} borderRadius={7} style={{ marginBottom: 8 }} />
+      <Skeleton width="95%" height={11} borderRadius={5} style={{ marginBottom: 5 }} />
+      <Skeleton width="55%" height={11} borderRadius={5} />
+    </View>
+    <Skeleton width={17} height={17} borderRadius={8} />
+  </View>
+);
+
 export const CategorySkeleton = () => (
   <View
     style={{

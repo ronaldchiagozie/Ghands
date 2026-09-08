@@ -137,6 +137,17 @@ export function ClientPaymentReceipt({
 
   return (
     <View style={{ flex: 1 }}>
+      {/**
+        * The hero comes out of the capture too.
+        *
+        * The circle, the "Payment successful" and its line underneath are this
+        * screen greeting the person who just paid. A shared receipt is read by
+        * somebody else entirely - a landlord, an employer - and congratulating
+        * them on a payment they did not make is the app talking to the wrong
+        * reader. What travels is the white card: the amount, the provider, the
+        * date, the reference, and the name at the bottom.
+        */}
+      {capturing ? null : (
       <View style={{ alignItems: 'center', marginBottom: 14 }}>
         <View
           style={{
@@ -177,6 +188,8 @@ export function ClientPaymentReceipt({
           </Text>
         ) : null}
       </View>
+
+      )}
 
       <View
         style={{
