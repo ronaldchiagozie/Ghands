@@ -45,9 +45,18 @@ export type ShareReceiptResult = 'image' | 'text' | 'failed';
 export async function shareReceipt(
   viewRef: React.RefObject<unknown>,
   receipt: ShareableReceipt,
+  /**
+   * Hides the buttons and shows the brand mark for the length of the capture.
+   * Called with true, awaited a frame, captured, then called with false - the
+   * await matters, because capturing before the swap has painted would put the
+   * Download button back in the image it was removed from.
+   */
+  setCapturing?: (capturing: boolean) => Promise<void> | void,
 ): Promise<ShareReceiptResult> {
   try {
     if (viewRef?.current && (await Sharing.isAvailableAsync())) {
+      await setCapturing?.(true);
+
       const uri = await captureRef(viewRef as never, {
         format: 'png',
         /**
@@ -59,6 +68,9 @@ export async function shareReceipt(
         result: 'tmpfile',
       });
 
+      /** Back before the sheet opens, so the screen never sits in capture dress. */
+      await setCapturing?.(false);
+
       await Sharing.shareAsync(uri, {
         mimeType: 'image/png',
         dialogTitle: 'Share receipt',
@@ -68,6 +80,9 @@ export async function shareReceipt(
     }
   } catch {
     /* falls through to text, which is better than nothing at all */
+  } finally {
+    /** Never leave the card without its buttons because a capture threw. */
+    await setCapturing?.(false);
   }
 
   try {

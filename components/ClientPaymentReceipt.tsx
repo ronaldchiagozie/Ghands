@@ -3,7 +3,7 @@ import { providerHomeSurface } from '@/lib/providerSurfaceStyles';
 import { truncateMiddle } from '@/utils/formatReference';
 import { CheckCircle, Clock, Download, Share2, User, XCircle } from 'lucide-react-native';
 import React, { useMemo } from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { Image, Text, TouchableOpacity, View } from 'react-native';
 import ToolPattern from '@/components/ToolPattern';
 
 export type ClientReceiptStatus = 'completed' | 'pending' | 'failed';
@@ -32,6 +32,16 @@ type ClientPaymentReceiptProps = {
   onDownload: () => void;
   onViewJob?: () => void;
   showViewJob?: boolean;
+  /**
+   * True for the instant the card is being captured to an image.
+   *
+   * The buttons are controls, not part of the document - a receipt arriving in
+   * somebody's chat with a Download button printed on it is obviously a
+   * screenshot of an app rather than a record of a payment. They come out for
+   * the capture, and the brand mark takes their place so the image is signed
+   * instead of simply cropped.
+   */
+  capturing?: boolean;
 };
 
 function ReceiptRow({ label, value, emphasize }: { label: string; value: string; emphasize?: boolean }) {
@@ -70,6 +80,7 @@ export function ClientPaymentReceipt({
   onDownload,
   onViewJob,
   showViewJob = false,
+  capturing = false,
 }: ClientPaymentReceiptProps) {
   const status: ClientReceiptStatus = data.status ?? 'completed';
 
@@ -329,6 +340,44 @@ export function ClientPaymentReceipt({
           </TouchableOpacity>
         ) : null}
 
+        {/**
+          * Signed, the way a bank's receipt is. Somebody forwarding this to a
+          * landlord is asking them to believe it, and an unsigned slab of text
+          * gives them nothing to believe - the name is what turns a screenshot
+          * into a record of who issued it.
+          */}
+        {capturing ? (
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              paddingTop: 14,
+              borderTopWidth: 1,
+              borderTopColor: Colors.border,
+            }}
+          >
+            <Image
+              source={require('../assets/images/icon.png')}
+              style={{ width: 18, height: 18, borderRadius: 4 }}
+              resizeMode="contain"
+            />
+            <Text
+              style={{
+                fontSize: 13,
+                fontFamily: 'Poppins-Bold',
+                color: Colors.accent,
+                letterSpacing: -0.2,
+              }}
+            >
+              GHands
+            </Text>
+            <Text style={{ fontSize: 11.5, fontFamily: 'Poppins-Regular', color: Colors.textSecondaryDark }}>
+              · ghand.com.ng
+            </Text>
+          </View>
+        ) : (
         <View style={{ flexDirection: 'row', alignItems: 'stretch', gap: 10 }}>
           <TouchableOpacity
             onPress={onDownload}
@@ -369,6 +418,7 @@ export function ClientPaymentReceipt({
             </Text>
           </TouchableOpacity>
         </View>
+        )}
       </View>
     </View>
   );

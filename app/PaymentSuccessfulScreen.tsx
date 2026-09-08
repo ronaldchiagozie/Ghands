@@ -10,6 +10,7 @@ import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import { ActivityIndicator, Share, Text, View } from 'react-native';
 import { showAppAlert } from '@/components/AppAlertHost';
 import { shareReceipt } from '@/utils/shareReceipt';
+import Confetti from '@/components/Confetti';
 
 const formatDate = (date: Date, format: string = 'MMM dd, yyyy'): string => {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -104,6 +105,23 @@ export default function PaymentSuccessfulScreen() {
     * around it - the header and the buttons are controls, not part of it.
     */
   const receiptRef = useRef<View>(null);
+  /**
+   * True only while the card is being photographed. The buttons come out and
+   * the brand mark goes in, so what lands in somebody's chat is a signed
+   * document rather than a screenshot of an app with a Download button on it.
+   */
+  const [isCapturing, setIsCapturing] = useState(false);
+  /**
+   * Fires once, on a completed payment only.
+   *
+   * Booking a tradesman is a small act of trust that runs for days - somebody
+   * came into your home, did work you cannot easily judge, and you paid for
+   * it. The end of that is the one moment in this app where a flourish is the
+   * honest response rather than decoration. A pending or failed payment gets
+   * nothing: celebrating either would be the app congratulating itself over
+   * something that has not happened.
+   */
+  const [showConfetti, setShowConfetti] = useState(false);
 
   const router = useRouter();
   const params = useLocalSearchParams<{
@@ -243,6 +261,14 @@ export default function PaymentSuccessfulScreen() {
     );
   };
 
+  const hasCelebratedRef = useRef(false);
+  useEffect(() => {
+    if (hasCelebratedRef.current) return;
+    if (transactionData.status !== 'completed') return;
+    hasCelebratedRef.current = true;
+    setShowConfetti(true);
+  }, [transactionData.status]);
+
   const handleShareReceipt = async () => {
     const statusLabel =
       transactionData.status === 'failed'
@@ -250,11 +276,22 @@ export default function PaymentSuccessfulScreen() {
         : transactionData.status === 'pending'
           ? 'Pending'
           : 'Completed';
-    const outcome = await shareReceipt(receiptRef, {
+    const outcome = await shareReceipt(
+      receiptRef,
+      {
       transactionId: transactionData.transactionId,
       totalAmount: transactionData.totalAmount,
       statusLabel,
-    });
+      },
+      /**
+        * Awaited on purpose. Capturing before the swap has painted would put
+        * the buttons straight back into the image they were removed from.
+        */
+      async (capturing) => {
+        setIsCapturing(capturing);
+        await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+      },
+    );
 
     if (outcome === 'failed') {
       showAppAlert('Could not share', 'The receipt could not be shared. Please try again.');
@@ -296,9 +333,11 @@ export default function PaymentSuccessfulScreen() {
             onDownload={handleDownloadReceipt}
             onViewJob={handleExit}
             showViewJob={Boolean(params.requestId)}
+            capturing={isCapturing}
           />
       </View>
       </View>
+      <Confetti visible={showConfetti} onDone={() => setShowConfetti(false)} />
     </SafeAreaWrapper>
   );
 }

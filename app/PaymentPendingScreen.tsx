@@ -5,7 +5,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { Colors } from '@/lib/designSystem';
 import { CLIENT_HOME_SCROLL_GUTTER } from '@/lib/tabletLayout';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useCallback, useMemo, useRef } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { Share, View } from 'react-native';
 import { showAppAlert } from '@/components/AppAlertHost';
 import { shareReceipt } from '@/utils/shareReceipt';
@@ -24,6 +24,12 @@ export default function PaymentPendingScreen() {
     * around it - the header and the buttons are controls, not part of it.
     */
   const receiptRef = useRef<View>(null);
+  /**
+   * True only while the card is being photographed. The buttons come out and
+   * the brand mark goes in, so what lands in somebody's chat is a signed
+   * document rather than a screenshot of an app with a Download button on it.
+   */
+  const [isCapturing, setIsCapturing] = useState(false);
 
   const router = useRouter();
   const params = useLocalSearchParams<{
@@ -117,6 +123,7 @@ export default function PaymentPendingScreen() {
           data={receiptData}
           onShare={handleShare}
           onDownload={handleDownload}
+          capturing={isCapturing}
         />
       </View>
       </View>
