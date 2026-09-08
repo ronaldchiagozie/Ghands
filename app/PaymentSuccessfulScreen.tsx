@@ -6,9 +6,10 @@ import { CLIENT_HOME_SCROLL_GUTTER } from '@/lib/tabletLayout';
 import { serviceRequestService } from '@/services/api';
 import { exitPaymentToJob, navigateBack, NAV_FALLBACK } from '@/utils/navigation';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { ActivityIndicator, Share, Text, View } from 'react-native';
 import { showAppAlert } from '@/components/AppAlertHost';
+import { shareReceipt } from '@/utils/shareReceipt';
 
 const formatDate = (date: Date, format: string = 'MMM dd, yyyy'): string => {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -98,6 +99,12 @@ function buildReceiptFromParams(params: {
 }
 
 export default function PaymentSuccessfulScreen() {
+  /**
+    * The card itself, so a share captures the document rather than the screen
+    * around it - the header and the buttons are controls, not part of it.
+    */
+  const receiptRef = useRef<View>(null);
+
   const router = useRouter();
   const params = useLocalSearchParams<{
     transactionId?: string;
@@ -243,13 +250,14 @@ export default function PaymentSuccessfulScreen() {
         : transactionData.status === 'pending'
           ? 'Pending'
           : 'Completed';
-    try {
-      await Share.share({
-        message: `Payment Receipt (${statusLabel})\nTransaction ID: ${transactionData.transactionId}\nAmount: ₦${transactionData.totalAmount}\nStatus: ${statusLabel}`,
-        title: 'Payment Receipt',
-      });
-    } catch {
-      showAppAlert('Error', 'Failed to share receipt');
+    const outcome = await shareReceipt(receiptRef, {
+      transactionId: transactionData.transactionId,
+      totalAmount: transactionData.totalAmount,
+      statusLabel,
+    });
+
+    if (outcome === 'failed') {
+      showAppAlert('Could not share', 'The receipt could not be shared. Please try again.');
     }
   };
 
@@ -273,6 +281,10 @@ export default function PaymentSuccessfulScreen() {
           </View>
         ) : null}
 
+        {/** Captured on share, so what lands in a chat is the document. */}
+
+        <View ref={receiptRef} collapsable={false}>
+
         <ClientPaymentReceipt
           data={transactionData}
           onShare={handleShareReceipt}
@@ -280,6 +292,7 @@ export default function PaymentSuccessfulScreen() {
           onViewJob={handleExit}
           showViewJob={Boolean(params.requestId)}
         />
+      </View>
       </View>
     </SafeAreaWrapper>
   );

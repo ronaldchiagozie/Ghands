@@ -5,9 +5,10 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { Colors } from '@/lib/designSystem';
 import { CLIENT_HOME_SCROLL_GUTTER } from '@/lib/tabletLayout';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import { Share, View } from 'react-native';
 import { showAppAlert } from '@/components/AppAlertHost';
+import { shareReceipt } from '@/utils/shareReceipt';
 
 function formatNairaAmount(raw: string | undefined): string {
   if (!raw) return '0.00';
@@ -18,6 +19,12 @@ function formatNairaAmount(raw: string | undefined): string {
 }
 
 export default function PaymentPendingScreen() {
+  /**
+    * The card itself, so a share captures the document rather than the screen
+    * around it - the header and the buttons are controls, not part of it.
+    */
+  const receiptRef = useRef<View>(null);
+
   const router = useRouter();
   const params = useLocalSearchParams<{
     transactionId?: string;
@@ -99,11 +106,14 @@ export default function PaymentPendingScreen() {
           paddingBottom: 16,
         }}
       >
+        {/** Captured on share, so what lands in a chat is the document. */}
+        <View ref={receiptRef} collapsable={false}>
         <ClientPaymentReceipt
           data={receiptData}
           onShare={handleShare}
           onDownload={handleDownload}
         />
+      </View>
       </View>
     </SafeAreaWrapper>
   );

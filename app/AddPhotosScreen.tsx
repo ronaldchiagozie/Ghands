@@ -272,8 +272,27 @@ export default function AddPhotosScreen() {
        * the last step by a slow upload. Saying nothing is what got us here.
        */
       const requestIdNum = parseInt(params.requestId ?? '', 10);
+
+      /**
+       * Recorded before the upload, not after.
+       *
+       * This used to sit below, and the upload between here and there can
+       * throw - so a slow or failed upload left the pointer still saying
+       * "add photos" on a booking whose photos the customer had already
+       * chosen. The step is about what they did, and they have done it: the
+       * screen is answered the moment they press on, whether the files reach
+       * the server in the next second or not at all.
+       */
+      void rememberBookingStep('providers', params.requestId, {
+        ...params,
+        photoCount: selectedPhotos.size.toString(),
+      });
+
       if (selectedUris.length > 0 && Number.isFinite(requestIdNum) && requestIdNum > 0) {
-        const result = await attachBookingPhotos(requestIdNum, selectedUris);
+        const result = await attachBookingPhotos(requestIdNum, selectedUris).catch(() => ({
+          complete: false,
+          uploaded: [] as string[],
+        }));
         if (!result.complete) {
           showError(
             result.uploaded.length > 0
@@ -326,11 +345,6 @@ export default function AddPhotosScreen() {
         });
         return;
       }
-
-      void rememberBookingStep('providers', params.requestId, {
-        ...params,
-        photoCount: selectedPhotos.size.toString(),
-      });
 
       // Push so back from map returns to Add photos; booking stack stays intact
       router.push({

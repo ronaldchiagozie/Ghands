@@ -1,10 +1,10 @@
-import { ArrowRight, Clock, Hammer } from 'lucide-react-native';
+import { ArrowRight, Clock } from 'lucide-react-native';
 import React from 'react';
-import { Image, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { BorderRadius, Colors, Spacing } from '@/lib/designSystem';
 import { SURFACE_STYLES } from '@/lib/surfaceStyles';
-import { resolveCategoryImageSource } from '@/utils/categoryIcons';
+import { getCategoryIcon } from '@/utils/categoryIcons';
 
 type ResumeBookingCardProps = {
   categoryName?: string;
@@ -52,7 +52,13 @@ export default function ResumeBookingCard({
   onDiscard,
 }: ResumeBookingCardProps) {
   const service = categoryName?.trim();
-  const categoryIcon = resolveCategoryImageSource(service, jobTitle ?? undefined);
+  /**
+   * The trade's own icon, by the route every other list uses: painted artwork
+   * where there is some, a drawn glyph where there is not. It reached for the
+   * artwork alone and fell back to a hammer, so a draft for any trade nobody
+   * has painted came back under a generic tool.
+   */
+  const CategoryIcon = getCategoryIcon(service, jobTitle ?? undefined);
 
   const heading = jobTitle?.trim() || (service ? `${service} booking` : 'Your booking');
   const detail = scheduleLabel?.trim() || stepLabel;
@@ -93,14 +99,7 @@ export default function ResumeBookingCard({
                 overflow: 'hidden',
               }}
             >
-              {categoryIcon ? (
-                <Image
-                  source={categoryIcon}
-                  style={{ width: 26, height: 26, resizeMode: 'contain' }}
-                />
-              ) : (
-                <Hammer size={20} color={Colors.accent} strokeWidth={2} />
-              )}
+              <CategoryIcon />
             </View>
 
             <View style={{ flex: 1, minWidth: 0 }}>

@@ -137,7 +137,21 @@ export function bookingStepFromDraftContent(request: {
   if (!request) return 'details';
   if (!text(request.jobTitle) || !text(request.description)) return 'details';
   if (!text(request.scheduledDate)) return 'schedule';
-  if (Array.isArray(request.images) && request.images.length > 0) return 'providers';
+
+  /**
+   * Photos arrive under whichever name the server happens to use. The app
+   * sends `images` on the details update, but the record comes back through
+   * more than one endpoint and this is not a field worth guessing wrong about
+   * - a miss here tells somebody to add photos they have already added.
+   */
+  const photos = [
+    request.images,
+    (request as Record<string, unknown>).imageUrls,
+    (request as Record<string, unknown>).photos,
+    (request as Record<string, unknown>).requestImages,
+  ].find((value) => Array.isArray(value) && value.length > 0);
+
+  if (photos) return 'providers';
   return 'photos';
 }
 
