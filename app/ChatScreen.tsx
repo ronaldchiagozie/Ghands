@@ -49,6 +49,7 @@ import { formatLastActiveLabel, isPeerRecentlyActive } from '@/utils/chatFormatt
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AvatarCircle } from '@/components/AvatarCircle';
 import { resolveMessageOwnership } from '@/contract/src/messageOwnership';
+import ToolPattern from '@/components/ToolPattern';
 
 type DirectionHint = 'outgoing' | 'incoming' | null;
 
@@ -141,6 +142,12 @@ interface UIMessage {
  * - providerId: Provider ID (optional)
  * - clientName: Client name (for provider view)
  */
+/**
+ * A warm off-white, not pure white. The bubbles are white and sage, and both
+ * need a ground that is not the same colour as one of them.
+ */
+const CHAT_GROUND = '#F7F8F5';
+
 export default function ChatScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -984,7 +991,18 @@ export default function ChatScreen() {
 
   return (
     <SafeAreaWrapper backgroundColor={Colors.white} edges={['top']}>
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, backgroundColor: CHAT_GROUND }}>
+        {/**
+          * The wallpaper behind a conversation.
+          *
+          * A messaging screen is mostly empty space by nature, and a blank
+          * white field is the one thing every chat app decided against - it is
+          * why they all ship a pattern behind the thread. This one is the
+          * trades this app books rather than decoration, and it sits at four
+          * percent so a bubble never has to fight it.
+          */}
+        <ToolPattern color={Colors.accent} opacity={0.04} tile={200} />
+
         {/* Header */}
         <View
           style={{

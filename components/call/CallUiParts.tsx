@@ -130,7 +130,8 @@ export function CallActionButton({
           marginTop: 8,
           fontSize: 12,
           fontFamily: 'Poppins-Medium',
-          color: Colors.textSecondaryDark,
+          /** On the dark call ground; the grey these used disappears there. */
+          color: 'rgba(255, 255, 255, 0.72)',
           textAlign: 'center',
         }}
       >
@@ -147,11 +148,18 @@ export function CallStatusPill({
   label: string;
   tone: 'neutral' | 'active' | 'warning' | 'error';
 }) {
+  /**
+   * Tuned for the dark call ground.
+   *
+   * These were pale tinted pills - a near-white chip with dark text - which is
+   * right on a white page and a bright patch of nothing on a call screen. On
+   * dark the tint carries the meaning and the text carries the light.
+   */
   const styles = {
-    neutral: { bg: Colors.white, text: Colors.textSecondaryDark, border: 'rgba(17, 24, 39, 0.08)' },
-    active: { bg: '#ECFDF3', text: '#047857', border: 'rgba(4, 120, 87, 0.14)' },
-    warning: { bg: '#FFF7DF', text: Colors.warningForeground, border: 'rgba(180, 120, 0, 0.12)' },
-    error: { bg: '#FEF2F2', text: Colors.error, border: 'rgba(220, 38, 38, 0.12)' },
+    neutral: { bg: 'rgba(255, 255, 255, 0.12)', text: 'rgba(255, 255, 255, 0.9)', border: 'rgba(255, 255, 255, 0.18)' },
+    active: { bg: 'rgba(163, 196, 127, 0.2)', text: '#C6DCA9', border: 'rgba(163, 196, 127, 0.35)' },
+    warning: { bg: 'rgba(215, 182, 92, 0.18)', text: '#E6C86B', border: 'rgba(215, 182, 92, 0.32)' },
+    error: { bg: 'rgba(226, 138, 108, 0.18)', text: '#F0A08A', border: 'rgba(226, 138, 108, 0.34)' },
   }[tone];
 
   return (

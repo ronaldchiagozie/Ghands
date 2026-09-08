@@ -22,7 +22,7 @@ import {
   User,
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Image, ScrollView, Text, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { haptics } from '@/hooks/useHaptics';
 import { useVoiceCallWebRtc } from '@/hooks/useVoiceCallWebRtc';
 import { communicationService } from '@/services/api';
@@ -33,6 +33,7 @@ import {
 } from '@/utils/webrtcAvailability';
 import { buildChatScreenParams, exitChatToJobHub } from '@/utils/navigation';
 import ToolPattern from '@/components/ToolPattern';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export type CallState = 'incoming' | 'outgoing' | 'active' | 'ended';
 
@@ -66,6 +67,18 @@ function resolveJobSubtitle(params: CallScreenParams): string | undefined {
   if (when && !/oct 20, 2024/i.test(when)) parts.push(when);
   return parts.length > 0 ? parts.join(' · ') : undefined;
 }
+
+/**
+ * The call ground: deep sage into near-black.
+ *
+ * Not grey, and not the page white this screen used to sit on. A call is the
+ * one place in the app where the interface should get out of the way, and a
+ * dark ground is what every phone does for exactly that reason.
+ */
+const CALL_GROUND_TOP = '#22301A';
+const CALL_GROUND_BOTTOM = '#0D120A';
+const CALL_INK = '#FFFFFF';
+const CALL_INK_SOFT = 'rgba(255, 255, 255, 0.66)';
 
 export default function CallScreen() {
   const router = useRouter();
@@ -291,8 +304,26 @@ export default function CallScreen() {
   const showCompactJobLine = callState !== 'ended' && Boolean(params.requestId);
 
   return (
-    <SafeAreaWrapper backgroundColor={Colors.backgroundLight}>
-      <View style={{ flex: 1, backgroundColor: Colors.backgroundLight }}>
+    <SafeAreaWrapper backgroundColor={CALL_GROUND_TOP}>
+      <View style={{ flex: 1, backgroundColor: CALL_GROUND_TOP }}>
+        {/**
+          * Dark, and full bleed.
+          *
+          * This was a white screen with a scroll view on it - the same
+          * treatment as a settings form. A live call is not a form: it is one
+          * person, one timer and two buttons, and every phone anybody owns
+          * renders that on a dark immersive ground because the screen is
+          * ambient rather than something being read.
+          *
+          * The gradient runs deep sage into near-black rather than grey, so it
+          * is still this app's screen and not a generic dialer.
+          */}
+        <LinearGradient
+          colors={[CALL_GROUND_TOP, CALL_GROUND_BOTTOM]}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
         {/**
           * A call screen is mostly empty by nature - a name, a timer, and a
           * long wait. The pattern gives that emptiness something to be, the
@@ -304,7 +335,7 @@ export default function CallScreen() {
           * length of a phone call, and a texture that is pleasant for two
           * seconds is tiring for two minutes.
           */}
-        <ToolPattern color={Colors.accent} opacity={0.04} tile={200} />
+        <ToolPattern color={CALL_INK} opacity={0.05} tile={200} />
         {(callState === 'ended' || callState === 'outgoing') && (
           <ScreenHeader
             title={headerTitle}
@@ -349,42 +380,42 @@ export default function CallScreen() {
                 marginTop: Spacing.xl,
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: 140,
-                height: 140,
+                width: 168,
+                height: 168,
               }}
             >
-              <CallPulseRing active={isRinging} size={112} />
+              <CallPulseRing active={isRinging} size={132} />
               <View
                 style={{
-                  width: 112,
-                  height: 112,
-                  borderRadius: 56,
-                  backgroundColor: Colors.white,
+                  width: 132,
+                  height: 132,
+                  borderRadius: 66,
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  borderWidth: 3,
-                  borderColor: callState === 'active' ? Colors.accent : 'rgba(79, 103, 57, 0.2)',
+                  borderWidth: 2,
+                  borderColor: callState === 'active' ? '#A3C47F' : 'rgba(255, 255, 255, 0.22)',
                   overflow: 'hidden',
                 }}
               >
                 {callerImage ? (
                   <Image
                     source={{ uri: callerImage }}
-                    style={{ width: 112, height: 112 }}
+                    style={{ width: 132, height: 132 }}
                     resizeMode="cover"
                   />
                 ) : (
                   <View
                     style={{
-                      width: 72,
-                      height: 72,
+                      width: 84,
+                      height: 84,
                       borderRadius: BorderRadius.full,
-                      backgroundColor: Colors.sageTint,
+                      backgroundColor: 'rgba(255, 255, 255, 0.12)',
                       alignItems: 'center',
                       justifyContent: 'center',
                     }}
                   >
-                    <User size={34} color={Colors.accent} />
+                    <User size={40} color={CALL_INK} />
                   </View>
                 )}
               </View>
@@ -393,9 +424,9 @@ export default function CallScreen() {
             <Text
               style={{
                 marginTop: Spacing.lg,
-                fontSize: 24,
+                fontSize: 27,
                 fontFamily: 'Poppins-Bold',
-                color: Colors.textPrimary,
+                color: CALL_INK,
                 textAlign: 'center',
                 letterSpacing: -0.3,
               }}
@@ -407,9 +438,10 @@ export default function CallScreen() {
             <Text
               style={{
                 marginTop: 4,
-                fontSize: 14,
+                fontSize: 13.5,
                 fontFamily: 'Poppins-Medium',
-                color: Colors.textSecondaryDark,
+                color: CALL_INK_SOFT,
+                letterSpacing: 0.2,
               }}
             >
               {peerRole}
@@ -420,10 +452,12 @@ export default function CallScreen() {
                 marginTop: Spacing.md,
                 fontSize: 15,
                 fontFamily: 'Poppins-Regular',
-                color: callSetupError || voice.error ? Colors.error : Colors.textSecondaryDark,
+                color: callSetupError || voice.error ? '#FF9A8A' : CALL_INK_SOFT,
                 textAlign: 'center',
                 lineHeight: 22,
                 maxWidth: 300,
+                /** The timer lives here; digits must not shift as it counts. */
+                fontVariant: ['tabular-nums'],
               }}
             >
               {statusLine}
@@ -436,9 +470,9 @@ export default function CallScreen() {
                   paddingHorizontal: 14,
                   paddingVertical: 10,
                   borderRadius: 12,
-                  backgroundColor: Colors.white,
+                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
                   borderWidth: 1,
-                  borderColor: 'rgba(79, 103, 57, 0.12)',
+                  borderColor: 'rgba(255, 255, 255, 0.14)',
                   maxWidth: '100%',
                 }}
               >
@@ -446,7 +480,7 @@ export default function CallScreen() {
                   style={{
                     fontSize: 13,
                     fontFamily: 'Poppins-Medium',
-                    color: Colors.accent,
+                    color: CALL_INK_SOFT,
                     textAlign: 'center',
                   }}
                   numberOfLines={2}
