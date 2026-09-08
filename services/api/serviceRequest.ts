@@ -373,6 +373,40 @@ export const serviceRequestService = {
     }
   },
 
+  /**
+   * Bookings still being filled in, from the server rather than this phone.
+   *
+   * The listing endpoint excludes drafts by default; `?status=draft` is an
+   * owner-scoped exception it now honours, and each row carries `draftStep`
+   * saying how far the person got. That makes a half-finished booking
+   * something the account has rather than something one handset remembers -
+   * start on a phone, pick it up on a tablet.
+   *
+   * The server already drops drafts with no title or description, which is the
+   * same rule the app uses for whether a draft is worth offering back at all.
+   */
+  getDrafts: async (): Promise<(ServiceRequest & { draftStep?: string })[]> => {
+    try {
+      const response = await apiClient.get<any>('/api/request-service/requests?status=draft');
+      let rows: any[] = [];
+      if (Array.isArray(response)) rows = response;
+      else if (Array.isArray(response?.data)) rows = response.data;
+      else if (Array.isArray(response?.data?.data)) rows = response.data.data;
+
+      return rows
+        .filter((row) => Number.isFinite(Number(row?.id)) && Number(row?.id) > 0)
+        /** Newest first, so "your unfinished booking" means the last one. */
+        .sort((a, b) => {
+          const at = Date.parse(a?.updatedAt ?? a?.createdAt ?? '') || 0;
+          const bt = Date.parse(b?.updatedAt ?? b?.createdAt ?? '') || 0;
+          return bt - at;
+        });
+    } catch {
+      /** A resume offer is a convenience; never break a screen over one. */
+      return [];
+    }
+  },
+
   getUserRequests: async (status?: 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled'): Promise<ServiceRequest[]> => {
     try {
       const url = status ? `/api/request-service/requests?status=${status}` : `/api/request-service/requests`;

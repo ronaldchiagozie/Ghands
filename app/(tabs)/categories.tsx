@@ -16,7 +16,7 @@ import { haptics } from '@/hooks/useHaptics';
 import { useOnNetworkRestore } from '@/hooks/useNetworkConnectivity';
 import { getSpecificErrorMessage } from '@/utils/errorMessages';
 import { isConnectivityOrNetworkError } from '@/utils/isNetworkFailure';
-import { extractUserIdFromToken } from '@/utils/tokenUtils';
+import { resolveUserId } from '@/utils/resolveUserId';
 import { BorderRadius, Colors, MIN_TOUCH_TARGET, Spacing, SHADOWS, useTabScrollContentPaddingTop, useTabScreenScrollBottomPadding } from '@/lib/designSystem';
 import { navigateBack, navigateToClientHomeTab, NAV_FALLBACK } from '@/utils/navigation';
 import ExpandableDescription from '@/components/categories/ExpandableDescription';
@@ -393,31 +393,14 @@ export default function CategoryPage() {
       setIsCreatingRequest(true);
       
       try {
-        let userId = await authService.getUserId();
-        
-        // If user ID is not stored, try to get it from token
-        if (!userId) {
-          const token = await authService.getAuthToken();
-          if (token) {
-            const extractedUserId = extractUserIdFromToken(token);
-            if (extractedUserId) {
-              userId = extractedUserId;
-              await authService.setUserId(userId);
-              if (__DEV__) {
-                if (__DEV__) console.log('User ID extracted from token');
-              }
-            } else {
-              if (__DEV__) {
-                console.warn('⚠️ Could not extract user ID from token. Token format might be different.');
-              }
-            }
-          } else {
-            if (__DEV__) {
-              console.warn('⚠️ No auth token found');
-            }
-          }
-        }
-        
+        /**
+         * The shared lookup, not a third copy of it. This screen, the AI
+         * booking flow and the home rebook action all need the same fallback
+         * to the token when the stored id has been cleared, and keeping three
+         * versions meant the next fix to it would land in one or two of them.
+         */
+        const userId = await resolveUserId();
+
         if (!userId) {
           showError('Unable to identify your account. Please sign out and sign in again.');
           haptics.error();

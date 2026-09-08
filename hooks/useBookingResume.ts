@@ -4,6 +4,7 @@ import { serviceRequestService } from '@/services/api';
 import { isAbandonedDraft } from '@/contract/src/bookingDraft';
 import type { ServiceRequest } from '@/services/api';
 import {
+  bookingStepFromServer,
   clearBookingResumePoint,
   readBookingResumePoint,
   markResumePrompted,
@@ -44,6 +45,39 @@ export function useBookingResume() {
     const stored = await readBookingResumePoint();
 
     if (!stored) {
+      /**
+       * Nothing on this phone. Ask the account.
+       *
+       * The pointer is local, so a booking started on a phone used to be
+       * invisible on a tablet even though the server had the draft the whole
+       * time. The drafts listing makes a half-finished booking something the
+       * account has rather than something one handset remembers.
+       *
+       * No prompt from this path. The modal interrupts on the way into the
+       * app, and that is only earned by a booking somebody abandoned on the
+       * device they are holding - being interrupted about something left on
+       * another one is a notice, not a rescue. It appears in the Drafts tab,
+       * where they can go and find it.
+       */
+      const remote = await serviceRequestService.getDrafts();
+      const candidate = remote.find((row) => isAbandonedDraft(row));
+
+      if (candidate) {
+        const recovered: BookingResumePoint = {
+          requestId: String(candidate.id),
+          step: bookingStepFromServer((candidate as any).draftStep),
+          categoryName: candidate.categoryName,
+          /** Only the id: their answers live on the request, not in a param. */
+          params: { requestId: String(candidate.id) },
+          savedAt: Date.parse(candidate.updatedAt ?? candidate.createdAt ?? '') || Date.now(),
+        };
+        setPoint(recovered);
+        setDraft(candidate);
+        setShouldPrompt(false);
+        setIsLoading(false);
+        return;
+      }
+
       setPoint(null);
       setDraft(null);
       setShouldPrompt(false);

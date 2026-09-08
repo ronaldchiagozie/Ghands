@@ -60,10 +60,14 @@ export function isSubmittedBooking(
 
   /**
    * The server is authoritative about this now. Its request list excludes
-   * `draft` outright - it even overrides an explicit `?status=draft` - so
-   * anything that reaches us has been submitted, and second-guessing that here
-   * would hide real jobs. A draft can still arrive when fetched by id, which
-   * the booking flow does while filling one in, so the check stays.
+   * `draft` by default, so anything that arrives from an ordinary listing has
+   * been submitted and second-guessing it here would hide real jobs.
+   *
+   * The check still earns its place: a draft reaches us two other ways. It
+   * arrives when fetched by id, which the booking flow does while filling one
+   * in, and it arrives from an explicit `?status=draft` listing - which the
+   * server now honours as an owner-scoped exception rather than overriding,
+   * so that drafts can be picked up on another device.
    */
   if (status === 'draft') return false;
 

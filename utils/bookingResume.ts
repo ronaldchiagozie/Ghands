@@ -74,6 +74,34 @@ export type BookingResumePoint = {
   savedAt: number;
 };
 
+/**
+ * The server's name for a step, translated into ours.
+ *
+ * The drafts listing reports `draftStep` using its own vocabulary, and two of
+ * its values have no separate screen here. `provider` and `confirm` both mean
+ * the same thing to somebody coming back: everything is written down, and what
+ * is left is choosing who does it - which is one screen.
+ *
+ * An unrecognised step is treated as the beginning rather than guessed at.
+ * Sending somebody to a later screen than they reached would skip a question
+ * the booking cannot be published without.
+ */
+export function bookingStepFromServer(draftStep: unknown): BookingStep {
+  const step = typeof draftStep === 'string' ? draftStep.trim().toLowerCase() : '';
+  switch (step) {
+    case 'schedule':
+      return 'schedule';
+    case 'photos':
+      return 'photos';
+    case 'provider':
+    case 'providers':
+    case 'confirm':
+      return 'providers';
+    default:
+      return 'details';
+  }
+}
+
 function isBookingStep(value: unknown): value is BookingStep {
   return typeof value === 'string' && (BOOKING_STEPS as readonly string[]).includes(value);
 }

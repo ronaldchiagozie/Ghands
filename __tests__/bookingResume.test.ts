@@ -24,6 +24,7 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
 }));
 
 import {
+  bookingStepFromServer,
   clearBookingResumePoint,
   readBookingResumePoint,
   rememberBookingStep,
@@ -304,5 +305,38 @@ describe('booking resume pointer', () => {
 
       expect(await readBookingResumePoint()).toBeNull();
     });
+  });
+});
+
+/**
+ * The server names the step it stopped at, in its own vocabulary. Two of its
+ * values mean the same thing here, and an unknown one must not be guessed
+ * forward - sending somebody past a screen they never reached would skip a
+ * question the booking cannot be published without.
+ */
+describe('picking a booking up from the account', () => {
+  it('understands the steps that map straight across', () => {
+    expect(bookingStepFromServer('schedule')).toBe('schedule');
+    expect(bookingStepFromServer('photos')).toBe('photos');
+    expect(bookingStepFromServer('details')).toBe('details');
+  });
+
+  /** Choosing who does it is one screen here, whatever the server calls it. */
+  it('treats choosing and confirming as the same place', () => {
+    expect(bookingStepFromServer('provider')).toBe('providers');
+    expect(bookingStepFromServer('providers')).toBe('providers');
+    expect(bookingStepFromServer('confirm')).toBe('providers');
+  });
+
+  it('reads case and padding the server did not promise to normalise', () => {
+    expect(bookingStepFromServer('  Schedule ')).toBe('schedule');
+    expect(bookingStepFromServer('CONFIRM')).toBe('providers');
+  });
+
+  it('starts at the beginning rather than guessing forward', () => {
+    expect(bookingStepFromServer('quote')).toBe('details');
+    expect(bookingStepFromServer(undefined)).toBe('details');
+    expect(bookingStepFromServer(null)).toBe('details');
+    expect(bookingStepFromServer(7)).toBe('details');
   });
 });
