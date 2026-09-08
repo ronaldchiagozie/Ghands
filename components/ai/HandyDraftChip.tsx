@@ -34,7 +34,6 @@ export default function HandyDraftChip({
           accessibilityRole="button"
           accessibilityLabel="Undo Handy draft"
           hitSlop={TOUCH_HIT_SLOP}
-          style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
         >
           <Text style={{ fontFamily: 'Poppins-Medium', fontSize: 12, color: Colors.textMuted }}>
             Undo
@@ -50,19 +49,25 @@ export default function HandyDraftChip({
         accessibilityHint="Fills the job title and description with a suggestion you can edit"
         accessibilityState={{ disabled: disabled || pending, busy: pending }}
         hitSlop={TOUCH_HIT_SLOP}
-        style={({ pressed }) => ({
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 5,
-          paddingHorizontal: 10,
-          paddingVertical: 6,
-          borderRadius: BorderRadius.full,
-          borderWidth: 1,
-          borderColor: Colors.borderSage,
-          backgroundColor: Colors.sageTint,
-          opacity: disabled ? 0.45 : pressed ? 0.75 : 1,
-        })}
+        style={{ opacity: disabled ? 0.45 : 1 }}
       >
+      {/**
+        * Visuals on a View, not in a function style on the Pressable.
+        * NativeWind flattens the latter and silently drops it.
+        */}
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 5,
+            paddingHorizontal: 10,
+            paddingVertical: 6,
+            borderRadius: BorderRadius.full,
+            borderWidth: 1,
+            borderColor: Colors.borderSage,
+            backgroundColor: Colors.sageTint,
+          }}
+        >
         {/* Fixed slot so the chip keeps its height when the spinner swaps in. */}
         <View style={{ width: 15, height: 15, alignItems: 'center', justifyContent: 'center' }}>
           {pending ? (
@@ -85,6 +90,7 @@ export default function HandyDraftChip({
         >
           {pending ? 'Drafting…' : 'Handy'}
         </Text>
+        </View>
       </Pressable>
     </View>
   );

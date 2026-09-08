@@ -106,10 +106,7 @@ export function CallActionButton({
       disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel={label}
-      style={({ pressed }) => [
-        { alignItems: 'center', opacity: disabled ? 0.5 : pressed ? 0.88 : 1 },
-        style,
-      ]}
+      style={[{ alignItems: 'center', opacity: disabled ? 0.5 : 1 }, style]}
     >
       <View
         style={{
@@ -241,21 +238,20 @@ export function CallJobSummaryCard({
         </Text>
       ) : null}
       {onViewJob ? (
-        <Pressable
-          onPress={onViewJob}
-          style={({ pressed }) => ({
-            marginTop: Spacing.md,
-            alignSelf: 'flex-start',
-            backgroundColor: Colors.accent,
-            paddingHorizontal: Spacing.lg,
-            paddingVertical: 10,
-            borderRadius: 12,
-            opacity: pressed ? 0.9 : 1,
-          })}
-        >
+        <Pressable onPress={onViewJob} style={{ alignSelf: 'flex-start' }}>
+          <View
+            style={{
+              marginTop: Spacing.md,
+              backgroundColor: Colors.accent,
+              paddingHorizontal: Spacing.lg,
+              paddingVertical: 10,
+              borderRadius: 12,
+            }}
+          >
           <Text style={{ fontSize: 14, fontFamily: 'Poppins-SemiBold', color: Colors.white }}>
             View job
           </Text>
+          </View>
         </Pressable>
       ) : null}
     </View>

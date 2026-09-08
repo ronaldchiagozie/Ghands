@@ -34,6 +34,8 @@ type AiConversationDrawerProps = {
   onClose: () => void;
   onSelect: (id: number) => void;
   onNewChat: () => void;
+  /** Opens the full history. Optional so the drawer works without one. */
+  onSeeAll?: () => void;
   onDelete: (id: number) => void;
 };
 
@@ -121,6 +123,7 @@ export default function AiConversationDrawer({
   onClose,
   onSelect,
   onNewChat,
+  onSeeAll,
   onDelete,
 }: AiConversationDrawerProps) {
   const insets = useSafeAreaInsets();
@@ -282,13 +285,42 @@ export default function AiConversationDrawer({
               }}
               accessibilityRole="button"
               accessibilityLabel="Start new chat"
-              style={({ pressed }) => [styles.footerBtn, pressed && styles.footerBtnPressed]}
             >
-              <View style={styles.footerBtnInner}>
-                <Plus size={18} color={AI_DRAWER.footerBtnText} strokeWidth={2.4} />
-                <Text style={styles.footerBtnText}>New chat</Text>
+              {/**
+                * On a View, not a function style. NativeWind flattens the
+                * latter and drops it, which is what stripped this button's
+                * background along with the history rows above.
+                */}
+              <View style={styles.footerBtn}>
+                <View style={styles.footerBtnInner}>
+                  <Plus size={18} color={AI_DRAWER.footerBtnText} strokeWidth={2.4} />
+                  <Text style={styles.footerBtnText}>New chat</Text>
+                </View>
               </View>
             </Pressable>
+
+            {/**
+              * The way back to the full history.
+              *
+              * Swapping the header icon for New chat left that screen with no
+              * route into it at all - a whole page nobody could reach. This
+              * drawer holds the most recent twenty; everything older lives
+              * there, along with the room to manage it.
+              */}
+            {onSeeAll ? (
+              <Pressable
+                onPress={() => {
+                  haptics.light();
+                  onSeeAll();
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="See all chats"
+              >
+                <View style={styles.seeAllBtn}>
+                  <Text style={styles.seeAllText}>See all chats</Text>
+                </View>
+              </Pressable>
+            ) : null}
           </View>
         </Animated.View>
       </View>
@@ -375,6 +407,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     borderRadius: 12,
     marginBottom: 14,
+  },
+  seeAllBtn: {
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+  },
+  seeAllText: {
+    fontFamily: 'Poppins-Medium',
+    fontSize: 13,
+    color: AI_DRAWER.textSecondary,
+    letterSpacing: 0.1,
   },
   menuRowInner: {
     flexDirection: 'row',

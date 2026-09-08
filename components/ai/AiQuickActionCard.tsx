@@ -42,12 +42,7 @@ export default function AiQuickActionCard({
       accessibilityRole="button"
       accessibilityLabel={action.title}
       accessibilityHint={action.description}
-      style={({ pressed }) => ({
-        width,
-        height,
-        maxWidth: width,
-        opacity: pressed ? 0.94 : 1,
-      })}
+      style={{ width, height, maxWidth: width }}
     >
       <View
         style={{

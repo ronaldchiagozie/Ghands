@@ -121,10 +121,13 @@ export default function AiAssistantScreen() {
    * vanished, and appeared again, which reads as the screen loading twice
    * because that is exactly what it looked like.
    *
-   * They are one wait now while there is nothing on screen yet. The orb stays
-   * put and only its caption changes as the reason changes.
+   * They are one wait now, and only while there is nothing on screen yet. That
+   * second half matters as much as the first: the availability check can run
+   * again, and when it did, a conversation somebody was reading was replaced
+   * by a loading orb. Nothing that has already loaded gets taken away to show
+   * a wait.
    */
-  const isOpening = isCheckingStatus || (isLoadingHistory && messages.length === 0);
+  const isOpening = (isCheckingStatus || isLoadingHistory) && messages.length === 0;
 
   /**
    * The overlay is for waits that happen over a conversation already on
@@ -266,8 +269,19 @@ export default function AiAssistantScreen() {
    * thread would look new until the next time somebody opened Handy, and then
    * the old one would come back - the pointer would still be aimed at it.
    */
-  const startFreshChat = useCallback(async () => {
-    await clearHandySession();
+  const startFreshChat = useCallback(() => {
+    /**
+     * Deliberately does not forget the remembered conversation.
+     *
+     * It used to clear the pointer here, which lost somebody's place for
+     * nothing: tapping New chat and then leaving without saying anything meant
+     * coming back to a blank greeting, with the real conversation gone from
+     * view. Nothing has replaced it yet at this point.
+     *
+     * The pointer is overwritten the moment a new conversation actually
+     * exists - the first reply creates one, and that is when there is
+     * genuinely something newer to come back to.
+     */
     startNewChat();
   }, [startNewChat]);
 
@@ -406,7 +420,7 @@ export default function AiAssistantScreen() {
           <Pressable
             onPress={() => {
               haptics.light();
-              void startFreshChat();
+              startFreshChat();
             }}
             accessibilityRole="button"
             accessibilityLabel="New chat"
@@ -572,6 +586,10 @@ export default function AiAssistantScreen() {
         onClose={closeDrawer}
         onSelect={(id) => void loadConversation(id)}
         onNewChat={startNewChat}
+        onSeeAll={() => {
+          closeDrawer();
+          router.push('/AiConversationsScreen');
+        }}
         onDelete={(id) => void handleDeleteConversation(id)}
       />
 
