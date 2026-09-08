@@ -451,10 +451,40 @@ const providerService = {
     return [];
   },
 
-  getNearbyProviders: async (categoryName: string, latitude: number, longitude: number, maxDistanceKm = 50): Promise<NearbyProvider[]> => {
+  /**
+   * Providers near a point.
+   *
+   * `categoryName` is optional now. Discover browses before anybody has chosen
+   * a trade, and there is nothing honest to put in that slot - so it is left
+   * off and the server returns every category. Passing one still filters
+   * exactly as it always did.
+   *
+   * `limit` matters only for the no-category case: without a trade to narrow
+   * by, this can return a lot of rows and every one of them becomes a pin.
+   */
+  getNearbyProviders: async (
+    categoryName: string | null | undefined,
+    latitude: number,
+    longitude: number,
+    maxDistanceKm = 50,
+    limit?: number,
+  ): Promise<NearbyProvider[]> => {
     try {
+      const params = new URLSearchParams({
+        latitude: String(latitude),
+        longitude: String(longitude),
+        maxDistanceKm: String(maxDistanceKm),
+      });
+      /** Omitted entirely rather than sent empty - an empty trade is not a trade. */
+      if (typeof categoryName === 'string' && categoryName.trim()) {
+        params.set('categoryName', categoryName.trim());
+      }
+      if (typeof limit === 'number' && Number.isFinite(limit) && limit > 0) {
+        params.set('limit', String(Math.floor(limit)));
+      }
+
       const response = await apiClient.get<any>(
-        `/api/provider/nearby?categoryName=${encodeURIComponent(categoryName)}&latitude=${latitude}&longitude=${longitude}&maxDistanceKm=${maxDistanceKm}`,
+        `/api/provider/nearby?${params.toString()}`,
         { skipAuth: true }
       );
       return extractResponseData<NearbyProvider[]>(response) || [];

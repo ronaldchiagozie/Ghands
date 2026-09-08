@@ -23,6 +23,8 @@ export type { PayForServicePayload, PayForServiceResponse, Bank, BankAccount, Re
 export { notificationService } from './notification';
 export type { Notification, NotificationsListResult } from './notification';
 export { providerService } from './provider';
+export { discoverService } from './discover';
+export type { PopularServices, PopularService, PopularScope, ServiceTip } from './discover';
 export type {
   Provider,
   ProviderSignupPayload,
