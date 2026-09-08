@@ -12,7 +12,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Image, Modal, ScrollView, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { resolveCategoryImageSource } from '@/utils/categoryIcons';
-import { rememberBookingStep } from '@/utils/bookingResume';
+import { clearBookingResumePoint, rememberBookingStep } from '@/utils/bookingResume';
+import { navigateBookingFlowToConfirmation } from '@/utils/navigation';
+import { serviceRequestService } from '@/services/api';
+import { haptics } from '@/hooks/useHaptics';
 import { attachBookingPhotos } from '@/utils/bookingPhotoUpload';
 
 const BOOKING_PHOTO_URIS_KEY = '@ghands:booking_photo_uris';
@@ -40,6 +43,11 @@ export default function AddPhotosScreen() {
     fromAiAssistant?: string;
     bookingOrigin?: string;
     conversationId?: string;
+    /**
+     * Set by the Urgent action, and only when the backend kept the flag.
+     * Changes what happens at the end of this screen - see handleContinue.
+     */
+    isUrgent?: string;
   }>();
   const { toast, showError, showWarning, hideToast } = useToast();
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
@@ -274,6 +282,51 @@ export default function AddPhotosScreen() {
           );
         }
       }
+      /**
+       * Urgent jobs skip the provider map entirely.
+       *
+       * An urgent booking is not sent to one provider and held there: confirm
+       * alerts every qualifying provider nearby and the first to accept takes
+       * it. There is nobody to choose, so offering a map of pins to compare
+       * would be asking somebody with water coming through the ceiling to
+       * browse - and worse, it would let them believe they had picked a person
+       * when the job had actually gone out to everyone.
+       *
+       * So this publishes here and goes straight to the confirmation.
+       */
+      if (params.isUrgent === '1' && Number.isFinite(requestIdNum) && requestIdNum > 0) {
+        try {
+          await serviceRequestService.publishBooking(requestIdNum);
+        } catch (error: any) {
+          setIsFindingProviders(false);
+          haptics.error();
+          /**
+           * Stops here rather than continuing. A booking that was not published
+           * is invisible to every provider, and telling somebody their
+           * emergency is on its way when it is not is the worst outcome this
+           * screen can produce.
+           */
+          showError(
+            error?.message ||
+              'Your urgent booking could not be sent. Please try again.',
+          );
+          return;
+        }
+
+        haptics.success();
+        /** Published, so there is nothing left to come back to. */
+        await clearBookingResumePoint();
+
+        navigateBookingFlowToConfirmation(router, {
+          requestId: params.requestId,
+          serviceType: params.serviceType || params.categoryName,
+          selectedDate: params.selectedDate,
+          selectedTime: params.selectedTime,
+          isUrgent: '1',
+        });
+        return;
+      }
+
       void rememberBookingStep('providers', params.requestId, {
         ...params,
         photoCount: selectedPhotos.size.toString(),

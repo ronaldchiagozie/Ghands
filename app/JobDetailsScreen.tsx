@@ -36,6 +36,17 @@ export default function JobDetailsScreen() {
      */
     prefillTitle?: string;
     prefillDescription?: string;
+    /**
+     * Carried so the last step knows not to ask them to choose.
+     *
+     * An urgent job is broadcast to every qualifying provider nearby rather
+     * than sent to one, so the provider map has nothing to offer - showing it
+     * would ask somebody with water coming through the ceiling to browse and
+     * compare. Set only when the backend actually accepted the flag: a trade
+     * that is not urgent-eligible is booked as an ordinary job and must take
+     * the ordinary path.
+     */
+    isUrgent?: string;
   }>();
   /**
    * Read once, at first render. Reading these on every render would fight the
@@ -304,6 +315,7 @@ export default function JobDetailsScreen() {
             requestId: params.requestId,
             categoryName: params.categoryName,
             bookingOrigin: 'jobDetails',
+            ...(params.isUrgent === '1' ? { isUrgent: '1' } : {}),
           },
         } as any);
       }, 300);

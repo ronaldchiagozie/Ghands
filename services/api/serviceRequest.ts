@@ -267,17 +267,33 @@ export const serviceRequestService = {
    * Try confirm, look at what came back, and fall back when it did not publish.
    * Both orders of deploy then work with nobody having to hold anything.
    */
-  publishBooking: async (requestId: number, providerId: number): Promise<void> => {
+  publishBooking: async (requestId: number, providerId?: number | null): Promise<void> => {
     let published = false;
+
+    /**
+     * Urgent bookings have nobody to name.
+     *
+     * An urgent job is not sent to one provider and held there: confirm skips
+     * the exclusive window and alerts every qualifying provider nearby, first
+     * to accept takes it. So there is no id to send, and the fallback below is
+     * not a fallback for this case - select-provider assigns one person, which
+     * is the opposite of what was asked for. A deployment that cannot broadcast
+     * must fail loudly rather than quietly book a single plumber.
+     */
+    const isBroadcast = providerId == null;
 
     try {
       const response = await apiClient.post<any>(
         `/api/request-service/requests/${requestId}/confirm`,
-        { providerId },
+        isBroadcast ? {} : { providerId },
       );
       const data = extractResponseData<any>(response);
       published = String(data?.status ?? '').toLowerCase() === 'pending';
+      if (isBroadcast && !published) {
+        throw new Error('This booking could not be sent to nearby providers.');
+      }
     } catch (error: any) {
+      if (isBroadcast) throw error;
       /**
        * A rejection carrying one of the publish codes is confirm doing its job:
        * the booking is genuinely incomplete, and falling back to select-provider
@@ -296,7 +312,8 @@ export const serviceRequestService = {
 
     if (published) return;
 
-    await serviceRequestService.selectProvider(requestId, providerId);
+    /** Only reachable for a named provider; the broadcast path threw above. */
+    await serviceRequestService.selectProvider(requestId, providerId as number);
   },
 
   attachRequestImages: async (requestId: number, imageUrls: string[]): Promise<void> => {

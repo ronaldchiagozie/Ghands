@@ -69,6 +69,17 @@ export default function DateTimeScreen() {
     fromAiAssistant?: string;
     bookingOrigin?: string;
     conversationId?: string;
+    /**
+     * Carried so the last step knows not to ask them to choose.
+     *
+     * An urgent job is broadcast to every qualifying provider nearby rather
+     * than sent to one, so the provider map has nothing to offer - showing it
+     * would ask somebody with water coming through the ceiling to browse and
+     * compare. Set only when the backend actually accepted the flag: a trade
+     * that is not urgent-eligible is booked as an ordinary job and must take
+     * the ordinary path.
+     */
+    isUrgent?: string;
   }>();
   const { toast, showError, showSuccess, hideToast } = useToast();
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -283,6 +294,7 @@ export default function DateTimeScreen() {
           fromAiAssistant: params.fromAiAssistant,
           bookingOrigin: params.bookingOrigin,
           conversationId: params.conversationId,
+          ...(params.isUrgent === '1' ? { isUrgent: '1' } : {}),
         },
       } as any);
     } catch (error: any) {

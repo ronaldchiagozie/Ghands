@@ -469,6 +469,15 @@ export default function CategoryPage() {
           params: {
             requestId: response.requestId.toString(),
             categoryName: isToggle,
+            /**
+             * Only when the backend kept the flag. `urgentDeclined` means the
+             * trade is not urgent-eligible and this is now an ordinary
+             * booking, which must take the ordinary path with a provider to
+             * choose.
+             */
+            ...(params.emergency === 'true' && !response.urgentDeclined
+              ? { isUrgent: '1' }
+              : {}),
           },
         } as any);
       } catch (error: any) {

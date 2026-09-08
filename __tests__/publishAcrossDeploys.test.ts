@@ -126,3 +126,58 @@ describe('publishBooking', () => {
     });
   });
 });
+
+/**
+ * Urgent bookings are broadcast, not assigned.
+ *
+ * Confirm skips the exclusive single-provider window and alerts every
+ * qualifying provider nearby; the first to accept takes the job. So there is
+ * no provider id to send - and, crucially, no fallback. `select-provider`
+ * assigns one person, which is the opposite of what an urgent booking asked
+ * for, so a deployment that cannot broadcast has to fail loudly rather than
+ * quietly book a single plumber for somebody's emergency.
+ */
+describe('publishBooking, urgent', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('confirms with no provider at all', async () => {
+    post.mockResolvedValueOnce({ success: true, data: { requestId: 418, status: 'pending', isUrgent: true } });
+
+    await serviceRequestService.publishBooking(418);
+
+    expect(pathsCalled()).toEqual([CONFIRM]);
+    expect(post.mock.calls[0][1]).toEqual({});
+  });
+
+  it('never falls back to assigning one provider', async () => {
+    /** An older deployment: confirm answers, but the request is still a draft. */
+    post.mockResolvedValueOnce({ success: true, data: { requestId: 418, status: 'draft' } });
+
+    await expect(serviceRequestService.publishBooking(418)).rejects.toThrow();
+    expect(pathsCalled()).not.toContain(SELECT);
+  });
+
+  it('raises a refusal rather than swallowing it', async () => {
+    post.mockRejectedValueOnce(Object.assign(new Error('nope'), { code: 'MISSING_SCHEDULE' }));
+
+    await expect(serviceRequestService.publishBooking(418)).rejects.toThrow('nope');
+    expect(pathsCalled()).toEqual([CONFIRM]);
+  });
+
+  it('raises a network failure rather than assigning somebody', async () => {
+    post.mockRejectedValueOnce(new Error('offline'));
+
+    await expect(serviceRequestService.publishBooking(418)).rejects.toThrow('offline');
+    expect(pathsCalled()).not.toContain(SELECT);
+  });
+
+  /** The ordinary path is untouched: a named provider still falls back. */
+  it('leaves the assigned path alone', async () => {
+    post.mockResolvedValueOnce({ success: true, data: { requestId: 418, status: 'draft' } });
+    post.mockResolvedValueOnce({ success: true, data: { requestId: 418 } });
+
+    await serviceRequestService.publishBooking(418, 31);
+
+    expect(pathsCalled()).toEqual([CONFIRM, SELECT]);
+  });
+});

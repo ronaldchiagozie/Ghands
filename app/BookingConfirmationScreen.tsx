@@ -41,6 +41,12 @@ export default function BookingConfirmationScreen() {
     selectedDate?: string;
     selectedTime?: string;
     providerCount?: string;
+    /**
+     * Set when the booking was broadcast rather than sent to one provider.
+     * Changes what the first two steps say, because "sent to 1 provider" and
+     * "waiting for a provider to accept" both describe the other flow.
+     */
+    isUrgent?: string;
   }>();
   const [request, setRequest] = useState<any>(null);
   const [quotations, setQuotations] = useState<any[]>([]);
@@ -140,8 +146,15 @@ export default function BookingConfirmationScreen() {
       ? parseInt(params.providerCount, 10)
       : (request?.nearbyProviders?.length ?? acceptedProviders.length ?? 0);
     const totalSent = providerCount > 0 ? providerCount : acceptedProviders.length || 0;
-    const sentText =
-      totalSent > 0
+    /**
+     * An urgent job went to everybody qualifying nearby, not to a chosen one,
+     * and no count was ever handed back - so it says what happened rather than
+     * counting to a number it does not have.
+     */
+    const isUrgent = params.isUrgent === '1' || request?.isUrgent === true;
+    const sentText = isUrgent
+      ? 'Sent to every available provider near you. First to accept takes it.'
+      : totalSent > 0
         ? `Sent to ${totalSent} nearby ${totalSent === 1 ? 'provider' : 'providers'}.`
         : 'Nearby providers will be notified shortly.';
 
@@ -155,7 +168,7 @@ export default function BookingConfirmationScreen() {
     return [
       {
         id: 'step-1',
-        title: 'Request submitted',
+        title: isUrgent ? 'Urgent request sent' : 'Request submitted',
         description: sentText,
         status: 'completed',
         statusLabel: formatTimeAgo(request?.createdAt || new Date().toISOString()),
@@ -167,7 +180,9 @@ export default function BookingConfirmationScreen() {
           ? hasQuotationSent
             ? `${quotationCount} quote${quotationCount === 1 ? '' : 's'} received. Review when ready.`
             : 'Provider will inspect and send a quote.'
-          : 'Waiting for a provider to accept your request.',
+          : isUrgent
+            ? 'Waiting for the first provider to take it.'
+            : 'Waiting for a provider to accept your request.',
         status: quotationAccepted ? 'completed' : hasAccepted || hasQuotationSent ? 'in-progress' : 'pending',
         statusLabel: quotationAccepted
           ? formatTimeAgo(request?.updatedAt || '')
@@ -197,7 +212,7 @@ export default function BookingConfirmationScreen() {
               : 'Later',
       },
     ];
-  }, [request, quotations, acceptedProviders, params.providerCount]);
+  }, [request, quotations, acceptedProviders, params.providerCount, params.isUrgent]);
 
   const handleContinue = () => {
     haptics.selection();
