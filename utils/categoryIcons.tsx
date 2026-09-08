@@ -1,5 +1,37 @@
 import React from 'react';
 import { Image, ImageSourcePropType, Text, View } from 'react-native';
+import {
+  Armchair,
+  Bath,
+  Battery,
+  Bug,
+  Cable,
+  Camera,
+  Car,
+  Droplet,
+  Fan,
+  Flame,
+  GraduationCap,
+  HardHat,
+  KeyRound,
+  Layers,
+  type LucideIcon,
+  Microwave,
+  Paintbrush,
+  PanelsTopLeft,
+  Router,
+  SatelliteDish,
+  Scissors,
+  Shirt,
+  Snowflake,
+  SprayCan,
+  Sprout,
+  Truck,
+  Utensils,
+  Wallpaper,
+  WashingMachine,
+  Wrench,
+} from 'lucide-react-native';
 
 import { Colors } from '@/lib/designSystem';
 
@@ -439,6 +471,97 @@ export function resolveCategoryImageSource(
   return matchPhrase(combined);
 }
 
+
+/**
+ * A drawn icon for a trade with no artwork.
+ *
+ * Twenty-four categories have a painted PNG. Everything else - and the server
+ * can add a category any day, without an app release - fell through to two
+ * letters in a box. Initials are what a contact list shows when it has nothing
+ * else; on a row of illustrated trades they read as the one that is broken.
+ *
+ * So a name that matches nothing painted still gets a picture of the work:
+ * line art, in the same weight as the illustrations, on the same tinted tile
+ * the initials used. Generator repair gets a battery, waterproofing a drop of
+ * water, a tailor a shirt. Initials remain, but as the third answer rather
+ * than the second - for a genuinely unrecognisable name, which is the only
+ * case where two letters are the honest thing to show.
+ *
+ * Keywords rather than exact names on purpose: the server's spelling is not
+ * ours to control, and "generatorRepair", "Generator Repair" and "generator
+ * servicing" are all the same trade. Order matters - the first match wins, so
+ * the more specific phrase is listed above the word it contains.
+ */
+const GLYPH_RULES: { Icon: LucideIcon; keywords: string[] }[] = [
+  { Icon: Battery, keywords: ['generator', 'inverter', 'battery', 'power backup'] },
+  { Icon: Snowflake, keywords: ['air condition', 'aircondition', 'ac repair', 'acrepair', 'hvac', 'cooling', 'refrigerat', 'freezer', 'fridge', 'chiller'] },
+  { Icon: Fan, keywords: ['fan', 'ventilation', 'extractor'] },
+  { Icon: Droplet, keywords: ['waterproof', 'water proof', 'damp', 'drainage', 'soakaway', 'leak'] },
+  { Icon: PanelsTopLeft, keywords: ['glass', 'window', 'mirror', 'aluminium', 'aluminum', 'glazing'] },
+  { Icon: Flame, keywords: ['weld', 'metal', 'fabricat', 'iron', 'steel', 'blacksmith'] },
+  { Icon: Car, keywords: ['mechanic', 'vehicle', 'motor', 'tyre', 'tire', 'panel beat'] },
+  { Icon: Armchair, keywords: ['furniture', 'sofa', 'interior', 'joinery'] },
+  { Icon: Sprout, keywords: ['garden', 'landscap', 'lawn', 'horticultur', 'nursery', 'agric'] },
+  { Icon: Shirt, keywords: ['tailor', 'sewing', 'fashion', 'laundry', 'dry clean', 'drycleaning', 'ironing', 'clothing'] },
+  { Icon: Utensils, keywords: ['catering', 'chef', 'cook', 'food', 'kitchen staff'] },
+  { Icon: GraduationCap, keywords: ['tutor', 'lesson', 'teacher', 'teaching', 'coaching'] },
+  { Icon: Camera, keywords: ['photograph', 'videograph', 'filming'] },
+  { Icon: Scissors, keywords: ['hair', 'barber', 'salon', 'beauty', 'makeup', 'make up', 'nail', 'spa', 'massage'] },
+  { Icon: Truck, keywords: ['moving', 'relocat', 'haulage', 'logistics', 'delivery', 'dispatch', 'courier'] },
+  { Icon: KeyRound, keywords: ['locksmith', 'lock', 'key', 'door'] },
+  { Icon: SatelliteDish, keywords: ['satellite', 'dstv', 'gotv', 'antenna', 'aerial', 'decoder'] },
+  { Icon: Router, keywords: ['internet', 'wifi', 'wi fi', 'network', 'router', 'fibre', 'fiber'] },
+  { Icon: Cable, keywords: ['cabling', 'wiring', 'cable'] },
+  { Icon: WashingMachine, keywords: ['washing machine', 'washer', 'dryer'] },
+  { Icon: Microwave, keywords: ['microwave', 'oven', 'cooker', 'gas'] },
+  { Icon: Layers, keywords: ['pop ', 'ceiling', 'screed', 'plaster', 'partition', 'drywall'] },
+  { Icon: SprayCan, keywords: ['spray', 'coating', 'polish'] },
+  { Icon: Bath, keywords: ['bathroom', 'toilet', 'sanitary', 'shower'] },
+  { Icon: Bug, keywords: ['fumigat', 'termite', 'rodent'] },
+  { Icon: Wallpaper, keywords: ['wallpaper', 'wall paper'] },
+  { Icon: Paintbrush, keywords: ['decorat', 'finishing', 'texture'] },
+  { Icon: HardHat, keywords: ['construction', 'builder', 'building', 'contractor', 'renovat', 'civil', 'engineer'] },
+  { Icon: Wrench, keywords: ['repair', 'fix', 'maintenance', 'handyman', 'servicing', 'installation'] },
+];
+
+function resolveCategoryGlyph(text: string): LucideIcon | null {
+  for (const { Icon, keywords } of GLYPH_RULES) {
+    for (const keyword of keywords) {
+      if (text.includes(keyword.trim())) return Icon;
+    }
+  }
+  return null;
+}
+
+/** Returns the glyph a name would draw, or null. Exported for the coverage test. */
+export function getCategoryGlyphName(
+  name?: string,
+  displayName?: string,
+  description?: string,
+): string | null {
+  const combined = normalizeKey([name, displayName, description].filter(Boolean).join(' '));
+  const Icon = combined ? resolveCategoryGlyph(combined) : null;
+  return Icon ? (Icon.displayName ?? Icon.name ?? 'glyph') : null;
+}
+
+/** The same tile the initials sit in, so the two fallbacks are one family. */
+const CategoryGlyphTile = ({ Icon }: { Icon: LucideIcon }) => (
+  <View
+    style={{
+      width: ICON_SIZE,
+      height: ICON_SIZE,
+      borderRadius: 10,
+      backgroundColor: '#F0F7E6',
+      borderWidth: 1,
+      borderColor: '#E0ECC8',
+      alignItems: 'center',
+      justifyContent: 'center',
+    }}
+  >
+    <Icon size={20} color={Colors.accent} strokeWidth={1.9} />
+  </View>
+);
+
 const CategoryInitialsAvatar = ({ label }: { label: string }) => {
   const initials = getCategoryInitials(label);
   return (
@@ -490,6 +613,19 @@ export const getCategoryIcon = (
   if (source) {
     const Raster = () => <CategoryRasterIcon source={source} />;
     return Raster;
+  }
+
+  /**
+   * Painted artwork first, then a drawn glyph, then initials. The middle step
+   * is new: it used to fall straight from the twenty-four illustrated trades
+   * to two letters in a box, which on a row of pictures reads as the broken
+   * one rather than as a category nobody has drawn yet.
+   */
+  const combined = normalizeKey([name, displayName, description].filter(Boolean).join(' '));
+  const Glyph = combined ? resolveCategoryGlyph(combined) : null;
+  if (Glyph) {
+    const Drawn = () => <CategoryGlyphTile Icon={Glyph} />;
+    return Drawn;
   }
 
   const Initials = () => <CategoryInitialsAvatar label={labelForInitials} />;

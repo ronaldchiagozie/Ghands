@@ -4,6 +4,7 @@ import { truncateMiddle } from '@/utils/formatReference';
 import { CheckCircle, Clock, Download, Share2, User, XCircle } from 'lucide-react-native';
 import React, { useMemo } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
+import ToolPattern from '@/components/ToolPattern';
 
 export type ClientReceiptStatus = 'completed' | 'pending' | 'failed';
 
@@ -172,8 +173,21 @@ export function ClientPaymentReceipt({
           flex: 1,
           padding: 16,
           justifyContent: 'space-between',
+          /** Holds the pattern inside the card's corners. */
+          overflow: 'hidden',
         }}
       >
+        {/**
+          * A receipt is the one screen that leaves the app - somebody sends it
+          * to a landlord, an employer, whoever paid for the work. A bare white
+          * card of numbers says nothing about who produced it.
+          *
+          * Very faint on purpose. This sits behind money, and anything strong
+          * enough to be read as a picture is strong enough to interfere with a
+          * figure somebody is checking.
+          */}
+        <ToolPattern color={Colors.accent} opacity={0.055} tile={190} />
+
         <View>
           <Text
             style={{

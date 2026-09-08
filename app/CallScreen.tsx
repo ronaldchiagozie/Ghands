@@ -32,6 +32,7 @@ import {
   WEBRTC_UNAVAILABLE_MESSAGE,
 } from '@/utils/webrtcAvailability';
 import { buildChatScreenParams, exitChatToJobHub } from '@/utils/navigation';
+import ToolPattern from '@/components/ToolPattern';
 
 export type CallState = 'incoming' | 'outgoing' | 'active' | 'ended';
 
@@ -292,6 +293,18 @@ export default function CallScreen() {
   return (
     <SafeAreaWrapper backgroundColor={Colors.backgroundLight}>
       <View style={{ flex: 1, backgroundColor: Colors.backgroundLight }}>
+        {/**
+          * A call screen is mostly empty by nature - a name, a timer, and a
+          * long wait. The pattern gives that emptiness something to be, the
+          * way a messaging app puts one behind a conversation, and it is the
+          * trades this app books rather than wallpaper that could sit
+          * anywhere.
+          *
+          * Fainter than the receipt. Somebody stares at this screen for the
+          * length of a phone call, and a texture that is pleasant for two
+          * seconds is tiring for two minutes.
+          */}
+        <ToolPattern color={Colors.accent} opacity={0.04} tile={200} />
         {(callState === 'ended' || callState === 'outgoing') && (
           <ScreenHeader
             title={headerTitle}
