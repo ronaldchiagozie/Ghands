@@ -4,12 +4,14 @@ import { serviceRequestService } from '@/services/api';
 import { isAbandonedDraft } from '@/contract/src/bookingDraft';
 import type { ServiceRequest } from '@/services/api';
 import {
+  bookingStepFromDraftContent,
   bookingStepFromServer,
   clearBookingResumePoint,
   readBookingResumePoint,
   markResumePrompted,
   resumeHoursLeft,
   resumeProgress,
+  furthestBookingStep,
   resumeStepLabel,
   shouldPromptResume,
   type BookingResumePoint,
@@ -73,7 +75,11 @@ export function useBookingResume() {
       if (candidate) {
         const recovered: BookingResumePoint = {
           requestId: String(candidate.id),
-          step: bookingStepFromServer((candidate as any).draftStep),
+          /** Whichever of the two got further, so nothing already done reads as outstanding. */
+          step: furthestBookingStep(
+            bookingStepFromServer((candidate as any).draftStep),
+            bookingStepFromDraftContent(candidate),
+          ),
           categoryName: candidate.categoryName,
           /** Only the id: their answers live on the request, not in a param. */
           params: { requestId: String(candidate.id) },
@@ -126,6 +132,21 @@ export function useBookingResume() {
       if (isAbandonedDraft(request)) {
         /** Fills in the job title and the date, which the pointer does not hold. */
         setDraft(request);
+
+        /**
+         * And corrects the step. The pointer is written as somebody leaves a
+         * screen, so it lags what they actually did - it told one customer
+         * their photos were still to come on a booking whose photos were
+         * already uploaded. The record cannot lag in that direction.
+         */
+        setPoint((current) =>
+          current
+            ? {
+                ...current,
+                step: furthestBookingStep(current.step, bookingStepFromDraftContent(request)),
+              }
+            : current,
+        );
       } else {
         /**
          * Finished, cancelled, or published from another device. Offering to

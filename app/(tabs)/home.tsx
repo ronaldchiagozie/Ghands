@@ -700,6 +700,10 @@ const HomeScreen = React.memo(() => {
         });
         return;
       }
+      if (id === 'handy') {
+        router.push('/AiAssistantScreen' as any);
+        return;
+      }
       if (id === 'rebook') {
         void handleRebook();
         return;

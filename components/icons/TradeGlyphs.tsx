@@ -19,8 +19,20 @@ import Svg, { Circle, Ellipse, G, Path, Rect } from 'react-native-svg';
  * half of why it stood out.
  */
 
-const GREEN = '#78C043';
-const GREEN_DEEP = '#559330';
+/**
+ * The app's own greens, not the renders'.
+ *
+ * The painted icons use a bright signal green, which belongs to whoever drew
+ * them - it appears nowhere else in this app. Sitting a drawn icon in that
+ * green put a colour on the page that the palette does not contain, and next
+ * to a sage header it read as a different app's artwork.
+ *
+ * These are the brand sage: the accent for the shaded parts and a lighter
+ * sage above it for the body, so the two tones still separate at forty points
+ * while the whole icon belongs to the same page as everything around it.
+ */
+const GREEN = '#6E8F4C';
+const GREEN_DEEP = '#4F6739';
 const GRAPHITE = '#2E2E2E';
 const CHROME = '#C6CBD1';
 

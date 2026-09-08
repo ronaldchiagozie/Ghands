@@ -24,7 +24,9 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
 }));
 
 import {
+  bookingStepFromDraftContent,
   bookingStepFromServer,
+  furthestBookingStep,
   clearBookingResumePoint,
   readBookingResumePoint,
   rememberBookingStep,
@@ -338,5 +340,57 @@ describe('picking a booking up from the account', () => {
     expect(bookingStepFromServer(undefined)).toBe('details');
     expect(bookingStepFromServer(null)).toBe('details');
     expect(bookingStepFromServer(7)).toBe('details');
+  });
+});
+
+/**
+ * What the booking itself proves.
+ *
+ * The step pointer is written as somebody leaves a screen, so it lags what
+ * they actually did - it told one customer their photos were still to come on
+ * a booking whose photos were already on the server. The record cannot lag in
+ * that direction, so it is read as a floor and the further of the two wins.
+ */
+describe('progress read from the draft', () => {
+  const draft = (over: Record<string, unknown> = {}) => ({
+    jobTitle: 'Leaking sink',
+    description: 'Water under the kitchen cupboard.',
+    scheduledDate: '2026-09-12',
+    images: [] as string[],
+    ...over,
+  });
+
+  it('needs a title and a description before anything else', () => {
+    expect(bookingStepFromDraftContent(draft({ jobTitle: '' }))).toBe('details');
+    expect(bookingStepFromDraftContent(draft({ description: '  ' }))).toBe('details');
+    expect(bookingStepFromDraftContent(null)).toBe('details');
+  });
+
+  it('knows the date screen was answered when there is a date', () => {
+    expect(bookingStepFromDraftContent(draft({ scheduledDate: '' }))).toBe('schedule');
+    expect(bookingStepFromDraftContent(draft())).toBe('photos');
+  });
+
+  /** The case that started this: photos uploaded, pointer still saying photos. */
+  it('counts uploaded photos as that screen being done', () => {
+    expect(bookingStepFromDraftContent(draft({ images: ['a.jpg'] }))).toBe('providers');
+  });
+
+  /**
+   * And the reason it is only a floor. Photos are optional, so an empty list
+   * proves nothing - somebody may have passed that screen and added none.
+   */
+  it('does not treat an empty photo list as proof of anything', () => {
+    expect(bookingStepFromDraftContent(draft({ images: [] }))).toBe('photos');
+    expect(furthestBookingStep('providers', bookingStepFromDraftContent(draft({ images: [] })))).toBe(
+      'providers',
+    );
+  });
+
+  it('takes whichever source got further', () => {
+    expect(furthestBookingStep('photos', 'providers')).toBe('providers');
+    expect(furthestBookingStep('providers', 'details')).toBe('providers');
+    expect(furthestBookingStep(null, undefined)).toBe('details');
+    expect(furthestBookingStep('schedule', null, 'photos')).toBe('photos');
   });
 });

@@ -102,6 +102,45 @@ export function bookingStepFromServer(draftStep: unknown): BookingStep {
   }
 }
 
+/** The later of two steps. Progress never goes backwards on a redraw. */
+export function furthestBookingStep(...steps: (BookingStep | null | undefined)[]): BookingStep {
+  let best = 0;
+  steps.forEach((step) => {
+    const index = step ? BOOKING_STEPS.indexOf(step) : -1;
+    if (index > best) best = index;
+  });
+  return BOOKING_STEPS[best];
+}
+
+/**
+ * How far the booking itself proves they got.
+ *
+ * A floor, not an answer. The step pointer is written when somebody leaves a
+ * screen and can lag behind what they actually did - the draft told one
+ * customer their photos were still outstanding on a booking whose photos were
+ * already on the server. The record cannot lie in that direction: a scheduled
+ * date means the date screen was answered, whatever any pointer says.
+ *
+ * Photos are the reason this is only a floor. They are optional, so an empty
+ * image list proves nothing either way - somebody may have passed that screen
+ * and chosen not to add any. Images present prove they passed it; images
+ * absent prove nothing at all.
+ */
+export function bookingStepFromDraftContent(request: {
+  jobTitle?: unknown;
+  description?: unknown;
+  scheduledDate?: unknown;
+  images?: unknown;
+} | null | undefined): BookingStep {
+  const text = (value: unknown) => typeof value === 'string' && value.trim().length > 0;
+
+  if (!request) return 'details';
+  if (!text(request.jobTitle) || !text(request.description)) return 'details';
+  if (!text(request.scheduledDate)) return 'schedule';
+  if (Array.isArray(request.images) && request.images.length > 0) return 'providers';
+  return 'photos';
+}
+
 function isBookingStep(value: unknown): value is BookingStep {
   return typeof value === 'string' && (BOOKING_STEPS as readonly string[]).includes(value);
 }
