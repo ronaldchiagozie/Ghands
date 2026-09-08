@@ -281,17 +281,22 @@ export default function PaymentSuccessfulScreen() {
           </View>
         ) : null}
 
-        {/** Captured on share, so what lands in a chat is the document. */}
-
-        <View ref={receiptRef} collapsable={false}>
-
-        <ClientPaymentReceipt
-          data={transactionData}
-          onShare={handleShareReceipt}
-          onDownload={handleDownloadReceipt}
-          onViewJob={handleExit}
-          showViewJob={Boolean(params.requestId)}
-        />
+        {/**
+          * Captured on share, so what lands in a chat is the document itself.
+          *
+          * `flex: 1` is not optional here. The receipt's own root is a flex
+          * child, so a wrapper that sizes to its content gives it nothing to
+          * fill and the whole card collapses to a strip - which is exactly
+          * what happened when this wrapper was first added without it.
+          */}
+        <View ref={receiptRef} collapsable={false} style={{ flex: 1 }}>
+          <ClientPaymentReceipt
+            data={transactionData}
+            onShare={handleShareReceipt}
+            onDownload={handleDownloadReceipt}
+            onViewJob={handleExit}
+            showViewJob={Boolean(params.requestId)}
+          />
       </View>
       </View>
     </SafeAreaWrapper>
