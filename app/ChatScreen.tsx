@@ -7,7 +7,7 @@ import ChatTypingBubble from '@/components/chat/ChatTypingBubble';
 import { BorderRadius, Colors, Spacing, SHADOWS, MIN_TOUCH_TARGET} from '@/lib/designSystem';
 import { androidElevation, iosOnlyShadow } from '@/lib/surfaceStyles';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
-import { ArrowLeft, AlertCircle, FileText, Send, MoreVertical } from 'lucide-react-native';
+import { ArrowLeft, AlertCircle, FileText, Lock, Send, MoreVertical } from 'lucide-react-native';
 import { CallIconOutline } from '@/components/call/CallIcons';
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import {
@@ -50,6 +50,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AvatarCircle } from '@/components/AvatarCircle';
 import { resolveMessageOwnership } from '@/contract/src/messageOwnership';
 import ToolPattern from '@/components/ToolPattern';
+import { isConversationClosedError } from '@/utils/conversationAccess';
 
 type DirectionHint = 'outgoing' | 'incoming' | null;
 
@@ -191,6 +192,15 @@ export default function ChatScreen() {
   const refreshIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isMarkingAsReadRef = useRef(false);
   const ownershipByMessageIdRef = useRef<Record<string, boolean>>({});
+  /**
+   * True once the server has refused access to this thread.
+   *
+   * The refusal is a rule, not a fault: the conversation belongs to a job, and
+   * the job is over. Reading it beats inferring the answer from a status the
+   * app may have fetched minutes ago, because it comes from the same system
+   * that would have accepted the message.
+   */
+  const [conversationClosed, setConversationClosed] = useState(false);
   const stableCurrentUserIdRef = useRef<number | null>(null);
   const isNearBottomRef = useRef(true);
   const prevMessageCountRef = useRef(0);
@@ -533,6 +543,15 @@ export default function ChatScreen() {
         setTimeout(() => scrollToBottom(false), 100);
       }
     } catch (error) {
+      /**
+       * A closed thread is not an error to report. It used to log on every
+       * poll and show a sync warning, which is the app complaining about a
+       * rule working correctly.
+       */
+      if (isConversationClosedError(error)) {
+        setConversationClosed(true);
+        return;
+      }
       if (__DEV__) {
         console.error('Error loading messages:', error);
       }
@@ -652,6 +671,10 @@ export default function ChatScreen() {
       const result = await communicationService.getUnreadCount(requestId!);
       setUnreadCount(result.count);
     } catch (error) {
+      if (isConversationClosedError(error)) {
+        setConversationClosed(true);
+        return;
+      }
       if (__DEV__) {
         console.error('Error loading unread count:', error);
       }
@@ -1320,7 +1343,55 @@ height: MIN_TOUCH_TARGET,
           </View>
         )}
 
-        {/* Input Field */}
+        {/**
+          * A finished job's conversation is read-only, and says so.
+          *
+          * The thread stays - it is a record of what was agreed, and the
+          * commonest reason to open a completed job is to check exactly that.
+          * What goes is the text box, which looked ready and failed on every
+          * send. Offering an action that cannot succeed is worse than not
+          * offering it, because somebody types the message twice before they
+          * believe it.
+          */}
+        {conversationClosed ? (
+          <View
+            style={{
+              paddingHorizontal: 20,
+              paddingTop: 14,
+              paddingBottom: Math.max(insets.bottom, 14),
+              borderTopWidth: 1,
+              borderTopColor: Colors.borderSage,
+              backgroundColor: Colors.white,
+              alignItems: 'center',
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+              <Lock size={14} color={Colors.textSecondaryDark} strokeWidth={2} />
+              <Text
+                style={{
+                  fontSize: 13.5,
+                  fontFamily: 'Poppins-SemiBold',
+                  color: Colors.textPrimary,
+                }}
+              >
+                This conversation has ended
+              </Text>
+            </View>
+            <Text
+              style={{
+                marginTop: 3,
+                fontSize: 12,
+                lineHeight: 17,
+                fontFamily: 'Poppins-Regular',
+                color: Colors.textSecondaryDark,
+                textAlign: 'center',
+              }}
+            >
+              Messaging closes when a job is finished. You can still read everything above.
+            </Text>
+          </View>
+        ) : (
+        /* Input Field */
         <View
           style={{
             paddingHorizontal: 14,
@@ -1402,6 +1473,7 @@ height: MIN_TOUCH_TARGET,
             ) : null}
           </View>
         </View>
+        )}
         </View>
 
         <Modal
