@@ -28,7 +28,7 @@ import { getSpecificErrorMessage } from '@/utils/errorMessages';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
-import { History } from 'lucide-react-native';
+import { Plus } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
@@ -111,7 +111,27 @@ export default function AiAssistantScreen() {
 
   const botSize = Math.min(200, Math.round(windowWidth * 0.48));
   const isUnavailable = mode === 'unavailable';
-  const isOverlayVisible = isStartingBooking || isLoadingHistory;
+
+  /**
+   * One wait on the way in, not two.
+   *
+   * Opening Handy ran two loading states back to back: the availability check,
+   * and then reopening the last conversation. They are independent and both
+   * start at once, but they were drawn separately - so the orb appeared,
+   * vanished, and appeared again, which reads as the screen loading twice
+   * because that is exactly what it looked like.
+   *
+   * They are one wait now while there is nothing on screen yet. The orb stays
+   * put and only its caption changes as the reason changes.
+   */
+  const isOpening = isCheckingStatus || (isLoadingHistory && messages.length === 0);
+
+  /**
+   * The overlay is for waits that happen over a conversation already on
+   * screen - switching threads from the drawer, or raising a booking. Opening
+   * is not one of those, and dimming a blank screen was half the flicker.
+   */
+  const isOverlayVisible = isStartingBooking || (isLoadingHistory && messages.length > 0);
 
   useEffect(() => {
     void checkAvailability();
@@ -126,7 +146,33 @@ export default function AiAssistantScreen() {
     }, []),
   );
 
+  /**
+   * What this screen has already opened.
+   *
+   * Deciding what to show is a one-off, and this effect was running it more
+   * than once - so the conversation was fetched twice, the loading overlay
+   * appeared twice, and opening Handy felt twice as slow as it is. The effect
+   * depends on callbacks whose identity it cannot control, and React runs
+   * effects twice on mount in development besides; either is enough. Rather
+   * than chase which, the intent is recorded and repeated work is skipped.
+   */
+  const openedRef = useRef<string | null>(null);
+
   useEffect(() => {
+    /**
+     * What was actually asked for. Two visits asking the same thing are the
+     * same visit; asking for a different conversation is a new one.
+     */
+    const intent =
+      params.newChat === 'true'
+        ? 'new'
+        : params.conversationId
+          ? `id:${params.conversationId}`
+          : 'resume';
+
+    if (openedRef.current === intent) return;
+    openedRef.current = intent;
+
     if (params.newChat === 'true') {
       void clearHandySession();
       startNewChat();
@@ -212,6 +258,18 @@ export default function AiAssistantScreen() {
       }),
     ]);
   }, [chatOpacity, homeOpacity, homeTranslateY, reducedMotion, showChatLayout]);
+
+  /**
+   * Starts a fresh conversation from this screen.
+   *
+   * Clears the remembered session as well as the messages. Without that, the
+   * thread would look new until the next time somebody opened Handy, and then
+   * the old one would come back - the pointer would still be aimed at it.
+   */
+  const startFreshChat = useCallback(async () => {
+    await clearHandySession();
+    startNewChat();
+  }, [startNewChat]);
 
   const handleSend = useCallback(async () => {
     const text = prompt.trim();
@@ -336,14 +394,23 @@ export default function AiAssistantScreen() {
             </Pressable>
             <AiMenuButton onPress={() => void openDrawer()} />
           </View>
+          {/**
+            * Start a new chat, not open the history.
+            *
+            * The history had two doors: this one and the menu on the left,
+            * which is where a list of past conversations belongs. Meanwhile
+            * starting fresh had none from here - now that Handy reopens your
+            * last thread on the way in, "somewhere else" is the one thing this
+            * screen could not offer.
+            */}
           <Pressable
             onPress={() => {
               haptics.light();
-              router.push('/AiConversationsScreen');
+              void startFreshChat();
             }}
             accessibilityRole="button"
-            accessibilityLabel="Chat history"
-            accessibilityHint="Opens your past Handy conversations"
+            accessibilityLabel="New chat"
+            accessibilityHint="Starts a fresh conversation with Handy"
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             style={{
               width: MIN_TOUCH_TARGET,
@@ -352,16 +419,22 @@ export default function AiAssistantScreen() {
               justifyContent: 'center',
             }}
           >
-            <History size={22} color={AI_COLORS.primary} strokeWidth={2.2} />
+            <Plus size={24} color={AI_COLORS.primary} strokeWidth={2.4} />
           </Pressable>
         </View>
 
         <View style={{ flex: 1 }}>
           {isUnavailable ? (
             <AiBotUnavailableView />
-          ) : isCheckingStatus ? (
+          ) : isOpening ? (
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-              <AiThinkingOrb label={`Connecting to ${botName}…`} />
+              <AiThinkingOrb
+                label={
+                  isCheckingStatus
+                    ? `Connecting to ${botName}…`
+                    : 'Picking up where you left off…'
+                }
+              />
             </View>
           ) : (
             <>
@@ -478,12 +551,12 @@ export default function AiAssistantScreen() {
         >
           {/**
             * Says which wait this is. The overlay covers two of them, and
-            * "starting your booking" while a conversation is merely reopening
+            * "starting your booking" while a thread is merely being switched
             * would be the app narrating something that is not happening.
             */}
           <AiThinkingOrb
             size={64}
-            label={isStartingBooking ? 'Starting your booking…' : 'Picking up where you left off…'}
+            label={isStartingBooking ? 'Starting your booking…' : 'Opening that chat…'}
           />
         </View>
       ) : null}
