@@ -82,12 +82,14 @@ function ConversationRow({
       accessibilityRole="button"
       accessibilityLabel={`Open conversation: ${conversation.title}`}
       accessibilityHint="Long press to delete"
-      style={({ pressed }) => [
-        styles.menuRow,
-        isActive && styles.menuRowActive,
-        pressed && styles.menuRowPressed,
-      ]}
+      android_ripple={{ color: 'rgba(255, 255, 255, 0.06)' }}
     >
+      {/**
+        * The row's own surface, on a View. It used to sit in a function style
+        * on the Pressable above, which NativeWind flattens away - the same
+        * fault that left the full chat history screen as bare lines of text.
+        */}
+      <View style={[styles.menuRow, isActive && styles.menuRowActive]}>
       <View style={styles.menuRowInner}>
         <View style={styles.menuIconWrap}>
           <MessageSquare
@@ -103,6 +105,7 @@ function ConversationRow({
           {conversation.title}
         </Text>
         <Text style={styles.menuMeta}>{formatConversationDate(conversation.updatedAt)}</Text>
+      </View>
       </View>
     </Pressable>
   );

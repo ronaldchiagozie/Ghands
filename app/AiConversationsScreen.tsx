@@ -187,29 +187,49 @@ export default function AiConversationsScreen() {
             data={conversations}
             keyExtractor={(item) => String(item.id)}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 24, paddingTop: 8 }}
+            contentContainerStyle={{ paddingBottom: 28, paddingTop: 10 }}
+            ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
             renderItem={({ item }) => (
               <Pressable
                 onPress={() => handleOpenConversation(item)}
-                style={({ pressed }) => ({
-                  backgroundColor: pressed ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.08)',
-                  borderRadius: BorderRadius.lg,
-                  paddingHorizontal: 16,
-                  paddingVertical: 14,
-                  marginBottom: 10,
-                  borderWidth: 1,
-                  borderColor: 'rgba(255,255,255,0.12)',
-                })}
+                accessibilityRole="button"
+                accessibilityLabel={`Open chat: ${item.title}`}
+                android_ripple={{ color: 'rgba(255,255,255,0.08)' }}
               >
-                <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-                  <View style={{ flex: 1, paddingRight: 12 }}>
+                {/**
+                  * Every visual property on this inner View, and none on the
+                  * Pressable.
+                  *
+                  * This row used to carry its background, border, radius and
+                  * padding in a `style={({ pressed }) => ({...})}` function on
+                  * the Pressable itself. NativeWind wraps these elements and
+                  * flattens a function style, so all of it was silently
+                  * dropped - which is why the list arrived as bare text lines
+                  * pressed against each other with no card, no padding and no
+                  * gap. Nothing was wrong with the spacing values; they were
+                  * never applied.
+                  */}
+                <View
+                  style={{
+                    backgroundColor: 'rgba(255, 255, 255, 0.07)',
+                    borderRadius: BorderRadius.lg,
+                    borderWidth: 1,
+                    borderColor: 'rgba(255, 255, 255, 0.11)',
+                    paddingHorizontal: 16,
+                    paddingVertical: 15,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                  }}
+                >
+                  <View style={{ flex: 1, paddingRight: 14 }}>
                     <Text
                       numberOfLines={2}
                       style={{
                         fontFamily: 'Poppins-SemiBold',
-                        fontSize: 15,
+                        fontSize: 14.5,
+                        lineHeight: 21,
+                        letterSpacing: -0.1,
                         color: AI_ASSISTANT_TEXT.primary,
-                        marginBottom: 6,
                       }}
                     >
                       {item.title}
@@ -217,27 +237,42 @@ export default function AiConversationsScreen() {
                     <Text
                       style={{
                         fontFamily: 'Poppins-Regular',
-                        fontSize: 12,
-                        color: 'rgba(255,255,255,0.55)',
+                        fontSize: 11.5,
+                        color: 'rgba(255, 255, 255, 0.5)',
+                        marginTop: 7,
                       }}
                     >
                       {formatTimeAgo(item.updatedAt)}
                     </Text>
                   </View>
 
+                  {/**
+                    * A real target rather than a bare glyph, so deleting the
+                    * wrong chat takes a deliberate tap.
+                    */}
                   <Pressable
                     onPress={() => handleDelete(item)}
                     disabled={deletingId === item.id}
                     accessibilityRole="button"
-                    accessibilityLabel="Delete conversation"
-                    hitSlop={8}
-                    style={{ paddingTop: 2 }}
+                    accessibilityLabel={`Delete chat: ${item.title}`}
+                    hitSlop={10}
                   >
-                    {deletingId === item.id ? (
-                      <ActivityIndicator size="small" color={AI_COLORS.muted} />
-                    ) : (
-                      <Trash2 size={18} color={AI_COLORS.muted} />
-                    )}
+                    <View
+                      style={{
+                        width: 34,
+                        height: 34,
+                        borderRadius: 17,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: 'rgba(255, 255, 255, 0.06)',
+                      }}
+                    >
+                      {deletingId === item.id ? (
+                        <ActivityIndicator size="small" color={AI_COLORS.muted} />
+                      ) : (
+                        <Trash2 size={16} color={AI_COLORS.muted} />
+                      )}
+                    </View>
                   </Pressable>
                 </View>
               </Pressable>

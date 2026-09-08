@@ -197,17 +197,24 @@ export default function AiSuggestionCard({
           }}
           accessibilityRole="button"
           accessibilityLabel={suggestion.ctaLabel}
-          style={({ pressed }) => ({
-            backgroundColor: S.ctaBg,
-            borderRadius: 999,
-            paddingVertical: 14,
-            paddingHorizontal: 20,
-            minHeight: 48,
-            alignItems: 'center',
-            justifyContent: 'center',
-            opacity: pressed ? 0.92 : 1,
-          })}
+          android_ripple={{ color: 'rgba(255, 255, 255, 0.14)', borderless: false }}
         >
+          {/**
+            * Visuals on the inner View, never on the Pressable. NativeWind
+            * flattens a function style here and drops it silently, which is
+            * how the chat history list lost its cards.
+            */}
+          <View
+            style={{
+              backgroundColor: S.ctaBg,
+              borderRadius: 999,
+              paddingVertical: 14,
+              paddingHorizontal: 20,
+              minHeight: 48,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
           <Text
             style={{
               fontFamily: 'Poppins-SemiBold',
@@ -219,6 +226,7 @@ export default function AiSuggestionCard({
           >
             {suggestion.ctaLabel}
           </Text>
+          </View>
         </Pressable>
       </View>
 

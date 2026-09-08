@@ -110,6 +110,26 @@ function extractApiError(response: unknown): string | undefined {
   return layer?.error ?? layer?.data?.error;
 }
 
+/**
+ * Sending a message is not safe to repeat.
+ *
+ * The client retries a failed POST three more times by default, and
+ * `/api/ai/chat` carries no idempotency key - so every attempt that reaches
+ * the server stores the message again. A slow reply is exactly when this
+ * fires, and a language model on a cold instance is slow by nature, which is
+ * how one "Hey" became four identical messages in the thread.
+ *
+ * Nothing was visibly wrong while the app forgot the conversation on every
+ * open: the duplicates sat on the server, unread. Reopening the last thread
+ * is what put them on screen.
+ *
+ * A lost reply now surfaces as a failure the person can answer by sending
+ * again, which is the honest trade. The real fix is an idempotency key on
+ * this endpoint, the way the wallet has one; until the server offers it, not
+ * retrying is the only way to keep one message one message.
+ */
+const NO_RETRY = { retries: 0 } as const;
+
 export const aiService = {
   getStatus: async (): Promise<AiStatus> => {
     const response = await apiClient.get<any>('/api/ai/status');
@@ -117,7 +137,7 @@ export const aiService = {
   },
 
   sendMessage: async (payload: AiChatRequest): Promise<AiChatResponse> => {
-    const response = await apiClient.post<any>('/api/ai/chat', payload);
+    const response = await apiClient.post<any>('/api/ai/chat', payload, NO_RETRY);
     return unwrapAiData<AiChatResponse>(response);
   },
 
@@ -190,7 +210,7 @@ export const aiService = {
   },
 
   quickBooking: async (payload: AiQuickBookingRequest): Promise<AiQuickBookingResponse> => {
-    const response = await apiClient.post<any>('/api/ai/quick-booking', payload);
+    const response = await apiClient.post<any>('/api/ai/quick-booking', payload, NO_RETRY);
     const success = (response as any)?.success;
     if (success === false) {
       const error = extractApiError(response) || 'Failed to create booking';

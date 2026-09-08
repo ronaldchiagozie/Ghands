@@ -71,16 +71,23 @@ export default function AiSparkleFab() {
           accessibilityLabel="Open AI assistant"
           accessibilityHint="Get help with support questions and image analysis"
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          style={({ pressed }) => ({
-            ...StyleSheet.absoluteFillObject,
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: FAB_RADIUS,
-            opacity: pressed ? 0.92 : 1,
-            transform: [{ scale: pressed ? 0.96 : 1 }],
-          })}
+          style={StyleSheet.absoluteFillObject}
         >
-          <AiSparkleIcon variant="fab" />
+          {/**
+            * Centring on a plain View. It lived in a function style on the
+            * Pressable, which NativeWind flattens - so the mark was only ever
+            * centred by luck of the icon filling the button.
+            */}
+          <View
+            style={{
+              flex: 1,
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: FAB_RADIUS,
+            }}
+          >
+            <AiSparkleIcon variant="fab" />
+          </View>
         </Pressable>
       </View>
     </View>
