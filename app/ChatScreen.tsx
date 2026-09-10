@@ -544,14 +544,12 @@ export default function ChatScreen() {
       }
     } catch (error) {
       /**
-       * A closed thread is not an error to report. It used to log on every
-       * poll and show a sync warning, which is the app complaining about a
-       * rule working correctly.
+       * No closed-conversation check here, on purpose. Reading a thread never
+       * closes - only sending does, an hour after the job ends - so a refusal
+       * on this path is a real access failure and has to show as one. It used
+       * to be read as "this conversation has ended", which hid a genuine bug
+       * behind a message about a job that had not ended.
        */
-      if (isConversationClosedError(error)) {
-        setConversationClosed(true);
-        return;
-      }
       if (__DEV__) {
         console.error('Error loading messages:', error);
       }
@@ -671,10 +669,7 @@ export default function ChatScreen() {
       const result = await communicationService.getUnreadCount(requestId!);
       setUnreadCount(result.count);
     } catch (error) {
-      if (isConversationClosedError(error)) {
-        setConversationClosed(true);
-        return;
-      }
+      /** Never closed: reading is always open. A failure here is just a failure. */
       if (__DEV__) {
         console.error('Error loading unread count:', error);
       }
@@ -762,6 +757,22 @@ export default function ChatScreen() {
       // Don't refresh here - backend may not include the new message yet, causing it to disappear.
       // The 5s auto-refresh will pick up replies from the other party.
     } catch (error: any) {
+      /**
+       * The one place a conversation can close: a send refused with
+       * MESSAGING_CLOSED, an hour after the job finished. What they typed stays
+       * on screen, marked failed, so nothing is lost; the text box goes, and
+       * so does "tap to retry", which would invite retrying something that can
+       * never succeed.
+       */
+      if (isConversationClosedError(error)) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === optimisticMessage.id ? { ...msg, status: 'failed' as const } : msg
+          )
+        );
+        setConversationClosed(true);
+        return;
+      }
       if (__DEV__) {
         console.error('Error sending message:', error);
       }
@@ -1387,7 +1398,7 @@ height: MIN_TOUCH_TARGET,
                 textAlign: 'center',
               }}
             >
-              Messaging closes when a job is finished. You can still read everything above.
+              Messaging closes an hour after a job is finished. You can still read everything above.
             </Text>
           </View>
         ) : (
