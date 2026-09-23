@@ -215,7 +215,7 @@ export default function OnboardingCarousel({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0E07',
+    backgroundColor: '#000000',
   },
   skipButton: {
     position: 'absolute',

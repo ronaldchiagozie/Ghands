@@ -4,8 +4,9 @@ import { authService } from '@/services/api';
 import { Colors, useKeyboardAvoidingOffset } from '@/lib/designSystem';
 import { useRouter } from 'expo-router';
 import { Building2, Lock, Mail, Phone } from 'lucide-react-native';
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  InteractionManager,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -47,10 +48,21 @@ export default function CompanySignupScreen() {
     score: number;
   } | null>(null);
 
+  const nameRef = useRef<TextInput>(null);
   const emailRef = useRef<TextInput>(null);
   const phoneRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
   const confirmRef = useRef<TextInput>(null);
+
+  // Focusing on mount fires the keyboard mid push-transition, which makes
+  // KeyboardAvoidingView's padding jump once the transition settles - wait
+  // for the transition to finish so the keyboard opens after the screen has landed.
+  useEffect(() => {
+    const task = InteractionManager.runAfterInteractions(() => {
+      nameRef.current?.focus();
+    });
+    return () => task.cancel();
+  }, []);
 
   const handlePhoneChange = useCallback((text: string) => {
     const digits = text.replace(/\D/g, '').slice(0, 11);
@@ -187,6 +199,7 @@ export default function CompanySignupScreen() {
           </Text>
 
           <InputField
+            ref={nameRef}
             placeholder="Company name"
             textContentType="organizationName"
             autoComplete="organization"
@@ -201,7 +214,6 @@ export default function CompanySignupScreen() {
             errorMessage={nameError}
             returnKeyType="next"
             onSubmitEditing={() => emailRef.current?.focus()}
-            autoFocus
           />
 
           <InputField

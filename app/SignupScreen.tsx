@@ -5,8 +5,9 @@ import { authService } from '@/services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { Lock, Mail } from 'lucide-react-native';
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
+  InteractionManager,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -46,8 +47,19 @@ export default function SignupScreen() {
   } | null>(null);
 
   // Refs for auto-focus
+  const emailInputRef = useRef<TextInput>(null);
   const passwordInputRef = useRef<TextInput>(null);
   const confirmPasswordInputRef = useRef<TextInput>(null);
+
+  // Focusing on mount fires the keyboard mid push-transition, which makes
+  // KeyboardAvoidingView's padding jump once the transition settles - wait
+  // for the transition to finish so the keyboard opens after the screen has landed.
+  useEffect(() => {
+    const task = InteractionManager.runAfterInteractions(() => {
+      emailInputRef.current?.focus();
+    });
+    return () => task.cancel();
+  }, []);
 
   // Real-time email validation
   const handleEmailChange = useCallback((text: string) => {
@@ -279,6 +291,7 @@ export default function SignupScreen() {
 
           {/* Email Input */}
           <InputField
+            ref={emailInputRef}
             placeholder="Email"
             textContentType="emailAddress"
             autoComplete="email"
@@ -292,7 +305,6 @@ export default function SignupScreen() {
             errorMessage={emailError}
             returnKeyType="next"
             onSubmitEditing={() => passwordInputRef.current?.focus()}
-            autoFocus={true}
           />
 
           {/* Password Input */}

@@ -7,7 +7,7 @@ import { DESIGN_TOKENS, ONBOARDING_SLIDES } from '../lib/assets';
 
 export default function OnboardingScreen() {
   const router = useRouter();
-  
+
   const {
     currentSlideIndex,
     setCurrentSlideIndex,
@@ -52,13 +52,13 @@ export default function OnboardingScreen() {
       backgroundColor: DESIGN_TOKENS.colors.background,
     }}>
       <StatusBar
-        barStyle="light-content"
+        barStyle="dark-content"
         backgroundColor="transparent"
         translucent={true}
         hidden={false}
         animated={true}
       />
-      
+
       <OnboardingCarousel
         slides={ONBOARDING_SLIDES}
         currentIndex={currentSlideIndex}

@@ -2,7 +2,7 @@ import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { recordSignupStep } from '@/utils/signupProgress';
 import { Colors } from '@/lib/designSystem';
 import { useRouter } from 'expo-router';
-import { Building2, User, Users } from 'lucide-react-native';
+import { User, Users } from 'lucide-react-native';
 import React, { useEffect, useRef } from 'react';
 import { Animated, ScrollView, Text, View } from 'react-native';
 import { AccountTypeCard } from '../components/AccountTypeCard';
@@ -120,7 +120,7 @@ export default function ClientTypeSelectionScreen() {
 
             {/* Company Client Card */}
             <AccountTypeCard
-              icon={<Building2 size={32} color={Colors.accent} />}
+              icon={<Users size={32} color={Colors.accent} />}
               title="Company Client"
               subtitle="Business service solutions"
               tags={["Business", "Professional", "Managed"]}

@@ -177,12 +177,12 @@ export default function OnboardingSlide({
       <Svg style={StyleSheet.absoluteFill} width={windowWidth} height={windowHeight}>
         <Defs>
           <SvgLinearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-            <Stop offset="0%" stopColor="#E8EBE3" />
-            <Stop offset="12%" stopColor="#D9DED2" />
-            <Stop offset="26%" stopColor="#C6D2B6" />
-            <Stop offset="38%" stopColor="#B0C98A" />
-            <Stop offset="48%" stopColor="#96BE5E" />
-            <Stop offset="57%" stopColor="#74A238" />
+            <Stop offset="0%" stopColor="#616359" />
+            <Stop offset="12%" stopColor="#686B65" />
+            <Stop offset="26%" stopColor="#6D7464" />
+            <Stop offset="38%" stopColor="#72835A" />
+            <Stop offset="48%" stopColor="#759449" />
+            <Stop offset="57%" stopColor="#689232" />
             <Stop offset="65%" stopColor="#527A22" />
             <Stop offset="72%" stopColor="#345215" />
             <Stop offset="79%" stopColor="#1E330D" />

@@ -95,6 +95,7 @@ module.exports = {
       ],
       'expo-asset',
       'expo-secure-store',
+      'expo-web-browser',
     ],
     experiments: {
       typedRoutes: true,
