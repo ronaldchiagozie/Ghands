@@ -45,6 +45,19 @@ export function navigateBookingStepBack(router: Router, params: BookingBackParam
     return;
   }
 
+  /**
+   * JobDetailsScreen pushes (not replaces) on its way to DateTimeScreen, so the
+   * original, already-filled instance is still sitting in the stack. Replacing
+   * here instead minted a second, empty JobDetailsScreen on top of it - two
+   * instances of the same route with different state, which is what produced
+   * the filled/empty flicker on repeated back taps. Going back returns to the
+   * real instance instead of minting a blank one.
+   */
+  if (router.canGoBack()) {
+    router.back();
+    return;
+  }
+
   if (params.requestId) {
     router.replace({
       pathname: '/JobDetailsScreen' as any,
@@ -53,11 +66,6 @@ export function navigateBookingStepBack(router: Router, params: BookingBackParam
         categoryName: params.categoryName,
       },
     } as any);
-    return;
-  }
-
-  if (router.canGoBack()) {
-    router.back();
     return;
   }
 

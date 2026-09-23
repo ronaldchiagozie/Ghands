@@ -20,6 +20,7 @@ import { expireAuthSession } from '@/utils/enforceAuthSession';
 import { subscribeToSessionExpired } from '@/utils/sessionExpiredEvents';
 import { resolvePushNotificationRoute } from '@/utils/notificationNavigation';
 import { installAuthRejectionHandler } from '@/utils/installAuthRejectionHandler';
+import { setPendingAuthToast } from '@/utils/pendingAuthToast';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
 import { UserLocationProvider } from '@/hooks/useUserLocation';
@@ -110,6 +111,7 @@ export default function RootLayout() {
       if (await isRoleSwitchInProgress()) return;
       if (isInAuthTransition()) return;
       /** Involuntary expiry - dedupe with the screens' own AuthError handlers. */
+      setPendingAuthToast('Your session has expired. Please sign in again.');
       await redirectToAuthScreen(router, {
         pathname: pathnameRef.current,
         clearSession: false,
@@ -132,6 +134,7 @@ export default function RootLayout() {
       if (await isRoleSwitchInProgress()) return;
       if (isInAuthTransition()) return;
       await expireAuthSession();
+      setPendingAuthToast('Your session has expired. Please sign in again.');
       await redirectToAuthScreen(router, {
         pathname: pathnameRef.current,
         clearSession: false,

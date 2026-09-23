@@ -1,13 +1,14 @@
 import { isAuthError } from '@/utils/errors';
 import { isInAuthTransition, redirectToAuthScreen, getNavigationPath } from '@/utils/authNavigationGuard';
 import { expireAuthSession } from '@/utils/enforceAuthSession';
+import { setPendingAuthToast } from '@/utils/pendingAuthToast';
 
 let installed = false;
 let routerRef: { replace: (href: any) => void } | null = null;
 
 /**
  * Catches AuthError promise rejections that React error boundaries cannot reach.
- * Clears session and navigates to login (no error toast).
+ * Clears session, navigates to login, and hands it a toast to show once there.
  */
 export function installAuthRejectionHandler(
   router?: { replace: (href: any) => void } | null
@@ -25,6 +26,7 @@ export function installAuthRejectionHandler(
     void (async () => {
       if (isInAuthTransition()) return;
       await expireAuthSession();
+      setPendingAuthToast('Your session has expired. Please sign in again.');
       if (routerRef) {
         await redirectToAuthScreen(routerRef, {
           pathname: getNavigationPath(),

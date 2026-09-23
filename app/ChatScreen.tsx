@@ -206,6 +206,15 @@ export default function ChatScreen() {
   const prevMessageCountRef = useRef(0);
   const animatedMessageIdsRef = useRef<Set<string>>(new Set());
   const initialLoadDoneRef = useRef(false);
+  /**
+   * Guards the getRequestDetails() fallback below. When a request genuinely
+   * has no provider yet, resolvedProviderId never gets set, so without this
+   * the fallback re-fired on every 2s poll forever - an unbounded, ever-
+   * growing queue of concurrent requests specifically in the no-provider
+   * case. One attempt per screen lifetime is enough; it only enriches
+   * sender alignment, which already falls back to senderType.
+   */
+  const triedResolveProviderRef = useRef(false);
   const { isPeerTyping } = useChatTypingIndicator(requestId);
 
   // Determine if this is provider view (has clientName) or user view
@@ -455,7 +464,8 @@ export default function ChatScreen() {
       }
 
       let peerProviderForThread: number | null = providerIdNum ?? resolvedProviderId;
-      if (!isProviderView && peerProviderForThread === null && requestId) {
+      if (!isProviderView && peerProviderForThread === null && requestId && !triedResolveProviderRef.current) {
+        triedResolveProviderRef.current = true;
         try {
           const details = await serviceRequestService.getRequestDetails(requestId);
           const sp = details.selectedProvider?.id;
@@ -728,7 +738,8 @@ export default function ChatScreen() {
       }
 
       let peerPid: number | null = providerIdNum ?? resolvedProviderId;
-      if (!isProviderView && peerPid === null && requestId) {
+      if (!isProviderView && peerPid === null && requestId && !triedResolveProviderRef.current) {
+        triedResolveProviderRef.current = true;
         try {
           const details = await serviceRequestService.getRequestDetails(requestId);
           const sp = details.selectedProvider?.id;
@@ -830,7 +841,8 @@ export default function ChatScreen() {
           }
         }
         let peerPid: number | null = providerIdNum ?? resolvedProviderId;
-        if (!isProviderView && peerPid === null && requestId) {
+        if (!isProviderView && peerPid === null && requestId && !triedResolveProviderRef.current) {
+          triedResolveProviderRef.current = true;
           try {
             const d = await serviceRequestService.getRequestDetails(requestId);
             const sp = d.selectedProvider?.id;

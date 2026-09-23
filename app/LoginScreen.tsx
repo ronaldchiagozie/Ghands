@@ -23,6 +23,7 @@ import { useToast } from '../hooks/useToast';
 import { getSpecificErrorMessage } from '@/utils/errorMessages';
 import { isValidEmail } from '@/utils/inputFormatting';
 import useOnboarding from '@/hooks/useOnboarding';
+import { consumePendingAuthToast } from '@/utils/pendingAuthToast';
 
 export default function LoginScreen() {
   const keyboardOffset = useKeyboardAvoidingOffset();
@@ -45,6 +46,12 @@ export default function LoginScreen() {
       const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
       await AsyncStorage.setItem('@ghands:user_role', 'client');
     })();
+  }, []);
+
+  useEffect(() => {
+    const message = consumePendingAuthToast();
+    if (message) showError(message);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Real-time email validation
