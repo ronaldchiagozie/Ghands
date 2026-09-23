@@ -53,7 +53,8 @@ export function CallPulseRing({ active, size = 112 }: CallPulseRingProps) {
             height: ringSize,
             borderRadius: ringSize / 2,
             borderWidth: 2,
-            borderColor: 'rgba(79, 103, 57, 0.28)',
+            /** White against the flat call-screen green, so it reads as a highlight, not a second green. */
+            borderColor: 'rgba(255, 255, 255, 0.28)',
             opacity: pulse.interpolate({
               inputRange: [0, 1],
               outputRange: [0.45 - index * 0.15, 0],

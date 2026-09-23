@@ -22,7 +22,7 @@ import {
   User,
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, ScrollView, Text, View } from 'react-native';
 import { haptics } from '@/hooks/useHaptics';
 import { useVoiceCallWebRtc } from '@/hooks/useVoiceCallWebRtc';
 import { communicationService } from '@/services/api';
@@ -33,7 +33,6 @@ import {
 } from '@/utils/webrtcAvailability';
 import { buildChatScreenParams, exitChatToJobHub } from '@/utils/navigation';
 import ToolPattern from '@/components/ToolPattern';
-import { LinearGradient } from 'expo-linear-gradient';
 
 export type CallState = 'incoming' | 'outgoing' | 'active' | 'ended';
 
@@ -75,8 +74,7 @@ function resolveJobSubtitle(params: CallScreenParams): string | undefined {
  * one place in the app where the interface should get out of the way, and a
  * dark ground is what every phone does for exactly that reason.
  */
-const CALL_GROUND_TOP = '#22301A';
-const CALL_GROUND_BOTTOM = '#0D120A';
+const CALL_GROUND = '#22301A';
 const CALL_INK = '#FFFFFF';
 const CALL_INK_SOFT = 'rgba(255, 255, 255, 0.66)';
 
@@ -304,8 +302,8 @@ export default function CallScreen() {
   const showCompactJobLine = callState !== 'ended' && Boolean(params.requestId);
 
   return (
-    <SafeAreaWrapper backgroundColor={CALL_GROUND_TOP}>
-      <View style={{ flex: 1, backgroundColor: CALL_GROUND_TOP }}>
+    <SafeAreaWrapper backgroundColor={CALL_GROUND}>
+      <View style={{ flex: 1, backgroundColor: CALL_GROUND }}>
         {/**
           * Dark, and full bleed.
           *
@@ -315,15 +313,10 @@ export default function CallScreen() {
           * renders that on a dark immersive ground because the screen is
           * ambient rather than something being read.
           *
-          * The gradient runs deep sage into near-black rather than grey, so it
-          * is still this app's screen and not a generic dialer.
+          * One flat green, not a gradient to near-black. The fade used to put
+          * a visibly darker tone behind the pulsing ring than the ring itself,
+          * which read as two different greens rather than one screen.
           */}
-        <LinearGradient
-          colors={[CALL_GROUND_TOP, CALL_GROUND_BOTTOM]}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
         {/**
           * A call screen is mostly empty by nature - a name, a timer, and a
           * long wait. The pattern gives that emptiness something to be, the

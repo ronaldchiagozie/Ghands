@@ -795,7 +795,19 @@ export default function ChatScreen() {
       );
       const msg = (error?.message || '').toLowerCase();
       const isServerSide = msg.includes('foreign key') || msg.includes('receiverid');
-      showError(isServerSide ? 'Message could not be sent. Please try again or contact support.' : 'Message failed to send. Tap to retry.');
+      /**
+       * Whatever the server actually said, when it said something - not a
+       * generic "tap to retry" over a real, specific reason (a closed
+       * conversation whose code the client didn't recognise, a validation
+       * refusal, etc). Only the internal/technical failures above get a
+       * hand-written message instead of the raw one.
+       */
+      const serverMessage = typeof error?.message === 'string' ? error.message.trim() : '';
+      showError(
+        isServerSide
+          ? 'Message could not be sent. Please try again or contact support.'
+          : serverMessage || 'Message failed to send. Tap to retry.'
+      );
     } finally {
       setIsSending(false);
     }
@@ -869,7 +881,12 @@ export default function ChatScreen() {
         );
         const errMsg = (error?.message || '').toLowerCase();
         const isServerSide = errMsg.includes('foreign key') || errMsg.includes('receiverid');
-        showError(isServerSide ? 'Message could not be sent. Please try again or contact support.' : 'Message failed to send. Tap to retry.');
+        const serverMessage = typeof error?.message === 'string' ? error.message.trim() : '';
+        showError(
+          isServerSide
+            ? 'Message could not be sent. Please try again or contact support.'
+            : serverMessage || 'Message failed to send. Tap to retry.'
+        );
       }
     },
     [
