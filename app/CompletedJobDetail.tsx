@@ -1,9 +1,8 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { NAV_FALLBACK, navigateBack } from '@/utils/navigation';
 import { JobProgressTimeline, type JobProgressStep } from '@/components/JobProgressTimeline';
-import Demcatorline from "@/components/Demacator";
 import { ScreenHeader } from "@/components/ScreenHeader";
-import { JobDetailsTimelineSkeleton } from '@/components/LoadingSkeleton';
+import { CompletedJobDetailSkeleton, JobDetailsTimelineSkeleton } from '@/components/LoadingSkeleton';
 import { useErrorSheet } from '@/hooks/useErrorSheet';
 import { haptics } from '@/hooks/useHaptics';
 import { authService, serviceRequestService, ServiceRequest } from '@/services/api';
@@ -382,12 +381,12 @@ export default function CompletedJobDetail() {
       {
         name: "Scheduled Date",
         subtitle: formatDate(request.scheduledDate, request.scheduledTime),
-        icon: <Calendar color={Colors.tabInactive} size={18} />
+        icon: <Calendar color={Colors.accent} size={18} />
       },
       {
         name: "Location",
         subtitle: request.location?.formattedAddress || request.location?.address || 'Location not specified',
-        icon: <MapPin color={Colors.tabInactive} size={18} />
+        icon: <MapPin color={Colors.accent} size={18} />
       },
       {
         name: 'Total Cost',
@@ -397,7 +396,7 @@ export default function CompletedJobDetail() {
               maximumFractionDigits: 2,
             })}`
           : '₦0.00',
-        icon: <Banknote color={Colors.tabInactive} size={18} />
+        icon: <Banknote color={Colors.accent} size={18} />
       }
     ];
   }, [request]);
@@ -413,13 +412,10 @@ export default function CompletedJobDetail() {
 
   if (isLoading) {
     return (
-      <SafeAreaWrapper>
-        <View className="flex-1 items-center justify-center py-20">
-          <ActivityIndicator size="large" color={Colors.accent} />
-          <Text className="mt-4" style={{ fontFamily: 'Poppins-Medium', color: Colors.textMuted }}>
-            Loading job details...
-          </Text>
-        </View>
+      <SafeAreaWrapper backgroundColor={Colors.surfaceSubtle}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+          <CompletedJobDetailSkeleton />
+        </ScrollView>
       </SafeAreaWrapper>
     );
   }
@@ -443,7 +439,7 @@ export default function CompletedJobDetail() {
   }
 
   return (
-    <SafeAreaWrapper>
+    <SafeAreaWrapper backgroundColor={Colors.surfaceSubtle}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
           <View style={{ paddingHorizontal: CLIENT_HOME_SCROLL_GUTTER, paddingTop: 20 }}>
             <View className="mb-6">
@@ -459,7 +455,15 @@ export default function CompletedJobDetail() {
                 Service Provider
               </Text>
               <TouchableOpacity
-                className="flex flex-row items-center justify-between px-5 py-5 bg-white rounded-2xl border" style={{ borderColor: Colors.borderLight }}
+                className="flex flex-row items-center justify-between px-5 py-5 bg-white rounded-2xl border"
+                style={{
+                  borderColor: Colors.borderLight,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.05,
+                  shadowRadius: 3,
+                  elevation: 1,
+                }}
                 activeOpacity={0.7}
                 onPress={() => {
                   if (selectedProvider) {
@@ -579,52 +583,97 @@ export default function CompletedJobDetail() {
                 </TouchableOpacity>
               </View>
             </View>
-            <Demcatorline />
-            <View className="mt-8 mb-8 px-1">
+            <View className="mt-6 mb-6">
               <Text
-                className="text-xl mb-5"
+                className="text-xl mb-4"
                 style={{
                   fontFamily: 'Poppins-SemiBold',
                 }}
               >
                 Job Description
               </Text>
-              <Text
-                className="text-sm leading-6"
+              <View
+                className="rounded-2xl px-5 py-4 bg-white border"
                 style={{
-                  fontFamily: 'Poppins-Regular',
-                  color: Colors.textMuted,
+                  borderColor: Colors.borderLight,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.05,
+                  shadowRadius: 3,
+                  elevation: 1,
                 }}
               >
-                {request.description || request.jobTitle || 'No description provided'}
-              </Text>
+                <Text
+                  className="text-sm leading-6"
+                  style={{
+                    fontFamily: 'Poppins-Regular',
+                    color: Colors.textMuted,
+                  }}
+                >
+                  {request.description || request.jobTitle || 'No description provided'}
+                </Text>
+              </View>
             </View>
-            <Demcatorline />
-            <View className="mt-6 mb-8">
-              {bookedDate.map((items, index) => (
-                <View key={index} className="flex mb-4 flex-row gap-4 items-start">
-                  <View className="mt-1">{items.icon}</View>
-                  <View className="flex-1">
-                    <Text
-                      className="text-sm mb-1"
+            <View className="mt-2 mb-8">
+              <View
+                className="rounded-2xl bg-white border"
+                style={{
+                  borderColor: Colors.borderLight,
+                  paddingHorizontal: 20,
+                  paddingVertical: 6,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.05,
+                  shadowRadius: 3,
+                  elevation: 1,
+                }}
+              >
+                {bookedDate.map((items, index) => (
+                  <View
+                    key={index}
+                    className="flex flex-row gap-4 items-center"
+                    style={{
+                      paddingVertical: 14,
+                      borderTopWidth: index === 0 ? 0 : 1,
+                      borderTopColor: Colors.borderLight,
+                    }}
+                  >
+                    <View
                       style={{
-                        fontFamily: 'Poppins-Medium',
-                        color: Colors.iconMuted,
+                        width: 40,
+                        height: 40,
+                        borderRadius: 12,
+                        backgroundColor: Colors.white,
+                        borderWidth: 1.5,
+                        borderColor: 'rgba(79, 103, 57, 0.45)',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                       }}
                     >
-                      {items.name}
-                    </Text>
-                    <Text
-                      className="text-base text-black"
-                      style={{
-                        fontFamily: 'Poppins-SemiBold',
-                      }}
-                    >
-                      {items.subtitle}
-                    </Text>
+                      {items.icon}
+                    </View>
+                    <View className="flex-1">
+                      <Text
+                        className="text-sm mb-1"
+                        style={{
+                          fontFamily: 'Poppins-Medium',
+                          color: Colors.iconMuted,
+                        }}
+                      >
+                        {items.name}
+                      </Text>
+                      <Text
+                        className="text-base text-black"
+                        style={{
+                          fontFamily: 'Poppins-SemiBold',
+                        }}
+                      >
+                        {items.subtitle}
+                      </Text>
+                    </View>
                   </View>
-                </View>
-              ))}
+                ))}
+              </View>
               <TouchableOpacity
                 className="flex gap-3 flex-row mt-4 py-4 rounded-xl items-center justify-center" style={{ backgroundColor: Colors.accent }}
                 activeOpacity={0.85}

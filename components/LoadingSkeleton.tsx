@@ -10,7 +10,7 @@ import {
   providerPanelDivider,
   providerStackGapMd,
 } from '@/lib/providerSurfaceStyles';
-import { PROVIDER_TAB_GUTTER } from '@/lib/tabletLayout';
+import { CLIENT_HOME_SCROLL_GUTTER, PROVIDER_TAB_GUTTER } from '@/lib/tabletLayout';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { Animated, ScrollView, StyleProp, StyleSheet, useWindowDimensions, View, ViewStyle } from 'react-native';
@@ -612,6 +612,82 @@ export const JobDetailsTimelineSkeleton = ({
           <Skeleton width="54%" height={12} borderRadius={6} style={{ opacity: 0.35 }} />
         </View>
       ) : null}
+    </View>
+  );
+};
+
+/** Matches CompletedJobDetail - provider card, description card, metadata card, timeline. */
+export const CompletedJobDetailSkeleton = () => {
+  const cardShell: ViewStyle = {
+    borderRadius: 16,
+    backgroundColor: Colors.white,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+  };
+
+  return (
+    <View style={{ paddingHorizontal: CLIENT_HOME_SCROLL_GUTTER, paddingTop: 20 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24 }}>
+        <Skeleton width={40} height={40} borderRadius={20} style={{ marginRight: 16 }} />
+        <Skeleton width={120} height={18} borderRadius={8} />
+      </View>
+
+      <Skeleton width={140} height={16} borderRadius={7} style={{ marginBottom: 16 }} />
+      <View
+        style={[
+          cardShell,
+          { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 20 },
+        ]}
+      >
+        <Skeleton width={56} height={56} borderRadius={28} style={{ marginRight: 20 }} />
+        <View style={{ flex: 1 }}>
+          <Skeleton width="60%" height={15} borderRadius={7} style={{ marginBottom: 10 }} />
+          <Skeleton width="40%" height={11} borderRadius={6} />
+        </View>
+      </View>
+      <View
+        style={{
+          marginTop: 12,
+          borderRadius: 12,
+          backgroundColor: Colors.surfaceSubtle,
+          borderWidth: 1,
+          borderColor: Colors.border,
+          padding: 12,
+        }}
+      >
+        <Skeleton width="94%" height={11} borderRadius={5} style={{ marginBottom: 8 }} />
+        <Skeleton width="60%" height={11} borderRadius={5} />
+      </View>
+
+      <Skeleton width={150} height={16} borderRadius={7} style={{ marginTop: 24, marginBottom: 16 }} />
+      <View style={[cardShell, { paddingHorizontal: 20, paddingVertical: 16 }]}>
+        <Skeleton width="100%" height={11} borderRadius={5} style={{ marginBottom: 8 }} />
+        <Skeleton width="70%" height={11} borderRadius={5} />
+      </View>
+
+      <View style={[cardShell, { marginTop: 24, paddingHorizontal: 20 }]}>
+        {[0, 1, 2].map((i) => (
+          <View
+            key={i}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingVertical: 14,
+              borderTopWidth: i === 0 ? 0 : 1,
+              borderTopColor: Colors.borderLight,
+            }}
+          >
+            <Skeleton width={40} height={40} borderRadius={12} style={{ marginRight: 16 }} />
+            <View style={{ flex: 1 }}>
+              <Skeleton width="40%" height={11} borderRadius={5} style={{ marginBottom: 8 }} />
+              <Skeleton width="65%" height={14} borderRadius={6} />
+            </View>
+          </View>
+        ))}
+      </View>
+      <Skeleton width="100%" height={52} borderRadius={12} style={{ marginTop: 16, marginBottom: 24 }} />
+
+      <JobDetailsTimelineSkeleton steps={4} />
     </View>
   );
 };
