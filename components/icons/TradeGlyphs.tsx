@@ -106,24 +106,51 @@ export const Waterproofing: TradeGlyph = ({ size }) => (
   </Canvas>
 );
 
-/** Glass work: a pane, its bars, and the highlight that says it is glass. */
+/**
+ * Glass and aluminium: a sliding window, frame first.
+ *
+ * The first attempt was a plain pane with a diagonal glare - it read as glass
+ * generically, or as a photo tile, but said nothing about aluminium, which is
+ * the trade this glyph is most often standing in for. The frame is chrome
+ * because the frame is the point: two panes, a sliding track along the
+ * bottom, a mullion between them. Metal you can see, not glass alone.
+ */
 export const GlassWork: TradeGlyph = ({ size }) => (
   <Canvas size={size}>
-    <Rect x={5} y={5} width={30} height={30} rx={3} fill={GREEN} />
-    <Rect x={9} y={9} width={22} height={22} rx={1.5} fill="#FFFFFF" fillOpacity={0.92} />
-    <Rect x={19} y={9} width={2} height={22} fill={GRAPHITE} />
-    <Rect x={9} y={19} width={22} height={2} fill={GRAPHITE} />
-    <Path d="M11 29 L20 11 h3 L14 29 Z" fill={CHROME} fillOpacity={0.75} />
+    <Rect x={3} y={33} width={34} height={2} rx={1} fill={GRAPHITE} />
+    <Rect x={3} y={36} width={34} height={1.6} rx={0.8} fill={CHROME} />
+    <Rect x={4} y={4} width={32} height={27} rx={2.5} fill={CHROME} />
+    <Rect x={7.5} y={7.5} width={11} height={20} fill="#E3ECDA" />
+    <Rect x={21.5} y={7.5} width={11} height={20} fill="#E3ECDA" />
+    <Path d="M9 25 L15 10" stroke="#FFFFFF" strokeWidth={1.4} strokeLinecap="round" opacity={0.65} />
+    <Path d="M23 25 L29 10" stroke="#FFFFFF" strokeWidth={1.4} strokeLinecap="round" opacity={0.65} />
+    <Rect x={18.6} y={5.5} width={2.8} height={24} rx={1} fill={GREEN_DEEP} />
   </Canvas>
 );
 
-/** Welding: a torch and its flame. */
+/**
+ * Welding: a torch and its flame.
+ *
+ * The first flame was a smooth teardrop, which reads as a drop of paint on a
+ * brush rather than fire - the torch looked like it was painting. A jagged
+ * outline and a couple of sparks off the tip are what a flame has that a drop
+ * does not.
+ */
 export const Welding: TradeGlyph = ({ size }) => (
   <Canvas size={size}>
-    <Path d="M6 32 L18 20 l4 4 L10 36 Z" fill={GRAPHITE} />
+    <Path d="M5 33 L18 20 l4 4 L9 37 Z" fill={GRAPHITE} />
     <Path d="M17 19 l6 6 4 -4 -6 -6 Z" fill={CHROME} />
-    <Path d="M30 6 c-5 5 -7 7 -7 10 a7 7 0 0 0 14 0 c0 -3 -2 -5 -7 -10 Z" fill={GREEN} />
-    <Path d="M30 14 c-2.4 2.6 -3 3.4 -3 4.6 a3 3 0 0 0 6 0 c0 -1.2 -0.6 -2 -3 -4.6 Z" fill={GREEN_DEEP} />
+    <Path
+      d="M29 3 c-1 3 -3.5 3.6 -5 5.6 c-2.2 3 -2.6 5.6 -1.4 8.2 a6.4 6.4 0 0 0 12 -2.4 c0.2 -3 -1.6 -4.8 -3.4 -6.6 c-1.3 -1.3 -2 -2.6 -2.2 -4.8 Z"
+      fill={GREEN}
+    />
+    <Path
+      d="M29.5 12 c-0.6 1.8 -2 2.4 -2.6 3.8 a3.2 3.2 0 0 0 6.2 0.8 c0.2 -1.6 -0.8 -2.6 -1.8 -3.6 c-0.7 -0.7 -1.4 -1.2 -1.8 -2 Z"
+      fill={GREEN_DEEP}
+    />
+    <Circle cx={37} cy={6} r={1.3} fill={CHROME} />
+    <Circle cx={34} cy={2.5} r={0.9} fill={CHROME} />
+    <Circle cx={38} cy={11} r={0.8} fill={GRAPHITE} />
   </Canvas>
 );
 

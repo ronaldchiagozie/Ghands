@@ -1,6 +1,7 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { HandHelping, RotateCcw, Siren, Wallet } from 'lucide-react-native';
 import React from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import BrandPattern, { type BrandPatternVariant } from '@/components/BrandPattern';
 import { BorderRadius, Colors } from '@/lib/designSystem';
@@ -187,6 +188,14 @@ export default function HomeQuickActions({
               color={Colors.white}
               opacity={action.patternOpacity}
               tile={action.patternTile}
+            />
+
+            {/** Subtle fade so the label/value stay legible over the busy pattern beneath them. */}
+            <LinearGradient
+              colors={['transparent', 'rgba(0, 0, 0, 0.3)']}
+              locations={[0.35, 1]}
+              style={StyleSheet.absoluteFill}
+              pointerEvents="none"
             />
 
             <action.Icon size={21} color={Colors.white} strokeWidth={2.1} />
