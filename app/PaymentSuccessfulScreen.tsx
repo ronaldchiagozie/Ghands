@@ -253,12 +253,16 @@ export default function PaymentSuccessfulScreen() {
     void enrichReceiptFromRequest();
   }, [enrichReceiptFromRequest]);
 
-  const handleDownloadReceipt = () => {
-    // No PDF endpoint exists yet - say so rather than implying a download started.
-    showAppAlert(
-      'Download',
-      'A PDF receipt will be available in a future update. Use Share to send these details for now.',
-    );
+  const handleDownloadReceipt = async () => {
+    /**
+     * There is no save-to-Photos path (expo-media-library is not installed,
+     * and adding it now means a new native build before this can even
+     * reach TestFlight). Tapping Download used to just say so - a dead
+     * button that produced an alert instead of a receipt. This reuses the
+     * same proven capture the Share button uses instead: it hands the real
+     * receipt image to the OS sheet, which offers "Save Image" itself.
+     */
+    await handleShareReceipt();
   };
 
   const hasCelebratedRef = useRef(false);

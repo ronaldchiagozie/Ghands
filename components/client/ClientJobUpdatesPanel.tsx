@@ -56,6 +56,14 @@ type ClientJobUpdatesPanelProps = {
   clientIdentity?: ClientIdentity | null;
   showSyncHint?: boolean;
   renderStepActions?: (step: JobProgressStep) => React.ReactNode;
+  /**
+   * True once the job is completed. Calling and chat both close for good at
+   * that point (CompletedJobDetail says as much), but this panel had no way
+   * to know that - it renders inside the Updates tab of a screen that stays
+   * mounted as a job finishes, so the buttons kept working past the point the
+   * rest of the app already treats the job as closed.
+   */
+  contactDisabled?: boolean;
 };
 
 function PanelDivider() {
@@ -70,6 +78,7 @@ export function ClientJobUpdatesPanel({
   clientIdentity,
   showSyncHint,
   renderStepActions,
+  contactDisabled,
 }: ClientJobUpdatesPanelProps) {
   const router = useRouter();
   const [statusExpanded, setStatusExpanded] = useState(() => Boolean(header?.subtitle));
@@ -210,7 +219,7 @@ export function ClientJobUpdatesPanel({
                   </Text>
                 </View>
               </TouchableOpacity>
-              {normalizedRequestId ? (
+              {!contactDisabled && normalizedRequestId ? (
                 <TouchableOpacity
                   activeOpacity={0.85}
                   onPress={handlePressCall}
@@ -219,13 +228,15 @@ export function ClientJobUpdatesPanel({
                   <CallIconOutline size={16} color={JOB_TIMELINE.sage} />
                 </TouchableOpacity>
               ) : null}
-              <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={handlePressChat}
-                style={[providerHeaderActionButton, { marginLeft: 6 }]}
-              >
-                <MessageCircle size={16} color={JOB_TIMELINE.sage} />
-              </TouchableOpacity>
+              {!contactDisabled ? (
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={handlePressChat}
+                  style={[providerHeaderActionButton, { marginLeft: 6 }]}
+                >
+                  <MessageCircle size={16} color={JOB_TIMELINE.sage} />
+                </TouchableOpacity>
+              ) : null}
             </>
           ) : (
             <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>

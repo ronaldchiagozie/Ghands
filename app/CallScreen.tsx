@@ -514,7 +514,7 @@ export default function CallScreen() {
           ) : null}
 
           {callState === 'outgoing' ? (
-            <View style={{ alignItems: 'center', gap: Spacing.md }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'flex-start', gap: 28 }}>
               <CallActionButton
                 label="Cancel"
                 variant="danger"
@@ -528,7 +528,6 @@ export default function CallScreen() {
                   variant="secondary"
                   onPress={handleCallAgain}
                   icon={<CallIconAnswer size={22} color={Colors.accent} />}
-                  style={{ marginTop: 4 }}
                 />
               ) : null}
             </View>

@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
-import { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 
 import { locationService, walletService } from '@/services/api';
 import { authService } from '@/services/authService';
@@ -119,9 +120,23 @@ export function useAccountSetup() {
     setIsLoading(false);
   }, []);
 
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
+  /**
+   * Re-checks every time this screen regains focus, not just on first mount.
+   *
+   * The notifications task in particular can go from outstanding to done
+   * without this screen ever re-rendering on its own: the OS permission
+   * prompt is fired once, fire-and-forget, right after login
+   * (schedulePushSyncAfterAuth) - often before this hook's first read even
+   * resolves - and "Open Settings" from the denied-alert backgrounds the app
+   * entirely. Either way, the answer lands after the one-time mount check
+   * already ran, so the row kept nagging about something already granted
+   * until whatever remounted this screen. Focus fires on both return paths.
+   */
+  useFocusEffect(
+    useCallback(() => {
+      void refresh();
+    }, [refresh]),
+  );
 
   const outstanding = tasks.filter((t) => !t.done);
 

@@ -1956,6 +1956,9 @@ export default function OngoingJobDetails() {
                 clientIdentity={clientIdentity}
                 showSyncHint={showPaymentSyncHint}
                 renderStepActions={renderTimelineStepActions}
+                contactDisabled={
+                  (request?.status || '').toString().toLowerCase().replace(/[\s_-]/g, '') === 'completed'
+                }
               />
             ) : null}
 

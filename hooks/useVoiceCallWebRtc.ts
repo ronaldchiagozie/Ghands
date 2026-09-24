@@ -228,21 +228,30 @@ export function useVoiceCallWebRtc(): VoiceCallWebRtcControls {
         const pc = new RTCPeerConnection({ iceServers }) as any;
         pcRef.current = pc;
 
-        pc.onconnectionstatechange = () => {
+        const reportConnectionState = (source: string) => {
           try {
             const cs = pc.connectionState;
             const ics = pc.iceConnectionState;
-            if (__DEV__) logCallDebug('WebRTC: connectionState', { connectionState: cs, iceConnectionState: ics });
-            if (cs === 'connected' || ics === 'completed') {
+            if (__DEV__) logCallDebug('WebRTC: connectionState', { source, connectionState: cs, iceConnectionState: ics });
+            if (cs === 'connected' || ics === 'connected' || ics === 'completed') {
               setStatus('connected');
             }
-            if (cs === 'failed' || cs === 'disconnected' || cs === 'closed') {
+            if (cs === 'failed' || cs === 'disconnected' || cs === 'closed' || ics === 'failed' || ics === 'disconnected') {
               setStatus('failed');
             }
           } catch (handlerErr) {
-            if (__DEV__) logCallWarn('WebRTC: onconnectionstatechange handler', { message: String(handlerErr) });
+            if (__DEV__) logCallWarn('WebRTC: connection state handler', { source, message: String(handlerErr) });
           }
         };
+
+        /**
+         * Two events because implementations disagree on which one actually
+         * fires - some react-native-webrtc builds are unreliable about
+         * aggregate connectionState and only ever update iceConnectionState.
+         * Both call the same check, so whichever one shows up first wins.
+         */
+        pc.onconnectionstatechange = () => reportConnectionState('connectionstatechange');
+        pc.oniceconnectionstatechange = () => reportConnectionState('iceconnectionstatechange');
 
         pc.onicecandidate = (ev: { candidate?: { candidate?: string } | null }) => {
           if (ev.candidate && __DEV__) {
@@ -335,7 +344,14 @@ export function useVoiceCallWebRtc(): VoiceCallWebRtcControls {
 
         await pollIce();
         icePollRef.current = setInterval(pollIce, 1500);
-        setStatus('connected');
+        /**
+         * Status stays 'starting' here - it used to jump straight to
+         * 'connected' at this point, before the peer connection had actually
+         * finished negotiating. That showed a live call screen over audio
+         * that was not flowing yet, and kept showing it even if the
+         * connection then failed to complete. The real signal is
+         * reportConnectionState above, driven by the peer connection itself.
+         */
       } catch (err) {
         logCallError('useVoiceCallWebRtc: start failed', { message: String(err) });
         setError(err instanceof Error ? err.message : 'Voice connection failed');
