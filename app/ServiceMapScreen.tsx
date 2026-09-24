@@ -965,7 +965,7 @@ const ServiceMapScreen = () => {
           setShowSummaryModal(false);
         }}
         data={{
-          serviceType: bookingData.serviceType || params.serviceType || 'Plumbing Service',
+          serviceType: bookingData.serviceType || params.serviceType || params.categoryName || 'Service',
           dateTime: bookingData.dateTime || params.selectedDateTime,
           date: bookingData.date || params.selectedDate,
           time: bookingData.time || params.selectedTime,

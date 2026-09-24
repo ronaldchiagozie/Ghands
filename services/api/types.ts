@@ -59,6 +59,8 @@ export interface UserSignupPayload {
   email: string;
   password: string;
   phoneNumber?: string;
+  /** The inviter's code, not this new account's own - see GET /api/user/referral for that. */
+  referralCode?: string;
 }
 
 export interface UserSignupResponse {
@@ -67,6 +69,8 @@ export interface UserSignupResponse {
   email: string;
   token: string;
   id?: number;
+  referralCode?: string;
+  referredByCode?: string | null;
 }
 
 export interface UserLoginPayload {

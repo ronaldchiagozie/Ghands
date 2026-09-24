@@ -34,9 +34,12 @@ export const authService = {
       const token = response.data?.data?.token || responseAny.data?.token || responseAny.token;
       const email = response.data?.data?.email || responseAny.data?.email || responseAny.email || payload.email;
       const userId = (response.data?.data as any)?.id || (response.data?.data as any)?.userId || (response.data as any)?.id || (response as any)?.id;
+      const referralData = response.data?.data ?? responseAny.data ?? responseAny;
+      const referralCode = typeof referralData?.referralCode === 'string' ? referralData.referralCode : undefined;
+      const referredByCode = typeof referralData?.referredByCode === 'string' ? referralData.referredByCode : null;
       if (userId) await authServiceInstance.setUserId(userId);
       if (!token) {
-        if (userId && email) return { email, token: '', id: userId, firstName: '', lastName: '' };
+        if (userId && email) return { email, token: '', id: userId, firstName: '', lastName: '', referralCode, referredByCode };
         throw new Error('Signup failed: No user data or token received from server.');
       }
       await authServiceInstance.setAuthToken(token);
@@ -48,7 +51,7 @@ export const authService = {
         const extracted = extractUserIdFromToken(token);
         if (extracted) await authServiceInstance.setUserId(extracted);
       }
-      return { email: email || payload.email, token, id: userId, firstName: '', lastName: '' };
+      return { email: email || payload.email, token, id: userId, firstName: '', lastName: '', referralCode, referredByCode };
     } catch (error: any) {
       throw error;
     }

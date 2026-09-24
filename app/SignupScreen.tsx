@@ -3,8 +3,8 @@ import { recordSignupStep } from '@/utils/signupProgress';
 import { haptics } from '@/hooks/useHaptics';
 import { authService } from '@/services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter } from 'expo-router';
-import { Lock, Mail } from 'lucide-react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Gift, Lock, Mail } from 'lucide-react-native';
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   InteractionManager,
@@ -29,12 +29,23 @@ import { setClientAccountType } from '@/utils/clientAccountType';
 export default function SignupScreen() {
   const keyboardOffset = useKeyboardAvoidingOffset();
   const router = useRouter();
+  const params = useLocalSearchParams<{ referralCode?: string }>();
   const { toast, showError, showSuccess, hideToast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  /**
+   * Prefilled the moment an invite link opens straight into this screen
+   * (expo-router forwards its query param here as-is). Nobody else sees the
+   * field unless they ask for it - a box asking "got a code?" on every
+   * organic signup is a box most people have nothing to put in.
+   */
+  const referralFromLink = typeof params.referralCode === 'string' ? params.referralCode.trim() : '';
+  const [referralCode, setReferralCode] = useState(referralFromLink);
+  const [showReferralField, setShowReferralField] = useState(!!referralFromLink);
 
   // Real-time validation states
   const [emailError, setEmailError] = useState('');
@@ -50,6 +61,7 @@ export default function SignupScreen() {
   const emailInputRef = useRef<TextInput>(null);
   const passwordInputRef = useRef<TextInput>(null);
   const confirmPasswordInputRef = useRef<TextInput>(null);
+  const referralInputRef = useRef<TextInput>(null);
 
   // Focusing on mount fires the keyboard mid push-transition, which makes
   // KeyboardAvoidingView's padding jump once the transition settles - wait
@@ -158,9 +170,11 @@ export default function SignupScreen() {
     haptics.light();
 
     try {
+      const trimmedReferral = referralCode.trim();
       const signupPayload = {
         email: email.trim().toLowerCase(), // Normalize email to lowercase
         password: password.trim(),
+        ...(trimmedReferral ? { referralCode: trimmedReferral } : {}),
       };
 
       const signupResult = await authService.userSignup(signupPayload);
@@ -397,9 +411,40 @@ export default function SignupScreen() {
             iconPosition="left"
             error={!!confirmPasswordError}
             errorMessage={confirmPasswordError}
-            returnKeyType="done"
-            onSubmitEditing={handleSignup}
+            returnKeyType={showReferralField ? 'next' : 'done'}
+            onSubmitEditing={() =>
+              showReferralField ? referralInputRef.current?.focus() : handleSignup()
+            }
           />
+
+          {/* Referral code - hidden until asked for or arrived prefilled via an invite link */}
+          {showReferralField ? (
+            <InputField
+              ref={referralInputRef}
+              placeholder="Referral code (optional)"
+              autoCapitalize="characters"
+              icon={<Gift size={18} color={'white'} />}
+              value={referralCode}
+              onChangeText={setReferralCode}
+              iconPosition="left"
+              returnKeyType="done"
+              onSubmitEditing={handleSignup}
+            />
+          ) : (
+            <TouchableOpacity
+              onPress={() => {
+                haptics.selection();
+                setShowReferralField(true);
+                InteractionManager.runAfterInteractions(() => referralInputRef.current?.focus());
+              }}
+              activeOpacity={0.7}
+              style={{ alignSelf: 'flex-start', marginBottom: 8 }}
+            >
+              <Text style={{ fontSize: 14, fontFamily: 'Poppins-Medium', color: Colors.accent }}>
+                Have a referral code?
+              </Text>
+            </TouchableOpacity>
+          )}
 
           {/* Sign Up Button */}
           <View style={{ marginTop: 8, marginBottom: 24 }}>
