@@ -1,11 +1,18 @@
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { NAV_FALLBACK, navigateBack } from '@/utils/navigation';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { BorderRadius, Colors, Spacing, MIN_TOUCH_TARGET, useKeyboardAvoidingOffset, useScrollViewKeyboardAssist } from '@/lib/designSystem';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { AlertCircle, FileText, Upload, X } from 'lucide-react-native';
-import React, { useRef, useState } from 'react';
 import {
+  BorderRadius,
+  Colors,
+  MIN_TOUCH_TARGET,
+  useKeyboardAvoidingOffset,
+  useScrollViewKeyboardAssist,
+} from '@/lib/designSystem';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { AlertCircle } from 'lucide-react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -13,145 +20,111 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  Image,
-  ActivityIndicator,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
 import { useToast } from '@/hooks/useToast';
 import Toast from '@/components/Toast';
 import { haptics } from '@/hooks/useHaptics';
+import { serviceRequestService, type ServiceRequest, type DisputeCategory } from '@/services/api';
+import { getSpecificErrorMessage } from '@/utils/errorMessages';
+import { formatCurrencyDisplay } from '@/utils/inputFormatting';
+import { formatDateShort } from '@/utils/dateFormatting';
 
-interface UploadedFile {
-  uri: string;
-  name: string;
-  size?: number;
+const CATEGORY_OPTIONS: { id: DisputeCategory; label: string }[] = [
+  { id: 'payment', label: 'Payment issue' },
+  { id: 'service_quality', label: 'Service quality' },
+  { id: 'behavior', label: 'Provider behavior' },
+  { id: 'other', label: 'Something else' },
+];
+
+/** Matches the backend's own floor - see docs/DISPUTE_RESOLUTION_ENDPOINTS.md. */
+const MIN_DESCRIPTION_LENGTH = 10;
+
+function jobAmount(request: ServiceRequest | null): number | undefined {
+  if (!request) return undefined;
+  const raw = request.totalCost ?? request.total_amount ?? request.paymentAmount ?? request.amount;
+  const parsed = typeof raw === 'string' ? Number(raw.replace(/[₦,\s]/g, '')) : raw;
+  return typeof parsed === 'number' && Number.isFinite(parsed) ? parsed : undefined;
 }
 
-const ISSUE_OPTIONS = [
-  { id: '1', label: 'Review Job completion status' },
-  { id: '2', label: 'Payment not released' },
-  { id: '3', label: 'Inappropriate client behavior' },
-  { id: '4', label: 'Others (Please specify)' },
-];
+function providerName(request: ServiceRequest | null): string | undefined {
+  return (
+    request?.selectedProvider?.name || request?.provider?.name || request?.providerName || undefined
+  );
+}
 
 export default function ReportIssueScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{
-    requestId?: string;
-    jobTitle?: string;
-    orderNumber?: string;
-    cost?: string;
-    assignee?: string;
-    completionDate?: string;
-  }>();
-  const { toast, showError, showSuccess, hideToast } = useToast();
+  const params = useLocalSearchParams<{ requestId?: string }>();
+  const requestId = Number(params.requestId);
+  const { toast, showError, hideToast } = useToast();
   const keyboardOffset = useKeyboardAvoidingOffset();
   const descriptionSectionY = useRef(0);
   const { scrollRef, scrollBottomPad, scrollFieldIntoView } = useScrollViewKeyboardAssist();
 
-  const [selectedIssue, setSelectedIssue] = useState<string>('');
+  const [request, setRequest] = useState<ServiceRequest | null>(null);
+  const [isLoadingJob, setIsLoadingJob] = useState(true);
+  const [category, setCategory] = useState<DisputeCategory | null>(null);
   const [description, setDescription] = useState('');
-  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleUpload = async () => {
-    try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        showError('Please grant permission to access your photos.');
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        quality: 0.8,
-      });
-
-      if (!result.canceled && result.assets[0]) {
-        const asset = result.assets[0];
-        const fileName = asset.uri.split('/').pop() || 'evidence.jpg';
-        const fileSize = asset.fileSize;
-
-        const file: UploadedFile = {
-          uri: asset.uri,
-          name: fileName,
-          size: fileSize,
-        };
-
-        setUploadedFiles([...uploadedFiles, file]);
-        haptics.success();
-      }
-    } catch (error: any) {
-      console.error('Error uploading file:', error);
-      showError('Failed to upload file. Please try again.');
+  useEffect(() => {
+    let cancelled = false;
+    if (!Number.isFinite(requestId) || requestId <= 0) {
+      setIsLoadingJob(false);
+      return;
     }
-  };
-
-  const handleRemoveFile = (index: number) => {
-    haptics.light();
-    const newFiles = uploadedFiles.filter((_, i) => i !== index);
-    setUploadedFiles(newFiles);
-  };
-
-  const formatFileSize = (bytes?: number) => {
-    if (!bytes) return '';
-    if (bytes < 1024) return `${bytes}b`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)}kb`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)}mb`;
-  };
+    serviceRequestService
+      .getRequestDetails(requestId)
+      .then((data) => {
+        if (!cancelled) setRequest(data);
+      })
+      .catch(() => {
+        /* the form still works without the summary card */
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingJob(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [requestId]);
 
   const handleSubmit = async () => {
-    if (!selectedIssue) {
-      showError('Please select an issue type.');
+    if (!Number.isFinite(requestId) || requestId <= 0) {
+      showError('This job could not be identified. Please go back and try again.');
       return;
     }
-
-    if (selectedIssue === '4' && !description.trim()) {
-      showError('Please specify the issue in the description field.');
+    if (!category) {
+      showError('Please select what the issue is about.');
       return;
     }
-
-    if (!description.trim() && selectedIssue !== '4') {
-      showError('Please describe the issue in detail.');
+    if (description.trim().length < MIN_DESCRIPTION_LENGTH) {
+      showError(`Please describe the issue in a bit more detail (at least ${MIN_DESCRIPTION_LENGTH} characters).`);
       return;
     }
 
     try {
       setIsSubmitting(true);
       haptics.light();
-
-      if (!__DEV__) {
-        showError('Issue reporting is coming soon. Please use Help & Support for urgent issues.');
-        return;
-      }
-
-      // TODO: Implement API call to submit report
-      // await reportService.submitIssue({
-      //   requestId: params.requestId,
-      //   issueType: selectedIssue,
-      //   description,
-      //   files: uploadedFiles,
-      // });
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
+      const dispute = await serviceRequestService.raiseDispute(requestId, {
+        category,
+        description: description.trim(),
+      });
       haptics.success();
-      showSuccess('Issue reported. We will review it within 24-48 hours.');
-
-      // Navigate back after a short delay
-      setTimeout(() => {
-        router.back();
-      }, 2000);
+      router.replace({
+        pathname: '/DisputeChatScreen' as any,
+        params: { disputeId: String(dispute.id), caseId: dispute.caseId },
+      });
     } catch (error: any) {
-      console.error('Error submitting report:', error);
       haptics.error();
-      showError('Failed to submit report. Please try again.');
+      showError(getSpecificErrorMessage(error, 'raise_dispute'));
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const amount = jobAmount(request);
+  const name = providerName(request);
 
   return (
     <SafeAreaWrapper backgroundColor={Colors.white}>
@@ -160,7 +133,7 @@ export default function ReportIssueScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={keyboardOffset}
       >
-        <ScreenHeader title="Report Issue" onBack={() => navigateBack(router, NAV_FALLBACK.clientJobs)} backgroundColor={Colors.white} />
+        <ScreenHeader title="Report an issue" onBack={() => navigateBack(router, NAV_FALLBACK.clientJobs)} backgroundColor={Colors.white} />
         <ScrollView
           ref={scrollRef}
           showsVerticalScrollIndicator={false}
@@ -172,7 +145,6 @@ export default function ReportIssueScreen() {
             paddingBottom: scrollBottomPad,
           }}
         >
-          {/* Introduction */}
           <Text
             style={{
               fontSize: 13,
@@ -182,109 +154,62 @@ export default function ReportIssueScreen() {
               lineHeight: 20,
             }}
           >
-            Tell us what went wrong with this completed job. Our support team will review and assist.
+            Tell us what went wrong with this job. Our support team will review it and get back to you.
           </Text>
 
-          {/* Job Details Card */}
-          <View
-            style={{
-              backgroundColor: Colors.backgroundGray,
-              borderRadius: BorderRadius.lg,
-              padding: 14,
-              marginBottom: 20,
-            }}
-          >
-            <Text
+          {/* Job summary - real data only, nothing shown until it loads */}
+          {isLoadingJob ? (
+            <View
               style={{
-                fontSize: 14,
-                fontFamily: 'Poppins-Bold',
-                color: Colors.textPrimary,
-                marginBottom: 12,
+                backgroundColor: Colors.backgroundGray,
+                borderRadius: BorderRadius.lg,
+                padding: 14,
+                marginBottom: 20,
+                minHeight: 76,
+                alignItems: 'center',
+                justifyContent: 'center',
               }}
             >
-              {params.jobTitle || 'Kitchen sink replacement'}
-            </Text>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-              <Text
-                style={{
-                  fontSize: 12,
-                  fontFamily: 'Poppins-Regular',
-                  color: Colors.textSecondaryDark,
-                }}
-              >
-                Order Number
-              </Text>
-              <Text
-                style={{
-                  fontSize: 12,
-                  fontFamily: 'Poppins-SemiBold',
-                  color: Colors.textPrimary,
-                }}
-              >
-                {params.orderNumber || 'Order #WO-2024-1157'}
-              </Text>
+              <ActivityIndicator size="small" color={Colors.textSecondaryDark} />
             </View>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+          ) : request ? (
+            <View
+              style={{
+                backgroundColor: Colors.backgroundGray,
+                borderRadius: BorderRadius.lg,
+                padding: 14,
+                marginBottom: 20,
+              }}
+            >
               <Text
                 style={{
-                  fontSize: 12,
-                  fontFamily: 'Poppins-Regular',
-                  color: Colors.textSecondaryDark,
-                }}
-              >
-                Cost
-              </Text>
-              <Text
-                style={{
-                  fontSize: 13,
+                  fontSize: 14,
                   fontFamily: 'Poppins-Bold',
                   color: Colors.textPrimary,
+                  marginBottom: 8,
                 }}
+                numberOfLines={1}
               >
-                {params.cost || '₦48,500.00'}
+                {request.jobTitle || request.categoryName}
               </Text>
+              {amount != null ? (
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: name ? 6 : 0 }}>
+                  <Text style={{ fontSize: 12, fontFamily: 'Poppins-Regular', color: Colors.textSecondaryDark }}>
+                    Amount
+                  </Text>
+                  <Text style={{ fontSize: 13, fontFamily: 'Poppins-Bold', color: Colors.textPrimary }}>
+                    {formatCurrencyDisplay(amount)}
+                  </Text>
+                </View>
+              ) : null}
+              {name ? (
+                <Text style={{ fontSize: 12, fontFamily: 'Poppins-Regular', color: Colors.textSecondaryDark }}>
+                  {name} · {formatDateShort(request.updatedAt) || 'Recently'}
+                </Text>
+              ) : null}
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-              <View
-                style={{
-                  width: 20,
-                  height: 20,
-                  borderRadius: BorderRadius.full,
-                  backgroundColor: Colors.accent,
-                  marginRight: 8,
-                }}
-              />
-              <Text
-                style={{
-                  fontSize: 12,
-                  fontFamily: 'Poppins-Regular',
-                  color: Colors.textSecondaryDark,
-                }}
-              >
-                {params.assignee || 'JohnDoe Akpan'}
-              </Text>
-            </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <View
-                style={{
-                  width: 16,
-                  height: 16,
-                  marginRight: 8,
-                }}
-              />
-              <Text
-                style={{
-                  fontSize: 12,
-                  fontFamily: 'Poppins-Regular',
-                  color: Colors.textSecondaryDark,
-                }}
-              >
-                Completed {params.completionDate || 'Oct 20, 2025'}
-              </Text>
-            </View>
-          </View>
+          ) : null}
 
-          {/* Tell us the problem */}
           <Text
             style={{
               fontSize: 14,
@@ -293,15 +218,15 @@ export default function ReportIssueScreen() {
               marginBottom: 12,
             }}
           >
-            Tell us the problem
+            What's this about?
           </Text>
           <View style={{ marginBottom: 20 }}>
-            {ISSUE_OPTIONS.map((option) => (
+            {CATEGORY_OPTIONS.map((option) => (
               <TouchableOpacity
                 key={option.id}
                 onPress={() => {
                   haptics.selection();
-                  setSelectedIssue(option.id);
+                  setCategory(option.id);
                 }}
                 style={{
                   flexDirection: 'row',
@@ -312,8 +237,7 @@ export default function ReportIssueScreen() {
                   backgroundColor: Colors.white,
                   borderRadius: BorderRadius.default,
                   borderWidth: 1,
-                  borderColor:
-                    selectedIssue === option.id ? Colors.accent : Colors.border,
+                  borderColor: category === option.id ? Colors.accent : Colors.border,
                 }}
                 activeOpacity={0.7}
               >
@@ -323,14 +247,13 @@ export default function ReportIssueScreen() {
                     height: 20,
                     borderRadius: BorderRadius.full,
                     borderWidth: 2,
-                    borderColor:
-                      selectedIssue === option.id ? Colors.accent : Colors.border,
+                    borderColor: category === option.id ? Colors.accent : Colors.border,
                     marginRight: 12,
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
-                  {selectedIssue === option.id && (
+                  {category === option.id && (
                     <View
                       style={{
                         width: 10,
@@ -355,152 +278,45 @@ export default function ReportIssueScreen() {
             ))}
           </View>
 
-          {/* Describe the issue */}
           <View
             onLayout={(event) => {
               descriptionSectionY.current = event.nativeEvent.layout.y;
             }}
           >
-          <Text
-            style={{
-              fontSize: 14,
-              fontFamily: 'Poppins-SemiBold',
-              color: Colors.textPrimary,
-              marginBottom: 12,
-            }}
-          >
-            Describe the issue in detail
-          </Text>
-          <TextInput
-            value={description}
-            onChangeText={setDescription}
-            onFocus={() => scrollFieldIntoView(descriptionSectionY.current, true)}
-            placeholder="Please provide details about the issue..."
-            placeholderTextColor={Colors.placeholder}
-            multiline
-            numberOfLines={6}
-            style={{
-              backgroundColor: Colors.white,
-              borderRadius: BorderRadius.default,
-              padding: 14,
-              fontSize: 13,
-              fontFamily: 'Poppins-Regular',
-              color: Colors.textPrimary,
-              borderWidth: 1,
-              borderColor: Colors.border,
-              minHeight: 120,
-              textAlignVertical: 'top',
-              marginBottom: 20,
-            }}
-          />
-          </View>
-
-          {/* Upload evidence */}
-          <Text
-            style={{
-              fontSize: 14,
-              fontFamily: 'Poppins-SemiBold',
-              color: Colors.textPrimary,
-              marginBottom: 12,
-            }}
-          >
-            Upload evidence
-          </Text>
-          <TouchableOpacity
-            onPress={handleUpload}
-            style={{
-              backgroundColor: Colors.white,
-              borderRadius: BorderRadius.default,
-              borderWidth: 2,
-              borderColor: Colors.border,
-              borderStyle: 'dashed',
-              padding: 24,
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: 12,
-            }}
-            activeOpacity={0.7}
-          >
-            <Upload size={32} color={Colors.textTertiary} style={{ marginBottom: 8 }} />
             <Text
               style={{
-                fontSize: 13,
-                fontFamily: 'Poppins-Medium',
-                color: Colors.textSecondaryDark,
+                fontSize: 14,
+                fontFamily: 'Poppins-SemiBold',
+                color: Colors.textPrimary,
+                marginBottom: 12,
               }}
             >
-              Tap to upload
+              Describe the issue in detail
             </Text>
-          </TouchableOpacity>
-
-          {/* Uploaded files */}
-          {uploadedFiles.map((file, index) => (
-            <View
-              key={index}
+            <TextInput
+              value={description}
+              onChangeText={setDescription}
+              onFocus={() => scrollFieldIntoView(descriptionSectionY.current, true)}
+              placeholder="Please provide details about the issue..."
+              placeholderTextColor={Colors.placeholder}
+              multiline
+              numberOfLines={6}
+              maxLength={2000}
               style={{
-                flexDirection: 'row',
-                alignItems: 'center',
                 backgroundColor: Colors.white,
                 borderRadius: BorderRadius.default,
-                padding: 12,
-                marginBottom: 8,
+                padding: 14,
+                fontSize: 13,
+                fontFamily: 'Poppins-Regular',
+                color: Colors.textPrimary,
                 borderWidth: 1,
                 borderColor: Colors.border,
+                minHeight: 120,
+                textAlignVertical: 'top',
               }}
-            >
-              <View
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: BorderRadius.full,
-                  backgroundColor: Colors.backgroundGray,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginRight: 12,
-                }}
-              >
-                <FileText size={16} color={Colors.textSecondaryDark} strokeWidth={2} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text
-                  style={{
-                    fontSize: 13,
-                    fontFamily: 'Poppins-Medium',
-                    color: Colors.textPrimary,
-                    marginBottom: 4,
-                  }}
-                  numberOfLines={1}
-                >
-                  {file.name}
-                </Text>
-                {file.size && (
-                  <Text
-                    style={{
-                      fontSize: 11,
-                      fontFamily: 'Poppins-Regular',
-                      color: Colors.textSecondaryDark,
-                    }}
-                  >
-                    {formatFileSize(file.size)}
-                  </Text>
-                )}
-              </View>
-              <TouchableOpacity
-                onPress={() => handleRemoveFile(index)}
-                style={{
-                  width: MIN_TOUCH_TARGET,
-height: MIN_TOUCH_TARGET,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-                activeOpacity={0.7}
-              >
-                <X size={18} color={Colors.textSecondaryDark} />
-              </TouchableOpacity>
-            </View>
-          ))}
+            />
+          </View>
 
-          {/* Information Banner */}
           <View
             style={{
               backgroundColor: Colors.infoLight,
@@ -522,8 +338,8 @@ height: MIN_TOUCH_TARGET,
                 lineHeight: 18,
               }}
             >
-              Reporting an issue does not affect your rating or future job eligibility. Our team
-              typically responds within 24-48 hours.
+              Reporting an issue does not affect your account. Once submitted, you can message our
+              support team directly about it here in the app.
             </Text>
           </View>
         </ScrollView>
@@ -549,6 +365,7 @@ height: MIN_TOUCH_TARGET,
               alignItems: 'center',
               justifyContent: 'center',
               opacity: isSubmitting ? 0.6 : 1,
+              minHeight: MIN_TOUCH_TARGET,
             }}
             activeOpacity={0.8}
           >

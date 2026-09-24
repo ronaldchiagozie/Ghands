@@ -17,7 +17,12 @@ export type {
   UpdateDateTimeResponse,
   ServiceRequest,
   QuotationWithProvider,
+  RaiseDisputePayload,
+  RaiseDisputeResponse,
 } from './serviceRequest';
+export { disputeService } from './dispute';
+export type { DisputeMessage } from './dispute';
+export type { DisputeCategory } from './types';
 export { walletService } from './wallet';
 export type { PayForServicePayload, PayForServiceResponse, Bank, BankAccount, ResolveAccountResponse } from './wallet';
 export { notificationService } from './notification';

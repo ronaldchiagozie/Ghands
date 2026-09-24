@@ -1833,6 +1833,26 @@ export default function OngoingJobDetails() {
           title="Job Details"
           onBack={handleJobDetailsBack}
           style={{ paddingHorizontal: 0, paddingBottom: Spacing.xxl }}
+          rightElement={
+            request && (request.status === 'in_progress' || request.status === 'reviewing') ? (
+              <TouchableOpacity
+                onPress={() => {
+                  haptics.light();
+                  router.push({
+                    pathname: '/ReportIssueScreen' as any,
+                    params: { requestId: String(request.id) },
+                  });
+                }}
+                style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Report an issue"
+                accessibilityHint="Opens a form to report a problem with this job"
+              >
+                <AlertCircle size={22} color={Colors.textPrimary} strokeWidth={2} />
+              </TouchableOpacity>
+            ) : undefined
+          }
         />
 
         {/* Full-width tabs with green underline for active tab */}

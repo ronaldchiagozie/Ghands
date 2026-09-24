@@ -16,7 +16,7 @@ import { ActivityIndicator, Image, Keyboard, KeyboardAvoidingView, Modal, Platfo
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { openClientReceipt } from '@/utils/receiptNavigation';
 import { analytics } from '@/services/analytics';
-import { ArrowRight, Banknote, Calendar, CheckCircle2, FileText, MapPin, Star, Wrench } from 'lucide-react-native';
+import { AlertCircle, ArrowRight, Banknote, Calendar, CheckCircle2, FileText, MapPin, Star, Wrench } from 'lucide-react-native';
 import { BorderRadius, Colors } from '@/lib/designSystem';
 import { AvatarCircle } from '@/components/AvatarCircle';
 import { pickProviderImageUriFromRecord } from '@/utils/clientProfilePhoto';
@@ -448,6 +448,26 @@ export default function CompletedJobDetail() {
                 onBack={() => navigateBack(router, NAV_FALLBACK.clientJobs)}
                 backgroundColor="transparent"
                 backButtonBackgroundColor="transparent"
+                rightElement={
+                  request ? (
+                    <TouchableOpacity
+                      onPress={() => {
+                        haptics.light();
+                        router.push({
+                          pathname: '/ReportIssueScreen' as any,
+                          params: { requestId: String(request.id) },
+                        });
+                      }}
+                      style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}
+                      activeOpacity={0.7}
+                      accessibilityRole="button"
+                      accessibilityLabel="Report an issue"
+                      accessibilityHint="Opens a form to report a problem with this job"
+                    >
+                      <AlertCircle size={22} color={Colors.textPrimary} strokeWidth={2} />
+                    </TouchableOpacity>
+                  ) : undefined
+                }
               />
             </View>
             <View className="mb-6">

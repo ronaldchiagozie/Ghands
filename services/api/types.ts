@@ -547,3 +547,32 @@ export interface GetMessagesResponse {
 export interface UnreadCountResponse {
   count: number;
 }
+
+export type DisputeCategory = 'payment' | 'service_quality' | 'behavior' | 'other';
+
+export interface RaiseDisputePayload {
+  category: DisputeCategory;
+  /** 10-2000 chars, required regardless of category. */
+  description: string;
+  /** Omit to let the backend default to the request's agreed price. */
+  amount?: number;
+}
+
+export interface RaiseDisputeResponse {
+  id: number;
+  /** Display form, e.g. "#DR-4". */
+  caseId: string;
+  status: 'open' | 'assigned' | 'closed';
+  category: DisputeCategory;
+  amount?: number;
+  createdAt: string;
+}
+
+export interface DisputeMessage {
+  id: number;
+  disputeId: number;
+  senderType: 'user' | 'provider' | 'company' | 'admin';
+  senderId: number;
+  message: string;
+  createdAt: string;
+}

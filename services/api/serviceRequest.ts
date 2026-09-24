@@ -14,6 +14,8 @@ import type {
   UpdateDateTimeResponse,
   ServiceRequest,
   QuotationWithProvider,
+  RaiseDisputePayload,
+  RaiseDisputeResponse,
 } from './types';
 
 export type {
@@ -26,6 +28,8 @@ export type {
   UpdateDateTimeResponse,
   ServiceRequest,
   QuotationWithProvider,
+  RaiseDisputePayload,
+  RaiseDisputeResponse,
 };
 
 function firstPresent(...values: unknown[]) {
@@ -567,6 +571,30 @@ export const serviceRequestService = {
       });
     }
     return data ?? { requestId, visitStatus: 'declined', message: 'Visit declined.' };
+  },
+
+  /**
+   * Raises a dispute against this job - one open dispute per party per
+   * request, only once the job is in_progress, reviewing, completed, or
+   * cancelled (the backend rejects anything earlier: nothing to dispute
+   * before work starts).
+   */
+  raiseDispute: async (requestId: number, payload: RaiseDisputePayload): Promise<RaiseDisputeResponse> => {
+    const body: Record<string, unknown> = {
+      category: payload.category,
+      description: payload.description.trim(),
+    };
+    if (payload.amount != null) body.amount = payload.amount;
+    const response = await apiClient.post<any>(`/api/request-service/requests/${requestId}/dispute`, body);
+    const d = extractResponseData<any>(response);
+    return {
+      id: Number(d?.id),
+      caseId: String(d?.caseId ?? `#${d?.id ?? ''}`),
+      status: (d?.status ?? 'open') as RaiseDisputeResponse['status'],
+      category: (d?.category ?? payload.category) as RaiseDisputeResponse['category'],
+      amount: typeof d?.amount === 'number' ? d.amount : undefined,
+      createdAt: d?.createdAt ?? new Date().toISOString(),
+    };
   },
 
   reviewProvider: async (

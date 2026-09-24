@@ -295,6 +295,9 @@ export const getSpecificErrorMessage = (error: ApiError | Error | any, context?:
     'initialize_deposit': 'Failed to initialize deposit. Please try again.',
     'verify_deposit': 'Failed to verify deposit. Please try again.',
     'withdraw': 'Withdrawal failed. Check your PIN and balance, then try again.',
+    'raise_dispute': 'We could not submit your report. Please try again.',
+    'send_dispute_message': 'Your message could not be sent. Please try again.',
+    'get_dispute_messages': 'Failed to load this conversation. Please try again.',
   };
 
   const defaultMessage = context ? defaultMessages[context] || 'Something went wrong. Please try again.' : 'Something went wrong. Please try again.';
