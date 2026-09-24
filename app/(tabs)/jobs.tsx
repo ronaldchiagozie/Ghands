@@ -43,7 +43,14 @@ import {
 import { mergeCachedVisitRequest } from '@/utils/visitRequestCache';
 import { healJobStatusAfterVisitDecline } from '@/utils/visitStatus';
 import { formatDateShort } from '@/utils/dateFormatting';
-import { resumeRouteFor } from '@/utils/bookingResume';
+import {
+  resumeRouteFor,
+  pointFromDraft,
+  resumeStepLabel as stepLabelForPoint,
+  resumeProgress as progressForPoint,
+  resumeHoursLeft as hoursLeftForPoint,
+  type BookingResumePoint,
+} from '@/utils/bookingResume';
 import { useBookingResume } from '@/hooks/useBookingResume';
 import ResumeBookingCard from '@/components/home/ResumeBookingCard';
 
@@ -311,40 +318,54 @@ export default function JobsScreen() {
     stepLabel: resumeStepLabel,
     progress: resumeProgress,
     hoursLeft: resumeHoursLeft,
+    otherDrafts,
     discard: discardResumePoint,
     refresh: refreshResume,
   } = useBookingResume();
 
-  /** The day they picked, when they got that far. */
-  const resumeScheduleLabel = useMemo(() => {
-    const date = resumeDraft?.scheduledDate;
+  /** The day they picked, when they got that far. Shared with each of otherDrafts below. */
+  const scheduleLabelFor = useCallback((date?: string, time?: string | null) => {
     if (!date) return null;
     const day = formatDateShort(date);
     if (!day) return null;
-    const time = resumeDraft?.scheduledTime?.trim();
-    return time ? `${day} at ${time}` : day;
-  }, [resumeDraft?.scheduledDate, resumeDraft?.scheduledTime]);
+    const trimmedTime = time?.trim();
+    return trimmedTime ? `${day} at ${trimmedTime}` : day;
+  }, []);
+
+  const resumeScheduleLabel = useMemo(
+    () => scheduleLabelFor(resumeDraft?.scheduledDate, resumeDraft?.scheduledTime),
+    [scheduleLabelFor, resumeDraft?.scheduledDate, resumeDraft?.scheduledTime],
+  );
 
   /**
    * Drafts only appears while there is one. A tab that is empty for almost
    * everybody almost always is a tab that teaches people to ignore the row.
    */
+  const hasAnyDraft = !!resumePoint || otherDrafts.length > 0;
   const visibleTabs = useMemo<JobTab[]>(
-    () => (resumePoint ? ['Drafts', 'Pending', 'Ongoing', 'Completed'] : ['Pending', 'Ongoing', 'Completed']),
-    [resumePoint],
+    () => (hasAnyDraft ? ['Drafts', 'Pending', 'Ongoing', 'Completed'] : ['Pending', 'Ongoing', 'Completed']),
+    [hasAnyDraft],
   );
 
-  /** Finishing or discarding the draft takes the tab away underneath them. */
+  /** Finishing or discarding every draft takes the tab away underneath them. */
   useEffect(() => {
-    if (activeTab === 'Drafts' && !resumePoint) setActiveTab('Pending');
-  }, [activeTab, resumePoint]);
+    if (activeTab === 'Drafts' && !hasAnyDraft) setActiveTab('Pending');
+  }, [activeTab, hasAnyDraft]);
+
+  /** Shared by the primary draft's card and each of otherDrafts - same navigation, different point. */
+  const goToResumePoint = useCallback(
+    (target: BookingResumePoint) => {
+      haptics.light();
+      const route = resumeRouteFor(target);
+      router.push({ pathname: route.pathname as any, params: route.params } as any);
+    },
+    [router],
+  );
 
   const handleResumeDraft = useCallback(() => {
     if (!resumePoint) return;
-    haptics.light();
-    const route = resumeRouteFor(resumePoint);
-    router.push({ pathname: route.pathname as any, params: route.params } as any);
-  }, [resumePoint, router]);
+    goToResumePoint(resumePoint);
+  }, [resumePoint, goToResumePoint]);
 
   const { showError } = useToast();
 
@@ -640,18 +661,38 @@ export default function JobsScreen() {
               * something half-done on the one screen that should feel calm.
               */
             ListHeaderComponent={
-              activeTab === 'Drafts' && resumePoint ? (
+              activeTab === 'Drafts' && hasAnyDraft ? (
                 <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
-                  <ResumeBookingCard
-                    categoryName={resumePoint.categoryName}
-                    jobTitle={resumeDraft?.jobTitle}
-                    scheduleLabel={resumeScheduleLabel}
-                    stepLabel={resumeStepLabel ?? 'Finish your booking'}
-                    progress={resumeProgress ?? { done: 0, total: 4 }}
-                    hoursLeft={resumeHoursLeft}
-                    onResume={handleResumeDraft}
-                    onDiscard={() => void discardResumePoint()}
-                  />
+                  {resumePoint ? (
+                    <ResumeBookingCard
+                      categoryName={resumePoint.categoryName}
+                      jobTitle={resumeDraft?.jobTitle}
+                      scheduleLabel={resumeScheduleLabel}
+                      stepLabel={resumeStepLabel ?? 'Finish your booking'}
+                      progress={resumeProgress ?? { done: 0, total: 4 }}
+                      hoursLeft={resumeHoursLeft}
+                      onResume={handleResumeDraft}
+                      onDiscard={() => void discardResumePoint()}
+                    />
+                  ) : null}
+
+                  {/** Every other abandoned draft on the account - same card, scored the same way. */}
+                  {otherDrafts.map((row) => {
+                    const itemPoint = pointFromDraft(row as any);
+                    return (
+                      <ResumeBookingCard
+                        key={itemPoint.requestId}
+                        categoryName={itemPoint.categoryName}
+                        jobTitle={row.jobTitle}
+                        scheduleLabel={scheduleLabelFor(row.scheduledDate, row.scheduledTime)}
+                        stepLabel={stepLabelForPoint(itemPoint)}
+                        progress={progressForPoint(itemPoint)}
+                        hoursLeft={hoursLeftForPoint(itemPoint)}
+                        onResume={() => goToResumePoint(itemPoint)}
+                        onDiscard={() => void discardResumePoint(String(row.id))}
+                      />
+                    );
+                  })}
                 </View>
               ) : null
             }

@@ -155,6 +155,35 @@ export function bookingStepFromDraftContent(request: {
   return 'photos';
 }
 
+/**
+ * Turns a raw draft record into the shape every resume-card helper below
+ * expects. Shared so useBookingResume's primary draft and a list of the
+ * others (Jobs > Drafts) score their step the same way, from the same rule.
+ */
+export function pointFromDraft(draft: {
+  id: number | string;
+  categoryName?: string;
+  updatedAt?: string;
+  createdAt?: string;
+  draftStep?: unknown;
+  jobTitle?: unknown;
+  description?: unknown;
+  scheduledDate?: unknown;
+  images?: unknown;
+}): BookingResumePoint {
+  const requestId = String(draft.id);
+  return {
+    requestId,
+    step: furthestBookingStep(
+      bookingStepFromServer(draft.draftStep),
+      bookingStepFromDraftContent(draft),
+    ),
+    categoryName: draft.categoryName,
+    params: { requestId },
+    savedAt: Date.parse(draft.updatedAt ?? draft.createdAt ?? '') || Date.now(),
+  };
+}
+
 function isBookingStep(value: unknown): value is BookingStep {
   return typeof value === 'string' && (BOOKING_STEPS as readonly string[]).includes(value);
 }

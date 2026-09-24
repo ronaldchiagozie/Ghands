@@ -5,13 +5,13 @@ import { isAbandonedDraft } from '@/contract/src/bookingDraft';
 import type { ServiceRequest } from '@/services/api';
 import {
   bookingStepFromDraftContent,
-  bookingStepFromServer,
   clearBookingResumePoint,
   readBookingResumePoint,
   markResumePrompted,
   resumeHoursLeft,
   resumeProgress,
   furthestBookingStep,
+  pointFromDraft,
   resumeStepLabel,
   shouldPromptResume,
   type BookingResumePoint,
@@ -41,6 +41,25 @@ export function useBookingResume() {
   /** Whether this booking has earned an interruption on the way in. */
   const [shouldPrompt, setShouldPrompt] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  /**
+   * Every other abandoned draft on the account, beyond `point`. The backend
+   * has always returned all of them from getDrafts() - this hook only ever
+   * looked at the first one it found, so a second or third draft was silently
+   * unreachable rather than merely unshown. `point`/`draft` stay a single
+   * "the one worth interrupting for" for the home prompt; Jobs can list this
+   * alongside it for the rest.
+   */
+  const [otherDrafts, setOtherDrafts] = useState<ServiceRequest[]>([]);
+
+  const loadOtherDrafts = useCallback(async (primaryId: string | null, preFetched?: ServiceRequest[]) => {
+    try {
+      const remote = preFetched ?? (await serviceRequestService.getDrafts());
+      const abandoned = remote.filter((row) => isAbandonedDraft(row));
+      setOtherDrafts(abandoned.filter((row) => String(row.id) !== primaryId));
+    } catch {
+      /* best effort - a failed fetch here just means the list doesn't grow this pass */
+    }
+  }, []);
 
   const refresh = useCallback(async () => {
     setIsLoading(true);
@@ -73,22 +92,12 @@ export function useBookingResume() {
       const candidate = remote.find((row) => isAbandonedDraft(row));
 
       if (candidate) {
-        const recovered: BookingResumePoint = {
-          requestId: String(candidate.id),
-          /** Whichever of the two got further, so nothing already done reads as outstanding. */
-          step: furthestBookingStep(
-            bookingStepFromServer((candidate as any).draftStep),
-            bookingStepFromDraftContent(candidate),
-          ),
-          categoryName: candidate.categoryName,
-          /** Only the id: their answers live on the request, not in a param. */
-          params: { requestId: String(candidate.id) },
-          savedAt: Date.parse(candidate.updatedAt ?? candidate.createdAt ?? '') || Date.now(),
-        };
+        const recovered = pointFromDraft(candidate as any);
         setPoint(recovered);
         setDraft(candidate);
         setShouldPrompt(await shouldPromptResume(recovered));
         setIsLoading(false);
+        void loadOtherDrafts(String(candidate.id), remote);
         return;
       }
 
@@ -96,6 +105,7 @@ export function useBookingResume() {
       setDraft(null);
       setShouldPrompt(false);
       setIsLoading(false);
+      void loadOtherDrafts(null, remote);
       return;
     }
 
@@ -106,6 +116,7 @@ export function useBookingResume() {
       setDraft(null);
       setShouldPrompt(false);
       setIsLoading(false);
+      void loadOtherDrafts(null);
       return;
     }
 
@@ -125,6 +136,8 @@ export function useBookingResume() {
     setPoint(stored);
     setShouldPrompt(await shouldPromptResume(stored));
     setIsLoading(false);
+    /** Reassigned to null below if this one turns out to be finished/gone. */
+    let resolvedPrimaryId: string | null = stored.requestId;
 
     try {
       const request = await serviceRequestService.getRequestDetails(requestId);
@@ -156,6 +169,7 @@ export function useBookingResume() {
         setPoint(null);
         setDraft(null);
         setShouldPrompt(false);
+        resolvedPrimaryId = null;
       }
     } catch (error: any) {
       /**
@@ -168,22 +182,38 @@ export function useBookingResume() {
         setPoint(null);
         setDraft(null);
         setShouldPrompt(false);
+        resolvedPrimaryId = null;
       }
     }
-  }, []);
 
-  const discard = useCallback(async () => {
-    const discarding = point;
+    void loadOtherDrafts(resolvedPrimaryId);
+  }, [loadOtherDrafts]);
 
-    /**
-     * Forget it here first, so the card goes the moment they tap. Waiting on
-     * the server would leave a discarded booking sitting on screen while a
-     * cold instance wakes up.
-     */
-    await clearBookingResumePoint();
-    setPoint(null);
-    setDraft(null);
-    setShouldPrompt(false);
+  /**
+   * Discards `point` (the primary) when called with no argument - every
+   * existing call site does this and keeps working unchanged. Pass a
+   * requestId to discard a specific draft out of `otherDrafts` instead, which
+   * is what a multi-draft list needs: discarding the second draft must not
+   * touch the first.
+   */
+  const discard = useCallback(async (requestId?: string) => {
+    const targetId = requestId ?? point?.requestId;
+    if (!targetId) return;
+
+    if (targetId === point?.requestId) {
+      /**
+       * Forget it here first, so the card goes the moment they tap. Waiting on
+       * the server would leave a discarded booking sitting on screen while a
+       * cold instance wakes up.
+       */
+      await clearBookingResumePoint();
+      setPoint(null);
+      setDraft(null);
+      setShouldPrompt(false);
+    } else {
+      /** One of the others - drop it from that list immediately, same reasoning. */
+      setOtherDrafts((current) => current.filter((row) => String(row.id) !== targetId));
+    }
 
     /**
      * Then tell the server, which deletes a draft outright rather than marking
@@ -194,15 +224,24 @@ export function useBookingResume() {
      * Best effort on purpose: the local copy is already gone, and a failure
      * here means one row expires on its own rather than being removed early.
      */
-    const requestId = discarding ? parseInt(discarding.requestId, 10) : NaN;
-    if (Number.isFinite(requestId) && requestId > 0) {
+    const numericId = parseInt(targetId, 10);
+    if (Number.isFinite(numericId) && numericId > 0) {
       try {
-        await serviceRequestService.cancelRequest(requestId);
+        await serviceRequestService.cancelRequest(numericId);
       } catch {
         /* it expires on its own */
       }
     }
-  }, [point]);
+
+    /**
+     * Discarding the primary leaves a gap that only a real refresh fills
+     * correctly - the next-best draft has to be re-fetched and re-scored
+     * against the local pointer / step logic, not guessed at from otherDrafts.
+     */
+    if (targetId === point?.requestId) {
+      void refresh();
+    }
+  }, [point, refresh]);
 
   /**
    * Closes the prompt without touching the draft. Saying "not now" is an
@@ -217,6 +256,8 @@ export function useBookingResume() {
     point,
     /** The draft record, for showing what they were actually booking. */
     draft,
+    /** Every other abandoned draft on the account, beyond `point` - for a list, not the interruption prompt. */
+    otherDrafts,
     /** What they were about to do, for the card's copy. */
     stepLabel: point ? resumeStepLabel(point) : null,
     /** Position in the flow, so the card can show how far in they are. */
