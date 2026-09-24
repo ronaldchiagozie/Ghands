@@ -16,6 +16,7 @@ import { performance } from '@/services/performance';
 import { crashReporting } from '@/services/crashReporting';
 import { isAuthError } from '@/utils/errors';
 import { isInAuthTransition, redirectToAuthScreen } from '@/utils/authNavigationGuard';
+import { authService } from '@/services/authService';
 import { expireAuthSession } from '@/utils/enforceAuthSession';
 import { subscribeToSessionExpired } from '@/utils/sessionExpiredEvents';
 import { resolvePushNotificationRoute } from '@/utils/notificationNavigation';
@@ -110,6 +111,19 @@ export default function RootLayout() {
     const redirectOnSessionExpired = async () => {
       if (await isRoleSwitchInProgress()) return;
       if (isInAuthTransition()) return;
+      /**
+       * This event was queued by whatever last found no token - which can be
+       * seconds ago, since notifySessionExpired coalesces bursts over a 3s
+       * window before listeners even run. If somebody logged back in during
+       * that window, a token exists now and this notification is stale: it
+       * used to redirect anyway, forcing a fresh, valid login straight back
+       * to the login screen. The reset-onboarding tool made this easy to hit
+       * (clear token, walk through several screens with no token, then log
+       * in - plenty of time for exactly this race) but it is not specific to
+       * that tool; anyone re-authenticating shortly after an expiry could
+       * have hit it too.
+       */
+      if (await authService.getAuthToken()) return;
       /** Involuntary expiry - dedupe with the screens' own AuthError handlers. */
       setPendingAuthToast('Your session has expired. Please sign in again.');
       await redirectToAuthScreen(router, {
@@ -134,6 +148,8 @@ export default function RootLayout() {
       if (await isRoleSwitchInProgress()) return;
       if (isInAuthTransition()) return;
       await expireAuthSession();
+      /** Stale by the time expireAuthSession above finishes - see installAuthRejectionHandler. */
+      if (await authService.getAuthToken()) return;
       setPendingAuthToast('Your session has expired. Please sign in again.');
       await redirectToAuthScreen(router, {
         pathname: pathnameRef.current,

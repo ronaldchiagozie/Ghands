@@ -2,6 +2,7 @@ import { isAuthError } from '@/utils/errors';
 import { isInAuthTransition, redirectToAuthScreen, getNavigationPath } from '@/utils/authNavigationGuard';
 import { expireAuthSession } from '@/utils/enforceAuthSession';
 import { setPendingAuthToast } from '@/utils/pendingAuthToast';
+import { authService } from '@/services/authService';
 
 let installed = false;
 let routerRef: { replace: (href: any) => void } | null = null;
@@ -26,6 +27,17 @@ export function installAuthRejectionHandler(
     void (async () => {
       if (isInAuthTransition()) return;
       await expireAuthSession();
+      /**
+       * The rejection this handler is reacting to can be an old one - it came
+       * from an unawaited call made while there was genuinely no token, and
+       * expireAuthSession above just took its own time doing push-unregister
+       * and cache clearing. If somebody logged back in during that gap, a
+       * token exists now, and this redirect (which uses force: true,
+       * specifically to bypass the cooldown that would otherwise catch a
+       * double-redirect) would otherwise force a fresh, valid session
+       * straight back to the login screen.
+       */
+      if (await authService.getAuthToken()) return;
       setPendingAuthToast('Your session has expired. Please sign in again.');
       if (routerRef) {
         await redirectToAuthScreen(routerRef, {
