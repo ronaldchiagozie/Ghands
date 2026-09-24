@@ -144,6 +144,24 @@ const ServiceMapScreen = () => {
     }
   }, [savedLocation, serviceLocation]);
 
+  /**
+   * A fresh `{latitude, longitude}` object every time this effect merely
+   * re-confirms the same coordinates was what turned "getting your
+   * location" into a flicker: providers-loading (below) keys off this value
+   * by reference, so an identical-looking coordinate pair still counted as
+   * new and re-ran the whole nearby-providers fetch - spinner back to
+   * spinner, screen state visibly resetting, on every re-run of this effect
+   * rather than only when the coordinates actually moved.
+   */
+  const setCoordsIfChanged = useCallback((next: { latitude: number; longitude: number } | null) => {
+    setServiceLocationCoords((prev) => {
+      if (prev && next && prev.latitude === next.latitude && prev.longitude === next.longitude) {
+        return prev;
+      }
+      return next;
+    });
+  }, []);
+
   // Get coordinates from service location
   useEffect(() => {
     const getLocationCoordinates = async () => {
@@ -152,7 +170,7 @@ const ServiceMapScreen = () => {
         const lat = parseFloat(params.latitude);
         const lng = parseFloat(params.longitude);
         if (!isNaN(lat) && !isNaN(lng)) {
-          setServiceLocationCoords({ latitude: lat, longitude: lng });
+          setCoordsIfChanged({ latitude: lat, longitude: lng });
           return;
         }
       }
@@ -165,7 +183,7 @@ const ServiceMapScreen = () => {
           if (userId) {
             const savedLocation = await locationService.getUserLocation(userId);
             if (savedLocation?.latitude && savedLocation?.longitude) {
-              setServiceLocationCoords({
+              setCoordsIfChanged({
                 latitude: savedLocation.latitude,
                 longitude: savedLocation.longitude,
               });
@@ -176,27 +194,27 @@ const ServiceMapScreen = () => {
           // Continue to next priority if API fails
         }
       }
-      
+
       // Priority 3: userLocation (GPS) - but only if it's NOT simulator default (San Francisco)
       if (userLocation) {
         // Check if GPS location is simulator default (San Francisco: 37.785834, -122.406417)
-        const isSanFrancisco = Math.abs(userLocation.latitude - 37.785834) < 0.0001 && 
+        const isSanFrancisco = Math.abs(userLocation.latitude - 37.785834) < 0.0001 &&
                               Math.abs(userLocation.longitude - (-122.406417)) < 0.0001;
         // Also check if coordinates are clearly not in Nigeria (Nigeria is roughly 4-14°N, 3-15°E)
-        const isNotNigeria = userLocation.latitude < 0 || userLocation.latitude > 15 || 
+        const isNotNigeria = userLocation.latitude < 0 || userLocation.latitude > 15 ||
                             userLocation.longitude < 0 || userLocation.longitude > 15;
-        
+
         if (isSanFrancisco || isNotNigeria) {
           // Don't use simulator default - coordinates will remain null
         } else {
-          setServiceLocationCoords(userLocation);
+          setCoordsIfChanged(userLocation);
           return;
         }
       }
     };
 
     getLocationCoordinates();
-  }, [serviceLocation, savedLocation, userLocation, params.latitude, params.longitude]);
+  }, [serviceLocation, savedLocation, userLocation, params.latitude, params.longitude, setCoordsIfChanged]);
 
   // Fetch nearby providers when we have category and coordinates
   useEffect(() => {
