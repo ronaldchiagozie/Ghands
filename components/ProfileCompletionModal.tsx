@@ -137,7 +137,30 @@ export default function ProfileCompletionModal({
 
     setIsSubmitting(true);
     try {
-      const userId = await authService.getUserId();
+      /**
+       * getUserId() falls back to decoding a JWT when nothing is cached
+       * locally - but a token can be a valid, working, opaque (non-JWT)
+       * token that simply has nothing to decode, and if this account's id
+       * was never separately cached (an older session, a login path that
+       * skipped it), that leaves getUserId() with nothing and no way to
+       * recover it. The profile fetch above just proved the same token
+       * works fine for an authenticated GET, so it is a far more reliable
+       * source of the id than asking the token to explain itself again.
+       */
+      let userId = await authService.getUserId();
+      if (!userId) {
+        try {
+          const raw = await profileService.getCurrentUserProfile();
+          const record = unwrapProfilePayload(raw) as Record<string, unknown>;
+          const recovered = Number(record?.id ?? record?.userId ?? record?.user_id);
+          if (Number.isFinite(recovered) && recovered > 0) {
+            userId = recovered;
+            await authService.setUserId(recovered);
+          }
+        } catch {
+          /* falls through to the same error as before */
+        }
+      }
       if (!userId) {
         throw new Error('User not authenticated');
       }
