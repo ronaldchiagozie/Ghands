@@ -7,7 +7,7 @@ import { serviceRequestService } from '@/services/api';
 import { exitPaymentToJob, navigateBack, NAV_FALLBACK } from '@/utils/navigation';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
-import { ActivityIndicator, Share, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, Share, Text, View } from 'react-native';
 import { showAppAlert } from '@/components/AppAlertHost';
 import { shareReceipt } from '@/utils/shareReceipt';
 import Confetti from '@/components/Confetti';
@@ -318,24 +318,19 @@ export default function PaymentSuccessfulScreen() {
           </View>
         ) : null}
 
-        {/**
-          * Captured on share, so what lands in a chat is the document itself.
-          *
-          * `flex: 1` is not optional here. The receipt's own root is a flex
-          * child, so a wrapper that sizes to its content gives it nothing to
-          * fill and the whole card collapses to a strip - which is exactly
-          * what happened when this wrapper was first added without it.
-          */}
-        <View ref={receiptRef} collapsable={false} style={{ flex: 1 }}>
-          <ClientPaymentReceipt
-            data={transactionData}
-            onShare={handleShareReceipt}
-            onDownload={handleDownloadReceipt}
-            onViewJob={handleExit}
-            showViewJob={Boolean(params.requestId)}
-            capturing={isCapturing}
-          />
-      </View>
+        {/** Captured on share, so what lands in a chat is the document itself. */}
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
+          <View ref={receiptRef} collapsable={false}>
+            <ClientPaymentReceipt
+              data={transactionData}
+              onShare={handleShareReceipt}
+              onDownload={handleDownloadReceipt}
+              onViewJob={handleExit}
+              showViewJob={Boolean(params.requestId)}
+              capturing={isCapturing}
+            />
+          </View>
+        </ScrollView>
       </View>
       <Confetti visible={showConfetti} onDone={() => setShowConfetti(false)} />
     </SafeAreaWrapper>

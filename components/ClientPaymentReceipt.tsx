@@ -136,7 +136,7 @@ export function ClientPaymentReceipt({
   const heroSubtitle = status === 'failed' ? '' : subtitle;
 
   return (
-    <View style={{ flex: 1 }}>
+    <View>
       {/**
         * The hero comes out of the capture too.
         *
@@ -194,9 +194,7 @@ export function ClientPaymentReceipt({
       <View
         style={{
           ...providerHomeSurface,
-          flex: 1,
           padding: 16,
-          justifyContent: 'space-between',
           /** Holds the pattern inside the card's corners. */
           overflow: 'hidden',
         }}

@@ -6,7 +6,7 @@ import { Colors } from '@/lib/designSystem';
 import { CLIENT_HOME_SCROLL_GUTTER } from '@/lib/tabletLayout';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { Share, View } from 'react-native';
+import { ScrollView, Share, View } from 'react-native';
 import { showAppAlert } from '@/components/AppAlertHost';
 import { shareReceipt } from '@/utils/shareReceipt';
 
@@ -116,19 +116,16 @@ export default function TransactionFailedScreen() {
         }}
       >
         {/** Captured on share, so what lands in a chat is the document. */}
-        {/**
-          * `flex: 1` is not optional. The receipt's own root is a flex child,
-          * so a wrapper that sizes to its content gives it nothing to fill and
-          * the card collapses to a strip.
-          */}
-        <View ref={receiptRef} collapsable={false} style={{ flex: 1 }}>
-        <ClientPaymentReceipt
-          data={receiptData}
-          onShare={handleShare}
-          onDownload={handleDownload}
-          capturing={isCapturing}
-        />
-      </View>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
+          <View ref={receiptRef} collapsable={false}>
+            <ClientPaymentReceipt
+              data={receiptData}
+              onShare={handleShare}
+              onDownload={handleDownload}
+              capturing={isCapturing}
+            />
+          </View>
+        </ScrollView>
       </View>
     </SafeAreaWrapper>
   );
