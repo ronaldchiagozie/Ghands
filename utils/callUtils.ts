@@ -66,12 +66,15 @@ export function makeCall(
     status?: string;
     requestId?: string;
   },
-  isProvider?: boolean
+  isProvider?: boolean,
+  /** Missing here meant an outgoing call could never show the other person's photo, however real the source data was - see callerImage on showIncomingCall below, which always had it. */
+  callerImage?: string
 ) {
   initiateCall({
     callState: 'outgoing',
     callerName: recipientName,
     callerId: recipientId,
+    callerImage,
     jobTitle: jobDetails?.title,
     jobDescription: jobDetails?.description,
     orderNumber: jobDetails?.orderNumber,

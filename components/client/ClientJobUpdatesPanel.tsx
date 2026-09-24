@@ -144,6 +144,7 @@ export function ClientJobUpdatesPanel({
         status: 'In Progress',
       },
       false,
+      pickProviderImageUriFromRecord(provider),
     );
   };
 
