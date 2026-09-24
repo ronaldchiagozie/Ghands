@@ -16,6 +16,8 @@ interface ScreenHeaderProps {
   style?: ViewStyle;
   /** Hairline under header when body uses a different background */
   showBottomBorder?: boolean;
+  /** The back button's own circle - defaults to the usual light-grey chip. */
+  backButtonBackgroundColor?: string;
 }
 
 /**
@@ -30,6 +32,7 @@ export function ScreenHeader({
   backgroundColor = Colors.white,
   style,
   showBottomBorder = false,
+  backButtonBackgroundColor = Colors.backgroundGray,
 }: ScreenHeaderProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -63,7 +66,7 @@ export function ScreenHeader({
               width: MIN_TOUCH_TARGET,
 height: MIN_TOUCH_TARGET,
               borderRadius: BorderRadius.full,
-              backgroundColor: Colors.backgroundGray,
+              backgroundColor: backButtonBackgroundColor,
               alignItems: 'center',
               justifyContent: 'center',
               marginRight: SPACING.md,

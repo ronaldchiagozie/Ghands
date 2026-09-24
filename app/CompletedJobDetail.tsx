@@ -443,7 +443,12 @@ export default function CompletedJobDetail() {
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
           <View style={{ paddingHorizontal: CLIENT_HOME_SCROLL_GUTTER, paddingTop: 20 }}>
             <View className="mb-6">
-              <ScreenHeader title="Job details" onBack={() => navigateBack(router, NAV_FALLBACK.clientJobs)} />
+              <ScreenHeader
+                title="Job details"
+                onBack={() => navigateBack(router, NAV_FALLBACK.clientJobs)}
+                backgroundColor="transparent"
+                backButtonBackgroundColor="transparent"
+              />
             </View>
             <View className="mb-6">
               <Text
@@ -456,14 +461,7 @@ export default function CompletedJobDetail() {
               </Text>
               <TouchableOpacity
                 className="flex flex-row items-center justify-between px-5 py-5 bg-white rounded-2xl border"
-                style={{
-                  borderColor: Colors.borderLight,
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.05,
-                  shadowRadius: 3,
-                  elevation: 1,
-                }}
+                style={{ borderColor: Colors.borderLight }}
                 activeOpacity={0.7}
                 onPress={() => {
                   if (selectedProvider) {
@@ -592,42 +590,18 @@ export default function CompletedJobDetail() {
               >
                 Job Description
               </Text>
-              <View
-                className="rounded-2xl px-5 py-4 bg-white border"
+              <Text
+                className="text-sm leading-6"
                 style={{
-                  borderColor: Colors.borderLight,
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.05,
-                  shadowRadius: 3,
-                  elevation: 1,
+                  fontFamily: 'Poppins-Regular',
+                  color: Colors.textMuted,
                 }}
               >
-                <Text
-                  className="text-sm leading-6"
-                  style={{
-                    fontFamily: 'Poppins-Regular',
-                    color: Colors.textMuted,
-                  }}
-                >
-                  {request.description || request.jobTitle || 'No description provided'}
-                </Text>
-              </View>
+                {request.description || request.jobTitle || 'No description provided'}
+              </Text>
             </View>
             <View className="mt-2 mb-8">
-              <View
-                className="rounded-2xl bg-white border"
-                style={{
-                  borderColor: Colors.borderLight,
-                  paddingHorizontal: 20,
-                  paddingVertical: 6,
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 1 },
-                  shadowOpacity: 0.05,
-                  shadowRadius: 3,
-                  elevation: 1,
-                }}
-              >
+              <View>
                 {bookedDate.map((items, index) => (
                   <View
                     key={index}
