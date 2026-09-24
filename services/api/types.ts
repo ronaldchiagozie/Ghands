@@ -239,6 +239,17 @@ export interface ServiceRequest {
     | 'reviewing'
     | 'completed'
     | 'cancelled';
+  /** Defaults to 'wallet' when absent - cash-on-arrival is opt-in via POST .../pay-cash. */
+  paymentMethod?: 'wallet' | 'cash';
+  /**
+   * For a cash job this stays false until both confirm-cash-* calls land, even
+   * though status already reads 'scheduled' - a cash booking reaches that status
+   * the moment it's selected, well before any money actually changes hands.
+   */
+  isPaid?: boolean;
+  amountDueOnArrival?: number;
+  customerConfirmedCash?: boolean;
+  providerConfirmedCash?: boolean;
   nearbyProviders?: NearbyProvider[];
   user?: {
     id: number;

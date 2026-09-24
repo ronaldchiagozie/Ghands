@@ -9,7 +9,7 @@ import { WalletPinInput } from '@/components/WalletPinInput';
 import { haptics } from '@/hooks/useHaptics';
 import { useToast } from '@/hooks/useToast';
 import { BorderRadius, Colors, Spacing, useSageHeroPanelMetrics } from '@/lib/designSystem';
-import { walletService } from '@/services/api';
+import { serviceRequestService, walletService } from '@/services/api';
 import { getErrorMessage, getSpecificErrorMessage } from '@/utils/errorMessages';
 import {
   extractWalletTransactionFailureReason,
@@ -21,7 +21,7 @@ import { navigateBack, NAV_FALLBACK } from '@/utils/navigation';
 import { appendPaymentFlowLog } from '@/utils/paymentFlowLog';
 import { applyDefaultStatusBar } from '@/utils/statusBar';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
-import { CheckCircle, Clock, Lock, RefreshCw, Wallet, X, XCircle } from 'lucide-react-native';
+import { Banknote, CheckCircle, Clock, Lock, RefreshCw, Wallet, X, XCircle } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -80,6 +80,15 @@ export default function ConfirmWalletPaymentScreen() {
     message: string;
     isInsufficientBalance: boolean;
   } | null>(null);
+  /**
+   * Cash-on-arrival only applies to the service-payment step - a visit/logistics
+   * fee is still wallet-only, so the chooser below is skipped for that type.
+   */
+  const showsPaymentMethodChoice = params.paymentType !== 'logistics_fee';
+  const [paymentMethodChoice, setPaymentMethodChoice] = useState<'wallet' | 'cash'>('wallet');
+  const [isSubmittingCash, setIsSubmittingCash] = useState(false);
+  const [cashConfirmed, setCashConfirmed] = useState(false);
+  const [cashError, setCashError] = useState<string | null>(null);
   /** Message shown by the modal's terminal `failed` / `timedOut` states. */
   const [settlementMessage, setSettlementMessage] = useState<string | null>(null);
   /** Reference of the in-flight payment, so `timedOut` can re-check the same one. */
@@ -177,6 +186,25 @@ export default function ConfirmWalletPaymentScreen() {
     setPin('');
     setShowPinModal(true);
   };
+
+  const handleConfirmCash = useCallback(async () => {
+    const requestId = params.requestId ? parseInt(params.requestId, 10) : NaN;
+    if (!Number.isFinite(requestId) || requestId <= 0 || amount <= 0) return;
+
+    setCashError(null);
+    setIsSubmittingCash(true);
+    haptics.light();
+    try {
+      await serviceRequestService.payCash(requestId, amount);
+      haptics.success();
+      setCashConfirmed(true);
+    } catch (error) {
+      haptics.error();
+      setCashError(getSpecificErrorMessage(error as Error, 'create_request'));
+    } finally {
+      setIsSubmittingCash(false);
+    }
+  }, [amount, params.requestId]);
 
   const goToReceipt = useCallback(
     (reference: string | undefined) => {
@@ -763,8 +791,220 @@ export default function ConfirmWalletPaymentScreen() {
           </View>
         </SageHeroPanel>
 
+        {/* How to pay - cash-on-arrival is a real alternative to wallet-pay, not a fallback */}
+        {showsPaymentMethodChoice && !cashConfirmed && (
+          <View style={{ marginBottom: 20 }}>
+            <Text
+              style={{
+                fontSize: 13,
+                fontFamily: 'Poppins-SemiBold',
+                color: Colors.textSecondaryDark,
+                marginBottom: 10,
+                letterSpacing: 0.2,
+              }}
+            >
+              How would you like to pay?
+            </Text>
+            <View style={{ gap: 10 }}>
+              {(
+                [
+                  {
+                    key: 'wallet' as const,
+                    Icon: Wallet,
+                    title: 'Pay via Wallet',
+                    subtitle: 'Instant. Deducted from your wallet balance now.',
+                  },
+                  {
+                    key: 'cash' as const,
+                    Icon: Banknote,
+                    title: 'Cash on Arrival',
+                    subtitle: 'Pay the provider in person once the job is done.',
+                  },
+                ]
+              ).map(({ key, Icon, title, subtitle }) => {
+                const selected = paymentMethodChoice === key;
+                return (
+                  <TouchableOpacity
+                    key={key}
+                    activeOpacity={0.85}
+                    onPress={() => {
+                      haptics.selection();
+                      setPaymentMethodChoice(key);
+                      setCashError(null);
+                    }}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected }}
+                    accessibilityLabel={title}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      padding: 14,
+                      borderRadius: BorderRadius.default,
+                      borderWidth: 1.5,
+                      borderColor: selected ? Colors.accent : Colors.border,
+                      backgroundColor: selected ? 'rgba(79, 103, 57, 0.05)' : Colors.white,
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 12,
+                        backgroundColor: Colors.white,
+                        borderWidth: 1.5,
+                        borderColor: selected ? Colors.accent : 'rgba(79, 103, 57, 0.3)',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginRight: 12,
+                      }}
+                    >
+                      <Icon size={18} color={Colors.accent} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 14, fontFamily: 'Poppins-SemiBold', color: Colors.textPrimary }}>
+                        {title}
+                      </Text>
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          fontFamily: 'Poppins-Regular',
+                          color: Colors.textSecondaryDark,
+                          marginTop: 2,
+                          lineHeight: 16,
+                        }}
+                      >
+                        {subtitle}
+                      </Text>
+                    </View>
+                    <View
+                      style={{
+                        width: 20,
+                        height: 20,
+                        borderRadius: 10,
+                        borderWidth: 2,
+                        borderColor: selected ? Colors.accent : Colors.border,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginLeft: 8,
+                      }}
+                    >
+                      {selected ? (
+                        <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: Colors.accent }} />
+                      ) : null}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        )}
+
+        {/* Cash on arrival - confirm */}
+        {showsPaymentMethodChoice && paymentMethodChoice === 'cash' && !cashConfirmed && (
+          <View style={{ marginTop: 4 }}>
+            {cashError && (
+              <View
+                style={{
+                  backgroundColor: Colors.errorLight,
+                  borderLeftWidth: 4,
+                  borderLeftColor: Colors.error,
+                  borderRadius: BorderRadius.default,
+                  padding: 16,
+                  marginBottom: 16,
+                }}
+              >
+                <Text style={{ fontSize: 13, lineHeight: 19, fontFamily: 'Poppins-Regular', color: Colors.textPrimary }}>
+                  {cashError}
+                </Text>
+              </View>
+            )}
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'flex-start',
+                justifyContent: 'center',
+                marginBottom: Spacing.lg,
+                paddingHorizontal: 8,
+              }}
+            >
+              <Banknote size={16} color={Colors.textMuted} style={{ marginTop: 2 }} />
+              <Text
+                style={{
+                  flex: 1,
+                  fontSize: 13,
+                  fontFamily: 'Poppins-Regular',
+                  color: Colors.textSecondaryDark,
+                  marginLeft: 8,
+                  lineHeight: 19,
+                  textAlign: 'center',
+                }}
+              >
+                Nothing is deducted now. You and the provider will each confirm the cash payment in the app once the job is done, before it can be marked complete.
+              </Text>
+            </View>
+            <Button
+              title={`Confirm cash on arrival · ₦${amount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+              onPress={handleConfirmCash}
+              variant="primary"
+              size="large"
+              fullWidth
+              loading={isSubmittingCash}
+              disabled={isSubmittingCash}
+            />
+          </View>
+        )}
+
+        {/* Cash on arrival - confirmed */}
+        {cashConfirmed && (
+          <View style={{ alignItems: 'center', paddingTop: 12, paddingBottom: 32, paddingHorizontal: 12 }}>
+            <View
+              style={{
+                width: 72,
+                height: 72,
+                borderRadius: 36,
+                backgroundColor: Colors.successLight,
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 20,
+              }}
+            >
+              <CheckCircle size={36} color={Colors.accent} />
+            </View>
+            <Text
+              style={{
+                fontSize: 18,
+                fontFamily: 'Poppins-Bold',
+                color: Colors.textPrimary,
+                marginBottom: 8,
+                textAlign: 'center',
+              }}
+            >
+              Cash on arrival selected
+            </Text>
+            <Text
+              style={{
+                fontSize: 13,
+                fontFamily: 'Poppins-Regular',
+                color: Colors.textSecondaryDark,
+                textAlign: 'center',
+                lineHeight: 19,
+                marginBottom: 28,
+              }}
+            >
+              Pay the provider ₦{amount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} in person once the job is done. You&apos;ll both confirm it in the app before the job can be marked complete.
+            </Text>
+            <Button
+              title="Back to job"
+              onPress={() => navigateBack(router, NAV_FALLBACK.clientJobs)}
+              variant="primary"
+              size="large"
+              fullWidth
+            />
+          </View>
+        )}
+
         {/* Insufficient balance */}
-        {!isLoadingBalance && balanceKnown && !hasEnoughBalance && amount > 0 && (
+        {(!showsPaymentMethodChoice || paymentMethodChoice === 'wallet') && !cashConfirmed && !isLoadingBalance && balanceKnown && !hasEnoughBalance && amount > 0 && (
           <View
             style={{
               backgroundColor: Colors.errorLight,
@@ -792,7 +1032,7 @@ export default function ConfirmWalletPaymentScreen() {
         )}
 
         {/* Pay Now - only when sufficient balance */}
-        {!isLoadingBalance && balanceKnown && hasEnoughBalance && (
+        {(!showsPaymentMethodChoice || paymentMethodChoice === 'wallet') && !cashConfirmed && !isLoadingBalance && balanceKnown && hasEnoughBalance && (
           <View style={{ marginTop: 4 }}>
             <View
               style={{

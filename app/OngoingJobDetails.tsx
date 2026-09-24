@@ -136,6 +136,7 @@ export default function OngoingJobDetails() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingQuotations, setIsLoadingQuotations] = useState(false);
   const [isQuotationActionLoading, setIsQuotationActionLoading] = useState(false);
+  const [isConfirmingCashPaid, setIsConfirmingCashPaid] = useState(false);
   const [hasAttemptedLoad, setHasAttemptedLoad] = useState(false);
   const completeJobLockRef = useRef(false);
   const declineVisitActionRef = useRef<() => void>(() => {});
@@ -652,13 +653,45 @@ export default function OngoingJobDetails() {
     const formatCurrency = (v: number | undefined | null) => (typeof v === 'number' ? v : 0).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const headerProvider = acceptedQuotation?.provider ?? acceptedProviders?.[0]?.provider ?? null;
 
+    /**
+     * A cash job reaches every one of these statuses the moment it's *selected*,
+     * well before any money actually changes hands - unlike wallet-pay, where
+     * reaching them means the debit already went through. `isPaid` (set only
+     * once both sides confirm) is the only thing that means "paid" for cash;
+     * status alone is not enough here even though it is for wallet.
+     */
+    const isCash = request.paymentMethod === 'cash';
+    const cashConfirmedByBoth = isCash && request.isPaid === true;
+    const cashAwaitingConfirmation = isCash && request.isPaid !== true;
+
     if (request.status === 'completed') return { title: 'Job completed', subtitle: 'Job complete. Funds released to provider. Thank you.', statusPill: 'Completed', pillBg: JOB_TIMELINE.completeSoft, pillText: JOB_TIMELINE.sageChipText, timestamp: request.updatedAt ? formatTimeAgo(request.updatedAt) : null, provider: headerProvider };
-    if (request.status === 'in_progress') return { title: 'Job in progress', subtitle: 'Provider is on site. Mark complete when satisfied.', statusPill: 'In progress', pillBg: JOB_TIMELINE.activeSoft, pillText: JOB_TIMELINE.activeChipText, timestamp: request.updatedAt ? formatTimeAgo(request.updatedAt) : null, provider: headerProvider };
-    if (request.status === 'reviewing') return { title: 'Provider has finished', subtitle: 'Verify the work is satisfactory, then tap Mark as complete to release payment.', statusPill: 'Awaiting your confirmation', pillBg: JOB_TIMELINE.activeSoft, pillText: JOB_TIMELINE.activeChipText, timestamp: request.updatedAt ? formatTimeAgo(request.updatedAt) : null, provider: headerProvider };
+    if (request.status === 'in_progress') {
+      return {
+        title: 'Job in progress',
+        subtitle: cashAwaitingConfirmation
+          ? `Provider is on site. Confirm your ₦${formatCurrency(request.amountDueOnArrival ?? acceptedQuotation?.total)} cash payment once it's handed over.`
+          : 'Provider is on site. Mark complete when satisfied.',
+        statusPill: 'In progress', pillBg: JOB_TIMELINE.activeSoft, pillText: JOB_TIMELINE.activeChipText, timestamp: request.updatedAt ? formatTimeAgo(request.updatedAt) : null, provider: headerProvider,
+      };
+    }
+    if (request.status === 'reviewing') {
+      return {
+        title: 'Provider has finished',
+        subtitle: cashAwaitingConfirmation
+          ? `Verify the work, then confirm your ₦${formatCurrency(request.amountDueOnArrival ?? acceptedQuotation?.total)} cash payment - both sides confirming is what unlocks Mark as complete.`
+          : 'Verify the work is satisfactory, then tap Mark as complete to release payment.',
+        statusPill: 'Awaiting your confirmation', pillBg: JOB_TIMELINE.activeSoft, pillText: JOB_TIMELINE.activeChipText, timestamp: request.updatedAt ? formatTimeAgo(request.updatedAt) : null, provider: headerProvider,
+      };
+    }
+
+    if (cashAwaitingConfirmation) {
+      const amt = `₦${formatCurrency(request.amountDueOnArrival ?? acceptedQuotation?.total)}`;
+      return { title: 'Cash on arrival selected', subtitle: `Pay the provider ${amt} in person once the job is done. Waiting for the job to start.`, statusPill: 'Cash on arrival', pillBg: JOB_TIMELINE.infoSoft, pillText: JOB_TIMELINE.infoChipText, timestamp: null, provider: headerProvider };
+    }
 
     const statusLower = typeof (request.status as any) === 'string' ? (request.status as any).toLowerCase() : (request.status as any);
     const isPaidByStatus = statusLower === 'scheduled' || statusLower === 'in_progress' || statusLower === 'reviewing' || statusLower === 'completed';
-    const isPaymentConfirmed = cameFromPaymentSuccess || (quotationAccepted && (isPaidByStatus || !!paymentTransaction));
+    const isPaymentConfirmed = cashConfirmedByBoth || cameFromPaymentSuccess || (quotationAccepted && (isPaidByStatus || !!paymentTransaction));
 
     if (isPaymentConfirmed) {
       const amt = acceptedQuotation ? `₦${formatCurrency(acceptedQuotation.total)}` : '';
@@ -1243,6 +1276,34 @@ export default function OngoingJobDetails() {
 
   declineVisitActionRef.current = confirmDeclineVisit;
 
+  const handleConfirmCashPaid = useCallback(async () => {
+    if (isConfirmingCashPaid || !params.requestId) return;
+    const requestId = parseInt(params.requestId, 10);
+    if (!Number.isFinite(requestId)) return;
+
+    setIsConfirmingCashPaid(true);
+    haptics.light();
+    try {
+      const result = await serviceRequestService.confirmCashPaid(requestId);
+      haptics.success();
+      showSuccess(
+        result.isPaid
+          ? 'Cash payment confirmed by both parties.'
+          : 'Confirmed. Waiting for the provider to confirm on their side.'
+      );
+      await loadRequestData(true);
+    } catch (error: any) {
+      if (error instanceof AuthError) {
+        await handleAuthErrorRedirect(router);
+        return;
+      }
+      haptics.error();
+      showError(getSpecificErrorMessage(error, 'create_request'));
+    } finally {
+      setIsConfirmingCashPaid(false);
+    }
+  }, [isConfirmingCashPaid, params.requestId, router, showSuccess, showError, loadRequestData]);
+
   const handleAcceptQuotation = async (quotationId: number) => {
     if (!params.requestId || isQuotationActionLoading) return;
 
@@ -1318,6 +1379,18 @@ export default function OngoingJobDetails() {
     if (statusNorm !== 'reviewing') return;
 
     /**
+     * The server refuses completion for an unconfirmed cash job anyway - this
+     * just says so plainly instead of walking someone into a "Release payment"
+     * dialog (wrong framing for cash, nothing is held for a cash job) that
+     * would only fail with a raw backend error.
+     */
+    if (request.paymentMethod === 'cash' && request.isPaid !== true) {
+      haptics.light();
+      showError('Confirm the cash payment first - you and the provider both need to confirm before this job can be marked complete.');
+      return;
+    }
+
+    /**
      * Name the money and the person. The dialog was titled "Complete Job" with a
      * "Complete" button, which says nothing about the payment it releases and
      * does not match the "Confirm & release payment" button that opened it. The
@@ -1332,10 +1405,14 @@ export default function OngoingJobDetails() {
       releaseAmount != null
         ? `₦${releaseAmount.toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
         : null;
+    /** A cash job already changed hands in person - nothing is "released" from the app's side. */
+    const isCashJob = request.paymentMethod === 'cash';
 
     showAppAlert(
-      amountText ? `Release ${amountText}?` : 'Release payment?',
-      `${amountText ?? 'Payment'} goes to ${providerLabel} now. Only do this if the work is finished and you are happy with it. This cannot be reversed from here.`,
+      isCashJob ? 'Mark this job complete?' : amountText ? `Release ${amountText}?` : 'Release payment?',
+      isCashJob
+        ? `Both you and ${providerLabel} already confirmed the cash payment. Only do this if the work is finished and you are happy with it. This cannot be reversed from here.`
+        : `${amountText ?? 'Payment'} goes to ${providerLabel} now. Only do this if the work is finished and you are happy with it. This cannot be reversed from here.`,
       [
         {
           text: 'Not yet',
@@ -1343,7 +1420,7 @@ export default function OngoingJobDetails() {
           onPress: () => haptics.light(),
         },
         {
-          text: amountText ? `Release ${amountText}` : 'Release payment',
+          text: isCashJob ? 'Mark complete' : amountText ? `Release ${amountText}` : 'Release payment',
           style: 'default',
           onPress: async () => {
             if (completeJobLockRef.current) return;
@@ -1494,6 +1571,53 @@ export default function OngoingJobDetails() {
             }}
           />
         );
+      }
+
+      /**
+       * Cash on arrival: both sides have to confirm before Mark as complete
+       * unlocks. Surfaced on the two steps where the job is actually far
+       * enough along for cash to have changed hands - work in progress, and
+       * the review window right after.
+       */
+      if (
+        (step.id === 'step-6' || step.id === 'step-7') &&
+        step.isActive &&
+        request?.paymentMethod === 'cash' &&
+        request?.isPaid !== true
+      ) {
+        if (request?.customerConfirmedCash) {
+          actions.push(
+            <View
+              key="cash-waiting"
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                borderRadius: BorderRadius.full,
+                backgroundColor: JOB_TIMELINE.infoSoft,
+              }}
+            >
+              <Clock size={13} color={JOB_TIMELINE.infoChipText} />
+              <Text style={{ fontSize: 12, fontFamily: 'Poppins-SemiBold', color: JOB_TIMELINE.infoChipText }}>
+                Waiting for provider to confirm cash received
+              </Text>
+            </View>
+          );
+        } else {
+          actions.push(
+            <SagePrimaryButton
+              key="confirm-cash-paid"
+              compact
+              disabled={isConfirmingCashPaid}
+              label={isConfirmingCashPaid ? 'Confirming…' : `Confirm cash paid • ₦${Number(request?.amountDueOnArrival ?? 0).toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
+              onPress={() => {
+                void handleConfirmCashPaid();
+              }}
+            />
+          );
+        }
       }
 
       if (

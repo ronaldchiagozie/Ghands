@@ -475,6 +475,52 @@ export const serviceRequestService = {
     return { requestId: d.requestId || requestId, status: d.status || 'accepted', provider: d.provider || {}, message: d.message || 'Provider selected successfully' };
   },
 
+  /**
+   * Chooses cash-on-arrival over wallet-pay for an accepted quotation. `amount`
+   * must equal the accepted quotation's total, same rule as wallet-pay. No
+   * wallet debit happens - the request moves to `scheduled` with
+   * paymentMethod: 'cash', and isPaid stays false until both confirm-cash-*
+   * calls land.
+   */
+  payCash: async (requestId: number, amount: number): Promise<{
+    requestId: number;
+    status: string;
+    paymentMethod: 'cash';
+    amountDueOnArrival: number;
+    message: string;
+  }> => {
+    const response = await apiClient.post<any>(`/api/request-service/requests/${requestId}/pay-cash`, { amount });
+    const d = extractResponseData<any>(response);
+    return {
+      requestId: d.requestId ?? requestId,
+      status: d.status ?? 'scheduled',
+      paymentMethod: 'cash',
+      amountDueOnArrival: Number(d.amountDueOnArrival ?? amount),
+      message: d.message ?? 'Cash on arrival selected.',
+    };
+  },
+
+  /** Customer's half of the two-sided cash confirmation - see confirm-cash-received for the provider's. */
+  confirmCashPaid: async (requestId: number): Promise<{
+    requestId: number;
+    customerConfirmedCash: boolean;
+    providerConfirmedCash: boolean;
+    isPaid: boolean;
+    paidAt: string | null;
+    message: string;
+  }> => {
+    const response = await apiClient.post<any>(`/api/request-service/requests/${requestId}/confirm-cash-paid`, {});
+    const d = extractResponseData<any>(response);
+    return {
+      requestId: d.requestId ?? requestId,
+      customerConfirmedCash: Boolean(d.customerConfirmedCash),
+      providerConfirmedCash: Boolean(d.providerConfirmedCash),
+      isPaid: Boolean(d.isPaid),
+      paidAt: d.paidAt ?? null,
+      message: d.message ?? '',
+    };
+  },
+
   getQuotations: async (requestId: number): Promise<QuotationWithProvider[]> => {
     const response = await apiClient.get<any>(`/api/request-service/requests/${requestId}/quotations`);
     const raw = extractResponseData<any>(response);
