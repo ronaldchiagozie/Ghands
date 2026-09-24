@@ -21,6 +21,25 @@ export const profileService = {
     }
   },
 
+  /**
+   * GET /api/user/referral - the account's real, shareable referral code.
+   * `/api/user/profile` doesn't reliably carry this field, so this is the
+   * only source of truth for it; a code from anywhere else may not be one
+   * the backend actually recognises when someone tries to redeem it.
+   */
+  getReferral: async (): Promise<{ referralCode?: string; referredByCode?: string | null }> => {
+    try {
+      const response = await apiClient.get<any>('/api/user/referral');
+      const data = extractResponseData<any>(response);
+      return {
+        referralCode: typeof data?.referralCode === 'string' ? data.referralCode : undefined,
+        referredByCode: typeof data?.referredByCode === 'string' ? data.referredByCode : null,
+      };
+    } catch {
+      return {};
+    }
+  },
+
   getProfile: async (userId: string): Promise<UserProfile> => {
     return apiClient.get<UserProfile>(`/users/${userId}/profile`);
   },

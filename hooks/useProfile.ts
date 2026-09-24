@@ -78,14 +78,15 @@ export function mapApiProfileToClientView(raw: unknown): ClientProfileView {
   const reviewCount =
     typeof reviewsRaw === 'number' && Number.isFinite(reviewsRaw) ? reviewsRaw : undefined;
 
-  let referralCode =
+  /**
+   * Only ever a real code from the API, never derived from the id. A code
+   * sliced off someone's own user id looks plausible but isn't one the
+   * backend would recognise if a friend tried to redeem it - GET
+   * /api/user/referral (merged in by useCurrentUserProfile below) is the
+   * only source that can actually be shared.
+   */
+  const referralCode =
     typeof referralRaw === 'string' && referralRaw.trim() ? referralRaw.trim() : undefined;
-
-  if (!referralCode && typeof idRaw === 'string' && idRaw.length >= 4) {
-    referralCode = idRaw.slice(0, 8).toUpperCase();
-  } else if (!referralCode && typeof idRaw === 'number') {
-    referralCode = String(idRaw).slice(0, 8).toUpperCase();
-  }
 
   return {
     ...base,
@@ -101,8 +102,12 @@ export function useCurrentUserProfile() {
   return useQuery({
     queryKey: [PROFILE_QUERY_KEY, 'current'],
     queryFn: async () => {
-      const raw = await profileService.getCurrentUserProfile();
+      const [raw, referral] = await Promise.all([
+        profileService.getCurrentUserProfile(),
+        profileService.getReferral(),
+      ]);
       const mapped = mapApiProfileToClientView(raw);
+      if (referral.referralCode) mapped.referralCode = referral.referralCode;
       const apiImage = mapped.profileImageUri;
       const localUri = await readLocalClientProfileImageUri(mapped.id);
 
