@@ -2,10 +2,11 @@ import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { NAV_FALLBACK, navigateBack } from '@/utils/navigation';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { BorderRadius, Colors, Spacing } from '@/lib/designSystem';
+import { resetOnboardingForTesting } from '@/utils/resetOnboardingForTesting';
 import { useRouter } from 'expo-router';
-import { ChevronRight, HelpCircle, Key, Scale, User } from 'lucide-react-native';
-import React from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ChevronRight, HelpCircle, Key, RotateCcw, Scale, User } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
 interface SettingsOption {
   id: string;
@@ -18,6 +19,26 @@ interface SettingsOption {
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const [isResettingOnboarding, setIsResettingOnboarding] = useState(false);
+
+  const handleResetOnboarding = () => {
+    Alert.alert(
+      'Reset onboarding (testing)',
+      'This signs you out and clears the onboarding flag, so the next launch replays the welcome carousel and signup from the start. For testing only.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: () => {
+            if (isResettingOnboarding) return;
+            setIsResettingOnboarding(true);
+            resetOnboardingForTesting(router).catch(() => setIsResettingOnboarding(false));
+          },
+        },
+      ],
+    );
+  };
 
   const settingsOptions: SettingsOption[] = [
     {
@@ -62,6 +83,14 @@ export default function SettingsScreen() {
         router.push('/SecurityScreen' as any);
       },
     },
+    {
+      id: '6',
+      title: 'Reset onboarding (testing)',
+      subtitle: 'Signs out, replays the welcome flow from the start',
+      icon: RotateCcw,
+      iconBgColor: Colors.backgroundGray,
+      onPress: handleResetOnboarding,
+    },
   ];
 
   return (
@@ -91,8 +120,10 @@ export default function SettingsScreen() {
                   alignItems: 'center',
                   borderWidth: 1,
                   borderColor: Colors.border,
+                  opacity: option.id === '6' && isResettingOnboarding ? 0.6 : 1,
                 }}
                 activeOpacity={0.7}
+                disabled={option.id === '6' && isResettingOnboarding}
               >
                 {/* Icon */}
                 <View
@@ -134,7 +165,11 @@ export default function SettingsScreen() {
                 </View>
 
                 {/* Chevron */}
-                <ChevronRight size={20} color={Colors.textSecondaryDark} />
+                {option.id === '6' && isResettingOnboarding ? (
+                  <ActivityIndicator size="small" color={Colors.textSecondaryDark} />
+                ) : (
+                  <ChevronRight size={20} color={Colors.textSecondaryDark} />
+                )}
               </TouchableOpacity>
             );
           })}
