@@ -9,7 +9,7 @@ import { BorderRadius, Colors } from '@/lib/designSystem';
 type QuickActionId = 'wallet' | 'rebook' | 'urgent' | 'handy';
 
 const CARD_WIDTH = 166;
-const CARD_HEIGHT = 118;
+const CARD_HEIGHT = 96;
 /** Eight points is the floor between adjacent targets; ten leaves it airier. */
 const GAP = 10;
 
@@ -175,9 +175,9 @@ export default function HomeQuickActions({
               flex: 1,
               backgroundColor: action.fill,
               borderRadius: BorderRadius.default,
-              paddingHorizontal: 15,
-              paddingTop: 14,
-              paddingBottom: 14,
+              paddingHorizontal: 14,
+              paddingTop: 12,
+              paddingBottom: 12,
               /** Holds the pattern inside the corners. */
               overflow: 'hidden',
               justifyContent: 'space-between',
@@ -198,13 +198,13 @@ export default function HomeQuickActions({
               pointerEvents="none"
             />
 
-            <action.Icon size={21} color={Colors.white} strokeWidth={2.1} />
+            <action.Icon size={18} color={Colors.white} strokeWidth={2} />
 
             <View>
               <Text
                 numberOfLines={1}
                 style={{
-                  fontSize: 12,
+                  fontSize: 11,
                   fontFamily: 'Poppins-Medium',
                   color: 'rgba(255, 255, 255, 0.78)',
                   letterSpacing: 0.1,
@@ -222,11 +222,11 @@ export default function HomeQuickActions({
                 adjustsFontSizeToFit
                 minimumFontScale={0.72}
                 style={{
-                  fontSize: action.id === 'wallet' ? 20 : 16,
-                  lineHeight: 26,
-                  fontFamily: 'Poppins-Bold',
+                  fontSize: action.id === 'wallet' ? 16 : 14,
+                  lineHeight: 21,
+                  fontFamily: 'Poppins-SemiBold',
                   color: Colors.white,
-                  letterSpacing: -0.4,
+                  letterSpacing: -0.2,
                   marginTop: 1,
                   fontVariant: ['tabular-nums'],
                 }}
