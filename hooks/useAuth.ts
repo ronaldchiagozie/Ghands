@@ -6,6 +6,7 @@ import { authService } from '@/services/api';
 import { beginRoleSwitch, endRoleSwitch } from '@/hooks/useRoleSwitching';
 import { isInAuthTransition, markAuthSessionEnded } from '@/utils/authNavigationGuard';
 import { logoutUser } from '@/utils/logoutUser';
+import { resetStackTo } from '@/utils/navigation';
 
 export type UserRole = 'client' | 'provider' | null;
 
@@ -94,7 +95,7 @@ export function useAuthRole(): UseAuthRoleReturn {
       setRoleState(newRole);
 
       // Provider auth lives in the separate provider app - always land on client login here.
-      router.replace('/LoginScreen');
+      resetStackTo(router, '/LoginScreen');
     } catch (error) {
       console.error('Error switching role:', error);
       throw error;
@@ -114,7 +115,7 @@ export function useAuthRole(): UseAuthRoleReturn {
        * happened.
        */
       if (!isInAuthTransition()) {
-        router.replace('/LoginScreen' as never);
+        resetStackTo(router, '/LoginScreen');
       }
     }
   }, [router]);

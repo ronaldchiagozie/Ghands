@@ -3,6 +3,7 @@ import { haptics } from '@/hooks/useHaptics';
 import { Colors, useKeyboardAvoidingOffset } from '@/lib/designSystem';
 import { authService } from '@/services/api';
 import { useRouter } from 'expo-router';
+import { resetStackTo } from '@/utils/navigation';
 import { Lock, Mail } from 'lucide-react-native';
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
@@ -116,7 +117,7 @@ export default function LoginScreen() {
       haptics.success();
       showSuccess('Signed in');
 
-      router.replace('/(tabs)/home');
+      resetStackTo(router, '/(tabs)/home');
     } catch (error: any) {
       haptics.error();
       const errorMessage = getSpecificErrorMessage(error, 'user_login');

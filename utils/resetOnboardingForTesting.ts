@@ -6,6 +6,7 @@ import { markAuthSessionEnded } from '@/utils/authNavigationGuard';
 import { resetAuthSessionGate } from '@/utils/enforceAuthSession';
 import { CLIENT_ACCOUNT_TYPE_KEY } from '@/utils/clientAccountType';
 import { ONBOARDING_STORAGE_KEY } from '@/hooks/useOnboarding';
+import { resetStackTo } from '@/utils/navigation';
 
 const PROVIDER_CACHE_KEYS = [
   '@ghands:business_name',
@@ -52,5 +53,5 @@ export async function resetOnboardingForTesting(router: Pick<Router, 'replace'>)
   /** Re-arm the grace window before navigating - see logoutUser for why. */
   markAuthSessionEnded();
 
-  router.replace('/onboarding' as never);
+  resetStackTo(router, '/onboarding');
 }

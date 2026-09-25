@@ -1,6 +1,7 @@
 import type { Router } from 'expo-router';
 import { getLoginRouteForStoredRole, isPublicUnauthenticatedRoute } from '@/utils/authPublicRoutes';
 import { handleTokenExpiration } from '@/utils/tokenExpirationHandler';
+import { resetStackTo } from '@/utils/navigation';
 
 type RouterLike = Pick<Router, 'replace'>;
 
@@ -104,13 +105,13 @@ export async function redirectToAuthScreen(
       return false;
     }
 
-    router.replace(route as never);
+    resetStackTo(router, route);
     lastRedirectRoute = normalizedRoute;
     lastRedirectAt = Date.now();
     return true;
   } catch {
     try {
-      router.replace('/LoginScreen' as never);
+      resetStackTo(router, '/LoginScreen');
       lastRedirectRoute = '/LoginScreen';
       lastRedirectAt = Date.now();
       return true;

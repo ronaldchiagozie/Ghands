@@ -4,6 +4,7 @@ import { haptics } from '@/hooks/useHaptics';
 import { authService } from '@/services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { resetStackTo } from '@/utils/navigation';
 import { Gift, Lock, Mail } from 'lucide-react-native';
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
@@ -200,12 +201,13 @@ export default function SignupScreen() {
        */
       if (!signupResult?.token) {
         showSuccess('Account created. Please sign in to continue.');
-        router.replace('/LoginScreen');
+        resetStackTo(router, '/LoginScreen');
         return;
       }
 
       showSuccess('Account created');
-      router.replace('/ProfileCompletionScreen');
+      /** The account exists now - onboarding, the type picker and this form are gone for good. */
+      resetStackTo(router, '/ProfileCompletionScreen');
     } catch (error: any) {
       haptics.error();
 

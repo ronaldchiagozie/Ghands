@@ -6,6 +6,7 @@ import { markAuthSessionEnded } from '@/utils/authNavigationGuard';
 import { getLoginRouteForStoredRole } from '@/utils/authPublicRoutes';
 import { resetAuthSessionGate } from '@/utils/enforceAuthSession';
 import { CLIENT_ACCOUNT_TYPE_KEY } from '@/utils/clientAccountType';
+import { resetStackTo } from '@/utils/navigation';
 
 const PROVIDER_CACHE_KEYS = [
   '@ghands:business_name',
@@ -57,5 +58,5 @@ export async function logoutUser(router: Pick<Router, 'replace'>): Promise<void>
   markAuthSessionEnded();
 
   const loginRoute = await getLoginRouteForStoredRole();
-  router.replace(loginRoute as never);
+  resetStackTo(router, loginRoute);
 }

@@ -34,6 +34,29 @@ export function resetToClientTab(
 }
 
 /**
+ * Cross the signed-in / signed-out boundary with nothing left underneath.
+ *
+ * A plain replace only swaps the top screen. Signing in left onboarding, the
+ * account-type picker and signup stacked under Home, so a swipe or back press
+ * dropped a signed-in customer onto the account-type screen; signing out left
+ * the tabs under Login, so the same gesture put a signed-out person back inside
+ * the app with no session. Every auth transition goes through here instead.
+ */
+export function resetStackTo(
+  router: Pick<Router, 'replace'> & Partial<Pick<Router, 'dismissAll' | 'canDismiss'>>,
+  href: string,
+): void {
+  try {
+    if (router.canDismiss?.()) {
+      router.dismissAll?.();
+    }
+  } catch {
+    /* best effort - the replace below still lands on the right screen */
+  }
+  router.replace(href as never);
+}
+
+/**
  * Prefer stack back; only use fallback when there is no history (deep link / replace entry).
  */
 export function navigateBack(router: RouterLike, fallback: string): void {

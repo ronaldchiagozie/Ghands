@@ -18,6 +18,7 @@ import { AuthButton } from '../components/AuthButton';
 import { InputField } from '../components/InputField';
 import { useToast } from '../hooks/useToast';
 import Toast from '../components/Toast';
+import { resetStackTo } from '@/utils/navigation';
 
 export default function PasswordConfirmationScreen() {
   const keyboardOffset = useKeyboardAvoidingOffset();
@@ -70,7 +71,7 @@ export default function PasswordConfirmationScreen() {
 
       // Navigate to login screen after a short delay
       setTimeout(() => {
-        router.replace('/LoginScreen');
+        resetStackTo(router, '/LoginScreen');
       }, 2000);
     } catch (error) {
       showError(getSpecificErrorMessage(error, 'Failed to reset password. Please try again.'));

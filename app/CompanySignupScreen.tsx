@@ -3,6 +3,7 @@ import { haptics } from '@/hooks/useHaptics';
 import { authService } from '@/services/api';
 import { Colors, useKeyboardAvoidingOffset } from '@/lib/designSystem';
 import { useRouter } from 'expo-router';
+import { resetStackTo } from '@/utils/navigation';
 import { Building2, Lock, Mail, Phone } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -141,7 +142,7 @@ export default function CompanySignupScreen() {
       });
       haptics.success();
       showSuccess('Company account created');
-      router.replace('/(tabs)/home');
+      resetStackTo(router, '/(tabs)/home');
     } catch (error: unknown) {
       haptics.error();
       const err = error as {
