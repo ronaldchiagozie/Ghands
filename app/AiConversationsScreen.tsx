@@ -19,11 +19,12 @@ import {
   View,
 } from 'react-native';
 import { showAppAlert } from '@/components/AppAlertHost';
+import Toast from '@/components/Toast';
 
 export default function AiConversationsScreen() {
   const router = useRouter();
   const pathname = usePathname();
-  const { showError } = useToast();
+  const { toast, showError, hideToast } = useToast();
   const [conversations, setConversations] = useState<AiConversationSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -280,6 +281,7 @@ export default function AiConversationsScreen() {
           />
         )}
       </View>
+      <Toast message={toast.message} type={toast.type} visible={toast.visible} onClose={hideToast} />
     </SafeAreaWrapper>
   );
 }

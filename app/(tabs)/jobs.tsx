@@ -53,6 +53,7 @@ import {
 } from '@/utils/bookingResume';
 import { useBookingResume } from '@/hooks/useBookingResume';
 import ResumeBookingCard from '@/components/home/ResumeBookingCard';
+import Toast from '@/components/Toast';
 
 /**
  * 'Drafts' is not a job status the server knows about. It is a tab that exists
@@ -367,7 +368,7 @@ export default function JobsScreen() {
     goToResumePoint(resumePoint);
   }, [resumePoint, goToResumePoint]);
 
-  const { showError } = useToast();
+  const { toast, showError, hideToast } = useToast();
 
   // Load user requests from API
   const loadRequests = useCallback(async () => {
@@ -708,6 +709,7 @@ export default function JobsScreen() {
           />
         )}
       </View>
+      <Toast message={toast.message} type={toast.type} visible={toast.visible} onClose={hideToast} />
     </SafeAreaWrapper>
   );
 }

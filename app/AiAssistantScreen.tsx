@@ -57,7 +57,7 @@ export default function AiAssistantScreen() {
     conversationId?: string;
     newChat?: string;
   }>();
-  const { toast, showError, showInfo, hideToast } = useToast();
+  const { toast, showError, showInfo, showSuccess, hideToast } = useToast();
   const { width: windowWidth } = useWindowDimensions();
   const reducedMotion = useReducedMotion();
   const { animatedStyle: mascotAnimatedStyle, entranceComplete } = useAiMascotAnimation();
@@ -524,6 +524,7 @@ export default function AiAssistantScreen() {
                       suggestionVisible={suggestionVisible}
                       onBotMessageRevealed={onBotMessageRevealed}
                       onUseDraft={handleUseDraft}
+                      onNotify={(type, message) => (type === 'success' ? showSuccess(message) : showError(message))}
                     />
                   </Animated.View>
                 ) : null}

@@ -16,6 +16,7 @@ import SafeAreaWrapper from './SafeAreaWrapper';
 import { ScreenHeader } from './ScreenHeader';
 import { InputField } from './InputField';
 import { Button } from './ui/Button';
+import Toast from '@/components/Toast';
 
 export interface ProfileCompletionData {
   fullName: string;
@@ -34,7 +35,7 @@ export default function ProfileCompletionModal({
   onClose,
   onComplete,
 }: ProfileCompletionModalProps) {
-  const { showError } = useToast();
+  const { toast, showError, hideToast } = useToast();
   const queryClient = useQueryClient();
   const [fullName, setFullName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -328,6 +329,7 @@ export default function ProfileCompletionModal({
           />
         </View>
       </KeyboardAvoidingView>
+      <Toast message={toast.message} type={toast.type} visible={toast.visible} onClose={hideToast} />
     </SafeAreaWrapper>
   );
 }

@@ -1,7 +1,6 @@
 import { AI_ANIMATION, AI_CHAT_UI, AI_COLORS } from '@/components/ai/aiAssistantTheme';
 import { useRevealText } from '@/hooks/useRevealText';
 import { haptics } from '@/hooks/useHaptics';
-import { useToast } from '@/hooks/useToast';
 import { copyTextToClipboard } from '@/utils/clipboard';
 import { Image } from 'expo-image';
 import { Copy } from 'lucide-react-native';
@@ -23,6 +22,8 @@ const BOT_BUBBLE_SHADOW =
     : { elevation: 3 };
 
 type AiChatBotBubbleProps = {
+  /** Reports a copy result up to the chat screen, which owns the toast - a toast rendered in here would be pinned inside this bubble. */
+  onNotify?: (type: 'success' | 'error', message: string) => void;
   message: AiMessage;
   isTypingPlaceholder?: boolean;
   onRevealComplete?: (messageId: string) => void;
@@ -32,8 +33,8 @@ export default function AiChatBotBubble({
   message,
   isTypingPlaceholder = false,
   onRevealComplete,
+  onNotify,
 }: AiChatBotBubbleProps) {
-  const { showSuccess, showError } = useToast();
   const shouldReveal = Boolean(message.revealText && message.text.length > 0);
   const { displayText, isComplete } = useRevealText(
     message.text,
@@ -56,9 +57,9 @@ export default function AiChatBotBubble({
     haptics.light();
     const copied = await copyTextToClipboard(message.text);
     if (copied) {
-      showSuccess('Copied to clipboard');
+      onNotify?.('success', 'Copied to clipboard');
     } else {
-      showError('Could not copy message');
+      onNotify?.('error', 'Could not copy message');
     }
   };
 

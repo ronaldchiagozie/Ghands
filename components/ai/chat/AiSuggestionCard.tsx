@@ -1,6 +1,5 @@
 import { AI_CHAT_UI, AI_COLORS } from '@/components/ai/aiAssistantTheme';
 import { haptics } from '@/hooks/useHaptics';
-import { useToast } from '@/hooks/useToast';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { runSpring, runTiming } from '@/lib/motion';
 import { buildAiSuggestionCopyText, copyTextToClipboard } from '@/utils/clipboard';
@@ -12,6 +11,8 @@ import type { AiSuggestion } from './types';
 const S = AI_CHAT_UI.suggestion;
 
 type AiSuggestionCardProps = {
+  /** Reports a copy result up to the chat screen, which owns the toast - a toast rendered in here would be pinned inside this bubble. */
+  onNotify?: (type: 'success' | 'error', message: string) => void;
   suggestion: AiSuggestion;
   visible: boolean;
   onUseDraft: (suggestion: AiSuggestion) => void;
@@ -21,8 +22,8 @@ export default function AiSuggestionCard({
   suggestion,
   visible,
   onUseDraft,
+  onNotify,
 }: AiSuggestionCardProps) {
-  const { showSuccess, showError } = useToast();
   const reducedMotion = useReducedMotion();
   const opacity = useRef(new Animated.Value(reducedMotion || visible ? 1 : 0)).current;
   const translateY = useRef(new Animated.Value(reducedMotion || visible ? 0 : 40)).current;
@@ -67,9 +68,9 @@ export default function AiSuggestionCard({
       }),
     );
     if (copied) {
-      showSuccess('Copied to clipboard');
+      onNotify?.('success', 'Copied to clipboard');
     } else {
-      showError('Could not copy suggestion');
+      onNotify?.('error', 'Could not copy suggestion');
     }
   };
 

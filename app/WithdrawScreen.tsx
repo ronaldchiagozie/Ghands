@@ -25,13 +25,14 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import Toast from '@/components/Toast';
 
 const PRESET_AMOUNTS = [5000, 10000, 20000, 50000];
 
 export default function WithdrawScreen() {
   const keyboardOffset = useKeyboardAvoidingOffset();
   const router = useRouter();
-  const { showError } = useToast();
+  const { toast, showError, hideToast } = useToast();
   const [balance, setBalance] = useState<number>(0);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<BankAccount | null>(null);
@@ -526,6 +527,7 @@ export default function WithdrawScreen() {
           </View>
         </View>
       </Modal>
+      <Toast message={toast.message} type={toast.type} visible={toast.visible} onClose={hideToast} />
     </SafeAreaWrapper>
   );
 }

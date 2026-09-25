@@ -26,6 +26,7 @@ type AiChatMessageListProps = {
   suggestionVisible: boolean;
   onBotMessageRevealed?: (messageId: string) => void;
   onUseDraft?: (suggestion: AiSuggestion) => void;
+  onNotify?: (type: 'success' | 'error', message: string) => void;
 };
 
 function buildListItems(
@@ -101,6 +102,7 @@ export default function AiChatMessageList({
   suggestionVisible,
   onBotMessageRevealed,
   onUseDraft,
+  onNotify,
 }: AiChatMessageListProps) {
   const listRef = useRef<FlatList<AiChatListItem>>(null);
   const scrollDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -156,7 +158,7 @@ export default function AiChatMessageList({
           if (item.message.role === 'user') {
             return (
               <AiChatEnter entranceKey={item.message.id} from="right">
-                <AiChatUserBubble message={item.message} />
+                <AiChatUserBubble message={item.message} onNotify={onNotify} />
               </AiChatEnter>
             );
           }
@@ -173,6 +175,7 @@ export default function AiChatMessageList({
               <AiChatBotBubble
                 message={item.message}
                 onRevealComplete={handleRevealComplete}
+                onNotify={onNotify}
               />
             </AiChatEnter>
           );
@@ -193,6 +196,7 @@ export default function AiChatMessageList({
               suggestion={item.suggestion}
               visible
               onUseDraft={(draft) => onUseDraft?.(draft)}
+              onNotify={onNotify}
             />
           );
         }

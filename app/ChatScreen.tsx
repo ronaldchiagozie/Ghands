@@ -51,6 +51,7 @@ import { AvatarCircle } from '@/components/AvatarCircle';
 import { resolveMessageOwnership } from '@/contract/src/messageOwnership';
 import ToolPattern from '@/components/ToolPattern';
 import { isConversationClosedError } from '@/utils/conversationAccess';
+import Toast from '@/components/Toast';
 
 type DirectionHint = 'outgoing' | 'incoming' | null;
 
@@ -152,7 +153,7 @@ const CHAT_GROUND = '#F7F8F5';
 export default function ChatScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { showError, showSuccess } = useToast();
+  const { toast, showError, showSuccess, hideToast } = useToast();
   const params = useLocalSearchParams<{ 
     providerName?: string; 
     providerId?: string; 
@@ -1598,6 +1599,7 @@ height: MIN_TOUCH_TARGET,
           </Pressable>
         </Modal>
       </View>
+      <Toast message={toast.message} type={toast.type} visible={toast.visible} onClose={hideToast} />
     </SafeAreaWrapper>
   );
 }

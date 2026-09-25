@@ -22,6 +22,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import Toast from '@/components/Toast';
 
 const fieldCard = {
   ...providerListCard,
@@ -31,7 +32,7 @@ const fieldCard = {
 
 export default function ProviderLinkBankAccountScreen() {
   const router = useRouter();
-  const { showError, showSuccess } = useToast();
+  const { toast, showError, showSuccess, hideToast } = useToast();
 
   const [banks, setBanks] = useState<Bank[]>([]);
   const [selectedBank, setSelectedBank] = useState<Bank | null>(null);
@@ -407,6 +408,7 @@ export default function ProviderLinkBankAccountScreen() {
           </View>
         </View>
       </Modal>
+      <Toast message={toast.message} type={toast.type} visible={toast.visible} onClose={hideToast} />
     </SafeAreaWrapper>
   );
 }

@@ -1,6 +1,5 @@
 import { AI_COLORS } from '@/components/ai/aiAssistantTheme';
 import { haptics } from '@/hooks/useHaptics';
-import { useToast } from '@/hooks/useToast';
 import { copyTextToClipboard } from '@/utils/clipboard';
 import { Copy, Pencil, User } from 'lucide-react-native';
 import React from 'react';
@@ -18,19 +17,20 @@ const USER_BUBBLE_SHADOW =
     : { elevation: 2 };
 
 type AiChatUserBubbleProps = {
+  /** Reports a copy result up to the chat screen, which owns the toast - a toast rendered in here would be pinned inside this bubble. */
+  onNotify?: (type: 'success' | 'error', message: string) => void;
   message: AiMessage;
 };
 
-export default function AiChatUserBubble({ message }: AiChatUserBubbleProps) {
-  const { showSuccess, showError } = useToast();
+export default function AiChatUserBubble({ message, onNotify }: AiChatUserBubbleProps) {
 
   const handleCopy = async () => {
     haptics.light();
     const copied = await copyTextToClipboard(message.text);
     if (copied) {
-      showSuccess('Copied to clipboard');
+      onNotify?.('success', 'Copied to clipboard');
     } else {
-      showError('Could not copy message');
+      onNotify?.('error', 'Could not copy message');
     }
   };
 

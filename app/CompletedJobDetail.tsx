@@ -31,6 +31,7 @@ import {
   requestDetailsIndicatesClientReviewed,
   reviewRatingStorageKey,
 } from '@/utils/reviewSync';
+import Toast from '@/components/Toast';
 
 /** Per logged-in user + job, so switching accounts does not hide/show the wrong modal state. */
 const reviewSubmittedStorageKey = (userId: number, requestId: number) =>
@@ -55,7 +56,7 @@ const formatDate = (dateString?: string, timeString?: string): string => {
 export default function CompletedJobDetail() {
   const router = useRouter();
   const params = useLocalSearchParams<{ requestId?: string }>();
-  const { showError, showSuccess, showInfo, showWarning } = useToast();
+  const { toast, showError, showSuccess, showInfo, showWarning, hideToast } = useToast();
   
   const [request, setRequest] = useState<ServiceRequest | null>(null);
   /** The thrown error itself - the sheet needs its status, not just a string. */
@@ -933,6 +934,7 @@ export default function CompletedJobDetail() {
             </Pressable>
           </KeyboardAvoidingView>
         </Modal>
+      <Toast message={toast.message} type={toast.type} visible={toast.visible} onClose={hideToast} />
     </SafeAreaWrapper>
   );
 }
