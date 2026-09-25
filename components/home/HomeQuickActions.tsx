@@ -222,8 +222,8 @@ export default function HomeQuickActions({
                 adjustsFontSizeToFit
                 minimumFontScale={0.72}
                 style={{
-                  fontSize: action.id === 'wallet' ? 16 : 14,
-                  lineHeight: 21,
+                  fontSize: action.id === 'wallet' ? 20 : 14,
+                  lineHeight: action.id === 'wallet' ? 26 : 21,
                   fontFamily: 'Poppins-SemiBold',
                   color: Colors.white,
                   letterSpacing: -0.2,

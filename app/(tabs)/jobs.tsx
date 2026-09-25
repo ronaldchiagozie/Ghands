@@ -9,7 +9,7 @@ import { getSpecificErrorMessage } from '@/utils/errorMessages';
 import { AuthError } from '@/utils/errors';
 import { isConnectivityOrNetworkError } from '@/utils/isNetworkFailure';
 import { handleAuthErrorRedirect } from '@/utils/authRedirect';
-import { CircleCheckBig, FileClock, Hourglass, Star, Wrench } from 'lucide-react-native';
+import { Star } from 'lucide-react-native';
 import { useFocusEffect, useRouter, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, Platform, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
@@ -62,21 +62,6 @@ import Toast from '@/components/Toast';
  */
 type JobStatus = 'Pending' | 'Ongoing' | 'Completed';
 type JobTab = JobStatus | 'Drafts';
-
-/**
- * One drawing language across all four tabs. The first three were hand-drawn
- * SVGs packing a clock inside a ring inside a ring, which at twenty pixels is
- * more detail than the pixels can carry, so they read as smudges beside the
- * crisp draft icon. These share a family and a weight, and each says what its
- * tab is: an hourglass for waiting, a wrench for work under way, a tick for
- * done.
- */
-const JOB_TAB_ICON: Record<JobTab, typeof Hourglass> = {
-  Drafts: FileClock,
-  Pending: Hourglass,
-  Ongoing: Wrench,
-  Completed: CircleCheckBig,
-};
 
 type JobItem = {
   id: number;
@@ -568,7 +553,7 @@ export default function JobsScreen() {
             /**
              * Real vertical padding, not none. A horizontal ScrollView sizes
              * itself to its content, so a row with no room to breathe clipped
-             * the tops of the icons against its own edge.
+             * the labels against its own edge.
              */
             paddingVertical: 6,
             gap: 26,
@@ -577,13 +562,12 @@ export default function JobsScreen() {
           /**
            * A fixed height rather than flexGrow: 0. Letting it size to content
            * inside a flex column is what let the row collapse tighter than the
-           * icons it holds.
+           * labels it holds.
            */
-          style={{ height: 62, flexGrow: 0, flexShrink: 0, marginBottom: 10 }}
+          style={{ height: 50, flexGrow: 0, flexShrink: 0, marginBottom: 10 }}
         >
           {visibleTabs.map((status) => {
             const isActive = activeTab === status;
-            const TabIcon = JOB_TAB_ICON[status];
             return (
               <TouchableOpacity
                 key={status}
@@ -596,12 +580,7 @@ export default function JobsScreen() {
                 accessibilityState={{ selected: isActive }}
                 style={{ alignItems: 'center' }}
               >
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
-                  <TabIcon
-                    size={20}
-                    color={isActive ? Colors.accent : Colors.textMuted}
-                    strokeWidth={isActive ? 2.3 : 2}
-                  />
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <Text
                     style={{
                       fontSize: 15,
