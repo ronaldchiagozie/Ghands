@@ -25,10 +25,9 @@ export type ServiceProvider = {
   /** The provider's own online/offline toggle, now that one exists. */
   isOnline?: boolean;
   /**
-   * The provider's own photo, when there is one. `/api/provider/nearby` does not
-   * return a photo today, so in practice this is usually empty and the avatar
-   * falls back to initials - which is the point: it used to fall back to a
-   * picture of a plumber regardless of trade.
+   * The provider's photo, from `profileImageUrl` on `/api/provider/nearby` (the
+   * server falls back to their first work photo when no profile photo is set).
+   * Null means they have no photo anywhere, and the avatar shows initials.
    */
   imageUri?: string | null;
   coords: {

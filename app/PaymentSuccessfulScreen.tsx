@@ -11,6 +11,7 @@ import { ActivityIndicator, ScrollView, Share, Text, View } from 'react-native';
 import { showAppAlert } from '@/components/AppAlertHost';
 import { shareReceipt } from '@/utils/shareReceipt';
 import Confetti from '@/components/Confetti';
+import { isReceiptTransactionId, shareReceiptPdf } from '@/utils/receiptPdf';
 
 const formatDate = (date: Date, format: string = 'MMM dd, yyyy'): string => {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -253,15 +254,13 @@ export default function PaymentSuccessfulScreen() {
     void enrichReceiptFromRequest();
   }, [enrichReceiptFromRequest]);
 
+  /**
+   * The server's PDF when this receipt is for a wallet transaction it can look
+   * up; otherwise, or if the PDF cannot be fetched, the same receipt image
+   * Share makes, handed to the OS sheet.
+   */
   const handleDownloadReceipt = async () => {
-    /**
-     * There is no save-to-Photos path (expo-media-library is not installed,
-     * and adding it now means a new native build before this can even
-     * reach TestFlight). Tapping Download used to just say so - a dead
-     * button that produced an alert instead of a receipt. This reuses the
-     * same proven capture the Share button uses instead: it hands the real
-     * receipt image to the OS sheet, which offers "Save Image" itself.
-     */
+    if (isReceiptTransactionId(params.transactionId) && (await shareReceiptPdf(params.transactionId))) return;
     await handleShareReceipt();
   };
 

@@ -9,6 +9,7 @@ import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { showAppAlert } from '@/components/AppAlertHost';
 import { shareReceipt } from '@/utils/shareReceipt';
+import { isReceiptTransactionId, shareReceiptPdf } from '@/utils/receiptPdf';
 
 function formatNairaAmount(raw: string | undefined): string {
   if (!raw) return '0.00';
@@ -90,10 +91,11 @@ export default function TransactionFailedScreen() {
     }
   }, [receiptData.transactionId, receiptData.totalAmount]);
 
-  /** No PDF endpoint - the same image capture Share makes, handed to the OS sheet, which offers Save Image. */
-  const handleDownload = useCallback(() => {
-    void handleShare();
-  }, [handleShare]);
+  /** The server's PDF for a real wallet transaction; the receipt image otherwise, or if the PDF cannot be fetched. */
+  const handleDownload = useCallback(async () => {
+    if (isReceiptTransactionId(params.transactionId) && (await shareReceiptPdf(params.transactionId))) return;
+    await handleShare();
+  }, [handleShare, params.transactionId]);
 
   return (
     <SafeAreaWrapper backgroundColor={Colors.backgroundLight}>
