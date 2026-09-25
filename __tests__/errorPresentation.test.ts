@@ -14,10 +14,15 @@ describe('presentError - what the user is told, and what the button does', () =>
     expect(presentError({ status: 401, message: 'Unauthorized' }).action.kind).toBe('signIn');
   });
 
-  it('names the offline case plainly and offers a retry', () => {
+  /**
+   * The sheet only shows while the device has a connection (a device with none
+   * gets the full-screen offline page), so this must not blame the device.
+   */
+  it('names a dropped connection without blaming the device, and offers a retry', () => {
     const p = presentError({ message: 'Network request failed' }, 'services');
     expect(p.kind).toBe('offline');
-    expect(p.title).toBe("You're offline");
+    expect(p.title).toBe("Couldn't connect");
+    expect(p.message).not.toMatch(/device isn't connected/i);
     expect(p.action.kind).toBe('retry');
   });
 

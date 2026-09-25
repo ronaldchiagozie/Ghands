@@ -3,11 +3,16 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { notifyNetworkRestored, subscribeToNetworkRestore } from '@/utils/networkRestoreEvents';
 import {
   checkConnectivity,
+  clearApiUnreachable,
   deriveOnlineFromNetInfo,
   isApiUnreachable,
+  pingBackend,
   subscribeApiUnreachable,
   type OfflineReason,
 } from '@/utils/connectivityCheck';
+
+/** How often to ask the server again while it is the thing that is down. */
+const SERVER_RECHECK_MS = 15_000;
 
 export { deriveOnlineFromNetInfo } from '@/utils/connectivityCheck';
 
@@ -45,7 +50,30 @@ export function NetworkProvider({ children }: { children: React.ReactNode }) {
     wasOnlineRef.current = online;
     setIsOnline(online);
     setIsInitialized(true);
+    /**
+     * The link is up but an earlier failure left the server marked unreachable.
+     * Ask it now rather than waiting: if it answers, the latch clears and the
+     * app comes back without anybody tapping anything.
+     */
+    if (linkUp && isApiUnreachable()) {
+      void checkConnectivity();
+    }
   }, []);
+
+  /**
+   * While the server is the thing that is down, keep asking it. Nothing else
+   * would: screens stop loading behind the offline page, so no request succeeds
+   * to clear the latch, and the app waited on a tap to find out it was fine.
+   */
+  useEffect(() => {
+    if (offlineReason !== 'server') return;
+    const timer = setInterval(() => {
+      void pingBackend().then((reachable) => {
+        if (reachable) clearApiUnreachable();
+      });
+    }, SERVER_RECHECK_MS);
+    return () => clearInterval(timer);
+  }, [offlineReason]);
 
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener(applyNetState);

@@ -126,8 +126,14 @@ export function presentError(
       kind: 'offline',
       label: 'Connection',
       tone: 'warning',
-      title: "You're offline",
-      message: `Your device isn't connected right now. Reconnect to Wi-Fi or mobile data, then load ${subject} again.`,
+      /**
+       * Not "you're offline": a device with no connection gets the full-screen
+       * offline page instead, so by the time this shows the device usually has
+       * a connection and it is our server that did not answer. Worded to be
+       * true either way.
+       */
+      title: "Couldn't connect",
+      message: `We couldn't reach GHands to load ${subject}. It will load again as soon as the connection is back.`,
       action: { label: 'Try again', kind: 'retry' },
       debugMessage,
     };

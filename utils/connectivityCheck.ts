@@ -113,7 +113,12 @@ export async function pingBackend(): Promise<boolean> {
 export async function checkConnectivity(): Promise<boolean> {
   const state = await NetInfo.fetch();
   if (!deriveOnlineFromNetInfo(state)) {
-    apiUnreachable = true;
+    /**
+     * The device has no link - that is NetInfo's to report, not this latch's.
+     * Setting the latch here (tapping Try again while offline did) meant that
+     * when the link came back the app still believed the server was down, and
+     * stayed on the offline screen until some request happened to succeed.
+     */
     return false;
   }
   const reachable = await pingBackend();

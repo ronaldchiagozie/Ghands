@@ -26,6 +26,7 @@ export type ErrorSheetRequest = {
 type Listener = (request: ErrorSheetRequest | null) => void;
 
 let listener: Listener | null = null;
+let closer: ((key?: string) => void) | null = null;
 
 /**
  * Raises the app-wide error sheet.
@@ -41,6 +42,15 @@ export function showErrorSheet(request: ErrorSheetRequest): void {
 
 export function hideErrorSheet(): void {
   listener?.(null);
+}
+
+/**
+ * Closes the sheet only if it is the one raised under `key` - so a screen whose
+ * load has since recovered can take its own sheet down without closing one
+ * another screen raised.
+ */
+export function hideErrorSheetFor(key: string): void {
+  closer?.(key);
 }
 
 const TONE_STYLES = {
@@ -95,8 +105,15 @@ export default function ErrorSheetHost() {
       setPresentation(presentError(next.error, next.subject ?? 'this'));
       setRequest(next);
     };
+    closer = (key) => {
+      if (key && openKeyRef.current !== key) return;
+      openKeyRef.current = null;
+      setBusy(false);
+      setRequest(null);
+    };
     return () => {
       listener = null;
+      closer = null;
     };
   }, []);
 

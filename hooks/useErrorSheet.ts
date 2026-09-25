@@ -1,4 +1,4 @@
-import { showErrorSheet } from '@/components/ErrorSheet';
+import { hideErrorSheetFor, showErrorSheet } from '@/components/ErrorSheet';
 import { useEffect, useRef } from 'react';
 
 /**
@@ -30,10 +30,26 @@ export function useErrorSheet(options: {
   const retryRef = useRef(onRetry);
   retryRef.current = onRetry;
 
+  const key = sheetKey ?? subject;
+  const shownRef = useRef(false);
+
   useEffect(() => {
-    if (!error || hasContent) return;
+    /**
+     * The screen recovered without the sheet - a reload when the network came
+     * back, pull-to-refresh, or a background retry. The sheet used to stay up
+     * regardless, still saying something was wrong over a screen that was now
+     * fine, until its own retry finished.
+     */
+    if (!error || hasContent) {
+      if (shownRef.current) {
+        shownRef.current = false;
+        hideErrorSheetFor(key);
+      }
+      return;
+    }
+    shownRef.current = true;
     showErrorSheet({
-      key: sheetKey ?? subject,
+      key,
       error,
       subject,
       onRetry: async () => {
@@ -45,5 +61,5 @@ export function useErrorSheet(options: {
         if (errorRef.current) throw errorRef.current;
       },
     });
-  }, [error, hasContent, subject, sheetKey]);
+  }, [error, hasContent, subject, key]);
 }
