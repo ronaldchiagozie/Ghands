@@ -111,6 +111,15 @@ function resolveProviderId(notification: Notification): number | null {
   return parsePositiveInt(readMetaValue(meta, ['providerId', 'provider_id']));
 }
 
+function resolveDisputeId(notification: Notification): number | null {
+  const meta =
+    notification.metadata && typeof notification.metadata === 'object'
+      ? (notification.metadata as Record<string, unknown>)
+      : null;
+
+  return parsePositiveInt(readMetaValue(meta, ['disputeId', 'dispute_id']));
+}
+
 function resolveProviderName(notification: Notification): string | undefined {
   const meta =
     notification.metadata && typeof notification.metadata === 'object'
@@ -165,6 +174,16 @@ export function resolveNotificationRoute(
     return { pathname: '/CallScreen', params };
   }
 
+  /**
+   * A dispute reply reuses `new_message`, marked by `metadata.disputeId` /
+   * `isDisputeMessage`. Without this it opened the job chat, where the admin's
+   * reply is not.
+   */
+  const disputeId = resolveDisputeId(notification);
+  if (disputeId != null && (MESSAGE_TYPES.has(type) || type === 'dispute_status_update')) {
+    return { pathname: '/DisputeChatScreen', params: { disputeId: String(disputeId) } };
+  }
+
   if (requestIdStr && MESSAGE_TYPES.has(type)) {
     const params: Record<string, string> = { requestId: requestIdStr };
     const providerId = resolveProviderId(notification);
@@ -214,6 +233,7 @@ export function notificationActionLabel(
   if (!route) return 'Close';
   if (route.pathname === '/CallScreen') return 'Answer call';
   if (route.pathname === '/ChatScreen') return 'Open chat';
+  if (route.pathname === '/DisputeChatScreen') return 'Open case';
   if (route.pathname === '/WalletScreen') return 'Open wallet';
   if (route.params?.tab === 'quotations') return 'View quote';
   return 'View job';
