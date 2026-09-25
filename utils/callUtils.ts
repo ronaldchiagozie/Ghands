@@ -39,7 +39,7 @@ export function initiateCall(params: CallParams) {
       callerImage: params.callerImage,
       jobTitle: params.jobTitle || 'Service Request',
       jobDescription: params.jobDescription || 'Service request in progress',
-      orderNumber: params.orderNumber || '#WO-2024-1157',
+      orderNumber: params.orderNumber,
       scheduledDate: params.scheduledDate,
       scheduledTime: params.scheduledTime,
       location: params.location,

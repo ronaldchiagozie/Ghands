@@ -6,7 +6,7 @@ import { Colors } from '@/lib/designSystem';
 import { CLIENT_HOME_SCROLL_GUTTER } from '@/lib/tabletLayout';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { ScrollView, Share, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { showAppAlert } from '@/components/AppAlertHost';
 import { shareReceipt } from '@/utils/shareReceipt';
 
@@ -71,38 +71,29 @@ export default function TransactionFailedScreen() {
     };
   }, [params]);
 
-  const sharePayload = useMemo(
-    () =>
-      [
-        'GHands Receipt (Failed)',
-        `Description: ${receiptData.jobTitle}`,
-        `Amount: ₦${receiptData.totalAmount}`,
-        `Transaction ID: ${receiptData.transactionId}`,
-        receiptData.reference ? `Reference: ${receiptData.reference}` : '',
-        `Date: ${receiptData.serviceDate}`,
-        `Time: ${receiptData.serviceTime}`,
-        receiptData.failureReason ? `Reason: ${receiptData.failureReason}` : '',
-        'Status: Failed',
-      ]
-        .filter(Boolean)
-        .join('\n'),
-    [receiptData],
-  );
-
   const handleShare = useCallback(async () => {
-    try {
-      await Share.share({ message: sharePayload, title: 'Receipt' });
-    } catch {
+    const outcome = await shareReceipt(
+      receiptRef,
+      {
+        transactionId: receiptData.transactionId,
+        totalAmount: receiptData.totalAmount,
+        statusLabel: 'Failed',
+      },
+      /** Awaited: capturing before the swap paints would put the buttons back in the image. */
+      async (capturing) => {
+        setIsCapturing(capturing);
+        await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+      },
+    );
+    if (outcome === 'failed') {
       showAppAlert('Unable to share', 'Please try again.');
     }
-  }, [sharePayload]);
+  }, [receiptData.transactionId, receiptData.totalAmount]);
 
+  /** No PDF endpoint - the same image capture Share makes, handed to the OS sheet, which offers Save Image. */
   const handleDownload = useCallback(() => {
-    showAppAlert(
-      'Download',
-      'A PDF receipt for failed transactions will be available in a future update. Use Share to send these details to support.',
-    );
-  }, []);
+    void handleShare();
+  }, [handleShare]);
 
   return (
     <SafeAreaWrapper backgroundColor={Colors.backgroundLight}>

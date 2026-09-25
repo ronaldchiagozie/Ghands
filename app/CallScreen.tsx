@@ -61,9 +61,9 @@ function resolveJobTitle(params: CallScreenParams): string {
 function resolveJobSubtitle(params: CallScreenParams): string | undefined {
   const parts: string[] = [];
   const location = params.location?.trim();
-  if (location && !/service location|123 main/i.test(location)) parts.push(location);
+  if (location) parts.push(location);
   const when = [params.scheduledDate?.trim(), params.scheduledTime?.trim()].filter(Boolean).join(' · ');
-  if (when && !/oct 20, 2024/i.test(when)) parts.push(when);
+  if (when) parts.push(when);
   return parts.length > 0 ? parts.join(' · ') : undefined;
 }
 
