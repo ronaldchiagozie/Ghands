@@ -68,7 +68,8 @@ module.exports = {
       [
         'expo-notifications',
         {
-          icon: './assets/images/icon.png',
+          // Android draws this as a white mask; the full-colour app icon came out as a blank square.
+          icon: './assets/images/notification-icon.png',
           color: '#4F6739',
           sounds: [],
           mode: 'production',
