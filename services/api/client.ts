@@ -124,9 +124,19 @@ class ApiClient {
         body: JSON.stringify({ refreshToken }),
       });
       if (response.ok) {
-        const data = await response.json();
-        await authServiceInstance.setAuthToken(data.accessToken);
-        if (data.refreshToken) await authServiceInstance.setRefreshToken(data.refreshToken);
+        const body = await response.json();
+        /**
+         * Login replies with `token`; the refresh spec said `accessToken`, and
+         * either may sit under `data`. Reading only one stored `undefined` as
+         * the session token when the other came back.
+         */
+        const payload = body?.data?.data ?? body?.data ?? body;
+        const accessToken = payload?.accessToken ?? payload?.token;
+        if (typeof accessToken !== 'string' || !accessToken) return false;
+        await authServiceInstance.setAuthToken(accessToken);
+        if (typeof payload?.refreshToken === 'string' && payload.refreshToken) {
+          await authServiceInstance.setRefreshToken(payload.refreshToken);
+        }
         return true;
       }
     } catch {
