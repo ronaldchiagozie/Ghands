@@ -1,24 +1,12 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { type Router } from 'expo-router';
 import { authService } from '@/services/authService';
 import { clearAppQueryCache } from '@/providers/QueryProvider';
 import { markAuthSessionEnded } from '@/utils/authNavigationGuard';
 import { getLoginRouteForStoredRole } from '@/utils/authPublicRoutes';
 import { resetAuthSessionGate } from '@/utils/enforceAuthSession';
-import { CLIENT_ACCOUNT_TYPE_KEY } from '@/utils/clientAccountType';
+import { clearAccountStorage } from '@/utils/accountStorage';
+import { invalidateWalletBalanceCache } from '@/hooks/useWalletBalance';
 import { resetStackTo } from '@/utils/navigation';
-
-const PROVIDER_CACHE_KEYS = [
-  '@ghands:business_name',
-  '@ghands:company_name',
-  '@ghands:provider_id',
-  '@ghands:provider_name',
-  '@ghands:provider_email',
-  '@ghands:company_email',
-  '@ghands:company_phone',
-  '@ghands:profile_complete',
-  CLIENT_ACCOUNT_TYPE_KEY,
-] as const;
 
 const PUSH_UNREGISTER_TIMEOUT_MS = 2500;
 
@@ -41,8 +29,10 @@ export async function logoutUser(router: Pick<Router, 'replace'>): Promise<void>
 
   await authService.clearAuthTokens();
   resetAuthSessionGate();
-  await AsyncStorage.multiRemove([...PROVIDER_CACHE_KEYS]);
+  await clearAccountStorage();
   clearAppQueryCache();
+  /** Kept in memory; the next account saw this one's balance until it refreshed. */
+  invalidateWalletBalanceCache();
 
   /**
    * Re-arm the grace window before navigating.
