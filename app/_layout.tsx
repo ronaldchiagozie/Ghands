@@ -4,7 +4,7 @@ import { Stack, useRouter, usePathname } from "expo-router";
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { initialWindowMetrics, SafeAreaProvider } from 'react-native-safe-area-context';
 import TabletRootFrame from '@/components/TabletRootFrame';
 import '@/lib/nativewindSetup';
 import '../global.css';
@@ -213,7 +213,13 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
+      {/**
+        * Insets known from the first frame. Without them every screen that
+        * reads insets rendered its first frame as if there were no notch or
+        * home bar - content up under the status bar - then dropped into place:
+        * the jump on opening a screen.
+        */}
+      <SafeAreaProvider initialMetrics={initialWindowMetrics}>
         <ErrorBoundary>
           <QueryProvider>
             <NetworkProvider>
