@@ -1120,6 +1120,7 @@ const HomeScreen = React.memo(() => {
               completedCount={setupCompletedCount}
               totalCount={setupTotalCount}
               onTaskPress={handleSetupTaskPress}
+              bleed={CLIENT_HOME_SCROLL_GUTTER}
             />
           </View>
           <CoachMarkTarget name="job-activity" style={{ overflow: 'visible' }}>

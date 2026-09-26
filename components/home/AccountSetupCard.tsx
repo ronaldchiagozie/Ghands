@@ -1,19 +1,32 @@
-import { Bell, ChevronRight, CreditCard, MapPin, ShieldCheck, User } from 'lucide-react-native';
+import { Bell, CreditCard, MapPin, ShieldCheck, User } from 'lucide-react-native';
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
 
-import { BorderRadius, Colors, Spacing } from '@/lib/designSystem';
-import { SURFACE_STYLES } from '@/lib/surfaceStyles';
+import { SetupStepsCarousel, type SetupStep, type SetupStepIcon } from '@/components/SetupStepsCarousel';
 import type { SetupTask, SetupTaskId } from '@/hooks/useAccountSetup';
 
-const TASK_ICON: Record<SetupTaskId, typeof User> = {
+const TASK_ICON: Record<SetupTaskId, SetupStepIcon> = {
   profile: User,
   location: MapPin,
   pin: ShieldCheck,
   bank: CreditCard,
-  // A bell, because the row is about notifications. The sparkle it replaces
-  // meant nothing here beyond decoration.
   notifications: Bell,
+};
+
+/** One line each; the task's own detail wraps to two, which made the cards tall. */
+const SHORT_DETAIL: Record<SetupTaskId, string> = {
+  profile: 'So providers can reach you.',
+  location: 'Where providers come to you.',
+  pin: 'Protects your wallet payments.',
+  bank: 'For refunds and withdrawals.',
+  notifications: 'Hear when a provider replies.',
+};
+
+const ACTION_LABEL: Record<SetupTaskId, string> = {
+  profile: 'Add details',
+  location: 'Set location',
+  pin: 'Create PIN',
+  bank: 'Add bank account',
+  notifications: 'Turn on',
 };
 
 type AccountSetupCardProps = {
@@ -21,202 +34,46 @@ type AccountSetupCardProps = {
   completedCount: number;
   totalCount: number;
   onTaskPress: (id: SetupTaskId) => void;
+  /** The page's side margin, so the cards can run to the screen edge. */
+  bleed?: number;
 };
 
 /**
- * Shows only what is actually left to do, and disappears when nothing is.
- *
- * The row this replaces was a fixed array of three cards shown to everyone
- * forever - someone who finished their profile a month ago still saw "Complete
- * Your Profile". A checklist that never changes stops being read.
+ * Shows only what is actually left to do, one card per task, and disappears
+ * when nothing is. A checklist that never changes stops being read.
  */
 export default function AccountSetupCard({
   outstanding,
   completedCount,
   totalCount,
   onTaskPress,
+  bleed,
 }: AccountSetupCardProps) {
   if (outstanding.length === 0) return null;
 
-  const progress = totalCount > 0 ? completedCount / totalCount : 0;
   const required = outstanding.filter((t) => t.required).length;
+  const steps: SetupStep[] = outstanding.map((task) => ({
+    key: task.id,
+    title: task.title,
+    description: SHORT_DETAIL[task.id],
+    icon: TASK_ICON[task.id],
+    actionLabel: ACTION_LABEL[task.id],
+    status: 'todo',
+    onPress: () => onTaskPress(task.id),
+  }));
 
   return (
-    <View
-      style={{
-        ...SURFACE_STYLES.homeCard,
-        backgroundColor: Colors.white,
-        borderRadius: BorderRadius.default,
-        paddingTop: Spacing.lg,
-        paddingBottom: Spacing.xs,
-        marginBottom: Spacing.lg,
-        overflow: 'hidden',
-      }}
-    >
-      <View style={{ paddingHorizontal: Spacing.lg, marginBottom: Spacing.md }}>
-        <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
-          <Text
-            style={{
-              fontSize: 16,
-              fontFamily: 'Poppins-SemiBold',
-              color: Colors.textPrimary,
-              letterSpacing: -0.2,
-            }}
-          >
-            Finish setting up
-          </Text>
-          <Text
-            style={{
-              fontSize: 12,
-              fontFamily: 'Poppins-Medium',
-              color: Colors.textSecondaryDark,
-              fontVariant: ['tabular-nums'],
-            }}
-          >
-            {completedCount} of {totalCount}
-          </Text>
-        </View>
-
-        <Text
-          style={{
-            fontSize: 12.5,
-            lineHeight: 18,
-            fontFamily: 'Poppins-Regular',
-            color: Colors.textSecondaryDark,
-            marginTop: 3,
-          }}
-        >
-          {required > 0
-            ? 'A couple of things are needed before you can book.'
-            : 'Optional, but they make everything smoother.'}
-        </Text>
-
-        {/* Progress rail */}
-        <View
-          style={{
-            height: 5,
-            borderRadius: 3,
-            backgroundColor: Colors.backgroundGray,
-            marginTop: Spacing.md,
-            overflow: 'hidden',
-          }}
-          accessibilityRole="progressbar"
-          accessibilityValue={{ min: 0, max: totalCount, now: completedCount }}
-        >
-          <View
-            style={{
-              width: `${Math.max(progress * 100, 4)}%`,
-              height: '100%',
-              borderRadius: 3,
-              backgroundColor: Colors.accent,
-            }}
-          />
-        </View>
-      </View>
-
-      {outstanding.map((task, index) => {
-        const Icon = TASK_ICON[task.id];
-        const isLast = index === outstanding.length - 1;
-
-        return (
-          <Pressable
-            key={task.id}
-            onPress={() => onTaskPress(task.id)}
-            accessibilityRole="button"
-            accessibilityLabel={`${task.title}. ${task.detail}`}
-            android_ripple={{ color: Colors.backgroundGray }}
-            style={{
-              borderTopWidth: 1,
-              borderTopColor: Colors.border,
-              marginBottom: isLast ? Spacing.xs : 0,
-            }}
-          >
-            {/**
-             * Row layout lives on this inner View, not on the Pressable. A
-             * function style on a Pressable is flattened by the NativeWind JSX
-             * wrapper before it reaches the native view, which dropped
-             * flexDirection and stacked the icon, text and chevron vertically.
-             */}
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingHorizontal: Spacing.lg,
-                paddingVertical: 13,
-              }}
-            >
-              <View
-                style={{
-                  width: 34,
-                  height: 34,
-                  borderRadius: 11,
-                  backgroundColor: task.required ? Colors.successLight : Colors.backgroundGray,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginRight: 13,
-                }}
-              >
-                <Icon
-                  size={17}
-                  color={task.required ? Colors.accent : Colors.textSecondaryDark}
-                  strokeWidth={2}
-                />
-              </View>
-
-              <View style={{ flex: 1, paddingRight: 8 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
-                  <Text
-                    style={{
-                      fontSize: 14,
-                      fontFamily: 'Poppins-SemiBold',
-                      color: Colors.textPrimary,
-                      flexShrink: 1,
-                    }}
-                    numberOfLines={1}
-                  >
-                    {task.title}
-                  </Text>
-                  {task.required ? (
-                    <View
-                      style={{
-                        paddingHorizontal: 6,
-                        paddingVertical: 1,
-                        borderRadius: 5,
-                        backgroundColor: Colors.successLight,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 9.5,
-                          fontFamily: 'Poppins-SemiBold',
-                          color: Colors.accent,
-                          letterSpacing: 0.3,
-                        }}
-                      >
-                        NEEDED
-                      </Text>
-                    </View>
-                  ) : null}
-                </View>
-                <Text
-                  style={{
-                    fontSize: 12,
-                    lineHeight: 17,
-                    fontFamily: 'Poppins-Regular',
-                    color: Colors.textSecondaryDark,
-                    marginTop: 1,
-                  }}
-                  numberOfLines={1}
-                >
-                  {task.detail}
-                </Text>
-              </View>
-
-              <ChevronRight size={18} color={Colors.textTertiary} />
-            </View>
-          </Pressable>
-        );
-      })}
-    </View>
+    <SetupStepsCarousel
+      title="Finish setting up"
+      subtitle={
+        required > 0
+          ? 'A couple of things are needed before you can book.'
+          : 'Optional, but they make everything smoother.'
+      }
+      done={completedCount}
+      total={totalCount}
+      steps={steps}
+      bleed={bleed}
+    />
   );
 }
