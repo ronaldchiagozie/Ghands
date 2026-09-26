@@ -1,11 +1,10 @@
 import { Colors } from '@/lib/designSystem';
 import { androidElevation, iosOnlyShadow } from '@/lib/surfaceStyles';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
-import { AlertCircle, Check, CheckCheck } from 'lucide-react-native';
+import { AlertCircle, Check, CheckCheck, Clock } from 'lucide-react-native';
 import React, { useEffect, useRef } from 'react';
 import { AvatarCircle } from '@/components/AvatarCircle';
 import {
-  ActivityIndicator,
   Animated,
   Text,
   TouchableOpacity,
@@ -75,8 +74,9 @@ export default function ChatMessageRow({
   const getStatusIcon = () => {
     if (!isFromCurrentUser || !message.status) return null;
     switch (message.status) {
+      /** A clock, as every messaging app shows it: on its way, nothing to watch. */
       case 'sending':
-        return <ActivityIndicator size="small" color={Colors.textSecondaryDark} style={{ marginLeft: 4 }} />;
+        return <Clock size={11} color={Colors.textSecondaryDark} style={{ marginLeft: 4 }} />;
       case 'failed':
         return <AlertCircle size={12} color={Colors.error} style={{ marginLeft: 4 }} />;
       case 'sent':

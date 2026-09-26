@@ -24,7 +24,6 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  ActivityIndicator,
   RefreshControl,
 } from 'react-native';
 import { showAppAlert } from '@/components/AppAlertHost';
@@ -44,6 +43,7 @@ import { joinSubtitleParts, NOT_SET_LABEL } from '@/utils/copy';
 import { logCallDebug } from '@/utils/callDebugLog';
 import { logChatDebug } from '@/utils/chatDebugLog';
 import { buildChatListItems } from '@/utils/chatListItems';
+import { confirmSent, mergeServerMessages, rowKeyOf, TEMP_ID_PREFIX } from '@/utils/chatMessageSync';
 import { exitChatToJobHub } from '@/utils/navigation';
 import { formatLastActiveLabel, isPeerRecentlyActive } from '@/utils/chatFormatting';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -122,6 +122,8 @@ interface UIMessage {
   status?: 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
   isRead?: boolean;
   isFromCurrentUser?: boolean; // Whether this message is from the current user
+  /** The row's identity for its whole life, kept when a temporary id becomes the real one. */
+  clientKey?: string;
 }
 
 /**
@@ -172,7 +174,6 @@ export default function ChatScreen() {
   const [messages, setMessages] = useState<UIMessage[]>([]);
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [isSending, setIsSending] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [hasQuotation, setHasQuotation] = useState<boolean>(false);
@@ -437,7 +438,7 @@ export default function ChatScreen() {
         setIsLoading(true);
         const cached = await loadCachedMessages();
         if (cached && cached.length > 0) {
-          cached.forEach((m) => animatedMessageIdsRef.current.add(m.id));
+          cached.forEach((m) => animatedMessageIdsRef.current.add(rowKeyOf(m)));
           setMessages(cached);
         }
       }
@@ -531,14 +532,17 @@ export default function ChatScreen() {
 
       // Don't overwrite with empty on background refresh - API may return bad/malformed data
       // and we'd wipe sent messages. Only overwrite if we got messages or this is initial load.
+      /**
+       * Merged, not replaced: a message still sending or one that failed stays,
+       * and a row keeps its identity so it does not animate in again.
+       */
       setMessages((prev) => {
-        if (filteredMessages.length > 0) return filteredMessages;
-        if (prev.length > 0) return prev;
-        return filteredMessages;
+        if (filteredMessages.length === 0 && prev.some((m) => !m.id.startsWith(TEMP_ID_PREFIX))) return prev;
+        return mergeServerMessages(prev, filteredMessages);
       });
 
       if (!initialLoadDoneRef.current) {
-        filteredMessages.forEach((m) => animatedMessageIdsRef.current.add(m.id));
+        filteredMessages.forEach((m) => animatedMessageIdsRef.current.add(rowKeyOf(m)));
         initialLoadDoneRef.current = true;
       }
 
@@ -691,17 +695,20 @@ export default function ChatScreen() {
    * Send a message
    */
   const handleSend = useCallback(async () => {
-    if (!message.trim() || !isValidRequestId || isSending) {
+    /**
+     * No "already sending" lock: each message goes on its own, the way it does
+     * on a phone. The box stays open for the next one.
+     */
+    if (!message.trim() || !isValidRequestId) {
       return;
     }
 
     const messageText = message.trim();
     setMessage('');
-    setIsSending(true);
 
     // Optimistically add message to UI
     const optimisticMessage: UIMessage = {
-      id: `temp-${Date.now()}`,
+      id: `${TEMP_ID_PREFIX}${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       text: messageText,
       sender: isProviderView ? 'provider' : 'user',
       timestamp: new Date().toISOString(),
@@ -762,9 +769,7 @@ export default function ChatScreen() {
       ownershipByMessageIdRef.current[String(sentMessage.id)] = true;
 
       // Replace optimistic message with server message - always show as "mine" (this device sent it)
-      setMessages((prev) =>
-        prev.map((msg) => (msg.id === optimisticMessage.id ? finalMsg : msg))
-      );
+      setMessages((prev) => confirmSent(prev, optimisticMessage.id, finalMsg));
 
       // Don't refresh here - backend may not include the new message yet, causing it to disappear.
       // The 5s auto-refresh will pick up replies from the other party.
@@ -809,13 +814,10 @@ export default function ChatScreen() {
           ? 'Message could not be sent. Please try again or contact support.'
           : serverMessage || 'Message failed to send. Tap to retry.'
       );
-    } finally {
-      setIsSending(false);
     }
   }, [
     message,
     isValidRequestId,
-    isSending,
     isProviderView,
     formatTime,
     mapApiMessageToUI,
@@ -831,7 +833,7 @@ export default function ChatScreen() {
    */
   const retryFailedMessage = useCallback(
     async (msg: UIMessage) => {
-      if (msg.status !== 'failed' || !isValidRequestId || isSending) return;
+      if (msg.status !== 'failed' || !isValidRequestId) return;
       setMessages((prev) =>
         prev.map((m) => (m.id === msg.id ? { ...m, status: 'sending' as const } : m))
       );
@@ -874,7 +876,7 @@ export default function ChatScreen() {
           sender: isProviderView ? 'provider' : 'user',
         };
         ownershipByMessageIdRef.current[String(sentMessage.id)] = true;
-        setMessages((prev) => prev.map((m) => (m.id === msg.id ? finalMsg : m)));
+        setMessages((prev) => confirmSent(prev, msg.id, finalMsg));
       } catch (error: any) {
         if (__DEV__) console.error('Error retrying message:', error);
         setMessages((prev) =>
@@ -893,7 +895,6 @@ export default function ChatScreen() {
     [
       isValidRequestId,
       requestId,
-      isSending,
       mapApiMessageToUI,
       showError,
       isProviderView,
@@ -1017,8 +1018,9 @@ export default function ChatScreen() {
         return <ChatDateSeparator label={item.label} />;
       }
 
-      const animateEnter = !animatedMessageIdsRef.current.has(item.message.id);
-      animatedMessageIdsRef.current.add(item.message.id);
+      const rowKey = rowKeyOf(item.message);
+      const animateEnter = !animatedMessageIdsRef.current.has(rowKey);
+      animatedMessageIdsRef.current.add(rowKey);
 
       return (
         <ChatMessageRow
@@ -1253,7 +1255,7 @@ height: MIN_TOUCH_TARGET,
           ref={flatListRef}
           data={chatListItems}
           renderItem={renderChatItem}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => (item.kind === 'message' ? rowKeyOf(item.message) : item.id)}
             contentContainerStyle={{ 
               flexGrow: 1,
               paddingTop: 10,
@@ -1467,10 +1469,9 @@ height: MIN_TOUCH_TARGET,
               maxLength={500}
               onSubmitEditing={handleSend}
               returnKeyType="send"
-              editable={!isSending}
             />
             
-            {message.trim() && !isSending ? (
+            {message.trim() ? (
               <TouchableOpacity
                 activeOpacity={0.8}
                 onPress={handleSend}
@@ -1491,19 +1492,6 @@ height: MIN_TOUCH_TARGET,
                   <Send size={18} color={Colors.white} />
                 </LinearGradient>
               </TouchableOpacity>
-            ) : isSending ? (
-              <View
-                style={{
-                  width: MIN_TOUCH_TARGET,
-height: MIN_TOUCH_TARGET,
-                  borderRadius: BorderRadius.full,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginLeft: 4,
-                }}
-              >
-                <ActivityIndicator size="small" color={Colors.accent} />
-              </View>
             ) : null}
           </View>
         </View>
