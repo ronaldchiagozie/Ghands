@@ -2,6 +2,7 @@ import { User } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { Image, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
+import { CompanyAvatarIcon } from '@/components/CompanyAvatarIcon';
 import { Colors } from '@/lib/designSystem';
 import { isDisplayableAvatarUri } from '@/utils/clientProfilePhoto';
 
@@ -16,6 +17,8 @@ type AvatarCircleProps = {
   /** Initials colour. Override on dark surfaces, where the sage default is unreadable. */
   textColor?: string;
   borderWidth?: number;
+  /** A company with no photo shows a group mark rather than initials of its name. */
+  isCompany?: boolean;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -73,19 +76,20 @@ export function AvatarCircle({
   iconColor = Colors.iconMuted,
   textColor = Colors.successForeground,
   borderWidth = 1,
+  isCompany = false,
   style,
 }: AvatarCircleProps) {
   const [loadFailed, setLoadFailed] = useState(false);
   const trimmed = typeof uri === 'string' ? uri.trim() : '';
   const showPhoto = isDisplayableAvatarUri(trimmed) && !loadFailed;
-  const initials = showPhoto ? '' : getAvatarInitials(name);
+  const initials = showPhoto || isCompany ? '' : getAvatarInitials(name);
 
   useEffect(() => {
     setLoadFailed(false);
   }, [trimmed]);
 
   const fill =
-    backgroundColor ?? (initials ? Colors.successLight : Colors.backgroundGray);
+    backgroundColor ?? (initials || isCompany ? Colors.successLight : Colors.backgroundGray);
 
   return (
     <View
@@ -129,6 +133,8 @@ export function AvatarCircle({
         >
           {initials}
         </Text>
+      ) : isCompany ? (
+        <CompanyAvatarIcon size={Math.round(size * 0.58)} color={textColor} />
       ) : (
         <User size={Math.round(size * 0.5)} color={iconColor} />
       )}

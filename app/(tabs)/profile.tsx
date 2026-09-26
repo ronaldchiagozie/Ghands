@@ -35,6 +35,8 @@ import {
 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AvatarCircle } from '@/components/AvatarCircle';
+import { CompanyBadge } from '@/components/CompanyBadge';
+import { isCompanyClientAccount } from '@/utils/clientAccountType';
 import {
     ActivityIndicator,
     Modal,
@@ -276,6 +278,8 @@ const ProfileScreen = () => {
   const { location } = useUserLocation();
   const profileReadyRef = useRef(false);
   const [isUserRefreshing, setIsUserRefreshing] = useState(false);
+  /** Set at company signup, and from the server profile at login. */
+  const [isCompany, setIsCompany] = useState(false);
 
   const {
     data: profile,
@@ -283,6 +287,10 @@ const ProfileScreen = () => {
     refetch: refetchProfile,
     error: profileError,
   } = useCurrentUserProfile();
+
+  useEffect(() => {
+    void isCompanyClientAccount().then(setIsCompany).catch(() => setIsCompany(false));
+  }, [profile]);
 
   const { balance, isLoading: isWalletLoading, refresh: refreshWallet } = useWalletBalance({
     refreshOnFocus: true,
@@ -542,6 +550,7 @@ const ProfileScreen = () => {
                 backgroundColor="rgba(255,255,255,0.18)"
                 textColor={Colors.white}
                 iconColor={Colors.white}
+                isCompany={isCompany}
               />
             </TouchableOpacity>
 
@@ -559,6 +568,7 @@ const ProfileScreen = () => {
                 >
                   {displayName}
                 </Text>
+                {isCompany ? <CompanyBadge label="Company account" tone="dark" style={{ marginTop: -2, marginBottom: 8 }} /> : null}
               </TouchableOpacity>
 
               <TouchableOpacity
