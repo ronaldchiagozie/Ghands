@@ -27,6 +27,8 @@ export type SetupStep = {
   actionLabel: string;
   /** `review`: submitted and waiting on someone else; nothing to press. */
   status: 'todo' | 'review';
+  /** Listed but not required; labelled so, instead of a step number. */
+  optional?: boolean;
   onPress?: () => void;
 };
 
@@ -175,7 +177,7 @@ function StepCard({ step, width, position, count }: { step: SetupStep; width: nu
             <Text
               style={{ marginLeft: 6, fontSize: 10.5, fontFamily: 'Poppins-Medium', color: review ? REVIEW_FG : Colors.textTertiary }}
             >
-              {review ? 'In review' : `${position} of ${count}`}
+              {review ? 'In review' : step.optional ? 'Optional' : `${position} of ${count}`}
             </Text>
           </View>
           <Text
