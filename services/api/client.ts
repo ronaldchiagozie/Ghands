@@ -8,7 +8,15 @@ interface RequestConfig extends RequestInit {
   retries?: number;
   retryDelay?: number;
   skipAuth?: boolean;
+  /** Per-request network timeout in ms. Defaults to {@link DEFAULT_TIMEOUT_MS}. */
+  timeoutMs?: number;
 }
+
+/**
+ * Without a limit, a server that accepts the connection and never answers -
+ * which a waking Render instance does - left the screen loading for good.
+ */
+const DEFAULT_TIMEOUT_MS = 45000;
 
 interface RetryOptions {
   maxRetries?: number;
@@ -147,8 +155,29 @@ class ApiClient {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
+  /** Aborts a stalled request so retries can proceed instead of hanging the screen. */
+  private async fetchWithTimeout(url: string, options: RequestInit, timeoutMs: number): Promise<Response> {
+    if (!timeoutMs || options.signal || typeof AbortController === 'undefined') {
+      return fetch(url, options);
+    }
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      return await fetch(url, { ...options, signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  private isTimeoutError(error: any): boolean {
+    if (!error) return false;
+    if (error.name === 'AbortError') return true;
+    return /timeout|timed out|aborted/i.test(error.message || '');
+  }
+
   private isNetworkError(error: any): boolean {
     if (!error) return false;
+    if (this.isTimeoutError(error)) return true;
     /**
      * `TypeError` used to count on its own. A failed fetch in React Native is a
      * TypeError, so that caught the real case - along with every ordinary bug
@@ -176,8 +205,8 @@ class ApiClient {
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
         const fetchConfig = await this.applyRequestInterceptors({ ...config });
-        const { retries: _r, retryDelay: _d, skipAuth, ...rawFetchOptions } = fetchConfig;
-        const response = await fetch(url, rawFetchOptions);
+        const { retries: _r, retryDelay: _d, timeoutMs, skipAuth, ...rawFetchOptions } = fetchConfig;
+        const response = await this.fetchWithTimeout(url, rawFetchOptions, timeoutMs ?? DEFAULT_TIMEOUT_MS);
 
         if (
           response.status === 401 &&
@@ -236,6 +265,7 @@ class ApiClient {
               err.status = statusCode;
               err.statusText = response.statusText;
               err.details = { htmlResponse: text.substring(0, 500), scrapedTitle: scraped || undefined };
+              err.isHttpError = true;
               throw err;
             }
             try {
@@ -253,6 +283,7 @@ class ApiClient {
           err.statusText = response.statusText;
           err.details = errorDetails;
           err.code = extractErrorCode(errorDetails);
+          err.isHttpError = true;
           throw err;
         }
         const processedResponse = await this.applyResponseInterceptors(response);
@@ -266,16 +297,25 @@ class ApiClient {
         return jsonData;
       } catch (error) {
         if (error instanceof AuthError) throw error;
-        const isNetworkErr = this.isNetworkError(error);
+        /** A reply from the server is never a network failure, whatever its message says. */
+        const isHttpError = (error as any)?.isHttpError === true;
+        const isNetworkErr = !isHttpError && this.isNetworkError(error);
         if (isNetworkErr && attempt < retries) {
           await this.sleep(retryDelay * Math.pow(2, attempt));
           continue;
         }
-        if (attempt === retries) {
+        /**
+         * The server answered, and not with one of the statuses retried above.
+         * Asking again gets the same answer - this used to repeat every 4xx
+         * three more times with 7s of sleeps between, before showing it.
+         */
+        if (attempt === retries || isHttpError) {
           if (error instanceof AuthError) throw error;
-          const errorMessage = isNetworkErr
-            ? 'No internet connection. Check your network and try again.'
-            : (error instanceof Error ? error.message : 'Request failed');
+          const errorMessage = this.isTimeoutError(error)
+            ? 'The request took too long. Please check your connection and try again.'
+            : isNetworkErr
+              ? 'No internet connection. Check your network and try again.'
+              : (error instanceof Error ? error.message : 'Request failed');
           const statusCode = (error as any)?.status || (error as any)?.response?.status;
           if (isNetworkErr) {
             reportApiUnreachable();
@@ -310,6 +350,7 @@ class ApiClient {
                 originalError: error,
                 status: statusCode,
                 details: (error as any)?.details,
+                code: (error as any)?.code,
                 isExpected500: isExpected500,
                 suppressErrorLog: isExpected500,
               })
