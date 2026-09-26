@@ -11,7 +11,7 @@ import { isConnectivityOrNetworkError } from '@/utils/isNetworkFailure';
 import { handleAuthErrorRedirect } from '@/utils/authRedirect';
 import { Star } from 'lucide-react-native';
 import { useFocusEffect, useRouter, useLocalSearchParams } from 'expo-router';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, Platform, RefreshControl, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { JobHistoryCardSkeleton } from '@/components/LoadingSkeleton';
 import { JobsTabEmptyState } from '@/components/JobsTabEmptyState';
@@ -527,6 +527,24 @@ export default function JobsScreen() {
     [activeTab, handleCancelRequest],
   );
 
+  /**
+   * Where the labels are wider than the screen, open with the row scrolled to
+   * its middle so it reads as centred; after that it is the user's to scroll.
+   */
+  const tabRowRef = useRef<ScrollView>(null);
+  const tabRowWidthRef = useRef(0);
+  const tabContentWidthRef = useRef(0);
+  const tabRowCenteredRef = useRef(false);
+  const centerTabRowOnce = useCallback(() => {
+    const layout = tabRowWidthRef.current;
+    const content = tabContentWidthRef.current;
+    if (tabRowCenteredRef.current || !layout || !content) return;
+    tabRowCenteredRef.current = true;
+    if (content > layout) {
+      tabRowRef.current?.scrollTo({ x: (content - layout) / 2, animated: false });
+    }
+  }, []);
+
   const jobKeyExtractor = useCallback(
     (item: JobItem) => `${activeTab}-${item.id}`,
     [activeTab]
@@ -546,9 +564,21 @@ export default function JobsScreen() {
           * everything fits and saves the layout when it does not.
           */}
         <ScrollView
+          ref={tabRowRef}
           horizontal
           showsHorizontalScrollIndicator={false}
+          onLayout={(e) => {
+            tabRowWidthRef.current = e.nativeEvent.layout.width;
+            centerTabRowOnce();
+          }}
+          onContentSizeChange={(width) => {
+            tabContentWidthRef.current = width;
+            centerTabRowOnce();
+          }}
           contentContainerStyle={{
+            /** Centred when the labels fit; when they do not, the row scrolls. */
+            flexGrow: 1,
+            justifyContent: 'center',
             paddingHorizontal: 6,
             /**
              * Real vertical padding, not none. A horizontal ScrollView sizes
