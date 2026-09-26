@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE, Region } from 'react-native-maps';
+import MapView, { Marker, Region } from 'react-native-maps';
 import { useRouter } from 'expo-router';
 import { Search, Star } from 'lucide-react-native';
 import { BorderRadius, Colors, MIN_TOUCH_TARGET } from '@/lib/designSystem';
 import { SURFACE_STYLES } from '@/lib/surfaceStyles';
 
+import { MAP_PROVIDER } from '@/lib/mapProvider';
 import mapStyle from '@/lib/mapStyle';
 import { AvatarCircle } from '@/components/AvatarCircle';
 
@@ -149,7 +150,9 @@ const ServiceMap: React.FC<ServiceMapProps> = ({
     <View className="flex-1">
       <MapView
         style={{ flex: 1 }}
-        provider={PROVIDER_GOOGLE}
+        provider={MAP_PROVIDER}
+        userInterfaceStyle="light"
+        showsPointsOfInterest={false}
         showsUserLocation={Platform.OS === 'ios'}
         showsMyLocationButton={Platform.OS === 'ios'}
         customMapStyle={mapStyle as any}
