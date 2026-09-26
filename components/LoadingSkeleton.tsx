@@ -1,4 +1,4 @@
-import { SHIMMER_PALETTE, useShimmerAnimation } from '@/hooks/useShimmerAnimation';
+import { SHIMMER_PALETTE, useSkeletonPulse } from '@/hooks/useShimmerAnimation';
 import { BorderRadius, Colors } from '@/lib/designSystem';
 import { JOB_TIMELINE_LAYOUT } from '@/lib/jobTimelineTheme';
 import {
@@ -11,9 +11,8 @@ import {
   providerStackGapMd,
 } from '@/lib/providerSurfaceStyles';
 import { CLIENT_HOME_SCROLL_GUTTER, PROVIDER_TAB_GUTTER } from '@/lib/tabletLayout';
-import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
-import { Animated, ScrollView, StyleProp, StyleSheet, useWindowDimensions, View, ViewStyle } from 'react-native';
+import { Animated, ScrollView, StyleProp, useWindowDimensions, View, ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import SafeAreaWrapper from './SafeAreaWrapper';
 import { SageHeroPanel } from './provider/SageHeroPanel';
@@ -27,48 +26,6 @@ export interface SkeletonProps {
   variant?: 'default' | 'sage';
 }
 
-function ShimmerOverlay({
-  variant,
-}: {
-  variant: 'default' | 'sage';
-  borderRadius?: number;
-}) {
-  const { translateX, translateY, shimmerWidth, shimmerRotate, shimmerEnabled } = useShimmerAnimation();
-  const palette = SHIMMER_PALETTE[variant];
-
-  if (!shimmerEnabled) {
-    return null;
-  }
-
-  return (
-    <Animated.View
-      pointerEvents="none"
-      style={{
-        position: 'absolute',
-        top: '-140%',
-        bottom: '-140%',
-        width: shimmerWidth,
-        transform: [{ translateX }, { translateY }, { rotate: shimmerRotate }],
-      }}
-    >
-      <LinearGradient
-        colors={[
-          'transparent',
-          palette.edge,
-          palette.highlight,
-          palette.highlight,
-          palette.edge,
-          'transparent',
-        ]}
-        locations={[0, 0.28, 0.44, 0.56, 0.72, 1]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
-      />
-    </Animated.View>
-  );
-}
-
 const Skeleton = ({
   width = '100%',
   height = 20,
@@ -76,26 +33,20 @@ const Skeleton = ({
   style,
   variant = 'default',
 }: SkeletonProps) => {
-  const palette = SHIMMER_PALETTE[variant];
-  const flatStyle = StyleSheet.flatten(style) ?? {};
-  const backgroundColor =
-    typeof flatStyle.backgroundColor === 'string' ? flatStyle.backgroundColor : palette.base;
-
+  const opacity = useSkeletonPulse();
   return (
-    <View
+    <Animated.View
       style={[
         {
           width: width as ViewStyle['width'],
           height,
           borderRadius,
-          backgroundColor,
-          overflow: 'hidden',
+          backgroundColor: SHIMMER_PALETTE[variant].base,
         },
         style,
+        { opacity },
       ]}
-    >
-      <ShimmerOverlay variant={variant} />
-    </View>
+    />
   );
 };
 
