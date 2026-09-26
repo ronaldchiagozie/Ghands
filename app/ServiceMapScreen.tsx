@@ -47,7 +47,7 @@ import Toast from '@/components/Toast';
 import { Colors, Spacing, BorderRadius } from '@/lib/designSystem';
 import { MapPin, AlertCircle, ArrowLeft } from 'lucide-react-native';
 import { clearBookingResumePoint } from '@/utils/bookingResume';
-import { navigateToClientHomeTab } from '@/utils/navigation';
+import { navigateToClientHomeTab, resetStackTo } from '@/utils/navigation';
 const MAX_SELECTION = 3;
 
 
@@ -489,24 +489,14 @@ const ServiceMapScreen = () => {
             {/* Back Button */}
             <View style={{ paddingHorizontal: Spacing.lg, paddingTop: Spacing.lg }}>
               <TouchableOpacity
-                onPress={() => {
-                  // Navigate back to AddPhotosScreen explicitly
-                  if (params.categoryName) {
-                    router.replace({
-                      pathname: '/AddPhotosScreen' as any,
-                      params: {
-                        categoryName: params.categoryName,
-                        selectedDateTime: params.selectedDateTime,
-                        selectedDate: params.selectedDate,
-                        selectedTime: params.selectedTime,
-                        photoCount: params.photoCount,
-                        location: params.location,
-                      },
-                    } as any);
-                  } else {
-                    router.replace('/(tabs)/categories' as any);
-                  }
-                }}
+                /**
+                 * Back, not a fresh Add photos. This replaced the map with a new
+                 * copy of the photo screen - on top of the one already beneath it,
+                 * and without the requestId - so every round of "no providers,
+                 * back, continue" stacked another photo screen and left the
+                 * booking detached from its draft.
+                 */
+                onPress={handleMapBack}
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
@@ -636,24 +626,14 @@ const ServiceMapScreen = () => {
             {/* Back Button */}
             <View style={{ paddingHorizontal: Spacing.lg, paddingTop: Spacing.lg }}>
               <TouchableOpacity
-                onPress={() => {
-                  // Navigate back to AddPhotosScreen explicitly
-                  if (params.categoryName) {
-                    router.replace({
-                      pathname: '/AddPhotosScreen' as any,
-                      params: {
-                        categoryName: params.categoryName,
-                        selectedDateTime: params.selectedDateTime,
-                        selectedDate: params.selectedDate,
-                        selectedTime: params.selectedTime,
-                        photoCount: params.photoCount,
-                        location: params.location,
-                      },
-                    } as any);
-                  } else {
-                    router.replace('/(tabs)/categories' as any);
-                  }
-                }}
+                /**
+                 * Back, not a fresh Add photos. This replaced the map with a new
+                 * copy of the photo screen - on top of the one already beneath it,
+                 * and without the requestId - so every round of "no providers,
+                 * back, continue" stacked another photo screen and left the
+                 * booking detached from its draft.
+                 */
+                onPress={handleMapBack}
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
@@ -727,10 +707,8 @@ const ServiceMapScreen = () => {
                 />
                 <Button
                   title="Try Different Category"
-                  onPress={() => {
-                    // Navigate to categories screen explicitly
-                    router.replace('/(tabs)/categories' as any);
-                  }}
+                  /** Back to the tab, not a copy of it pushed on top of the booking. */
+                  onPress={() => resetStackTo(router, '/(tabs)/categories')}
                   variant="outline"
                   size="medium"
                   fullWidth
@@ -974,6 +952,7 @@ const ServiceMapScreen = () => {
               location: bookingData.location || serviceLocation,
               photoCount: bookingData.photoCount?.toString() || params.photoCount,
               preserveData: 'true',
+              bookingOrigin: 'serviceMap',
             },
           } as any);
         }}

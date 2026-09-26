@@ -16,11 +16,14 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MapPin, Search, Send } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, FlatList, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { returnToServiceMap } from '@/utils/bookingFlowNavigation';
 
 export default function LocationSearchScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ 
     next?: string;
+    /** The draft being booked, when opened from the booking summary. */
+    requestId?: string;
     categoryName?: string; // Add categoryName support
     serviceType?: string;
     selectedDateTime?: string;
@@ -589,21 +592,19 @@ export default function LocationSearchScreen() {
         }
       }
       
-      // Navigate back to ServiceMapScreen with all booking params preserved
-      router.replace({
-        pathname: '/ServiceMapScreen' as any,
-        params: {
-          categoryName: params.categoryName, // Pass categoryName (primary)
-          serviceType: params.serviceType || params.categoryName, // Use categoryName as fallback
-          selectedDateTime: params.selectedDateTime,
-          selectedDate: params.selectedDate,
-          selectedTime: params.selectedTime,
-          photoCount: params.photoCount,
-          location: (searchQuery && typeof searchQuery === 'string') ? searchQuery.trim() : '', // Updated location
-          latitude: latitude, // Pass coordinates
-          longitude: longitude, // Pass coordinates
-        },
-      } as any);
+      /** Back to the map this was opened from, with the new place - and the requestId it needs. */
+      returnToServiceMap(router, {
+        requestId: params.requestId,
+        categoryName: params.categoryName,
+        serviceType: params.serviceType || params.categoryName,
+        selectedDateTime: params.selectedDateTime,
+        selectedDate: params.selectedDate,
+        selectedTime: params.selectedTime,
+        photoCount: params.photoCount,
+        location: typeof searchQuery === 'string' ? searchQuery.trim() : undefined,
+        latitude,
+        longitude,
+      });
     } else {
       router.back();
     }

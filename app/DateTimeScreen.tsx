@@ -8,7 +8,7 @@ import { serviceRequestService, authService } from '@/services/api';
 import { AuthError } from '@/utils/errors';
 import { handleAuthErrorRedirect } from '@/utils/authRedirect';
 import { getSpecificErrorMessage } from '@/utils/errorMessages';
-import { navigateBookingStepBack } from '@/utils/bookingFlowNavigation';
+import { navigateBookingStepBack, returnToServiceMap } from '@/utils/bookingFlowNavigation';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -279,6 +279,21 @@ export default function DateTimeScreen() {
 
       showSuccess('Date and time updated');
       haptics.success();
+
+      /** Edited from the booking summary: back to that summary, not on through photos again. */
+      if (params.bookingOrigin === 'serviceMap') {
+        returnToServiceMap(router, {
+          requestId: params.requestId,
+          categoryName: params.categoryName,
+          serviceType: params.serviceType,
+          selectedDateTime: formattedDateTime,
+          selectedDate: selectedDate?.toISOString(),
+          selectedTime: selectedTime || '',
+          location: params.location,
+          photoCount: params.photoCount,
+        });
+        return;
+      }
 
       router.replace({
         pathname: '../AddPhotosScreen' as any,

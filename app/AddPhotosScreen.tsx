@@ -7,7 +7,7 @@ import { BorderRadius, Colors, Spacing } from '@/lib/designSystem';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Camera, Plus, Search, X } from 'lucide-react-native';
-import { navigateBookingStepBack } from '@/utils/bookingFlowNavigation';
+import { navigateBookingStepBack, returnToServiceMap } from '@/utils/bookingFlowNavigation';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Image, Modal, ScrollView, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
@@ -346,6 +346,21 @@ export default function AddPhotosScreen() {
         return;
       }
 
+      /** Edited from the booking summary: back to that summary with the new count. */
+      if (params.bookingOrigin === 'serviceMap') {
+        returnToServiceMap(router, {
+          requestId: params.requestId,
+          categoryName: params.categoryName,
+          serviceType: params.serviceType || params.categoryName,
+          selectedDateTime: params.selectedDateTime,
+          selectedDate: params.selectedDate,
+          selectedTime: params.selectedTime,
+          photoCount: selectedPhotos.size.toString(),
+          location: params.location,
+        });
+        return;
+      }
+
       // Push so back from map returns to Add photos; booking stack stays intact
       router.push({
         pathname: '/ServiceMapScreen' as any,
@@ -373,6 +388,11 @@ export default function AddPhotosScreen() {
   );
 
   const goBackToDateTime = useCallback(() => {
+    /** Opened from the booking summary: back to it, not into the date step. */
+    if (params.bookingOrigin === 'serviceMap' && router.canGoBack()) {
+      router.back();
+      return;
+    }
     if (!params.requestId) {
       navigateBookingStepBack(router, params);
       return;

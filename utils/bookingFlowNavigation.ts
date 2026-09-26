@@ -29,6 +29,11 @@ export function navigateBookingStepBack(router: Router, params: BookingBackParam
   }
 
   if (params.bookingOrigin === 'serviceMap' && params.requestId) {
+    /** An edit opened from the booking summary: the map it came from is right beneath. */
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
     router.replace({
       pathname: '/ServiceMapScreen' as any,
       params: {
@@ -70,4 +75,26 @@ export function navigateBookingStepBack(router: Router, params: BookingBackParam
   }
 
   router.replace('/(tabs)/categories' as any);
+}
+
+/**
+ * Back to the provider map already in the stack, carrying what an edit changed.
+ *
+ * Editing the date, photos or location from the booking summary used to open
+ * a new map - by push or replace - on top of the one the edit started from,
+ * and the location edit dropped the requestId on the way. Each edit added a
+ * map to the stack, back went from one map to the same map again, and a
+ * booking finished from the new one had no draft to publish. Returning to the
+ * existing map, with its params updated, keeps one map and one draft.
+ */
+export function returnToServiceMap(router: Router, params: Record<string, string | undefined>): void {
+  const cleaned = Object.fromEntries(
+    Object.entries(params).filter(([, value]) => value != null && value !== ''),
+  ) as Record<string, string>;
+  const href = { pathname: '/ServiceMapScreen', params: cleaned } as any;
+  if (typeof router.dismissTo === 'function') {
+    router.dismissTo(href);
+    return;
+  }
+  router.replace(href);
 }
