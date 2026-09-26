@@ -171,6 +171,12 @@ export function resolveNotificationRoute(
     params.callerName = callerName || 'Incoming call';
     const callerImage = resolveCallerImage(notification);
     if (callerImage) params.callerImage = callerImage;
+    /** Which call it is; without these the screen looks up the job's live call instead. */
+    const meta = (notification.metadata ?? null) as Record<string, unknown> | null;
+    const callReference = readMetaValue(meta, ['callReference', 'call_reference']);
+    const callId = readMetaValue(meta, ['callId', 'call_id']);
+    if (callReference != null) params.callReference = String(callReference);
+    if (callId != null) params.callId = String(callId);
     return { pathname: '/CallScreen', params };
   }
 

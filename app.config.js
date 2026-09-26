@@ -28,6 +28,8 @@ module.exports = {
           'This app needs access to photo library to select profile photos.',
         NSMicrophoneUsageDescription:
           'GHands uses the microphone for in-app voice calls with your service provider.',
+        /** Keeps call audio going when the screen locks or the app goes to the background. */
+        UIBackgroundModes: ['audio'],
       },
       usesAppleSignIn: false,
     },

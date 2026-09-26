@@ -147,10 +147,4 @@ export const communicationService = {
     const response = await apiClient.get<any>(`/api/communication/calls/${enc}/session`);
     return extractResponseData<any>(response);
   },
-
-  getIceCandidates: async (callReference: string): Promise<any> => {
-    const enc = encodeURIComponent(callReference);
-    const response = await apiClient.get<any>(`/api/communication/calls/${enc}/ice-candidates`);
-    return extractResponseData<any>(response);
-  },
 };
