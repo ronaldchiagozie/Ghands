@@ -150,6 +150,17 @@ function jobDetailsPath(userRole: NotificationUserRole): string {
   return userRole === 'provider' ? '/ProviderJobDetailsScreen' : '/OngoingJobDetails';
 }
 
+/**
+ * A call, whatever the notification's type says. The server sends "Incoming
+ * Call" as `new_message`, which read as a chat message: tapping it opened the
+ * chat and nothing rang. Only a call carries a call reference, so that is
+ * what marks one.
+ */
+function carriesCallReference(meta: Record<string, unknown> | null | undefined): boolean {
+  const ref = meta?.callReference ?? meta?.call_reference;
+  return typeof ref === 'string' ? ref.trim().length > 0 : ref != null;
+}
+
 export function resolveNotificationRoute(
   notification: Notification,
   userRole: NotificationUserRole = 'client'
@@ -162,7 +173,7 @@ export function resolveNotificationRoute(
     return { pathname: '/WalletScreen' };
   }
 
-  if (CALL_TYPES.has(type)) {
+  if (CALL_TYPES.has(type) || carriesCallReference(notification.metadata as Record<string, unknown> | null)) {
     const params: Record<string, string> = { callState: 'incoming' };
     if (requestIdStr) params.requestId = requestIdStr;
     const providerId = resolveProviderId(notification);
@@ -246,17 +257,22 @@ export function notificationActionLabel(
 }
 
 export function isIncomingCallNotification(data: Record<string, unknown>): boolean {
-  return CALL_TYPES.has(normalizeNotificationType(data.type));
+  if (CALL_TYPES.has(normalizeNotificationType(data.type))) return true;
+  const meta = data.metadata && typeof data.metadata === 'object' ? (data.metadata as Record<string, unknown>) : null;
+  return carriesCallReference(meta) || carriesCallReference(data);
 }
 
 export function resolvePushNotificationRoute(
   data: Record<string, unknown>,
   userRole: NotificationUserRole = 'client'
 ): NotificationRoute | null {
+  /** A push may carry the call's ids at the top level rather than under metadata. */
   const meta =
     data.metadata && typeof data.metadata === 'object'
       ? (data.metadata as Record<string, unknown>)
-      : null;
+      : carriesCallReference(data)
+        ? data
+        : null;
 
   const notification: Notification = {
     id: 0,
