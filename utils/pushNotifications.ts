@@ -264,7 +264,16 @@ export async function unregisterPushOnLogout(): Promise<void> {
 
   const storedToken = await AsyncStorage.getItem(PUSH_TOKEN_STORAGE_KEY);
   if (storedToken) {
-    await unregisterPushTokenFromBackend(storedToken);
+    /**
+     * Capped. Sign-out and an expired session both wait on this, and on a slow
+     * network or a server waking up the screen sat there until it gave up.
+     * The server forgets the token eventually anyway; the person should not
+     * wait for it.
+     */
+    await Promise.race([
+      unregisterPushTokenFromBackend(storedToken).catch(() => undefined),
+      new Promise((resolve) => setTimeout(resolve, 2500)),
+    ]);
     await AsyncStorage.removeItem(PUSH_TOKEN_STORAGE_KEY);
   }
 
