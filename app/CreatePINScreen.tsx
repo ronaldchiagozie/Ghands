@@ -2,9 +2,9 @@ import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { navigateBack } from '@/utils/navigation';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { WalletPinInput } from '@/components/WalletPinInput';
-import { BorderRadius, Colors, useKeyboardAvoidingOffset } from '@/lib/designSystem';
+import { Colors, useKeyboardAvoidingOffset } from '@/lib/designSystem';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Check, Lock } from 'lucide-react-native';
+import { Check, LockKeyhole } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -149,17 +149,24 @@ export default function CreatePINScreen() {
             keyboardDismissMode="on-drag"
           >
             <View style={{ alignItems: 'center', marginBottom: 32 }}>
+              {/**
+                * A keyhole padlock on a quiet brand tile. It was a generic
+                * padlock in a large pastel circle, which read as clip art
+                * rather than as the lock on somebody's money.
+                */}
               <View
                 style={{
-                  width: 88,
-                  height: 88,
-                  borderRadius: BorderRadius.full,
-                  backgroundColor: Colors.successLight,
+                  width: 64,
+                  height: 64,
+                  borderRadius: 20,
+                  backgroundColor: 'rgba(79, 103, 57, 0.10)',
+                  borderWidth: 1,
+                  borderColor: 'rgba(79, 103, 57, 0.18)',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <Lock size={40} color={Colors.accent} />
+                <LockKeyhole size={28} color={Colors.accent} strokeWidth={2} />
               </View>
             </View>
 

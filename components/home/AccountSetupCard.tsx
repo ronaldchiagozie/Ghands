@@ -1,4 +1,4 @@
-import { Bell, CreditCard, MapPin, ShieldCheck, User } from 'lucide-react-native';
+import { Bell, CreditCard, MapPin, RectangleEllipsis, User } from 'lucide-react-native';
 import React from 'react';
 
 import { SetupStepsCarousel, type SetupStep, type SetupStepIcon } from '@/components/SetupStepsCarousel';
@@ -7,7 +7,8 @@ import type { SetupTask, SetupTaskId } from '@/hooks/useAccountSetup';
 const TASK_ICON: Record<SetupTaskId, SetupStepIcon> = {
   profile: User,
   location: MapPin,
-  pin: ShieldCheck,
+  /** A PIN field with its dots: what the step asks for, not a generic badge. */
+  pin: RectangleEllipsis,
   bank: CreditCard,
   notifications: Bell,
 };
