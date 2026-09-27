@@ -1305,9 +1305,15 @@ const HomeScreen = React.memo(() => {
           setShowLocationModal(false);
           refreshLocation();
         }}
-        onLocationSelected={(selectedLocation) => {
+        onLocationSelected={() => {
           setShowLocationModal(false);
           refreshLocation();
+          /**
+           * The setup card only re-checked on screen focus, and a modal closing
+           * is not one - so "Set your location" stayed on the card after the
+           * location had been saved, until they left home and came back.
+           */
+          void refreshSetup();
         }}
       />
       </View>
