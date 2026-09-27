@@ -23,11 +23,20 @@ type HomeQuickActionsProps = {
   onPress: (id: QuickActionId) => void;
 };
 
+const hasBalance = (balance?: number | null): balance is number =>
+  typeof balance === 'number' && Number.isFinite(balance);
+
 /** Never a placeholder amount. Silence beats a number that is not theirs. */
 const formatBalance = (balance?: number | null): string =>
-  typeof balance === 'number' && Number.isFinite(balance)
-    ? `₦${Math.round(balance).toLocaleString('en-NG')}`
-    : 'View balance';
+  hasBalance(balance) ? `₦${Math.round(balance).toLocaleString('en-NG')}` : 'View balance';
+
+/**
+ * The wallet's value size. The amount is the point of the card, so it is the
+ * largest thing on the row; "View balance" is only a prompt, and at the same
+ * size it read as if it were the figure.
+ */
+const walletValueSize = (balance?: number | null) =>
+  hasBalance(balance) ? { fontSize: 20, lineHeight: 26 } : { fontSize: 16, lineHeight: 22 };
 
 
 type Action = {
@@ -222,8 +231,7 @@ export default function HomeQuickActions({
                 adjustsFontSizeToFit
                 minimumFontScale={0.72}
                 style={{
-                  fontSize: action.id === 'wallet' ? 20 : 14,
-                  lineHeight: action.id === 'wallet' ? 26 : 21,
+                  ...(action.id === 'wallet' ? walletValueSize(balance) : { fontSize: 14, lineHeight: 21 }),
                   fontFamily: 'Poppins-SemiBold',
                   color: Colors.white,
                   letterSpacing: -0.2,
