@@ -61,6 +61,8 @@ export function getBackendProviderNumericId(p: ServiceProvider): number | null {
 }
 
 export type ServiceMapProps = {
+  /** The booking's location; the map settles on it once it is known. */
+  focus?: { latitude: number; longitude: number } | null;
   providers: ServiceProvider[];
   selectedCategory: ProviderCategory;
   onCategoryChange: (category: ProviderCategory) => void;
@@ -75,6 +77,7 @@ export type ServiceMapProps = {
 };
 
 const ServiceMap: React.FC<ServiceMapProps> = ({
+  focus,
   providers,
   selectedCategory,
   onCategoryChange,
@@ -120,10 +123,12 @@ const ServiceMap: React.FC<ServiceMapProps> = ({
     }).start();
   }, [activeProvider, bottomCardAnim]);
 
+  const mapRef = useRef<MapView>(null);
+
   const initialRegion: Region = useMemo(() => {
-    const focus = userLocation ?? providers[0]?.coords;
-    const lat = focus?.latitude;
-    const lng = focus?.longitude;
+    const center = focus ?? userLocation ?? providers[0]?.coords;
+    const lat = center?.latitude;
+    const lng = center?.longitude;
     const ok = (n: unknown) => typeof n === 'number' && Number.isFinite(n);
     return {
       latitude: ok(lat) ? lat : DEFAULT_MAP_REGION.latitude,
@@ -131,7 +136,38 @@ const ServiceMap: React.FC<ServiceMapProps> = ({
       latitudeDelta: DEFAULT_MAP_REGION.latitudeDelta,
       longitudeDelta: DEFAULT_MAP_REGION.longitudeDelta,
     };
-  }, [providers, userLocation]);
+  }, [focus, providers, userLocation]);
+
+  /**
+   * The map now shows while the location and providers are still loading, so
+   * it opens on a default spot and has to move once they arrive: to the
+   * booking's location, then out far enough to take in the providers found.
+   */
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const points = [
+      ...(focus ? [focus] : []),
+      ...providers.map((p) => p.coords).filter((c) => Number.isFinite(c?.latitude) && Number.isFinite(c?.longitude)),
+    ];
+    if (points.length === 0) return;
+    if (points.length === 1) {
+      map.animateToRegion(
+        {
+          latitude: points[0].latitude,
+          longitude: points[0].longitude,
+          latitudeDelta: DEFAULT_MAP_REGION.latitudeDelta,
+          longitudeDelta: DEFAULT_MAP_REGION.longitudeDelta,
+        },
+        450,
+      );
+      return;
+    }
+    map.fitToCoordinates(points, {
+      edgePadding: { top: 160, right: 60, bottom: 260, left: 60 },
+      animated: true,
+    });
+  }, [focus, providers]);
 
   const handleSelectProvider = (provider: ServiceProvider) => {
     const isAlreadySelected = selectedProviders.some((p) => p.id === provider.id);
@@ -149,6 +185,7 @@ const ServiceMap: React.FC<ServiceMapProps> = ({
   return (
     <View className="flex-1">
       <MapView
+        ref={mapRef}
         style={{ flex: 1 }}
         provider={MAP_PROVIDER}
         userInterfaceStyle="light"

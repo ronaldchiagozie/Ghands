@@ -8,6 +8,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Camera, Plus, Search, X } from 'lucide-react-native';
 import { navigateBookingStepBack, returnToServiceMap } from '@/utils/bookingFlowNavigation';
+import { trackBookingPhotoUpload } from '@/utils/bookingPhotoUploads';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Image, Modal, ScrollView, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
@@ -53,6 +54,8 @@ export default function AddPhotosScreen() {
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [selectedPhotos, setSelectedPhotos] = useState<Set<string>>(new Set());
   const [isFindingProviders, setIsFindingProviders] = useState(false);
+  /** Guards a double tap on Continue before the navigation lands. */
+  const continuingRef = useRef(false);
   
   // Restore photo count from params if editing
   useEffect(() => {
@@ -237,149 +240,126 @@ export default function AddPhotosScreen() {
     });
   }, []);
 
-  const handleDone = useCallback(() => {
-    if (isFindingProviders) {
+  /**
+   * Continue goes straight to the map.
+   *
+   * This held the customer on a "Finding providers" pop-up - half a second on
+   * a timer, then every photo uploading - before the map opened and showed two
+   * loading pages of its own. Four loaders for one tap read as the app bouncing
+   * between screens. The photos now upload behind the map, and the booking is
+   * not sent to a provider until they have (utils/bookingPhotoUploads).
+   */
+  const handleDone = useCallback(async () => {
+    if (isFindingProviders || continuingRef.current) {
       return;
     }
-    // Photos are now optional - allow proceeding without photos
-    setIsFindingProviders(true);
+    continuingRef.current = true;
 
-    if (findingTimeoutRef.current) {
-      clearTimeout(findingTimeoutRef.current);
-    }
+    const selectedUris = photos
+      .filter((p) => selectedPhotos.has(p.id))
+      .map((p) => p.uri);
+    /** For the booking summary's preview on this device. */
+    void AsyncStorage.setItem(BOOKING_PHOTO_URIS_KEY, JSON.stringify(selectedUris)).catch(() => undefined);
 
-    findingTimeoutRef.current = setTimeout(async () => {
-      setIsFindingProviders(false);
-      // Store photo URIs for preview in Booking Summary
-      const selectedUris = photos
-        .filter((p) => selectedPhotos.has(p.id))
-        .map((p) => p.uri);
+    const requestIdNum = parseInt(params.requestId ?? '', 10);
+    const hasRequest = Number.isFinite(requestIdNum) && requestIdNum > 0;
+
+    /** The step is answered the moment they press on, whatever the upload does next. */
+    void rememberBookingStep('providers', params.requestId, {
+      ...params,
+      photoCount: selectedPhotos.size.toString(),
+    });
+
+    const upload =
+      selectedUris.length > 0 && hasRequest
+        ? trackBookingPhotoUpload(requestIdNum, attachBookingPhotos(requestIdNum, selectedUris))
+        : null;
+
+    /**
+     * Urgent jobs skip the provider map entirely.
+     *
+     * An urgent booking is not sent to one provider and held there: confirm
+     * alerts every qualifying provider nearby and the first to accept takes
+     * it. There is nobody to choose, so it publishes here - after the photos,
+     * so the providers racing to accept can see what the job is.
+     */
+    if (params.isUrgent === '1' && hasRequest) {
+      setIsFindingProviders(true);
       try {
-        await AsyncStorage.setItem(BOOKING_PHOTO_URIS_KEY, JSON.stringify(selectedUris));
-      } catch {
-        // Non-fatal; preview just won't show
-      }
-
-      /**
-       * Actually send them. Storing the local URIs above is only so the booking
-       * summary can preview them on this device; until now that was everything
-       * that happened to a customer's photos. They were never uploaded and never
-       * attached to the request, so the provider quoting the job never saw the
-       * burst pipe they were promised would help.
-       *
-       * Failures are surfaced but do not block: photos are optional here, and
-       * someone who has finished describing their job should not be stopped at
-       * the last step by a slow upload. Saying nothing is what got us here.
-       */
-      const requestIdNum = parseInt(params.requestId ?? '', 10);
-
-      /**
-       * Recorded before the upload, not after.
-       *
-       * This used to sit below, and the upload between here and there can
-       * throw - so a slow or failed upload left the pointer still saying
-       * "add photos" on a booking whose photos the customer had already
-       * chosen. The step is about what they did, and they have done it: the
-       * screen is answered the moment they press on, whether the files reach
-       * the server in the next second or not at all.
-       */
-      void rememberBookingStep('providers', params.requestId, {
-        ...params,
-        photoCount: selectedPhotos.size.toString(),
-      });
-
-      if (selectedUris.length > 0 && Number.isFinite(requestIdNum) && requestIdNum > 0) {
-        const result = await attachBookingPhotos(requestIdNum, selectedUris).catch(() => ({
-          complete: false,
-          uploaded: [] as string[],
-        }));
-        if (!result.complete) {
+        const result = upload ? await upload : null;
+        if (result && !result.complete) {
           showError(
             result.uploaded.length > 0
               ? 'Some photos could not be sent. You can add them again from the job later.'
               : 'Your photos could not be sent. The booking will continue without them.',
           );
         }
-      }
-      /**
-       * Urgent jobs skip the provider map entirely.
-       *
-       * An urgent booking is not sent to one provider and held there: confirm
-       * alerts every qualifying provider nearby and the first to accept takes
-       * it. There is nobody to choose, so offering a map of pins to compare
-       * would be asking somebody with water coming through the ceiling to
-       * browse - and worse, it would let them believe they had picked a person
-       * when the job had actually gone out to everyone.
-       *
-       * So this publishes here and goes straight to the confirmation.
-       */
-      if (params.isUrgent === '1' && Number.isFinite(requestIdNum) && requestIdNum > 0) {
-        try {
-          await serviceRequestService.publishBooking(requestIdNum);
-        } catch (error: any) {
-          setIsFindingProviders(false);
-          haptics.error();
-          /**
-           * Stops here rather than continuing. A booking that was not published
-           * is invisible to every provider, and telling somebody their
-           * emergency is on its way when it is not is the worst outcome this
-           * screen can produce.
-           */
-          showError(
-            error?.message ||
-              'Your urgent booking could not be sent. Please try again.',
-          );
-          return;
-        }
-
-        haptics.success();
-        /** Published, so there is nothing left to come back to. */
-        await clearBookingResumePoint();
-
-        navigateBookingFlowToConfirmation(router, {
-          requestId: params.requestId,
-          serviceType: params.serviceType || params.categoryName,
-          selectedDate: params.selectedDate,
-          selectedTime: params.selectedTime,
-          isUrgent: '1',
-        });
+        await serviceRequestService.publishBooking(requestIdNum);
+      } catch (error: any) {
+        setIsFindingProviders(false);
+        continuingRef.current = false;
+        haptics.error();
+        /**
+         * Stops here rather than continuing. A booking that was not published
+         * is invisible to every provider, and telling somebody their emergency
+         * is on its way when it is not is the worst outcome this screen can
+         * produce.
+         */
+        showError(error?.message || 'Your urgent booking could not be sent. Please try again.');
         return;
       }
 
-      /** Edited from the booking summary: back to that summary with the new count. */
-      if (params.bookingOrigin === 'serviceMap') {
-        returnToServiceMap(router, {
-          requestId: params.requestId,
-          categoryName: params.categoryName,
-          serviceType: params.serviceType || params.categoryName,
-          selectedDateTime: params.selectedDateTime,
-          selectedDate: params.selectedDate,
-          selectedTime: params.selectedTime,
-          photoCount: selectedPhotos.size.toString(),
-          location: params.location,
-        });
-        return;
-      }
+      haptics.success();
+      /** Published, so there is nothing left to come back to. */
+      await clearBookingResumePoint();
+      setIsFindingProviders(false);
+      continuingRef.current = false;
+      navigateBookingFlowToConfirmation(router, {
+        requestId: params.requestId,
+        serviceType: params.serviceType || params.categoryName,
+        selectedDate: params.selectedDate,
+        selectedTime: params.selectedTime,
+        isUrgent: '1',
+      });
+      return;
+    }
 
-      // Push so back from map returns to Add photos; booking stack stays intact
-      router.push({
-        pathname: '/ServiceMapScreen' as any,
-        params: {
-          requestId: params.requestId, // Pass requestId for provider selection
-          categoryName: params.categoryName, // Pass categoryName (primary)
-          serviceType: params.serviceType || params.categoryName, // Use categoryName as fallback
-          selectedDateTime: params.selectedDateTime,
-          selectedDate: params.selectedDate,
-          selectedTime: params.selectedTime,
-          photoCount: selectedPhotos.size.toString(),
-          location: params.location,
-          fromAiAssistant: params.fromAiAssistant,
-          bookingOrigin: params.bookingOrigin,
-          conversationId: params.conversationId,
-        },
-      } as any);
-    }, 500);
-  }, [isFindingProviders, selectedPhotos, photos, router, params]);
+    continuingRef.current = false;
+    haptics.light();
+
+    /** Edited from the booking summary: back to that summary with the new count. */
+    if (params.bookingOrigin === 'serviceMap') {
+      returnToServiceMap(router, {
+        requestId: params.requestId,
+        categoryName: params.categoryName,
+        serviceType: params.serviceType || params.categoryName,
+        selectedDateTime: params.selectedDateTime,
+        selectedDate: params.selectedDate,
+        selectedTime: params.selectedTime,
+        photoCount: selectedPhotos.size.toString(),
+        location: params.location,
+      });
+      return;
+    }
+
+    // Push so back from map returns to Add photos; booking stack stays intact
+    router.push({
+      pathname: '/ServiceMapScreen' as any,
+      params: {
+        requestId: params.requestId,
+        categoryName: params.categoryName,
+        serviceType: params.serviceType || params.categoryName,
+        selectedDateTime: params.selectedDateTime,
+        selectedDate: params.selectedDate,
+        selectedTime: params.selectedTime,
+        photoCount: selectedPhotos.size.toString(),
+        location: params.location,
+        fromAiAssistant: params.fromAiAssistant,
+        bookingOrigin: params.bookingOrigin,
+        conversationId: params.conversationId,
+      },
+    } as any);
+  }, [isFindingProviders, selectedPhotos, photos, router, params, showError]);
 
   /** Falls back to a neutral search glyph when the category has no art. */
   const categorySpinnerIcon = useMemo(

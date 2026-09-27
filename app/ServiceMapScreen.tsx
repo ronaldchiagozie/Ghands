@@ -1,3 +1,4 @@
+import { pendingBookingPhotoUpload, waitForBookingPhotoUpload } from '@/utils/bookingPhotoUploads';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import ServiceMap, { ProviderCategory, ServiceProvider } from '@/components/ServiceMap';
@@ -133,6 +134,25 @@ const ServiceMapScreen = () => {
         .catch(() => setBookingPhotoUris([]));
     }, [params.serviceType, params.selectedDateTime, params.selectedDate, params.selectedTime, params.photoCount, params.location])
   );
+
+  /** Photos keep uploading after Add photos; say so here if they did not all make it. */
+  useEffect(() => {
+    const upload = params.requestId ? pendingBookingPhotoUpload(params.requestId) : null;
+    if (!upload) return;
+    let active = true;
+    void upload.then((result) => {
+      if (!active || result.complete) return;
+      showError(
+        result.uploaded.length > 0
+          ? 'Some photos could not be sent. You can add them again from the job later.'
+          : 'Your photos could not be sent. The booking will continue without them.',
+      );
+    });
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.requestId]);
 
   // Update serviceLocation when savedLocation changes
   useEffect(() => {
@@ -470,21 +490,7 @@ const ServiceMapScreen = () => {
   return (
     <SafeAreaWrapper>
       <View className="flex-1">
-        {isLoadingProviders ? (
-          <View className="flex-1 items-center justify-center bg-white">
-            <ActivityIndicator size="large" color={Colors.accent} />
-            <Text className="mt-4" style={{ fontFamily: 'Poppins-Medium', color: Colors.textMuted }}>
-              Finding nearby providers...
-            </Text>
-          </View>
-        ) : !serviceLocationCoords ? (
-          <View className="flex-1 items-center justify-center bg-white">
-            <ActivityIndicator size="large" color={Colors.accent} />
-            <Text className="mt-4" style={{ fontFamily: 'Poppins-Medium', color: Colors.textMuted }}>
-              Getting your location...
-            </Text>
-          </View>
-        ) : hasTriedLoadProviders && !!serviceLocationCoords && providerError && providers.length === 0 ? (
+        {!isLoadingProviders && hasTriedLoadProviders && !!serviceLocationCoords && providerError && providers.length === 0 ? (
           <View style={{ flex: 1, backgroundColor: Colors.white }}>
             {/* Back Button */}
             <View style={{ paddingHorizontal: Spacing.lg, paddingTop: Spacing.lg }}>
@@ -621,7 +627,7 @@ const ServiceMapScreen = () => {
               </View>
             </View>
           </View>
-        ) : hasTriedLoadProviders && !!serviceLocationCoords && providers.length === 0 ? (
+        ) : !isLoadingProviders && hasTriedLoadProviders && !!serviceLocationCoords && providers.length === 0 ? (
           <View style={{ flex: 1, backgroundColor: Colors.white }}>
             {/* Back Button */}
             <View style={{ paddingHorizontal: Spacing.lg, paddingTop: Spacing.lg }}>
@@ -748,6 +754,7 @@ const ServiceMapScreen = () => {
               <ArrowLeft size={22} color={Colors.textPrimary} />
             </TouchableOpacity>
             <ServiceMap
+              focus={serviceLocationCoords}
               providers={providers}
               selectedCategory={selectedCategory}
               onCategoryChange={setSelectedCategory}
@@ -759,6 +766,36 @@ const ServiceMapScreen = () => {
               serviceLocation={serviceLocation}
               onServiceLocationChange={setServiceLocation}
             />
+            {/**
+              * Loading on the map, not instead of it. This used to be two
+              * full white pages - "Getting your location..." then "Finding
+              * nearby providers..." - swapped in and out before the map
+              * appeared, which read as the app bouncing between screens.
+              */}
+            {isLoadingProviders || !serviceLocationCoords ? (
+              <View
+                pointerEvents="none"
+                style={{ position: 'absolute', left: 16, right: 16, bottom: 32, alignItems: 'center' }}
+              >
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingHorizontal: 18,
+                    paddingVertical: 12,
+                    borderRadius: 999,
+                    backgroundColor: Colors.white,
+                    borderWidth: 1,
+                    borderColor: Colors.border,
+                  }}
+                >
+                  <ActivityIndicator size="small" color={Colors.accent} />
+                  <Text style={{ marginLeft: 10, fontSize: 14, fontFamily: 'Poppins-Medium', color: Colors.textPrimary }}>
+                    {serviceLocationCoords ? 'Finding providers near you…' : 'Getting your location…'}
+                  </Text>
+                </View>
+              </View>
+            ) : null}
           </View>
         )}
       </View>
@@ -832,6 +869,8 @@ const ServiceMapScreen = () => {
           }
 
           try {
+            /** The photos started uploading on Add photos; send the job with them. */
+            await waitForBookingPhotoUpload(requestId);
             await serviceRequestService.publishBooking(requestId, providerId);
           } catch (error: any) {
             /**
