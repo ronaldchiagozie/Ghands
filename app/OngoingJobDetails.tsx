@@ -1964,8 +1964,24 @@ export default function OngoingJobDetails() {
 
             {(() => {
               const statusNorm = (request?.status || '').toString().toLowerCase().replace(/[\s_-]/g, '');
-              const canMarkComplete = statusNorm === 'reviewing' && !isLoading;
+              /**
+               * A cash job cannot be completed until both sides confirm the
+               * cash, and nothing is released for it - the provider was paid in
+               * person. So it stays disabled until then, and never says
+               * "release payment".
+               */
+              const isCashJob = request?.paymentMethod === 'cash';
+              const cashUnconfirmed = isCashJob && request?.isPaid !== true;
+              const canMarkComplete = statusNorm === 'reviewing' && !isLoading && !cashUnconfirmed;
               if (statusNorm === 'completed') return null;
+              const label =
+                statusNorm !== 'reviewing'
+                  ? 'Waiting for provider to finish'
+                  : cashUnconfirmed
+                    ? 'Confirm the cash payment first'
+                    : isCashJob
+                      ? 'Mark job complete'
+                      : 'Confirm & release payment';
               return (
                 <TouchableOpacity
                   disabled={!canMarkComplete}
@@ -1983,7 +1999,7 @@ export default function OngoingJobDetails() {
                         color: canMarkComplete ? Colors.white : Colors.iconMuted,
                       }}
                     >
-                      {statusNorm === 'reviewing' ? 'Confirm & release payment' : 'Waiting for provider to finish'}
+                      {label}
                     </Text>
                   )}
                 </TouchableOpacity>
