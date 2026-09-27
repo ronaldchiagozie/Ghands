@@ -245,7 +245,7 @@ const ServiceMap: React.FC<ServiceMapProps> = ({
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingRight: 16 }}
+            contentContainerStyle={{ paddingRight: 16, gap: 8 }}
           >
             {categories.map((category) => {
               const isActive = selectedCategory === category;
@@ -257,7 +257,7 @@ const ServiceMap: React.FC<ServiceMapProps> = ({
                     setActiveProvider(null);
                   }}
                   activeOpacity={0.85}
-                  className={`mr-3 rounded-full px-4 py-2 ${isActive ? 'bg-[#FF8A34]' : 'bg-white'}`}
+                  className={`rounded-full px-4 py-2 ${isActive ? 'bg-[#FF8A34]' : 'bg-white'}`}
                   style={isActive ? { borderWidth: 0 } : SURFACE_STYLES.homeTile}
                 >
                   <Text
@@ -291,7 +291,16 @@ const ServiceMap: React.FC<ServiceMapProps> = ({
             style={SURFACE_STYLES.floatingSheet}
           >
             <View className="w-12 h-1.5 bg-gray-200 self-center rounded-full mb-4" />
-            <ScrollView style={{ maxHeight: Platform.select({ ios: 380, android: 350 }) }}>
+            {/**
+              * Spacing set as a style, not a class. The cards used mb-3 with a
+              * last:mb-0 variant, which React Native does not reliably apply, so
+              * the list could render as one block of cards touching each other.
+              */}
+            <ScrollView
+              style={{ maxHeight: Platform.select({ ios: 380, android: 350 }) }}
+              contentContainerStyle={{ gap: 12, paddingBottom: 2 }}
+              showsVerticalScrollIndicator={false}
+            >
               {filteredProviders.map((provider) => {
                 const isSelected = selectedProviders.some((p) => p.id === provider.id);
                 return (
@@ -314,7 +323,6 @@ const ServiceMap: React.FC<ServiceMapProps> = ({
                       } as any);
                     }}
                     activeOpacity={0.9}
-                    className="mb-3 last:mb-0"
                   >
                     <View
                       className="flex-row items-center bg-white rounded-2xl px-3 py-3"
