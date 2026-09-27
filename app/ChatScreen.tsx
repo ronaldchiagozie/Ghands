@@ -6,7 +6,8 @@ import { ChatThreadEmptyState, ChatThreadLoadingState } from '@/components/chat/
 import ChatTypingBubble from '@/components/chat/ChatTypingBubble';
 import { BorderRadius, Colors, Spacing, SHADOWS, MIN_TOUCH_TARGET} from '@/lib/designSystem';
 import { androidElevation, iosOnlyShadow } from '@/lib/surfaceStyles';
-import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect, useNavigation } from 'expo-router';
+import { openCallFromChat } from '@/utils/callChatNavigation';
 import { ArrowLeft, AlertCircle, FileText, Lock, Send, MoreVertical } from 'lucide-react-native';
 import { CallIconOutline } from '@/components/call/CallIcons';
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
@@ -154,6 +155,7 @@ const CHAT_GROUND = '#F7F8F5';
 
 export default function ChatScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { toast, showError, showSuccess, hideToast } = useToast();
   const params = useLocalSearchParams<{ 
@@ -1175,16 +1177,13 @@ height: MIN_TOUCH_TARGET,
                   isProviderView,
                   calleeLabel: isProviderView ? clientName : providerName,
                 });
-                router.push({
-                  pathname: '/CallScreen',
-                  params: {
+                openCallFromChat(router, navigation, params.requestId, {
                     callState: 'outgoing',
                     callerName: isProviderView ? clientName : providerName,
                     callerId: params.providerId,
                     requestId: params.requestId,
                     isProvider: isProviderView ? 'true' : 'false',
-                  },
-                } as any);
+                  });
               }} 
               activeOpacity={0.7}
               style={{
