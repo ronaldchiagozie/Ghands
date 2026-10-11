@@ -856,32 +856,21 @@ export default function ProviderDetailScreen() {
                     marginBottom: 12,
                   }}
                 >
-                {review.reviewerImage ? (
-                  <Image
-                    source={{ uri: review.reviewerImage }}
-                    style={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: BorderRadius.full,
-                      backgroundColor: Colors.backgroundGray,
-                      marginRight: 12,
-                    }}
-                  />
-                ) : (
-                  <View
-                    style={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: BorderRadius.full,
-                      backgroundColor: Colors.backgroundGray,
-                      marginRight: 12,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <User size={24} color={Colors.textTertiary} />
-                  </View>
-                )}
+                {/**
+                  * The reviewer, by the same avatar rule as everywhere else.
+                  * A photo-less reviewer used to get a grey glyph, which is
+                  * the same grey glyph as the reviewer above and below them:
+                  * three identical faces saying three different things about
+                  * the person you are deciding whether to hire.
+                  */}
+                <AvatarCircle
+                  uri={review.reviewerImage}
+                  name={review.reviewerName}
+                  size={48}
+                  backgroundColor={Colors.backgroundGray}
+                  borderColor="transparent"
+                  style={{ marginRight: 12 }}
+                />
                 <View style={{ flex: 1 }}>
                   <Text
                     style={{

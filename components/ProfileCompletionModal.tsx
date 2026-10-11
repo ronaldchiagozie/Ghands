@@ -1,27 +1,36 @@
-import { useToast } from '@/hooks/useToast';
+import Toast from '@/components/Toast';
 import { haptics } from '@/hooks/useHaptics';
 import { mapApiProfileToUserProfile } from '@/hooks/useProfile';
-import { BorderRadius, Colors, Spacing, MIN_TOUCH_TARGET} from '@/lib/designSystem';
+import { useToast } from '@/hooks/useToast';
+import { BorderRadius, Colors, MIN_TOUCH_TARGET, Spacing } from '@/lib/designSystem';
 import { profileService } from '@/services/api';
 import { authService } from '@/services/authService';
-import { unwrapProfilePayload } from '@/utils/profilePayload';
-import { writeProfileCompleteFlag } from '@/utils/profileCompletion';
 import { getSpecificErrorMessage } from '@/utils/errorMessages';
+import { writeProfileCompleteFlag } from '@/utils/profileCompletion';
+import { unwrapProfilePayload } from '@/utils/profilePayload';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQueryClient } from '@tanstack/react-query';
-import { Phone, User } from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { Camera, Phone, User } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  pickProfileImageUriFromApi,
+  readLocalClientProfileImageUri,
+  writeLocalClientProfileImageUri,
+} from '@/utils/clientProfilePhoto';
+import { AvatarCircle } from './AvatarCircle';
+import { InputField } from './InputField';
 import SafeAreaWrapper from './SafeAreaWrapper';
 import { ScreenHeader } from './ScreenHeader';
-import { InputField } from './InputField';
 import { Button } from './ui/Button';
-import Toast from '@/components/Toast';
 
 export interface ProfileCompletionData {
   fullName: string;
   phoneNumber: string;
   gender: string;
+  /** Local URI of the photo they chose, if they chose one. */
+  profileImageUri?: string;
 }
 
 interface ProfileCompletionModalProps {
@@ -40,6 +49,7 @@ export default function ProfileCompletionModal({
   const [fullName, setFullName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [gender, setGender] = useState('');
+  const [profileImage, setProfileImage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   /** Shown inside the modal - toasts are often hidden behind nested modals */
   const [inlineError, setInlineError] = useState('');
@@ -65,6 +75,15 @@ export default function ProfileCompletionModal({
         if (phoneDigits.length >= 10) {
           setPhoneNumber(phoneDigits);
         }
+        /**
+         * A photo they have already got, so coming back to this screen does
+         * not look like it forgot. Either source: the account may carry one,
+         * and this phone certainly does once they have picked it here.
+         */
+        const existingPhoto =
+          pickProfileImageUriFromApi(profileRaw) ?? (await readLocalClientProfileImageUri());
+        if (!cancelled && existingPhoto) setProfileImage(existingPhoto);
+
         const genderRaw = String(unwrapProfilePayload(profileRaw).gender ?? '').trim();
         if (genderRaw) {
           const normalized =
@@ -104,6 +123,51 @@ export default function ProfileCompletionModal({
       gender: genderLower,
       email: email || undefined,
     });
+  };
+
+  /**
+   * Their photo, picked here rather than three screens into the settings.
+   *
+   * Asked for at sign-up because of where it shows up: the provider sees it
+   * when they accept the job, and both sides see it in the chat header and on
+   * a call. A booking where one party is a grey circle with two letters in it
+   * is the one the other party trusts least, and nobody goes looking for an
+   * avatar field later.
+   *
+   * Optional on this side, deliberately: there is no server upload for a
+   * customer photo yet, so it lives on this handset, and blocking sign-up on
+   * something that does not survive a reinstall would be the wrong trade.
+   */
+  const handlePickPhoto = async () => {
+    if (isSubmitting) return;
+
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      showError('Allow photo access to add a profile picture.');
+      return;
+    }
+
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        /**
+         * Compressed, and squared by the editor above. An avatar is drawn at
+         * most 100pt across, and sending a 4MB phone photograph for it is
+         * data somebody paid for and bandwidth the upload has to find.
+         */
+        quality: 0.6,
+      });
+      if (result.canceled || !result.assets?.[0]?.uri) return;
+
+      const uri = result.assets[0].uri;
+      setProfileImage(uri);
+      haptics.light();
+      await writeLocalClientProfileImageUri(uri);
+    } catch {
+      showError('Could not open your photos. Please try again.');
+    }
   };
 
   const handleComplete = async () => {
@@ -172,6 +236,8 @@ export default function ProfileCompletionModal({
       await writeProfileCompleteFlag(userId);
       await queryClient.invalidateQueries({ queryKey: ['profile', 'current'] });
 
+      const chosenPhoto = profileImage;
+
       setFullName('');
       setPhoneNumber('');
       setGender('');
@@ -183,6 +249,7 @@ export default function ProfileCompletionModal({
           fullName: name,
           phoneNumber: trimmedPhone,
           gender: genderLower,
+          profileImageUri: chosenPhoto ?? undefined,
         });
       }, 300);
     } catch (error: any) {
@@ -229,20 +296,49 @@ export default function ProfileCompletionModal({
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={styles.iconContainer}>
-          <User size={26} color={Colors.accent} />
-        </View>
-
         <ScrollView
           style={{ flex: 1 }}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-          {/* Title - Shown only for first-time users who haven't completed profile */}
           <Text style={styles.title}>Complete Your Profile</Text>
           <Text style={styles.subtitle}>
-            Add your full name, phone, and gender to continue.
+            Add your name, phone and gender to continue. A photo is optional.
           </Text>
+
+          {/**
+            * The photo first, because it is the one thing on this screen that
+            * is about being recognised rather than about being reachable.
+            */}
+          <View style={styles.photoRow}>
+            <TouchableOpacity
+              onPress={() => void handlePickPhoto()}
+              activeOpacity={0.8}
+              disabled={isSubmitting}
+              accessibilityRole="button"
+              accessibilityLabel={profileImage ? 'Change your photo' : 'Add a photo'}
+              style={styles.photoTarget}
+            >
+              <AvatarCircle
+                uri={profileImage}
+                name={fullName}
+                size={74}
+                backgroundColor={Colors.backgroundGray}
+                borderColor={Colors.border}
+              />
+              <View style={styles.photoBadge}>
+                <Camera size={14} color={Colors.white} strokeWidth={2.4} />
+              </View>
+            </TouchableOpacity>
+            <View style={styles.photoCopy}>
+              <Text style={styles.photoTitle}>
+                {profileImage ? 'Photo added' : 'Add a profile photo'}
+              </Text>
+              <Text style={styles.photoHint}>
+                Your provider sees this when they take your job, and in chat and calls.
+              </Text>
+            </View>
+          </View>
 
           {inlineError ? (
             <View style={styles.inlineErrorBanner}>
@@ -350,17 +446,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins-SemiBold',
     color: Colors.textSecondaryDark,
   },
-  /** Left-aligned with the form, like a screen - not centred like a sheet. */
-  iconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: Colors.successLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: Spacing.xs,
-    marginBottom: Spacing.md,
-  },
   scrollContent: {
     flexGrow: 1,
     paddingBottom: Spacing.lg,
@@ -381,6 +466,42 @@ const styles = StyleSheet.create({
     textAlign: 'left',
     marginBottom: Spacing.xl,
     lineHeight: 21,
+  },
+  photoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Spacing.xl,
+  },
+  photoTarget: {
+    marginRight: Spacing.md,
+  },
+  photoBadge: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: Colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: Colors.white,
+  },
+  photoCopy: {
+    flex: 1,
+  },
+  photoTitle: {
+    fontSize: 14,
+    fontFamily: 'Poppins-SemiBold',
+    color: Colors.textPrimary,
+    marginBottom: 2,
+  },
+  photoHint: {
+    fontSize: 12,
+    fontFamily: 'Poppins-Regular',
+    color: Colors.textSecondaryDark,
+    lineHeight: 17,
   },
   inlineErrorBanner: {
     backgroundColor: '#FEF2F2',

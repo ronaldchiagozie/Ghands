@@ -170,12 +170,23 @@ export function exitPaymentToJob(router: RouterWithReturn, requestId: string | n
   navigateToJob(router, { requestId, tab: 'updates', dismissTo: true });
 }
 
-/** Chat opened from job hub passes `fromJobHub=1` so "View job" pops instead of stacking another details screen. */
+/**
+ * Chat opened from job hub passes `fromJobHub=1` so "View job" pops instead of
+ * stacking another details screen.
+ *
+ * `peerImage` is whoever you are talking to. Every screen that opens a chat
+ * already has their photo on it - the job hub draws it right next to the
+ * button - and the call screen has taken it for a while, but the chat did not,
+ * so tapping through from a card showing the plumber's face landed on a header
+ * showing their initials. It is passed rather than fetched because the sender
+ * has it in hand and the chat header should not wait on a request to draw.
+ */
 export function buildChatScreenParams(opts: {
   requestId: string | number;
   providerName?: string;
   providerId?: string;
   clientName?: string;
+  peerImage?: string | null;
   fromJobHub?: boolean;
 }): Record<string, string> {
   const params: Record<string, string> = {
@@ -184,6 +195,7 @@ export function buildChatScreenParams(opts: {
   if (opts.providerName) params.providerName = opts.providerName;
   if (opts.providerId) params.providerId = opts.providerId;
   if (opts.clientName) params.clientName = opts.clientName;
+  if (opts.peerImage?.trim()) params.peerImage = opts.peerImage.trim();
   if (opts.fromJobHub) params.fromJobHub = '1';
   return params;
 }

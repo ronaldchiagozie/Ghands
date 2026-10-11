@@ -103,6 +103,8 @@ export default function CallScreen() {
         providerName: isProvider ? undefined : name,
         clientName: isProvider ? name : undefined,
         providerId: params.callerId,
+        /** The face the call is showing, so the chat it hops to shows the same one. */
+        peerImage: params.callerImage,
         requestId: params.requestId,
         fromJobHub: true,
       }),
@@ -112,6 +114,7 @@ export default function CallScreen() {
     isProvider,
     name,
     params.callerId,
+    params.callerImage,
     params.requestId,
     isLive,
     navigation,

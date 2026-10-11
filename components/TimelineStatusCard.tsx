@@ -130,6 +130,7 @@ const TimelineStatusCardComponent = ({
         providerName: provider?.name,
         providerId: provider?.id?.toString(),
         requestId: normalizedRequestId,
+        peerImage: pickProviderImageUriFromRecord(provider),
         fromJobHub: true,
       }),
     } as any);

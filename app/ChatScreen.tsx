@@ -49,6 +49,7 @@ import { exitChatToJobHub } from '@/utils/navigation';
 import { formatLastActiveLabel, isPeerRecentlyActive } from '@/utils/chatFormatting';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AvatarCircle } from '@/components/AvatarCircle';
+import { pickProviderImageUriFromRecord } from '@/utils/clientProfilePhoto';
 import { resolveMessageOwnership } from '@/contract/src/messageOwnership';
 import ToolPattern from '@/components/ToolPattern';
 import { isConversationClosedError } from '@/utils/conversationAccess';
@@ -162,6 +163,8 @@ export default function ChatScreen() {
     providerName?: string; 
     providerId?: string; 
     clientName?: string;
+    /** Whoever you are talking to, from the screen that opened this one. */
+    peerImage?: string;
     requestId?: string;
     fromJobHub?: string;
   }>();
@@ -227,6 +230,39 @@ export default function ChatScreen() {
   const deletedIdsKey = isValidRequestId ? `@ghands:chat_deleted_ids:${requestId}` : null;
   const providerIdNum = params.providerId ? Number(params.providerId) : null;
   const peerName = isProviderView ? clientName : providerName;
+
+  /**
+   * The person you are talking to, as a face.
+   *
+   * The header drew initials for everybody, because nothing ever handed this
+   * screen a photo - so a customer who tapped chat on a card showing their
+   * plumber arrived at a header that had forgotten what they look like. The
+   * param is the fast path; the lookup below is for the ways in that have no
+   * photo to hand, mainly a notification opening the thread cold.
+   */
+  const [resolvedPeerImage, setResolvedPeerImage] = useState<string | null>(null);
+  const peerImage = params.peerImage?.trim() || resolvedPeerImage;
+
+  useEffect(() => {
+    if (params.peerImage?.trim() || !isValidRequestId) return;
+    let active = true;
+    (async () => {
+      try {
+        const details = await serviceRequestService.getRequestDetails(requestId!);
+        if (!active) return;
+        const record = isProviderView
+          ? details.client ?? details.user
+          : details.selectedProvider ?? details.provider;
+        const uri = pickProviderImageUriFromRecord(record);
+        if (uri) setResolvedPeerImage(uri);
+      } catch {
+        /* initials remain, which is what this screen always showed */
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [params.peerImage, isValidRequestId, requestId, isProviderView]);
 
   const chatListItems = useMemo(() => buildChatListItems(messages), [messages]);
 
@@ -1122,9 +1158,10 @@ height: MIN_TOUCH_TARGET,
                 * The person you are talking to. This was a stock photo one way
                 * and a plumber icon the other, so the header showed a stranger's
                 * face to providers and a wrench to customers - neither of which
-                * was the peer named directly beside it.
+                * was the peer named directly beside it. Their own photo now,
+                * and their initials only when they have not got one.
                 */}
-              <AvatarCircle name={peerName} size={42} borderColor="transparent" />
+              <AvatarCircle uri={peerImage} name={peerName} size={42} borderColor="transparent" />
               {showActiveDot ? (
                 <View
                   style={{
@@ -1181,6 +1218,8 @@ height: MIN_TOUCH_TARGET,
                     callState: 'outgoing',
                     callerName: isProviderView ? clientName : providerName,
                     callerId: params.providerId,
+                    /** The call screen has always drawn this; nothing was passing it. */
+                    callerImage: peerImage ?? undefined,
                     requestId: params.requestId,
                     isProvider: isProviderView ? 'true' : 'false',
                   });

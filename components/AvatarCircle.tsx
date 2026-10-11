@@ -1,6 +1,7 @@
+import { Image } from 'expo-image';
 import { User } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
-import { Image, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { CompanyAvatarIcon } from '@/components/CompanyAvatarIcon';
 import { Colors } from '@/lib/designSystem';
@@ -109,10 +110,24 @@ export function AvatarCircle({
       ]}
     >
       {showPhoto ? (
+        /**
+          * expo-image, for the cache. React Native's Image re-fetches a
+          * remote avatar from the network on each cold start, and this
+          * component draws the same handful of faces over and over - the chat
+          * list, the map, every pin, every job card, the call screen. On a
+          * metered Nigerian mobile plan that is the same few hundred
+          * kilobytes bought again every morning. memory-disk keeps them.
+          *
+          * recyclingKey matters in the lists: without it a recycled row shows
+          * the previous person's face for a frame before the right one loads.
+          */
         <Image
           source={{ uri: trimmed }}
           style={{ width: size, height: size }}
-          resizeMode="cover"
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          recyclingKey={trimmed}
+          transition={120}
           onError={() => setLoadFailed(true)}
         />
       ) : initials ? (
