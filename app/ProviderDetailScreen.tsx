@@ -6,10 +6,11 @@ import { providerService } from '@/services/api';
 import { formatSkillLabel } from '@/utils/formatSkillLabel';
 import { buildReviewerDisplayName, reviewAvatarUrl } from '@/utils/reviewerDisplayName';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Images, MapPin, MessageCircleMore, Star, User, X } from 'lucide-react-native';
+import { ArrowLeft, MapPin, MessageCircleMore, Star, User, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AvatarCircle } from '@/components/AvatarCircle';
+import { pickProviderImageUriFromRecord } from '@/utils/clientProfilePhoto';
 import {
   ActivityIndicator,
   Image,
@@ -199,8 +200,21 @@ export default function ProviderDetailScreen() {
        * written, so they were dead reads that only made it look as though demo
        * data were expected to fill the gaps.
        */
-      const primaryAvatar = imageUrls[0] || '';
-      const galleryFromImageEndpoint = imageUrls.slice(1);
+      /**
+       * Their profile photo, not the first picture in their portfolio.
+       *
+       * This took imageUrls[0], which comes from the work-photos endpoint -
+       * so a provider who had uploaded a profile photo still showed initials
+       * here if their gallery was empty, and showed a photo of a finished
+       * kitchen if it was not. The field the provider app actually writes
+       * when they set their photo is profileImageUrl; it is read first now,
+       * and a work photo is only the fallback it always should have been.
+       */
+      const primaryAvatar =
+        pickProviderImageUriFromRecord(p) ?? pickProviderImageUriFromRecord(data) ?? imageUrls[0] ?? '';
+      /** Only drop the first image from the gallery if that is what the avatar is using. */
+      const galleryFromImageEndpoint =
+        primaryAvatar && primaryAvatar === imageUrls[0] ? imageUrls.slice(1) : imageUrls;
       const uniqueRecent = [
         ...new Set([...profileWorkUrls, ...fromAnalyticsReviews, ...galleryFromImageEndpoint]),
       ];
@@ -708,36 +722,15 @@ export default function ProviderDetailScreen() {
                 }}
               />
             ))}
-            {provider.recentWork.length === 0 &&
-              [0, 1, 2].map((slot) => (
-                <View
-                  key={`work-placeholder-${slot}`}
-                  style={{
-                    width: 112,
-                    height: 112,
-                    borderRadius: BorderRadius.lg,
-                    backgroundColor: Colors.backgroundGray,
-                    borderWidth: 1,
-                    borderColor: Colors.border,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    paddingHorizontal: 8,
-                  }}
-                >
-                  <Images size={28} color={Colors.textTertiary} />
-                  <Text
-                    style={{
-                      marginTop: 6,
-                      fontSize: 11,
-                      fontFamily: 'Poppins-Medium',
-                      color: Colors.textSecondaryDark,
-                      textAlign: 'center',
-                    }}
-                  >
-                    Photos coming soon
-                  </Text>
-                </View>
-              ))}
+            {/**
+              * Nothing stands in for photos that do not exist.
+              *
+              * Three identical grey tiles reading "Photos coming soon" filled
+              * the row of somebody with no gallery - which looks like work
+              * from a distance, on the screen where a customer is deciding
+              * whether to let this person into their home. The sentence
+              * below says it instead, once and truthfully.
+              */}
           </ScrollView>
           {provider.recentWork.length === 0 && (
             <Text
