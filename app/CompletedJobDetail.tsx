@@ -23,6 +23,7 @@ import { pickProviderImageUriFromRecord } from '@/utils/clientProfilePhoto';
 import { JOB_TIMELINE } from '@/lib/jobTimelineTheme';
 import { CLIENT_HOME_SCROLL_GUTTER } from '@/lib/tabletLayout';
 import { formatTimeAgo } from '@/utils/dateFormatting';
+import { formatNaira, quotationTotal, resolveJobTotal } from '@/utils/jobTotal';
 import { logRatingDebug, logRatingError } from '@/utils/ratingDebugLog';
 import { API_BASE_URL } from '@/lib/apiConfig';
 import {
@@ -69,6 +70,17 @@ export default function CompletedJobDetail() {
   const [comment, setComment] = useState<string>('');
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [hasSubmittedReview, setHasSubmittedReview] = useState(false);
+  /**
+   * What the job came to, from the accepted quotation.
+   *
+   * The request record does not reliably carry a total - every key it
+   * might arrive under was empty on a job whose receipt reads ₦40.00 - so
+   * this screen printed ₦0.00 and then, once that was stopped, "Not
+   * available". The receipt gets the figure from the accepted quotation,
+   * and so can this: same source, same number, no disagreement between
+   * two screens one tap apart.
+   */
+  const [quotedTotal, setQuotedTotal] = useState<number | null>(null);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [postReviewThankYou, setPostReviewThankYou] = useState(false);
   /** Your numeric rating (1-5) for this job - storage + API */
@@ -186,24 +198,36 @@ export default function CompletedJobDetail() {
 
       const fromRecord =
         [requestDetails.selectedProvider, requestDetails.provider].find(named) ?? null;
+      if (fromRecord) setSelectedProvider(fromRecord as any);
 
-      if (fromRecord) {
-        setSelectedProvider(fromRecord as any);
-      } else {
-        try {
-          const acceptedProviders = await serviceRequestService.getAcceptedProviders(requestId);
-          const fromAccepted = acceptedProviders?.map((row) => row.provider).find(named) ?? null;
-          if (fromAccepted) {
-            setSelectedProvider(fromAccepted as any);
-          } else {
-            const quotations = await serviceRequestService.getQuotations(requestId);
-            const accepted = quotations?.find((q: any) => q?.status === 'accepted') as any;
-            const fromQuote = [accepted?.provider, quotations?.[0] && (quotations[0] as any).provider].find(named);
-            if (fromQuote) setSelectedProvider(fromQuote as any);
-          }
-        } catch {
-          // Nothing names them; the card says the name is unavailable.
+      /**
+       * The quotations, always - not only when the provider name is missing.
+       *
+       * They carry the figure this screen reports as the total, so skipping
+       * the call whenever a name happened to be on the record is what left
+       * the amount blank on most finished jobs.
+       */
+      try {
+        const quotations = await serviceRequestService.getQuotations(requestId);
+        const accepted =
+          (quotations?.find((q: any) => q?.status === 'accepted') as any) ??
+          (quotations?.[0] as any) ??
+          null;
+
+        if (!fromRecord) {
+          const fromAccepted = await serviceRequestService
+            .getAcceptedProviders(requestId)
+            .then((rows) => rows?.map((row) => row.provider).find(named) ?? null)
+            .catch(() => null);
+          const resolved = fromAccepted ?? [accepted?.provider].find(named) ?? null;
+          if (resolved) setSelectedProvider(resolved as any);
         }
+
+        /** utils/jobTotal: the same arithmetic the receipt uses, with tests. */
+        const total = quotationTotal(accepted);
+        if (total > 0) setQuotedTotal(total);
+      } catch {
+        /* the row falls back to the record, and then to saying so */
       }
       
       // Trigger success haptic for completed job
@@ -424,29 +448,17 @@ export default function CompletedJobDetail() {
          * zero is a statement about what somebody paid, and it was wrong.
          */
         subtitle: (() => {
-          const record = request as unknown as Record<string, unknown>;
-          const raw = [
-            record.totalCost,
-            record.total_amount,
-            record.paymentAmount,
-            record.amount,
-            record.amountDueOnArrival,
-          ].find((value) => {
-            const n = Number(value);
-            return value != null && value !== '' && Number.isFinite(n) && n > 0;
-          });
-
-          return raw == null
-            ? 'Not available'
-            : `₦${Number(raw).toLocaleString('en-NG', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}`;
+          /**
+           * The quotation first - it is where the receipt looks, so this
+           * is what stops the two screens disagreeing. See utils/jobTotal.
+           */
+          const total = resolveJobTotal(quotedTotal != null ? { total: quotedTotal } : null, request);
+          return total == null ? 'Not available' : formatNaira(total);
         })(),
         icon: <Banknote color={Colors.accent} size={18} />
       }
     ];
-  }, [request]);
+  }, [request, quotedTotal]);
 
   /** The amount, taken from the row the list already resolved. */
   const totalCostLabel =
