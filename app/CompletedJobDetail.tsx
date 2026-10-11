@@ -416,25 +416,45 @@ export default function CompletedJobDetail() {
       },
       {
         name: 'Total Cost',
-        subtitle: request.totalCost
-          ? `₦${Number(request.totalCost).toLocaleString('en-NG', {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}`
-          : '₦0.00',
+        /**
+         * The amount, from whichever key carries it, and never a zero.
+         *
+         * This read `totalCost` alone and printed ₦0.00 when it was absent -
+         * on a job whose own receipt, one tap away, said ₦40.00. A price of
+         * zero is a statement about what somebody paid, and it was wrong.
+         */
+        subtitle: (() => {
+          const record = request as unknown as Record<string, unknown>;
+          const raw = [
+            record.totalCost,
+            record.total_amount,
+            record.paymentAmount,
+            record.amount,
+            record.amountDueOnArrival,
+          ].find((value) => {
+            const n = Number(value);
+            return value != null && value !== '' && Number.isFinite(n) && n > 0;
+          });
+
+          return raw == null
+            ? 'Not available'
+            : `₦${Number(raw).toLocaleString('en-NG', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}`;
+        })(),
         icon: <Banknote color={Colors.accent} size={18} />
       }
     ];
   }, [request]);
 
-  useEffect(() => {
-    if (!request || request.status !== 'completed') return;
-    if (completedContactToastShown.current) return;
-    completedContactToastShown.current = true;
-    showInfo(
-      'Messaging and calls are not available after a job is completed. For issues, use Help & Support to reach our team.'
-    );
-  }, [request?.id, request?.status, showInfo]);
+  /**
+   * No toast. It said the same thing as the notice permanently on this
+   * screen, a few hundred pixels above it - so opening a finished job threw
+   * a blue banner over the header to repeat a sentence already sitting in
+   * the body, and the one it covered was the title. The card stays; the
+   * banner goes.
+   */
 
   if (isLoading) {
     return (

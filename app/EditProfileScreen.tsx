@@ -14,14 +14,19 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { showAppAlert } from '@/components/AppAlertHost';
+import Toast from '@/components/Toast';
+import { useToast } from '@/hooks/useToast';
+import { haptics } from '@/hooks/useHaptics';
+import { AvatarCircle } from '@/components/AvatarCircle';
+import { uploadImageUri } from '@/utils/aiImageUpload';
 import { InputField } from '../components/InputField';
 import { useCurrentUserProfile, useUpdateProfile } from '../hooks/useProfile';
-import { API_BASE_URL } from '../lib/apiConfig';
 import { ProfileFormData, profileFormSchema } from '../lib/validation';
 import {
   logClientProfilePhoto,
@@ -32,6 +37,16 @@ export default function EditProfileScreen() {
   const router = useRouter();
   const [profileImageUri, setProfileImageUri] = useState<string | undefined>();
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  /**
+   * Whether the photo has been changed on this visit.
+   *
+   * Save is gated on the form being valid and dirty, and a photo is not a
+   * form field - so picking one left Save greyed out, and the photo could
+   * not be saved at all unless you also happened to edit your name. Which
+   * is the whole reason "adding an image doesn't work".
+   */
+  const [photoChanged, setPhotoChanged] = useState(false);
+  const { toast, showError, showSuccess, hideToast } = useToast();
 
   const { data: profile, isLoading: isLoadingProfile } = useCurrentUserProfile();
   
@@ -88,18 +103,19 @@ export default function EditProfileScreen() {
         },
       });
 
-      showAppAlert('Success', 'Profile updated', [
-        {
-          text: 'OK',
-          onPress: () => router.back(),
-        },
-      ]);
+      /**
+       * A toast, then out. Saving used to raise a modal reading "Success /
+       * Profile updated" with an OK button - a dialog whose only purpose was
+       * to be dismissed, in front of a screen that was already finished.
+       */
+      setPhotoChanged(false);
+      haptics.success();
+      showSuccess('Profile updated');
+      setTimeout(() => router.back(), 700);
     } catch (error) {
-      showAppAlert(
-        'Error',
-        error instanceof Error
-          ? error.message
-          : 'Failed to update profile. Please try again.'
+      haptics.error();
+      showError(
+        error instanceof Error ? error.message : 'Could not save your profile. Please try again.',
       );
     }
   };
@@ -145,10 +161,10 @@ export default function EditProfileScreen() {
     }
 
     const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.8,
+      quality: 0.6,
     });
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
@@ -158,10 +174,10 @@ export default function EditProfileScreen() {
 
   const openGallery = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.8,
+      quality: 0.6,
     });
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
@@ -169,52 +185,37 @@ export default function EditProfileScreen() {
     }
   };
 
+  /**
+   * Sends the photo up, and shows it either way.
+   *
+   * It used to roll its own upload: a POST with `Content-Type:
+   * multipart/form-data` set by hand - which omits the boundary, so the
+   * server cannot parse the body - and no Authorization header. Both
+   * guarantee failure. uploadImageUri is the call the booking photos and
+   * Handy already use: it attaches the bearer token and lets fetch set the
+   * content type with its boundary, and returns the local URI unchanged if
+   * the server will not take it.
+   */
   const handleImageUpload = async (imageUri: string) => {
     setIsUploadingImage(true);
     logClientProfilePhoto('pick_image', { localUriPreview: `${imageUri.slice(0, 40)}…` });
     try {
-      const formData = new FormData();
-      const filename = imageUri.split('/').pop() || 'profile.jpg';
-      const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1]}` : `image/jpeg`;
+      const resolved = await uploadImageUri(imageUri);
+      const reachedServer = resolved !== imageUri;
+      logClientProfilePhoto('upload_done', { usedRemoteUrl: reachedServer });
 
-      formData.append('image', {
-        uri: imageUri,
-        name: filename,
-        type,
-      } as any);
+      setProfileImageUri(resolved);
+      setPhotoChanged(true);
+      await writeLocalClientProfileImageUri(resolved);
+      haptics.light();
 
-      const uploadUrl = `${API_BASE_URL}/upload`;
-      logClientProfilePhoto('upload_attempt', { uploadUrl });
-
-      const response = await fetch(uploadUrl, {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const remoteUrl = data.imageUrl || data.url || data.data?.url;
-        const resolved = typeof remoteUrl === 'string' && remoteUrl.trim() ? remoteUrl : imageUri;
-        logClientProfilePhoto('upload_ok', {
-          status: response.status,
-          usedRemoteUrl: resolved !== imageUri,
-          resolvedPreview: `${String(resolved).slice(0, 48)}…`,
-        });
-        setProfileImageUri(resolved);
-        await writeLocalClientProfileImageUri(resolved);
-      } else {
-        const bodyText = await response.text().catch(() => '');
-        logClientProfilePhoto('upload_failed', {
-          status: response.status,
-          bodyPreview: bodyText.slice(0, 120),
-          fallback: 'using_local_file_uri_only',
-        });
-        setProfileImageUri(imageUri);
-        await writeLocalClientProfileImageUri(imageUri);
+      /**
+       * Said plainly, because it decides whether the photo survives a
+       * reinstall. The old code failed silently and left somebody looking at
+       * a picture they had every reason to think was saved.
+       */
+      if (!reachedServer) {
+        showError('Photo saved on this device only. We could not upload it.');
       }
     } catch (error) {
       logClientProfilePhoto('upload_error', {
@@ -222,13 +223,16 @@ export default function EditProfileScreen() {
         fallback: 'using_local_file_uri_only',
       });
       setProfileImageUri(imageUri);
+      setPhotoChanged(true);
       await writeLocalClientProfileImageUri(imageUri);
+      showError('Photo saved on this device only. We could not upload it.');
     } finally {
       setIsUploadingImage(false);
     }
   };
 
-  const isSaveDisabled = isSubmitting || !isValid || updateProfileMutation.isPending;
+  const isSaveDisabled =
+    isSubmitting || !isValid || isUploadingImage || updateProfileMutation.isPending;
   const showHeaderLoader = isLoadingProfile;
   const keyboardOffset = useKeyboardAvoidingOffset();
   const phoneSectionY = useRef(0);
@@ -262,150 +266,215 @@ export default function EditProfileScreen() {
         keyboardDismissMode="on-drag"
         contentContainerStyle={{ paddingBottom: scrollBottomPad }}
       >
-        <View className="pt-8" style={{ paddingHorizontal: 20 }}>
-          
-          <View className="items-center mb-8">
-            <View className="relative">
-              <View
-                style={{
-                  width: 128,
-                  height: 128,
-                  backgroundColor: Colors.white,
-                  borderRadius: BorderRadius.full,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  borderWidth: 1,
-                  borderColor: Colors.border,
-                  overflow: 'hidden',
-                }}
-              >
+        <View style={{ paddingHorizontal: 20, paddingTop: 24 }}>
+          {/**
+            * The photo, with something that says it can be changed.
+            *
+            * This was a white circle floating on grey with a camera badge
+            * clipped to its corner, and nothing else - no label, no words,
+            * and the fields below it sitting loose on the background with
+            * neither grouping nor names. The whole screen read as three
+            * stray rows and a disabled button on an empty page.
+            */}
+          <View style={{ alignItems: 'center', marginBottom: 28 }}>
+            <TouchableOpacity
+              onPress={handleImagePicker}
+              activeOpacity={0.85}
+              disabled={isUploadingImage}
+              accessibilityRole="button"
+              accessibilityLabel={profileImageUri ? 'Change your photo' : 'Add a photo'}
+            >
+              <View>
+                <AvatarCircle
+                  uri={profileImageUri}
+                  name={name}
+                  size={112}
+                  borderWidth={3}
+                  borderColor={Colors.white}
+                  backgroundColor={Colors.successLight}
+                />
                 {isUploadingImage ? (
-                  <ActivityIndicator size="large" color={Colors.accent} />
-                ) : profileImageUri ? (
-                  <Image
-                    source={{ uri: profileImageUri }}
-                    style={{ width: 128, height: 128, borderRadius: BorderRadius.full }}
-                    resizeMode="cover"
-                  />
+                  <View
+                    style={{
+                      position: 'absolute',
+                      width: 112,
+                      height: 112,
+                      borderRadius: 56,
+                      backgroundColor: 'rgba(17, 24, 39, 0.45)',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <ActivityIndicator color={Colors.white} />
+                  </View>
                 ) : (
-                  <User size={60} color={Colors.accent} />
+                  <View
+                    style={{
+                      position: 'absolute',
+                      right: -2,
+                      bottom: -2,
+                      width: 34,
+                      height: 34,
+                      borderRadius: 17,
+                      backgroundColor: Colors.accent,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderWidth: 3,
+                      borderColor: Colors.backgroundGray,
+                    }}
+                  >
+                    <Camera size={16} color={Colors.white} />
+                  </View>
                 )}
               </View>
-              <TouchableOpacity
-                style={{
-                  position: 'absolute',
-                  bottom: 0,
-                  right: 0,
-                  backgroundColor: Colors.accent,
-                  borderRadius: BorderRadius.full,
-                  padding: 12,
-                  borderWidth: 2,
-                  borderColor: Colors.white,
-                }}
-                onPress={handleImagePicker}
-              >
-                <Camera size={20} color={Colors.white} />
-              </TouchableOpacity>
-            </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={handleImagePicker}
+              disabled={isUploadingImage}
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}
+              style={{ marginTop: 12 }}
+            >
+              <Text style={{ fontSize: 14, fontFamily: 'Poppins-SemiBold', color: Colors.accent }}>
+                {isUploadingImage
+                  ? 'Uploading…'
+                  : profileImageUri
+                    ? 'Change photo'
+                    : 'Add a photo'}
+              </Text>
+            </TouchableOpacity>
           </View>
 
-          
-          <View className="space-y-4">
-            <View>
+          {/** One card, labelled fields, so the form reads as a form. */}
+          <View
+            style={{
+              backgroundColor: Colors.white,
+              borderRadius: BorderRadius.xl,
+              borderWidth: 1,
+              borderColor: Colors.border,
+              paddingHorizontal: 16,
+              paddingTop: 18,
+              paddingBottom: 6,
+            }}
+          >
+            <View style={{ marginBottom: 18 }}>
+              <Text style={styles.fieldLabel}>Full name</Text>
               <InputField
-                placeholder="Mike Plumbings"
+                placeholder="Your full name"
                 icon={<User size={20} color="white" />}
                 value={name}
                 onChangeText={(text) => setValue('name', text, { shouldValidate: true })}
                 keyboardType="default"
+                autoCapitalize="words"
+                error={!!errors.name}
+                errorMessage={errors.name?.message}
               />
-              {errors.name && (
-                <Text
-                  className="text-xs mt-1 px-4"
-                  style={{ fontFamily: 'Poppins-Medium', color: Colors.error }}
-                >
-                  {errors.name.message}
-                </Text>
-              )}
             </View>
 
-            <View>
+            <View style={{ marginBottom: 18 }}>
+              <Text style={styles.fieldLabel}>Email</Text>
               <InputField
-                placeholder="miketheplumber@gmail.com"
+                placeholder="you@example.com"
                 icon={<Mail size={20} color="white" />}
                 value={email}
                 onChangeText={(text) => setValue('email', text, { shouldValidate: true })}
                 keyboardType="email-address"
+                autoCapitalize="none"
+                error={!!errors.email}
+                errorMessage={errors.email?.message}
               />
-              {errors.email && (
-                <Text
-                  className="text-xs mt-1 px-4"
-                  style={{ fontFamily: 'Poppins-Medium', color: Colors.error }}
-                >
-                  {errors.email.message}
-                </Text>
-              )}
             </View>
 
             <View
+              style={{ marginBottom: 18 }}
               onLayout={(event) => {
                 phoneSectionY.current = event.nativeEvent.layout.y;
               }}
             >
+              <Text style={styles.fieldLabel}>Phone number</Text>
               <InputField
-                placeholder="08100055522"
+                placeholder="08012345678"
                 icon={<Phone size={20} color="white" />}
                 value={phone}
                 onChangeText={(text) => setValue('phone', text, { shouldValidate: true })}
                 keyboardType="phone-pad"
+                error={!!errors.phone}
+                errorMessage={errors.phone?.message}
                 onFocus={() => scrollFieldIntoView(phoneSectionY.current, true)}
               />
-              {errors.phone && (
-                <Text
-                  className="text-xs mt-1 px-4"
-                  style={{ fontFamily: 'Poppins-Medium', color: Colors.error }}
-                >
-                  {errors.phone.message}
-                </Text>
-              )}
             </View>
           </View>
 
-          
-          <TouchableOpacity
+          <Text
             style={{
-              borderRadius: BorderRadius.default,
-              paddingVertical: 16,
-              paddingHorizontal: 24,
-              marginTop: 24,
-              alignItems: 'center',
-              backgroundColor: isSaveDisabled ? Colors.borderStrong : Colors.accent,
+              fontSize: 12,
+              lineHeight: 17,
+              fontFamily: 'Poppins-Regular',
+              color: Colors.textSecondaryDark,
+              marginTop: 12,
+              paddingHorizontal: 2,
             }}
-            onPress={handleSubmit(onSubmit)}
-            disabled={isSaveDisabled}
-            activeOpacity={0.7}
           >
-            {updateProfileMutation.isPending ? (
-              <ActivityIndicator color={Colors.white} />
-            ) : (
-              <Text
-                style={{
-                  fontFamily: 'Poppins-SemiBold',
-                  fontSize: 16,
-                  color: Colors.white,
-                }}
-              >
-                Save changes
-              </Text>
-            )}
-          </TouchableOpacity>
+            Your name and phone are what a provider sees when they take your job.
+          </Text>
         </View>
 
-        
-        <View style={{ height: 100 }} />
+        <View style={{ height: 24 }} />
       </ScrollView>
+
+      {/**
+        * Pinned, not floating two thirds up an empty page. The action that
+        * finishes a form belongs at the bottom edge of it.
+        */}
+      <View
+        style={{
+          paddingHorizontal: 20,
+          paddingTop: 12,
+          paddingBottom: 12,
+          borderTopWidth: 1,
+          borderTopColor: Colors.border,
+          backgroundColor: Colors.white,
+        }}
+      >
+        <TouchableOpacity
+          style={{
+            borderRadius: BorderRadius.default,
+            paddingVertical: 16,
+            alignItems: 'center',
+            backgroundColor: isSaveDisabled ? Colors.backgroundGray : Colors.accent,
+          }}
+          onPress={handleSubmit(onSubmit)}
+          disabled={isSaveDisabled}
+          activeOpacity={0.85}
+        >
+          {updateProfileMutation.isPending ? (
+            <ActivityIndicator color={Colors.white} />
+          ) : (
+            <Text
+              style={{
+                fontFamily: 'Poppins-SemiBold',
+                fontSize: 16,
+                color: isSaveDisabled ? Colors.textTertiary : Colors.white,
+              }}
+            >
+              Save changes
+            </Text>
+          )}
+        </TouchableOpacity>
+      </View>
       </KeyboardAvoidingView>
       </View>
+      <Toast message={toast.message} type={toast.type} visible={toast.visible} onClose={hideToast} />
     </SafeAreaWrapper>
   );
 }
+
+const styles = StyleSheet.create({
+  fieldLabel: {
+    fontSize: 13,
+    fontFamily: 'Poppins-SemiBold',
+    color: Colors.textPrimary,
+    marginBottom: 7,
+  },
+});

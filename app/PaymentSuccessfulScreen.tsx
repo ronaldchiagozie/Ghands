@@ -155,6 +155,21 @@ export default function PaymentSuccessfulScreen() {
   const [isEnriching, setIsEnriching] = useState(Boolean(params.requestId));
 
   const handleExit = useCallback(() => {
+    /**
+     * Back means back.
+     *
+     * This always re-navigated to the job, which is right straight after
+     * paying - there are payment screens underneath to dismiss. Opened from
+     * a finished job it was a round trip: the receipt sent you to the
+     * in-flight job screen, which sent you on to the completed job screen,
+     * so one tap on a back arrow walked through two redirects to land one
+     * screen behind where you started. If there is a screen underneath,
+     * that is the answer.
+     */
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
     if (params.requestId) {
       exitPaymentToJob(router, params.requestId);
       return;
