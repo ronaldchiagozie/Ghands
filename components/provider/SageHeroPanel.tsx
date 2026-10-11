@@ -1,21 +1,34 @@
 import { BorderRadius, Colors, useSageHeroPanelMetrics } from '@/lib/designSystem';
 import { surfaceElevation } from '@/lib/surfaceStyles';
 import React from 'react';
-import { StyleProp, View, ViewStyle } from 'react-native';
+import { Pressable, StyleProp, View, ViewStyle } from 'react-native';
 
 type SageHeroPanelProps = {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
   /** Skip responsive padding (e.g. profile summary with avatar uses custom inner layout). */
   useMetricsPadding?: boolean;
+  /** Makes the whole panel a button. Used where the panel represents one thing you can open. */
+  onPress?: () => void;
+  accessibilityLabel?: string;
 };
 
 /** Sage hero shell shared by provider home earnings, wallet balance, and profile panels. */
-export function SageHeroPanel({ children, style, useMetricsPadding = true }: SageHeroPanelProps) {
+export function SageHeroPanel({
+  children,
+  style,
+  useMetricsPadding = true,
+  onPress,
+  accessibilityLabel,
+}: SageHeroPanelProps) {
   const { paddingV, paddingH } = useSageHeroPanelMetrics();
+  const Container: React.ComponentType<any> = onPress ? Pressable : View;
 
   return (
-    <View
+    <Container
+      onPress={onPress}
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={accessibilityLabel}
       style={[
         {
           backgroundColor: Colors.accent,
@@ -60,6 +73,6 @@ export function SageHeroPanel({ children, style, useMetricsPadding = true }: Sag
         }}
       />
       {children}
-    </View>
+    </Container>
   );
 }

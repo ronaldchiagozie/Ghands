@@ -420,17 +420,25 @@ export default function LocationSearchScreen() {
           // Refresh location in hook
           await refreshLocation();
 
-          if (next === 'AddressBookScreen') {
-            try {
-              await appendAddressBookExtra({
-                fullAddress: (payload.formattedAddress || selectedLocation.fullAddress || '').trim(),
-                placeId: payload.placeId,
-                latitude: payload.latitude,
-                longitude: payload.longitude,
-              });
-            } catch {
-              /* non-fatal */
-            }
+          /**
+           * Every address goes in the book, not only the ones added from it.
+           *
+           * Saving a location replaces the account's single saved address, so
+           * an address set from the profile card or mid-booking overwrote the
+           * previous one and was never recorded anywhere - which is why the
+           * Address Book looked like a list that could only ever hold one
+           * thing. The book is the history of places you have used; this is
+           * the only place that knows when a new one is used.
+           */
+          try {
+            await appendAddressBookExtra({
+              fullAddress: (payload.formattedAddress || selectedLocation.fullAddress || '').trim(),
+              placeId: payload.placeId,
+              latitude: payload.latitude,
+              longitude: payload.longitude,
+            });
+          } catch {
+            /* non-fatal */
           }
           
           
@@ -443,15 +451,13 @@ export default function LocationSearchScreen() {
         } catch (error: any) {
           // Fallback to local storage
           await setLocation(selectedLocation.fullAddress);
-          if (next === 'AddressBookScreen') {
-            try {
-              await appendAddressBookExtra({
-                fullAddress: selectedLocation.fullAddress.trim(),
-                placeId: selectedLocation.placeId,
-              });
-            } catch {
-              /* ignore */
-            }
+          try {
+            await appendAddressBookExtra({
+              fullAddress: selectedLocation.fullAddress.trim(),
+              placeId: selectedLocation.placeId,
+            });
+          } catch {
+            /* ignore */
           }
           showSuccess('Location saved on this device');
           setTimeout(() => {
@@ -462,7 +468,7 @@ export default function LocationSearchScreen() {
         // If no placeId, try to get location details from search query
         // For now, just save locally
         await setLocation(searchQuery.trim());
-        if (next === 'AddressBookScreen' && typeof searchQuery === 'string' && searchQuery.trim()) {
+        if (typeof searchQuery === 'string' && searchQuery.trim()) {
           try {
             await appendAddressBookExtra({ fullAddress: searchQuery.trim() });
           } catch {

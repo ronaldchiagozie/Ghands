@@ -527,6 +527,8 @@ const ProfileScreen = () => {
           <ClientProfileHeroSkeleton marginTop={scrollBodyTopPad} />
         ) : (
           <SageHeroPanel
+            onPress={openEditProfile}
+            accessibilityLabel="Your account"
             style={{
               flexDirection: 'row',
               alignItems: 'center',
@@ -571,25 +573,46 @@ const ProfileScreen = () => {
                 {isCompany ? <CompanyBadge label="Company account" tone="dark" style={{ marginTop: -2, marginBottom: 8 }} /> : null}
               </TouchableOpacity>
 
+              {/**
+                * The address, and only the address.
+                *
+                * This row stretched the full width of the card and ended in a
+                * chevron at the far right edge - so the card's one visible
+                * "goes somewhere" mark belonged to the location search, and
+                * tapping the card anywhere right of the name opened Find
+                * location. Nobody taps their own name card expecting an
+                * address picker; they expect their account. The row is now
+                * only as wide as the address it shows, and the card itself
+                * carries the chevron.
+                */}
               <TouchableOpacity
                 onPress={openLocation}
                 activeOpacity={0.8}
-                style={{ flexDirection: 'row', alignItems: 'center', marginBottom: hasRating ? 6 : 0 }}
+                accessibilityRole="button"
+                accessibilityLabel={`Service address: ${displayLocation}. Change it.`}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  alignSelf: 'flex-start',
+                  maxWidth: '100%',
+                  marginBottom: hasRating ? 6 : 0,
+                }}
               >
                   <MapPin size={14} color="rgba(255,255,255,0.62)" style={{ flexShrink: 0 }} />
                   <Text
                     style={{
-                      flex: 1,
+                      flexShrink: 1,
                       fontSize: 13,
                       fontFamily: 'Poppins-Regular',
                       color: location ? 'rgba(255,255,255,0.68)' : 'rgba(255,255,255,0.92)',
                       marginLeft: 6,
+                      textDecorationLine: 'underline',
+                      textDecorationColor: 'rgba(255,255,255,0.3)',
                     }}
                     numberOfLines={2}
                   >
                     {displayLocation}
                   </Text>
-                  <ChevronRight size={14} color="rgba(255,255,255,0.5)" />
                 </TouchableOpacity>
 
                 {hasRating ? (
@@ -626,6 +649,8 @@ const ProfileScreen = () => {
                   </View>
                 ) : null}
               </View>
+
+            <ChevronRight size={18} color="rgba(255,255,255,0.55)" style={{ marginLeft: 6 }} />
             </SageHeroPanel>
         )}
 
