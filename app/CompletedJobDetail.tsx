@@ -449,6 +449,12 @@ export default function CompletedJobDetail() {
                 onBack={() => navigateBack(router, NAV_FALLBACK.clientJobs)}
                 backgroundColor="transparent"
                 backButtonBackgroundColor="transparent"
+                /**
+                  * No padding of its own: this header sits inside the page's
+                  * gutter already, so its own left padding was being added on
+                  * top and pushing the arrow in past every heading below it.
+                  */
+                style={{ paddingHorizontal: 0 }}
                 rightElement={
                   request ? (
                     <TouchableOpacity
@@ -490,7 +496,7 @@ export default function CompletedJobDetail() {
                     router.push({
                       pathname: '/ProviderDetailScreen',
                       params: {
-                        providerName: selectedProvider.name || 'Provider',
+                        providerName: selectedProvider.name ?? '',
                         providerId: selectedProvider.id?.toString() || '',
                       },
                     } as any);
@@ -498,15 +504,24 @@ export default function CompletedJobDetail() {
                 }}
               >
                 <View className="flex flex-row items-center gap-5">
-                  <AvatarCircle uri={providerAvatarUri} size={56} />
+                  {/** Their initials when there is no photo, not a grey outline of nobody. */}
+                  <AvatarCircle uri={providerAvatarUri} name={selectedProvider?.name} size={56} />
                   <View>
+                    {/**
+                      * Their name, or that it has not loaded. Never "Provider
+                      * TBD": this is a finished job, so somebody did the work
+                      * and was paid for it, and a placeholder here says the
+                      * app does not know who - in the same confident type it
+                      * uses for the price.
+                      */}
                     <Text
                       className="text-base mb-1"
                       style={{
                         fontFamily: 'Poppins-Bold',
+                        color: selectedProvider?.name ? undefined : Colors.textMuted,
                       }}
                     >
-                      {selectedProvider?.name || 'Provider TBD'}
+                      {selectedProvider?.name || 'Name unavailable'}
                     </Text>
                     {!(myReviewRating != null && myReviewRating >= 1) ? (
                     <View className="flex flex-row gap-2 items-center">
@@ -678,7 +693,7 @@ export default function CompletedJobDetail() {
                   openClientReceipt(router, {
                     requestId: params.requestId ?? String(request?.id ?? ''),
                     serviceName: request?.jobTitle || request?.categoryName || 'Service',
-                    providerName: selectedProvider?.name || 'Provider',
+                    providerName: selectedProvider?.name ?? '',
                   });
                 }}
               >
@@ -698,6 +713,67 @@ export default function CompletedJobDetail() {
             <View className="mb-8">
               <JobProgressTimeline steps={timelineSteps} />
             </View>
+
+            {/**
+              * A way in to the rating that does not depend on a popup firing.
+              *
+              * Rating was reachable one way only: a modal that opens itself
+              * when this screen loads and finds the job completed and not yet
+              * reviewed. Miss that moment and there was no second chance -
+              * nothing anywhere on the screen could reopen it.
+              *
+              * A cash-on-arrival job misses it most. Cash adds a confirmation
+              * step from each side before the job can be completed at all, so
+              * the customer is far more likely to be on this screen while the
+              * status is still catching up - and once the auto-open has
+              * decided not to fire, the provider simply cannot be rated.
+              */}
+            {!hasSubmittedReview && !showRatingModal ? (
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => {
+                  haptics.selection();
+                  setPostReviewThankYou(false);
+                  setShowRatingModal(true);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Rate this provider"
+                style={{
+                  backgroundColor: Colors.white,
+                  borderRadius: BorderRadius.default,
+                  padding: 14,
+                  marginBottom: 16,
+                  borderWidth: 1,
+                  borderColor: Colors.border,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      fontFamily: 'Poppins-SemiBold',
+                      color: Colors.textPrimary,
+                      marginBottom: 2,
+                    }}
+                  >
+                    Rate this provider
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      lineHeight: 17,
+                      fontFamily: 'Poppins-Regular',
+                      color: Colors.textSecondaryDark,
+                    }}
+                  >
+                    How did the job go? It takes a moment.
+                  </Text>
+                </View>
+                <ArrowRight size={18} color={Colors.accent} />
+              </TouchableOpacity>
+            ) : null}
 
             {hasSubmittedReview && !showRatingModal && (
               <View
@@ -725,11 +801,18 @@ export default function CompletedJobDetail() {
         </ScrollView>
 
         <Modal
-          visible={
-            request.status === 'completed' &&
-            showRatingModal &&
-            (!hasSubmittedReview || postReviewThankYou)
-          }
+          /**
+            * No status check here any more. It duplicated the one the
+            * auto-open already makes, and duplicating it is what made the
+            * manual button above useless: a customer could ask to rate and
+            * get nothing, because a status that had not caught up vetoed a
+            * modal they had explicitly opened. Deciding whether to interrupt
+            * is the auto-open's job; this only decides whether to draw.
+            *
+            * If the server will not take the review, it says so, and that is
+            * a better answer than a button that does nothing.
+            */
+          visible={showRatingModal && (!hasSubmittedReview || postReviewThankYou)}
           transparent
           animationType="fade"
           onRequestClose={() => {}}

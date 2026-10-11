@@ -68,7 +68,8 @@ type JobItem = {
   title: string;
   subtitle: string;
   status: JobDisplayStatus;
-  name: string;
+  /** The provider who took it, or null while nobody has. */
+  name: string | null;
   time: string;
   location: string;
   requestId?: number;
@@ -155,12 +156,14 @@ const JobListItem = React.memo(function JobListItem({
           </Text>
         </View>
       )}
-      <View className="flex-row items-center gap-3 mt-2">
-        <JobMetaIconPerson size={16} color={Colors.textMuted} />
-        <Text className="text-sm" style={{ fontFamily: 'Poppins-Regular', color: Colors.textMuted }}>
-          {job.name}
-        </Text>
-      </View>
+      {job.name ? (
+        <View className="flex-row items-center gap-3 mt-2">
+          <JobMetaIconPerson size={16} color={Colors.textMuted} />
+          <Text className="text-sm" style={{ fontFamily: 'Poppins-Regular', color: Colors.textMuted }}>
+            {job.name}
+          </Text>
+        </View>
+      ) : null}
       <View className="flex-row items-center gap-3 mt-2">
         <JobMetaIconCalendar size={16} color={Colors.textMuted} />
         <Text className="text-sm" style={{ fontFamily: 'Poppins-Regular', color: Colors.textMuted }}>
@@ -244,10 +247,18 @@ const mapRequestToJobItem = (
   acceptedProvidersCount: number = 0,
   quotations: unknown[] = [],
 ): JobItem => {
+  /**
+   * Null when nobody has taken the job yet, rather than "Provider TBD".
+   *
+   * A booking waiting on quotes genuinely has no provider, and writing a
+   * stand-in into the field makes the card state something untrue in the
+   * same voice it states the date and the address. The row is dropped
+   * instead; an absent line reads as "not yet", which is the fact.
+   */
   const providerName =
-    (request as ServiceRequest & { provider?: { name?: string } }).provider?.name ||
-    request.nearbyProviders?.[0]?.name ||
-    'Provider TBD';
+    (request as ServiceRequest & { provider?: { name?: string } }).provider?.name?.trim() ||
+    request.nearbyProviders?.[0]?.name?.trim() ||
+    null;
   const categoryDisplayName = request.categoryName
     ? request.categoryName.charAt(0).toUpperCase() + request.categoryName.slice(1).replace(/([A-Z])/g, ' $1')
     : 'Service';
