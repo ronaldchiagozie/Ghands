@@ -1,5 +1,7 @@
 import type { Router } from 'expo-router';
 
+import { claimNavigation } from '@/utils/navigationGuard';
+
 type RouterLike = Pick<Router, 'back' | 'replace' | 'canGoBack'>;
 type RouterWithNav = RouterLike & Pick<Router, 'push' | 'replace'>;
 /**
@@ -109,6 +111,9 @@ export function navigateToJob(
     dismissTo?: boolean;
   }
 ): void {
+  /** One tap, one job screen - see navigationGuard. */
+  if (!claimNavigation()) return;
+
   const route = {
     pathname: '/OngoingJobDetails',
     params: buildJobDetailsParams(opts),

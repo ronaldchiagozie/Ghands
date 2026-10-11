@@ -507,6 +507,8 @@ const ServiceMap: React.FC<ServiceMapProps> = ({
                           providerId: String(numericId),
                           initialRating: String(provider.rating ?? ''),
                           initialReviewCount: String(provider.reviews ?? ''),
+                          /** The photo the pin is already drawing; see ProviderDetailScreen. */
+                          initialImage: provider.imageUri ?? '',
                         },
                       } as any);
                     }}
@@ -629,6 +631,7 @@ const ServiceMap: React.FC<ServiceMapProps> = ({
                     providerId: String(numericId),
                     initialRating: String(activeProvider.rating ?? ''),
                     initialReviewCount: String(activeProvider.reviews ?? ''),
+                    initialImage: activeProvider.imageUri ?? '',
                   },
                 } as any);
               }}

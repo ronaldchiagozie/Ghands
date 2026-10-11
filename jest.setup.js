@@ -30,3 +30,18 @@ global.console = {
   error: jest.fn(),
 };
 
+/**
+ * Navigation is debounced in both apps (utils/navigationGuard): a second
+ * move inside 700ms is swallowed, because a double-tap used to push the
+ * same screen twice. Tests fire navigations back to back with no real
+ * clock between them, so the lock is cleared before each one - otherwise
+ * a test is asserting against the debounce rather than the routing.
+ */
+beforeEach(() => {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    require('./utils/navigationGuard').releaseNavigationLock();
+  } catch {
+    /* a suite that never loads the guard does not need it reset */
+  }
+});

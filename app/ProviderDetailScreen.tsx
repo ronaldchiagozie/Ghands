@@ -137,6 +137,8 @@ export default function ProviderDetailScreen() {
     providerName?: string;
     initialRating?: string;
     initialReviewCount?: string;
+    /** Their photo, from the screen that already had it. */
+    initialImage?: string;
   }>();
 
   const parseInitialRating = () => {
@@ -210,8 +212,21 @@ export default function ProviderDetailScreen() {
        * when they set their photo is profileImageUrl; it is read first now,
        * and a work photo is only the fallback it always should have been.
        */
+      /**
+       * The photo the map already had, when the profile endpoint has none.
+       *
+       * /api/provider/nearby returns profileImageUrl and the pin draws it,
+       * so the map knows this provider's face - but /api/provider/:id/profile
+       * does not return the field, so tapping that pin lost it and the
+       * detail screen fell back to initials. The map hands it over now.
+       */
+      const fromMap = params.initialImage?.trim();
       const primaryAvatar =
-        pickProviderImageUriFromRecord(p) ?? pickProviderImageUriFromRecord(data) ?? imageUrls[0] ?? '';
+        pickProviderImageUriFromRecord(p) ??
+        pickProviderImageUriFromRecord(data) ??
+        (fromMap || undefined) ??
+        imageUrls[0] ??
+        '';
       /** Only drop the first image from the gallery if that is what the avatar is using. */
       const galleryFromImageEndpoint =
         primaryAvatar && primaryAvatar === imageUrls[0] ? imageUrls.slice(1) : imageUrls;
@@ -269,6 +284,7 @@ export default function ProviderDetailScreen() {
       setIsLoading(false);
     }
   }, [
+    params.initialImage,
     params.initialRating,
     params.initialReviewCount,
     params.providerId,

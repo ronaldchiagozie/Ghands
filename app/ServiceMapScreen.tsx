@@ -223,6 +223,21 @@ const ServiceMapScreen = () => {
    */
   const locationResolved = gpsSettled && !isHydratingDraft;
 
+  /**
+   * Whether to say nobody is covering this area.
+   *
+   * Only once everything has actually finished looking - the draft, the
+   * coordinates and the provider fetch - so the card cannot appear in the
+   * gap before the first result lands, which is the flicker this screen
+   * kept producing.
+   */
+  const showNoProviders =
+    !isLoadingProviders &&
+    !isHydratingDraft &&
+    hasTriedLoadProviders &&
+    locationResolved &&
+    providers.length === 0;
+
   useEffect(() => {
     if (!needsDraftHydration) return;
     const requestId = parseInt(params.requestId ?? '', 10);
@@ -681,243 +696,7 @@ const ServiceMapScreen = () => {
   return (
     <SafeAreaWrapper>
       <View className="flex-1">
-        {!isLoadingProviders &&
-        hasTriedLoadProviders &&
-        (!!serviceLocationCoords || locationResolved) &&
-        providerError &&
-        providers.length === 0 ? (
-          <View style={{ flex: 1, backgroundColor: Colors.white }}>
-            {/* Back Button */}
-            <View style={{ paddingHorizontal: Spacing.lg, paddingTop: Spacing.lg }}>
-              <TouchableOpacity
-                /**
-                 * Back, not a fresh Add photos. This replaced the map with a new
-                 * copy of the photo screen - on top of the one already beneath it,
-                 * and without the requestId - so every round of "no providers,
-                 * back, continue" stacked another photo screen and left the
-                 * booking detached from its draft.
-                 */
-                onPress={handleMapBack}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  paddingVertical: Spacing.sm,
-                }}
-              >
-                <ArrowLeft size={20} color={Colors.textPrimary} />
-                <Text
-                  style={{
-                    fontSize: 16,
-                    fontFamily: 'Poppins-Medium',
-                    color: Colors.textPrimary,
-                    marginLeft: Spacing.sm,
-                  }}
-                >
-                  Back
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Empty State Content */}
-            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.xl }}>
-              <View
-                style={{
-                  width: 80,
-                  height: 80,
-                  borderRadius: BorderRadius.full,
-                  backgroundColor: Colors.backgroundGray,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: Spacing.lg,
-                }}
-              >
-                <AlertCircle size={40} color={Colors.textPrimary} strokeWidth={2} />
-              </View>
-              <Text
-                style={{
-                  fontSize: 20,
-                  fontFamily: 'Poppins-SemiBold',
-                  color: Colors.textPrimary,
-                  marginBottom: Spacing.sm,
-                  textAlign: 'center',
-                }}
-              >
-                {providerError.includes('No providers') || providerError.includes('No providers found') 
-                  ? 'No Providers Available' 
-                  : 'Unable to Load Providers'}
-              </Text>
-              <Text
-                style={{
-                  fontSize: 15,
-                  fontFamily: 'Poppins-Regular',
-                  color: Colors.textMuted,
-                  textAlign: 'center',
-                  marginBottom: Spacing.xl,
-                  lineHeight: 22,
-                  maxWidth: 300,
-                }}
-              >
-                {providerError.includes('No providers') || providerError.includes('No providers found')
-                  ? 'We couldn\'t find any providers in your area for this service. Try adjusting your location or check back later.'
-                  : providerError.includes('location')
-                  ? 'Please set your location to find nearby providers in your area.'
-                  : providerError.includes('category')
-                  ? 'Please select a service category to see available providers.'
-                  : 'Unable to load providers. Please try again in a moment.'}
-              </Text>
-              
-              {/* Action Buttons */}
-              <View style={{ width: '100%', maxWidth: 300, gap: Spacing.md }}>
-                {providerError.includes('location') && !serviceLocationCoords ? (
-                  <Button
-                    title="Set Location"
-                    onPress={openLocationSearch}
-                    variant="primary"
-                    size="medium"
-                    fullWidth
-                  />
-                ) : (
-                  <>
-                    <Button
-                      title={!serviceLocationCoords ? 'Set Location' : 'Try Again'}
-                      onPress={() => {
-                        if (effectiveCategoryName && serviceLocationCoords) {
-                          setProviderError(null);
-                          setIsLoadingProviders(true);
-                          setServiceLocationCoords({ ...serviceLocationCoords });
-                        } else if (!serviceLocationCoords) {
-                          openLocationSearch();
-                        }
-                      }}
-                      variant="primary"
-                      size="medium"
-                      fullWidth
-                    />
-                    <Button
-                      title="Change Location"
-                      onPress={openLocationSearch}
-                      variant="outline"
-                      size="medium"
-                      fullWidth
-                    />
-                  </>
-                )}
-                {/**
-                  * A way to stop, rather than another way to keep trying. Both
-                  * options above keep you inside the flow; leaving it was only
-                  * possible by walking back out with the arrow.
-                  */}
-                <Button
-                  title="Cancel and go home"
-                  onPress={() => void handleAbandonBooking()}
-                  variant="ghost"
-                  size="medium"
-                  fullWidth
-                />
-              </View>
-            </View>
-          </View>
-        ) : !isLoadingProviders && hasTriedLoadProviders && !!serviceLocationCoords && providers.length === 0 ? (
-          <View style={{ flex: 1, backgroundColor: Colors.white }}>
-            {/* Back Button */}
-            <View style={{ paddingHorizontal: Spacing.lg, paddingTop: Spacing.lg }}>
-              <TouchableOpacity
-                /**
-                 * Back, not a fresh Add photos. This replaced the map with a new
-                 * copy of the photo screen - on top of the one already beneath it,
-                 * and without the requestId - so every round of "no providers,
-                 * back, continue" stacked another photo screen and left the
-                 * booking detached from its draft.
-                 */
-                onPress={handleMapBack}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  paddingVertical: Spacing.sm,
-                }}
-              >
-                <ArrowLeft size={20} color={Colors.textPrimary} />
-                <Text
-                  style={{
-                    fontSize: 16,
-                    fontFamily: 'Poppins-Medium',
-                    color: Colors.textPrimary,
-                    marginLeft: Spacing.sm,
-                  }}
-                >
-                  Back
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Empty State Content */}
-            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.xl }}>
-              <View
-                style={{
-                  width: 80,
-                  height: 80,
-                  borderRadius: BorderRadius.full,
-                  backgroundColor: Colors.backgroundGray,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: Spacing.lg,
-                }}
-              >
-                <MapPin size={40} color={Colors.textPrimary} strokeWidth={2} />
-              </View>
-              <Text
-                style={{
-                  fontSize: 20,
-                  fontFamily: 'Poppins-SemiBold',
-                  color: Colors.textPrimary,
-                  marginBottom: Spacing.sm,
-                  textAlign: 'center',
-                }}
-              >
-                No Providers Found
-              </Text>
-              <Text
-                style={{
-                  fontSize: 15,
-                  fontFamily: 'Poppins-Regular',
-                  color: Colors.textMuted,
-                  textAlign: 'center',
-                  marginBottom: Spacing.xl,
-                  lineHeight: 22,
-                  maxWidth: 300,
-                }}
-              >
-                We couldn&apos;t find any providers nearby for this service. Try adjusting your location or selecting a different category.
-              </Text>
-              
-              {/* Action Buttons */}
-              <View style={{ width: '100%', maxWidth: 300, gap: Spacing.md }}>
-                <Button
-                  title="Change Location"
-                  onPress={openLocationSearch}
-                  variant="primary"
-                  size="medium"
-                  fullWidth
-                />
-                <Button
-                  title="Try Different Category"
-                  /** Back to the tab, not a copy of it pushed on top of the booking. */
-                  onPress={() => resetStackTo(router, '/(tabs)/categories')}
-                  variant="outline"
-                  size="medium"
-                  fullWidth
-                />
-                <Button
-                  title="Cancel and go home"
-                  onPress={() => void handleAbandonBooking()}
-                  variant="ghost"
-                  size="medium"
-                  fullWidth
-                />
-              </View>
-            </View>
-          </View>
-        ) : (
+        {
           <View style={{ flex: 1 }}>
             <TouchableOpacity
               onPress={handleMapBack}
@@ -960,6 +739,133 @@ const ServiceMapScreen = () => {
               * nearby providers..." - swapped in and out before the map
               * appeared, which read as the app bouncing between screens.
               */}
+            {/**
+              * "Change location", where a map puts it.
+              *
+              * It used to be a second full-width button stacked under Try
+              * again on a white page. On a map the address is a property of
+              * the view, so it belongs with the view - top right, as text.
+              */}
+            {locationResolved ? (
+              <TouchableOpacity
+                onPress={openLocationSearch}
+                accessibilityRole="button"
+                accessibilityLabel="Change location"
+                activeOpacity={0.85}
+                style={{
+                  position: 'absolute',
+                  top: 12,
+                  right: 16,
+                  zIndex: 40,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 5,
+                  paddingHorizontal: 13,
+                  height: 44,
+                  borderRadius: BorderRadius.full,
+                  backgroundColor: Colors.white,
+                  borderWidth: 1,
+                  borderColor: Colors.border,
+                }}
+              >
+                <MapPin size={15} color={Colors.accent} />
+                <Text style={{ fontSize: 13.5, fontFamily: 'Poppins-SemiBold', color: Colors.accent }}>
+                  Change
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+
+            {/**
+              * Nothing found, said over the map rather than instead of it.
+              *
+              * This was a white page with a grey circle, a heading, three
+              * lines of explanation and three stacked buttons - a wall in
+              * front of somebody whose only question is "where are they
+              * then". Keeping the map answers that: you can see the area
+              * that was searched, and the card sits on top with one thing
+              * to press. The address lives in the control above; giving up
+              * is a quiet link, not a third button.
+              */}
+            {showNoProviders ? (
+              <View
+                pointerEvents="box-none"
+                style={{ position: 'absolute', left: 16, right: 16, bottom: 28 }}
+              >
+                <View
+                  style={{
+                    backgroundColor: Colors.white,
+                    borderRadius: 20,
+                    borderWidth: 1,
+                    borderColor: Colors.border,
+                    paddingHorizontal: 18,
+                    paddingTop: 18,
+                    paddingBottom: 14,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      fontFamily: 'Poppins-Bold',
+                      color: Colors.textPrimary,
+                      letterSpacing: -0.2,
+                    }}
+                  >
+                    No providers here yet
+                  </Text>
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      lineHeight: 19,
+                      fontFamily: 'Poppins-Regular',
+                      color: Colors.textSecondaryDark,
+                      marginTop: 4,
+                    }}
+                  >
+                    {effectiveCategoryName
+                      ? `Nobody is covering ${effectiveCategoryName.toLowerCase()} in this area right now.`
+                      : 'Nobody is covering this area right now.'}
+                  </Text>
+
+                  <TouchableOpacity
+                    onPress={() => {
+                      haptics.light();
+                      if (!serviceLocationCoords) {
+                        openLocationSearch();
+                        return;
+                      }
+                      setProviderError(null);
+                      setIsLoadingProviders(true);
+                      setServiceLocationCoords({ ...serviceLocationCoords });
+                    }}
+                    activeOpacity={0.85}
+                    style={{
+                      marginTop: 14,
+                      backgroundColor: Colors.accent,
+                      borderRadius: BorderRadius.default,
+                      paddingVertical: 14,
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Text style={{ fontSize: 15, fontFamily: 'Poppins-SemiBold', color: Colors.white }}>
+                      Try again
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={() => void handleAbandonBooking()}
+                    activeOpacity={0.7}
+                    style={{ alignItems: 'center', paddingVertical: 11 }}
+                  >
+                    <Text
+                      style={{ fontSize: 13.5, fontFamily: 'Poppins-Medium', color: Colors.textSecondaryDark }}
+                    >
+                      Cancel this booking
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : null}
+
             {isLoadingProviders || isHydratingDraft || (!serviceLocationCoords && !locationResolved) ? (
               <View
                 pointerEvents="none"
@@ -985,7 +891,7 @@ const ServiceMapScreen = () => {
               </View>
             ) : null}
           </View>
-        )}
+        }
       </View>
       <Toast
         message={toast.message}
