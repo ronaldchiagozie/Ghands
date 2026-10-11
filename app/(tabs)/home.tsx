@@ -1,7 +1,6 @@
 import { CoachMarkTarget } from '@/components/CoachMarkTarget';
 import AccountSetupCard from '@/components/home/AccountSetupCard';
 import ResumeBookingModal from '@/components/home/ResumeBookingModal';
-import BrandPattern from '@/components/BrandPattern';
 import HomeQuickActions, { type QuickActionId } from '@/components/home/HomeQuickActions';
 import { useWalletBalance } from '@/hooks/useWalletBalance';
 import { useBookingResume } from '@/hooks/useBookingResume';
@@ -923,20 +922,27 @@ const HomeScreen = React.memo(() => {
                     justifyContent: 'center',
                     marginLeft: 8,
                     backgroundColor: HOME_QUICK_ACTIONS_PANEL_BG,
-                    /** Holds the lattice inside the corner. */
-                    overflow: 'hidden',
                   }}
                   onPress={handleSearch}
                   activeOpacity={0.8}
                   accessibilityLabel="Search"
                 >
                   {/**
-                    * A small tile, because the surface is small. At forty-four
-                    * points the card's twenty-six tile would show barely two
-                    * repeats and read as a stripe across the button; eleven
-                    * reads as texture, which is all it is for at this size.
+                    * Plain green behind the glyph.
+                    *
+                    * This carried the brand lattice at an eleven-point tile,
+                    * which at a 44pt button is a dense zigzag packed tight
+                    * behind a magnifier - texture at a size where texture can
+                    * only read as noise, and the one control on the header
+                    * whose whole job is to be instantly recognisable. Apple's
+                    * guidance on small marks is the same point: detail at
+                    * small sizes stops being detail and goes muddy, and a
+                    * simple background is what keeps the emphasis on the
+                    * glyph.
+                    *
+                    * The lattice still belongs on the quick-action cards,
+                    * where there is room for it to be a pattern.
                     */}
-                  <BrandPattern color={Colors.white} opacity={0.2} tile={11} strokeWidth={1.4} />
                   <Search size={18} color={Colors.white} />
                 </TouchableOpacity>
               </View>

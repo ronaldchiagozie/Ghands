@@ -3,7 +3,7 @@ import { HandHelping, RotateCcw, Siren, Wallet } from 'lucide-react-native';
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import BrandPattern, { type BrandPatternVariant } from '@/components/BrandPattern';
+import BrandPattern from '@/components/BrandPattern';
 import { BorderRadius, Colors } from '@/lib/designSystem';
 
 type QuickActionId = 'wallet' | 'rebook' | 'urgent' | 'handy';
@@ -45,10 +45,6 @@ type Action = {
   label: string;
   value: string;
   fill: string;
-  /** Its own geometry, so the row reads as a set rather than one card recoloured. */
-  pattern: BrandPatternVariant;
-  patternOpacity: number;
-  patternTile: number;
   disabled?: boolean;
 };
 
@@ -72,9 +68,14 @@ type Action = {
  * what lets Handy be here at all - a fourth thing worth reaching that would
  * never have earned a quarter of a fixed row.
  *
- * Colour separates what they are; the pattern separates which is which. That
- * matters more once they scroll, because a card half off the edge is
- * recognised by its texture long before its label is readable.
+ * Colour separates them, and one texture runs across all four. Each card
+ * used to carry its own geometry - chevrons, scattered dots, question marks,
+ * diagonals - on the argument that a card half off the screen edge is
+ * recognised by its texture before its label. Four different decorative
+ * patterns in one row of four cards is not a system, though; it is the look
+ * of a thing assembled by picking a different ornament for each slot, and the
+ * colours already do that job with far less noise. One brand texture, laid
+ * lightly, reads as the same product speaking four times.
  */
 export default function HomeQuickActions({
   balance,
@@ -91,9 +92,6 @@ export default function HomeQuickActions({
       label: 'Wallet',
       value: formatBalance(balance),
       fill: Colors.accent,
-      pattern: 'chevron',
-      patternOpacity: 0.16,
-      patternTile: 26,
     },
     {
       id: 'urgent',
@@ -106,10 +104,6 @@ export default function HomeQuickActions({
        */
       value: 'Repairs only',
       fill: '#8C2F22',
-      /** Scattered dots: the one card that should not look orderly. */
-      pattern: 'dots',
-      patternOpacity: 0.2,
-      patternTile: 22,
     },
     {
       id: 'handy',
@@ -118,9 +112,6 @@ export default function HomeQuickActions({
       value: 'Describe the job',
       /** Handy's own teal, so the card belongs to the screen it opens. */
       fill: '#003D4D',
-      pattern: 'question',
-      patternOpacity: 0.17,
-      patternTile: 30,
     },
     /**
      * Last, and only once there is something to book again - shown on
@@ -135,9 +126,6 @@ export default function HomeQuickActions({
             /** Raising the booking needs the server, and a cold instance is slow. */
             value: rebookBusy ? 'Setting up' : service,
             fill: '#3A4133',
-            pattern: 'diagonal' as const,
-            patternOpacity: 0.14,
-            patternTile: 20,
             disabled: rebookBusy,
           },
         ]
@@ -192,12 +180,7 @@ export default function HomeQuickActions({
               justifyContent: 'space-between',
             }}
           >
-            <BrandPattern
-              variant={action.pattern}
-              color={Colors.white}
-              opacity={action.patternOpacity}
-              tile={action.patternTile}
-            />
+            <BrandPattern variant="chevron" color={Colors.white} opacity={0.13} tile={28} />
 
             {/** Subtle fade so the label/value stay legible over the busy pattern beneath them. */}
             <LinearGradient
