@@ -127,7 +127,7 @@ export default function SignupScreen() {
     // Prevent duplicate submissions
     if (isSubmitting || isLoading) {
       if (__DEV__) {
-        console.warn('⚠️ Signup already in progress, ignoring duplicate call');
+        console.warn('Signup already in progress, ignoring duplicate call');
       }
       return;
     }

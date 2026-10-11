@@ -18,7 +18,7 @@ export default function AiBotUnavailableView() {
         source={AI_BOT_SAD}
         contentFit="contain"
         style={{ width: 200, height: 200, marginBottom: 24 }}
-        accessibilityLabel="AI assistant unavailable"
+        accessibilityLabel="Handy is unavailable"
       />
       <Text
         style={{

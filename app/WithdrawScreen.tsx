@@ -86,7 +86,7 @@ export default function WithdrawScreen() {
 
   const handleWithdraw = () => {
     if (__DEV__) {
-      console.log('🔍 [Withdraw] handleWithdraw tapped', {
+      console.log('[Withdraw] handleWithdraw tapped', {
         balance,
         amount,
         hasEnoughBalance,
@@ -119,7 +119,7 @@ export default function WithdrawScreen() {
     if (withdrawInFlightRef.current) return;
     if (!pinValue || pinValue.length !== 4 || !selectedAccount) {
       if (__DEV__) {
-        console.log('❌ [Withdraw] submitWithdraw blocked', {
+        console.log('[Withdraw] submitWithdraw blocked', {
           hasPin: !!pinValue,
           pinLength: pinValue?.length,
           hasBankAccount: !!selectedAccount,
@@ -132,7 +132,7 @@ export default function WithdrawScreen() {
       setIsWithdrawing(true);
       setShowPinModal(false);
       if (__DEV__) {
-        console.log('🔍 [Withdraw] submitting', {
+        console.log('[Withdraw] submitting', {
           bankAccountId: selectedAccount.id,
           amount,
         });
@@ -147,7 +147,7 @@ export default function WithdrawScreen() {
         idempotencyKeyRef.current,
       );
       if (__DEV__) {
-        console.log('✅ [Withdraw] success', { reference: result.reference, status: result.status });
+        console.log('[Withdraw] success', { reference: result.reference, status: result.status });
       }
       haptics.success();
       loadData();
@@ -171,7 +171,7 @@ export default function WithdrawScreen() {
       );
     } catch (err: any) {
       if (__DEV__) {
-        console.log('❌ [Withdraw] error', err);
+        console.log('[Withdraw] error', err);
       }
       const rawMsg: string =
         err?.details?.data?.error ||

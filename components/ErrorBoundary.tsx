@@ -87,14 +87,22 @@ export class ErrorBoundary extends Component<Props, State> {
                 className="text-2xl text-black mb-3 text-center"
                 style={{ fontFamily: 'Poppins-Bold' }}
               >
-                Oops! Something went wrong
+                This screen stopped working
               </Text>
 
               <Text
                 className="text-base text-gray-600 mb-6 text-center"
                 style={{ fontFamily: 'Poppins-Medium' }}
               >
-                We&apos;re sorry for the inconvenience. The app encountered an unexpected error.
+                {/**
+                  * What happened and what to do about it. "Oops! Something went
+                  * wrong" followed by an apology for the inconvenience says
+                  * neither: it is the tone of a cartoon and the content of a
+                  * shrug, on the one screen where somebody is already annoyed
+                  * and needs to know whether their job is safe.
+                  */}
+                Nothing you have booked is affected. Try again, and if it keeps
+                happening, restart the app.
               </Text>
 
               {__DEV__ && this.state.error && (

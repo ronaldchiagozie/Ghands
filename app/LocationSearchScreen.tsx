@@ -140,7 +140,7 @@ export default function LocationSearchScreen() {
         } else if (isGoogleApiKeyError) {
           setSearchError('Location search is temporarily unavailable. Please enter your location manually.');
           if (__DEV__) {
-            console.warn('⚠️ Backend Google Maps API Key Missing - Location search disabled.');
+            console.warn('Backend Google Maps API Key Missing - Location search disabled.');
           }
         } else {
           setSearchError('Unable to search locations. Please try again or enter manually.');

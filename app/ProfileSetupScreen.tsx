@@ -291,7 +291,7 @@ export default function ProfileSetupScreen() {
                 className="mt-2"
                 style={{ fontFamily: 'Poppins-Medium', fontSize: 13, color: Colors.textMuted }}
               >
-                Image selected ✓
+                Image selected
               </Text>
             )}
             {isUploading && (

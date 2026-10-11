@@ -1021,7 +1021,7 @@ export default function OngoingJobDetails() {
           const msg = String(error?.message || '').toLowerCase();
           const isBackendSchemaError = error?.status === 400 && (msg.includes('provider.image') || msg.includes('does not exist'));
           if (__DEV__ && !isBackendSchemaError) {
-            console.error('❌ [OngoingJobDetails] Error loading accepted providers:', {
+            console.error('[OngoingJobDetails] Error loading accepted providers:', {
               requestId,
               error: error?.message || error,
               status: error?.status,
@@ -2049,9 +2049,24 @@ export default function OngoingJobDetails() {
                       marginRight: 10,
                     }}
                   >
-                    <Text style={{ fontSize: 13, fontFamily: 'Poppins-Bold', color: Colors.accent }}>
-                      {quotations.length > 0 ? quotations.length : '•'}
-                    </Text>
+                    {/**
+                      * A clock while there is nothing to count.
+                      *
+                      * The badge holds a number - how many quotes are in -
+                      * and when that number was zero it drew a bullet
+                      * character instead. A dot is not a quantity and not a
+                      * state; it is the shape you reach for when a slot has
+                      * to hold something, and it reads as a stray mark on a
+                      * card that is otherwise telling you to wait. A clock
+                      * says the one thing the card is actually about.
+                      */}
+                    {quotations.length > 0 ? (
+                      <Text style={{ fontSize: 13, fontFamily: 'Poppins-Bold', color: Colors.accent }}>
+                        {quotations.length}
+                      </Text>
+                    ) : (
+                      <Clock size={15} color={Colors.accent} strokeWidth={2.2} />
+                    )}
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 13, fontFamily: 'Poppins-Bold', color: Colors.textPrimary, marginBottom: 2 }}>

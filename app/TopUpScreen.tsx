@@ -586,7 +586,7 @@ export default function TopUpScreen() {
         }
       }
       if (__DEV__) {
-        console.error('❌ [TopUpScreen] Verification error:', error);
+        console.error('[TopUpScreen] Verification error:', error);
       }
       void logWalletDeposit('Verify error', {
         reference,

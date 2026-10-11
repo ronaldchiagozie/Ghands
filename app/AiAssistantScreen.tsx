@@ -485,7 +485,7 @@ export default function AiAssistantScreen() {
                               height: botSize,
                               marginBottom: 14,
                             }}
-                            accessibilityLabel="AI assistant"
+                            accessibilityLabel="Handy"
                           />
                         </Animated.View>
                         <Text

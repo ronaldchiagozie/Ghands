@@ -321,7 +321,7 @@ export default function JobDetailsScreen() {
       }, 300);
     } catch (error: any) {
       if (__DEV__) {
-        console.error('❌ Error in handleNext (updateJobDetails):', {
+        console.error('Error in handleNext (updateJobDetails):', {
           requestId: params.requestId,
           error: error instanceof Error ? error.message : error,
           status: error?.status,

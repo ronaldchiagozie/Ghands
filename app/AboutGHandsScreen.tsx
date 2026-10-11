@@ -2,6 +2,7 @@ import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { NAV_FALLBACK, navigateBack } from '@/utils/navigation';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Colors } from '@/lib/designSystem';
+import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 
 import React from 'react';
@@ -13,7 +14,7 @@ export default function AboutGHandsScreen() {
   return (
     <SafeAreaWrapper backgroundColor={Colors.white}>
       <View style={{ flex: 1 }}>
-        <ScreenHeader title="About G-Hands" onBack={() => navigateBack(router, NAV_FALLBACK.clientHome)} backgroundColor={Colors.white} />
+        <ScreenHeader title="About GHands" onBack={() => navigateBack(router, NAV_FALLBACK.clientHome)} backgroundColor={Colors.white} />
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{
@@ -32,7 +33,7 @@ export default function AboutGHandsScreen() {
                 marginBottom: 8,
               }}
             >
-              G-Hands
+              GHands
             </Text>
             <Text
               style={{
@@ -42,7 +43,13 @@ export default function AboutGHandsScreen() {
                 marginBottom: 16,
               }}
             >
-              Version 1.2.3
+              {/**
+                * The real version, not a number typed into this file. It said
+                * 1.2.3 while the app shipped as 1.0.3 - and a support call
+                * that starts with the wrong version number is a support call
+                * that starts in the wrong place.
+                */}
+              Version {Constants.expoConfig?.version ?? '—'}
             </Text>
             <Text
               style={{
@@ -52,7 +59,15 @@ export default function AboutGHandsScreen() {
                 lineHeight: 22,
               }}
             >
-              G-Hands is a trusted platform connecting clients with skilled service providers for home and business tasks. We utilize a secure escrow-based payment system to ensure fair transactions. Our mission is to make reliable services accessible and transparent for everyone, regardless of technical background.
+              {/**
+                * What the app does, in the terms the app actually works in.
+                * This read as a press release - "trusted platform", "we
+                * utilize", "regardless of technical background" - which is
+                * the register nobody writes in and everybody skims.
+                */}
+              GHands connects you with vetted tradespeople for work at home or at
+              your business. You describe the job, choose a provider nearby, and
+              pay through the app. Payment is held until the work is done.
             </Text>
           </View>
 
@@ -66,7 +81,7 @@ export default function AboutGHandsScreen() {
                 marginBottom: 12,
               }}
             >
-              Our Mission
+              Why we built it
             </Text>
             <Text
               style={{
@@ -76,7 +91,9 @@ export default function AboutGHandsScreen() {
                 lineHeight: 22,
               }}
             >
-              To empower individuals and businesses by providing a seamless and secure way to find and hire skilled professionals for any task, fostering trust and transparency in every interaction.
+              Hiring a tradesperson should not depend on who you happen to know.
+              GHands exists so that finding one, agreeing a price and paying for
+              the work are all the same five minutes.
             </Text>
           </View>
 
@@ -90,7 +107,7 @@ export default function AboutGHandsScreen() {
                 marginBottom: 12,
               }}
             >
-              Our Values
+              How it works for you
             </Text>
             <Text
               style={{
@@ -100,7 +117,10 @@ export default function AboutGHandsScreen() {
                 lineHeight: 22,
               }}
             >
-              Integrity, transparency, and reliability are at the core of everything we do. We are committed to building a community where clients and service providers can connect with confidence, knowing that their needs are met with professionalism and fairness.
+              Every provider on GHands is identity-checked before they can take
+              work. Prices are quoted before anyone starts. Your money stays with
+              us until you confirm the job is done, and disputes are reviewed by
+              a person.
             </Text>
           </View>
 

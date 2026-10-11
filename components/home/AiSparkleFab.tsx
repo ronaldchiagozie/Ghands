@@ -68,8 +68,8 @@ export default function AiSparkleFab() {
         <Pressable
           onPress={handlePress}
           accessibilityRole="button"
-          accessibilityLabel="Open AI assistant"
-          accessibilityHint="Get help with support questions and image analysis"
+          accessibilityLabel="Open Handy"
+          accessibilityHint="Ask about a job, a booking or your account"
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           style={StyleSheet.absoluteFillObject}
         >
