@@ -48,6 +48,79 @@ const DEFAULT_MAP_REGION: Region = {
 
 const MAX_SELECTION = 3;
 
+/**
+ * How many cells the visible map is divided into, across and down.
+ *
+ * Providers in the same cell are drawn as one numbered pin. Eight is chosen
+ * from the size of the thing being drawn rather than from the data: an avatar
+ * pin is 56pt wide, a phone is about 390pt, so roughly seven fit across the
+ * screen without touching. Dividing more finely leaves pins overlapping, which
+ * is the state this replaces; dividing less lumps together providers on
+ * genuinely different streets.
+ */
+const CLUSTER_GRID = 8;
+
+export type ProviderCluster = {
+  key: string;
+  coords: { latitude: number; longitude: number };
+  providers: ServiceProvider[];
+};
+
+/**
+ * Groups providers that would land on top of each other at this zoom.
+ *
+ * Lagos has whole streets of electricians, and the map drew one 56pt avatar
+ * per provider at their exact coordinates - so a busy area came out as a pile
+ * of overlapping faces where only the last one drawn could be read or tapped,
+ * and the count in the heading ("23 providers near you") was the only honest
+ * indication of how many were there. A numbered pin says twenty-three where
+ * twenty-three are, and opens into faces as you zoom in.
+ *
+ * Grid rather than distance-based clustering: it is one pass over the list
+ * with no distance maths, which matters because it re-runs on every pan and
+ * this map also renders inside a 260pt preview on the Discover tab.
+ */
+export function clusterProviders(
+  providers: ServiceProvider[],
+  region: Region | null,
+): ProviderCluster[] {
+  const valid = providers.filter(
+    (provider) =>
+      Number.isFinite(provider.coords?.latitude) && Number.isFinite(provider.coords?.longitude),
+  );
+  if (!region || valid.length < 2) {
+    return valid.map((provider) => ({
+      key: provider.id,
+      coords: provider.coords,
+      providers: [provider],
+    }));
+  }
+
+  /** A floor on the cell size, so clustering stops once you are street-level. */
+  const cellLat = Math.max(region.latitudeDelta / CLUSTER_GRID, 0.0004);
+  const cellLng = Math.max(region.longitudeDelta / CLUSTER_GRID, 0.0004);
+
+  const cells = new Map<string, ServiceProvider[]>();
+  for (const provider of valid) {
+    const key = `${Math.floor(provider.coords.latitude / cellLat)}:${Math.floor(
+      provider.coords.longitude / cellLng,
+    )}`;
+    const bucket = cells.get(key);
+    if (bucket) bucket.push(provider);
+    else cells.set(key, [provider]);
+  }
+
+  return Array.from(cells.entries()).map(([key, group]) => {
+    if (group.length === 1) {
+      return { key: group[0].id, coords: group[0].coords, providers: group };
+    }
+    /** The pin sits at the middle of the group, not on one arbitrary member. */
+    const latitude = group.reduce((sum, p) => sum + p.coords.latitude, 0) / group.length;
+    const longitude = group.reduce((sum, p) => sum + p.coords.longitude, 0) / group.length;
+    return { key: `cluster-${key}`, coords: { latitude, longitude }, providers: group };
+  });
+}
+
 /** Numeric company id for API / ProviderDetailScreen (list id is often `provider-123`). */
 export function getBackendProviderNumericId(p: ServiceProvider): number | null {
   if (p.providerId != null && !Number.isNaN(Number(p.providerId))) {
@@ -124,6 +197,25 @@ const ServiceMap: React.FC<ServiceMapProps> = ({
   }, [activeProvider, bottomCardAnim]);
 
   const mapRef = useRef<MapView>(null);
+  /** The visible area, so pins can be grouped at the zoom actually on screen. */
+  const [region, setRegion] = useState<Region | null>(null);
+
+  /**
+   * Whether markers are still allowed to redraw themselves.
+   *
+   * A Marker with a custom child re-rasterises on every frame while this is
+   * true, and that is the single most expensive thing on this screen - forty
+   * avatars repainting continuously, which on a mid-range Android is a
+   * visibly janky map and a warm phone. It has to start true so the remote
+   * profile photos appear once they load, and it is turned off shortly after,
+   * by which point they have.
+   */
+  const [tracksMarkerViews, setTracksMarkerViews] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setTracksMarkerViews(false), 2500);
+    return () => clearTimeout(timer);
+  }, [providers]);
 
   const initialRegion: Region = useMemo(() => {
     const center = focus ?? userLocation ?? providers[0]?.coords;
@@ -137,6 +229,20 @@ const ServiceMap: React.FC<ServiceMapProps> = ({
       longitudeDelta: DEFAULT_MAP_REGION.longitudeDelta,
     };
   }, [focus, providers, userLocation]);
+
+  const clusters = useMemo(
+    () => clusterProviders(filteredProviders, region ?? initialRegion),
+    [filteredProviders, region, initialRegion],
+  );
+
+  /** Zooms into a group rather than opening a card for twelve people at once. */
+  const handleClusterPress = (cluster: ProviderCluster) => {
+    setActiveProvider(null);
+    mapRef.current?.fitToCoordinates(
+      cluster.providers.map((provider) => provider.coords),
+      { edgePadding: { top: 120, right: 70, bottom: 170, left: 70 }, animated: true },
+    );
+  };
 
   /**
    * The map now shows while the location and providers are still loading, so
@@ -194,33 +300,78 @@ const ServiceMap: React.FC<ServiceMapProps> = ({
         showsMyLocationButton={Platform.OS === 'ios'}
         customMapStyle={mapStyle as any}
         initialRegion={initialRegion}
+        onRegionChangeComplete={setRegion}
         onPress={() => setActiveProvider(null)}
       >
-          {filteredProviders.map((provider) => (
-            <Marker
-              key={provider.id}
-              coordinate={provider.coords}
-              onPress={() => setActiveProvider(provider)}
-            >
-              {/**
-                * The marker is the person, not their trade. It used to be a
-                * trade icon drawn from a map of four categories, so every
-                * provider outside those four - tilers, roofers, cleaners -
-                * appeared on the map as a plumber.
-                */}
-              <View
-                className="items-center justify-center bg-white rounded-full"
-                style={{ width: 56, height: 56, ...SURFACE_STYLES.homeTile }}
+          {clusters.map((cluster) => {
+            if (cluster.providers.length > 1) {
+              /**
+                * A group, drawn as how many are in it. Tapping it zooms in
+                * until it comes apart into faces.
+                */
+              const size = cluster.providers.length > 9 ? 52 : 46;
+              return (
+                <Marker
+                  key={cluster.key}
+                  coordinate={cluster.coords}
+                  tracksViewChanges={tracksMarkerViews}
+                  onPress={() => handleClusterPress(cluster)}
+                  accessibilityLabel={`${cluster.providers.length} providers here. Zoom in to see them.`}
+                >
+                  <View
+                    className="items-center justify-center rounded-full"
+                    style={{
+                      width: size,
+                      height: size,
+                      backgroundColor: Colors.accent,
+                      borderWidth: 3,
+                      borderColor: Colors.white,
+                      ...SURFACE_STYLES.homeTile,
+                    }}
+                  >
+                    <Text
+                      allowFontScaling={false}
+                      style={{
+                        fontSize: cluster.providers.length > 99 ? 14 : 16,
+                        fontFamily: 'Poppins-Bold',
+                        color: Colors.white,
+                      }}
+                    >
+                      {cluster.providers.length > 99 ? '99+' : cluster.providers.length}
+                    </Text>
+                  </View>
+                </Marker>
+              );
+            }
+
+            const provider = cluster.providers[0];
+            return (
+              <Marker
+                key={cluster.key}
+                coordinate={provider.coords}
+                tracksViewChanges={tracksMarkerViews}
+                onPress={() => setActiveProvider(provider)}
               >
-                <AvatarCircle
-                  uri={provider.imageUri}
-                  name={provider.name}
-                  size={48}
-                  borderColor="transparent"
-                />
-              </View>
-            </Marker>
-          ))}
+                {/**
+                  * The marker is the person, not their trade. It used to be a
+                  * trade icon drawn from a map of four categories, so every
+                  * provider outside those four - tilers, roofers, cleaners -
+                  * appeared on the map as a plumber.
+                  */}
+                <View
+                  className="items-center justify-center bg-white rounded-full"
+                  style={{ width: 56, height: 56, ...SURFACE_STYLES.homeTile }}
+                >
+                  <AvatarCircle
+                    uri={provider.imageUri}
+                    name={provider.name}
+                    size={48}
+                    borderColor="transparent"
+                  />
+                </View>
+              </Marker>
+            );
+          })}
       </MapView>
 
       <View className="absolute top-4 left-0 right-0 px-4">
