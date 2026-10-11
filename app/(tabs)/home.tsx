@@ -44,7 +44,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { Bell, Briefcase, ChevronDown, ChevronRight, Gift, MapPin, Search, Tag, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Animated, Linking, RefreshControl, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { ServiceCategory } from '../../data/serviceCategories';
+import type { ServiceCategory } from '../../data/serviceCategories';
 import { formatDateShort } from '@/utils/dateFormatting';
 
 /** Deep olive: Quick actions panel + matching CTAs (pin, search, badges) on home. */

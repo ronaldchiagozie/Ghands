@@ -1,4 +1,4 @@
-import { ArrowRight, Clock } from 'lucide-react-native';
+import { ChevronRight, Clock } from 'lucide-react-native';
 import React, { useCallback, useState } from 'react';
 import { FlatList, Pressable, Text, View, type LayoutChangeEvent } from 'react-native';
 
@@ -77,25 +77,58 @@ export function SetupStepsCarousel({ title, subtitle, done, total, steps, bleed 
 
   return (
     <View style={{ marginBottom: 22 }} onLayout={onLayout}>
-      <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
-        <Text style={{ fontSize: 15, fontFamily: 'Poppins-SemiBold', color: Colors.textPrimary }}>{title}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <Text
-          style={{ fontSize: 12, fontFamily: 'Poppins-Medium', color: Colors.textSecondaryDark, fontVariant: ['tabular-nums'] }}
+          style={{
+            fontSize: 16,
+            fontFamily: 'Poppins-Bold',
+            color: Colors.textPrimary,
+            letterSpacing: -0.3,
+          }}
         >
-          {done} of {total} done
+          {title}
         </Text>
+        {/**
+          * The count as a chip rather than loose grey text. It is the one
+          * number in the section and it was drifting at the end of the line,
+          * the same weight and colour as the sentence underneath it.
+          */}
+        <View
+          style={{
+            paddingHorizontal: 9,
+            paddingVertical: 3,
+            borderRadius: 999,
+            backgroundColor: Colors.successLight,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 11.5,
+              fontFamily: 'Poppins-SemiBold',
+              color: Colors.accent,
+              fontVariant: ['tabular-nums'],
+            }}
+          >
+            {done} of {total}
+          </Text>
+        </View>
       </View>
       {subtitle ? (
-        <Text style={{ fontSize: 12.5, lineHeight: 18, fontFamily: 'Poppins-Regular', color: Colors.textSecondaryDark, marginTop: 2 }}>
+        <Text style={{ fontSize: 12.5, lineHeight: 18, fontFamily: 'Poppins-Regular', color: Colors.textSecondaryDark, marginTop: 3 }}>
           {subtitle}
         </Text>
       ) : null}
+      {/**
+        * Rounded at both ends, including the filled part, so a bar at ten per
+        * cent reads as a small amount of progress rather than a chipped
+        * sliver. A minimum width keeps it visible at zero.
+        */}
       <View
-        style={{ height: 4, borderRadius: 2, backgroundColor: Colors.backgroundGray, marginTop: 10, marginBottom: 12, overflow: 'hidden' }}
+        style={{ height: 5, borderRadius: 999, backgroundColor: Colors.backgroundGray, marginTop: 12, marginBottom: 14, overflow: 'hidden' }}
         accessibilityRole="progressbar"
         accessibilityValue={{ min: 0, max: total, now: done }}
       >
-        <View style={{ width: `${Math.max(progress * 100, 3)}%`, height: '100%', borderRadius: 2, backgroundColor: Colors.accent }} />
+        <View style={{ width: `${Math.max(progress * 100, 4)}%`, height: '100%', borderRadius: 999, backgroundColor: Colors.accent }} />
       </View>
 
       {cardWidth > 0 ? (
@@ -120,8 +153,8 @@ export function SetupStepsCarousel({ title, subtitle, done, total, steps, bleed 
             if (next !== index && next >= 0 && next < steps.length) setIndex(next);
           }}
           scrollEventThrottle={32}
-          renderItem={({ item, index: position }) => (
-            <StepCard step={item} width={cardWidth} position={position + 1} count={steps.length} />
+          renderItem={({ item }) => (
+            <StepCard step={item} width={cardWidth} />
           )}
         />
       ) : null}
@@ -145,73 +178,130 @@ export function SetupStepsCarousel({ title, subtitle, done, total, steps, bleed 
   );
 }
 
-function StepCard({ step, width, position, count }: { step: SetupStep; width: number; position: number; count: number }) {
+function StepCard({ step, width }: { step: SetupStep; width: number }) {
   const review = step.status === 'review';
   const Icon = review ? Clock : step.icon;
   const pressable = !review && !!step.onPress;
 
+  /**
+   * One row, and the row is the button.
+   *
+   * Each card used to carry a full-width filled green button under the text,
+   * which made a card this size mostly button - and the button said "Add
+   * photo" directly beneath a title that said "Add a profile photo". Two
+   * thirds of the card was spent repeating the top third in a louder voice,
+   * and an optional step ended up shouting harder than anything else on the
+   * home screen.
+   *
+   * A chevron is the honest weight for it: it says the row goes somewhere
+   * without claiming to be the most important thing on the page, it is the
+   * convention everywhere else a list leads to a screen, and it halves the
+   * height so more than one step is readable at a glance.
+   */
   const body = (
-    <View style={{ width, borderWidth: 1, borderColor: HAIRLINE, borderRadius: 14, backgroundColor: Colors.white, padding: 12 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <View
-          style={{
-            width: 32,
-            height: 32,
-            borderRadius: 9,
-            backgroundColor: review ? REVIEW_BG : Colors.successLight,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginRight: 10,
-          }}
-        >
-          <Icon size={16} color={review ? REVIEW_FG : Colors.accent} strokeWidth={2} />
-        </View>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Text
-              style={{ flex: 1, fontSize: 14, lineHeight: 19, fontFamily: 'Poppins-SemiBold', color: Colors.textPrimary }}
-              numberOfLines={1}
-            >
-              {step.title}
-            </Text>
-            <Text
-              style={{ marginLeft: 6, fontSize: 10.5, fontFamily: 'Poppins-Medium', color: review ? REVIEW_FG : Colors.textTertiary }}
-            >
-              {review ? 'In review' : step.optional ? 'Optional' : `${position} of ${count}`}
-            </Text>
-          </View>
-          <Text
-            style={{ fontSize: 12, lineHeight: 17, fontFamily: 'Poppins-Regular', color: Colors.textSecondaryDark }}
-            numberOfLines={1}
-          >
-            {step.description}
-          </Text>
-        </View>
-      </View>
-
+    <View
+      style={{
+        width,
+        borderWidth: 1,
+        borderColor: HAIRLINE,
+        borderRadius: 16,
+        backgroundColor: Colors.white,
+        paddingVertical: 13,
+        paddingHorizontal: 13,
+        flexDirection: 'row',
+        alignItems: 'center',
+      }}
+    >
       <View
         style={{
-          marginTop: 10,
-          height: 34,
-          borderRadius: 9,
-          flexDirection: 'row',
+          width: 38,
+          height: 38,
+          borderRadius: 11,
+          backgroundColor: review ? REVIEW_BG : Colors.successLight,
           alignItems: 'center',
           justifyContent: 'center',
-          gap: 5,
-          backgroundColor: review ? REVIEW_BG : pressable ? Colors.accent : Colors.backgroundGray,
+          marginRight: 11,
         }}
       >
+        <Icon size={18} color={review ? REVIEW_FG : Colors.accent} strokeWidth={2} />
+      </View>
+
+      <View style={{ flex: 1, minWidth: 0 }}>
         <Text
           style={{
-            fontSize: 12.5,
+            fontSize: 14,
+            lineHeight: 19,
             fontFamily: 'Poppins-SemiBold',
-            color: review ? REVIEW_FG : pressable ? Colors.white : Colors.textSecondaryDark,
+            color: Colors.textPrimary,
+            letterSpacing: -0.2,
+          }}
+          numberOfLines={1}
+        >
+          {step.title}
+        </Text>
+        <Text
+          style={{
+            fontSize: 12,
+            lineHeight: 17,
+            fontFamily: 'Poppins-Regular',
+            color: Colors.textSecondaryDark,
+            marginTop: 1,
+          }}
+          numberOfLines={1}
+        >
+          {step.description}
+        </Text>
+      </View>
+
+      {/**
+        * Only real state earns a label here. The counter this replaced said
+        * "1 of 1" on a single card, under a header already reading "5 of 6
+        * done" - a number that could only ever agree with itself.
+        */}
+      {review ? (
+        <View
+          style={{
+            marginLeft: 10,
+            paddingHorizontal: 9,
+            paddingVertical: 4,
+            borderRadius: 999,
+            backgroundColor: REVIEW_BG,
           }}
         >
-          {review ? 'Waiting for review' : step.actionLabel}
-        </Text>
-        {pressable ? <ArrowRight size={14} color={Colors.white} strokeWidth={2.2} /> : null}
-      </View>
+          <Text style={{ fontSize: 10.5, fontFamily: 'Poppins-SemiBold', color: REVIEW_FG }}>
+            In review
+          </Text>
+        </View>
+      ) : (
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 10 }}>
+          {step.optional ? (
+            <Text
+              style={{
+                fontSize: 10.5,
+                fontFamily: 'Poppins-Medium',
+                color: Colors.textTertiary,
+                marginRight: 6,
+              }}
+            >
+              Optional
+            </Text>
+          ) : null}
+          {pressable ? (
+            <View
+              style={{
+                width: 26,
+                height: 26,
+                borderRadius: 13,
+                backgroundColor: Colors.successLight,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <ChevronRight size={15} color={Colors.accent} strokeWidth={2.4} />
+            </View>
+          ) : null}
+        </View>
+      )}
     </View>
   );
 
@@ -223,6 +313,7 @@ function StepCard({ step, width, position, count }: { step: SetupStep; width: nu
     <Pressable
       onPress={step.onPress}
       accessibilityRole="button"
+      /** The action verb lives here now that the button it sat on is gone. */
       accessibilityLabel={`${step.title}. ${step.description}. ${step.actionLabel}`}
       android_ripple={{ color: Colors.backgroundGray, borderless: false }}
     >

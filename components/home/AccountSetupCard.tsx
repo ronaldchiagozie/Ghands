@@ -68,8 +68,10 @@ export default function AccountSetupCard({
       title="Finish setting up"
       subtitle={
         required > 0
-          ? 'A couple of things are needed before you can book.'
-          : 'Optional, but they make everything smoother.'
+          ? required === 1
+            ? 'One thing is needed before you can book.'
+            : `${required} things are needed before you can book.`
+          : 'None of these are required, but they help.'
       }
       done={completedCount}
       total={totalCount}
