@@ -31,7 +31,7 @@ const PUBLISH_ERROR_COPY: Record<string, string> = {
 import { useUserLocation } from '@/hooks/useUserLocation';
 import * as Location from 'expo-location';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 import { showAppAlert } from '@/components/AppAlertHost';
 import { Button } from '@/components/ui/Button';
@@ -109,6 +109,8 @@ const ServiceMapScreen = () => {
   const [gpsSettled, setGpsSettled] = useState(false);
   /** Flipped once the lookup below has answered, however it answered. */
   const [draftLookupDone, setDraftLookupDone] = useState(false);
+  /** Guards the publish, so two taps cannot race each other to the same endpoint. */
+  const publishingRef = useRef(false);
   
   // Booking data state - synced with params
   const [bookingData, setBookingData] = useState<{
@@ -935,6 +937,14 @@ const ServiceMapScreen = () => {
         visible={showSummaryModal}
         onClose={() => setShowSummaryModal(false)}
         onConfirm={async () => {
+          /**
+           * One publish at a time. Two taps raced each other to the same
+           * endpoint: the first published, the second came back
+           * REQUEST_NOT_SELECTABLE, and the customer saw a failure for a
+           * booking that had just worked.
+           */
+          if (publishingRef.current) return;
+          publishingRef.current = true;
           setShowSummaryModal(false);
           await AsyncStorage.removeItem(BOOKING_PHOTO_URIS_KEY);
 
@@ -959,6 +969,7 @@ const ServiceMapScreen = () => {
              */
             haptics.error();
             showError('Something went wrong with this booking. Please choose your provider again.');
+            publishingRef.current = false;
             return;
           }
 
@@ -979,6 +990,33 @@ const ServiceMapScreen = () => {
              * selection all intact, so trying again is one tap.
              */
             haptics.error();
+
+            /**
+             * Already sent is not a failure.
+             *
+             * REQUEST_NOT_SELECTABLE means the booking left for a provider -
+             * on an earlier tap, or from another device. The screen showed a
+             * toast and stayed exactly where it was, with the provider still
+             * selected and Confirm Booking still sitting there, so the
+             * natural thing to do was press it again, and get the same toast
+             * again. That is the loop between the map and the summary: a
+             * booking that had already succeeded, reported as an error it
+             * offered no way out of. Verified against the live API, which
+             * returns this code for any already-pending request.
+             */
+            if (String(error?.code ?? '') === 'REQUEST_NOT_SELECTABLE') {
+              haptics.success();
+              showSuccess('This booking has already been sent.');
+              await clearBookingResumePoint();
+              navigateBookingFlowToConfirmation(router, {
+                requestId: params.requestId,
+                serviceType: effectiveCategoryName,
+                selectedDate: params.selectedDate,
+                selectedTime: params.selectedTime,
+                providerCount: String(selectedProviders.length),
+              });
+              return;
+            }
 
             /**
              * A missing address is the one thing this screen can fix itself.
@@ -1024,6 +1062,7 @@ const ServiceMapScreen = () => {
             const step = BOOKING_STEP_FOR_CODE[String(error?.code ?? '')];
             if (step) {
               showError(PUBLISH_ERROR_COPY[String(error?.code)] ?? error?.message);
+              publishingRef.current = false;
               router.push({ pathname: step as any, params: { ...params } } as any);
               return;
             }
@@ -1033,6 +1072,8 @@ const ServiceMapScreen = () => {
                 error?.message ||
                 'Could not send your booking to the provider. Please try again.',
             );
+            /** Let them try again - this one really did fail. */
+            publishingRef.current = false;
             return;
           }
 
