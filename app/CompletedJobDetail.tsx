@@ -165,19 +165,44 @@ export default function CompletedJobDetail() {
         setPostReviewThankYou(false);
       }
       
-      // If request has an accepted provider, load provider details
-      if (requestDetails.provider) {
-        setSelectedProvider(requestDetails.provider);
+      /**
+       * Who did the work, from whichever place this account's record keeps it.
+       *
+       * This asked `provider` and then the accepted-providers list, and on a
+       * finished job the server often fills neither - it fills
+       * `selectedProvider`, and the name on the accepted quotation is the one
+       * the rest of the app shows. So the screen reporting a job somebody had
+       * already been paid for could not say who they were, while the timeline
+       * and the receipt for the same job both named them.
+       *
+       * The quotation is checked last because it costs a request; the two
+       * fields already on the record are free.
+       */
+      const named = (candidate: unknown): boolean =>
+        !!candidate &&
+        typeof candidate === 'object' &&
+        typeof (candidate as { name?: unknown }).name === 'string' &&
+        (candidate as { name: string }).name.trim().length > 0;
+
+      const fromRecord =
+        [requestDetails.selectedProvider, requestDetails.provider].find(named) ?? null;
+
+      if (fromRecord) {
+        setSelectedProvider(fromRecord as any);
       } else {
-        // Try to get provider from accepted providers if status is completed
         try {
           const acceptedProviders = await serviceRequestService.getAcceptedProviders(requestId);
-          if (acceptedProviders && acceptedProviders.length > 0) {
-            // Get the first provider (should be the selected one for completed jobs)
-            setSelectedProvider(acceptedProviders[0].provider);
+          const fromAccepted = acceptedProviders?.map((row) => row.provider).find(named) ?? null;
+          if (fromAccepted) {
+            setSelectedProvider(fromAccepted as any);
+          } else {
+            const quotations = await serviceRequestService.getQuotations(requestId);
+            const accepted = quotations?.find((q: any) => q?.status === 'accepted') as any;
+            const fromQuote = [accepted?.provider, quotations?.[0] && (quotations[0] as any).provider].find(named);
+            if (fromQuote) setSelectedProvider(fromQuote as any);
           }
         } catch {
-          // If no providers found, that's okay
+          // Nothing names them; the card says the name is unavailable.
         }
       }
       

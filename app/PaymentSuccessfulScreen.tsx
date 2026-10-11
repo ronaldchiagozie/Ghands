@@ -328,8 +328,6 @@ export default function PaymentSuccessfulScreen() {
               data={transactionData}
               onShare={handleShareReceipt}
               onDownload={handleDownloadReceipt}
-              onViewJob={handleExit}
-              showViewJob={Boolean(params.requestId)}
               capturing={isCapturing}
             />
           </View>

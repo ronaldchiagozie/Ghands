@@ -963,6 +963,9 @@ export default function OngoingJobDetails() {
     }
   }, []);
 
+  /** One redirect per visit, so a refresh cannot fire a second one mid-flight. */
+  const completedRedirectRef = useRef(false);
+
   const loadRequestData = useCallback(async (silent = false) => {
     if (!params.requestId) return;
 
@@ -997,7 +1000,34 @@ export default function OngoingJobDetails() {
           });
         }
       }
-      setRequest(healJobStatusAfterVisitDecline(hydratedRequestDetails));
+      const healed = healJobStatusAfterVisitDecline(hydratedRequestDetails);
+
+      /**
+       * A finished job belongs on the finished-job screen.
+       *
+       * This one is built for a job in flight: two tabs, a live status
+       * header, a progress timeline with actions hanging off the current
+       * step. None of that has anything left to do once the work is done and
+       * paid for, and every way into a job - a notification, a card, a
+       * receipt, a deep link - arrived here regardless of status. So
+       * finishing a job showed the completed screen, and opening the same
+       * job a minute later showed the timeline again.
+       *
+       * Redirecting here rather than at each call site, because the call
+       * sites do not all know the status; this screen is the first thing
+       * that does. Replace, not push, so back does not land on the screen
+       * that just sent them away.
+       */
+      if (!completedRedirectRef.current && String(healed?.status ?? '').toLowerCase() === 'completed') {
+        completedRedirectRef.current = true;
+        router.replace({
+          pathname: '/CompletedJobDetail',
+          params: { requestId: String(healed?.id ?? requestId) },
+        } as any);
+        return;
+      }
+
+      setRequest(healed);
       if (usedListFallback && !silent) {
         showWarning(
           'We could not load the latest job details. Showing what we have. Swipe down to refresh.'
@@ -1436,6 +1466,13 @@ export default function OngoingJobDetails() {
               haptics.success();
               showSuccess(response.message || 'Job completed. Payment was sent to the provider.');
 
+              /**
+               * Claim the redirect before refreshing. The reload below now
+               * sends a completed job to the finished-job screen on sight,
+               * and this path wants the slower version - the success toast
+               * gets its moment first.
+               */
+              completedRedirectRef.current = true;
               await loadRequestData();
 
               setTimeout(() => {

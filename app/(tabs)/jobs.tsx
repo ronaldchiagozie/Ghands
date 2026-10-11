@@ -2,6 +2,7 @@ import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { isSubmittedBooking } from '@ghands/contract';
 import AnimatedStatusChip from '@/components/AnimatedStatusChip';
 import { haptics } from '@/hooks/useHaptics';
+import { openClientReceipt } from '@/utils/receiptNavigation';
 import { useOnNetworkRestore } from '@/hooks/useNetworkConnectivity';
 import { authService, serviceRequestService, ServiceRequest } from '@/services/api';
 import { useToast } from '@/hooks/useToast';
@@ -84,6 +85,7 @@ type JobListItemProps = {
   activeTab: JobStatus;
   onPrimaryAction: (status: JobStatus, job: JobItem) => void;
   onCancelRequest: (job: JobItem) => void;
+  onViewReceipt: (job: JobItem) => void;
 };
 
 const JobListItem = React.memo(function JobListItem({
@@ -91,6 +93,7 @@ const JobListItem = React.memo(function JobListItem({
   activeTab,
   onPrimaryAction,
   onCancelRequest,
+  onViewReceipt,
 }: JobListItemProps) {
   const statusBadge = getJobDisplayStatusBadge(job.status);
 
@@ -198,10 +201,11 @@ const JobListItem = React.memo(function JobListItem({
         </View>
       )}
 
-      <View className="flex flex-row pt-4 justify-center">
+      <View className="flex flex-row pt-4 justify-center" style={{ gap: 10 }}>
         <TouchableOpacity
-          className="py-3 px-6 rounded-lg w-full"
+          className="py-3 px-6 rounded-lg"
           style={{
+            flex: 1,
             backgroundColor:
               activeTab === 'Ongoing' || activeTab === 'Pending'
                 ? Colors.backgroundGray
@@ -223,6 +227,32 @@ const JobListItem = React.memo(function JobListItem({
                 : 'View Details'}
           </Text>
         </TouchableOpacity>
+
+        {/**
+          * The receipt, one tap from the list.
+          *
+          * It was two screens in: open the job, find View receipt. A receipt
+          * is the thing people come back to a finished job for - to forward
+          * to a landlord, to claim an expense, to check what they paid - and
+          * it was the only thing on a completed job that took looking for.
+          */}
+        {activeTab === 'Completed' ? (
+          <TouchableOpacity
+            className="py-3 px-5 rounded-lg"
+            style={{ borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.white }}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={`Receipt for ${job.title}`}
+            onPress={() => onViewReceipt(job)}
+          >
+            <Text
+              className="text-sm text-center"
+              style={{ fontFamily: 'Poppins-Medium', color: Colors.textPrimary }}
+            >
+              Receipt
+            </Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
     </View>
   );
@@ -498,6 +528,18 @@ export default function JobsScreen() {
   const { showSkeleton: showJobsSkeleton, isLoadingEmpty: isJobsLoadingEmpty } =
     useSkeletonGate(isLoading, jobs.length === 0);
 
+  const handleViewReceipt = useCallback(
+    (job: JobItem) => {
+      haptics.selection();
+      openClientReceipt(router, {
+        requestId: String(job.requestId ?? job.id),
+        serviceName: job.title,
+        providerName: job.name ?? '',
+      });
+    },
+    [router],
+  );
+
   const handlePrimaryAction = (status: JobStatus, job?: JobItem) => {
     haptics.selection();
     if ((status === 'Ongoing' || status === 'Pending') && job) {
@@ -534,9 +576,10 @@ export default function JobsScreen() {
         activeTab={activeTab as JobStatus}
         onPrimaryAction={handlePrimaryAction}
         onCancelRequest={handleCancelRequest}
+        onViewReceipt={handleViewReceipt}
       />
     ),
-    [activeTab, handleCancelRequest],
+    [activeTab, handleCancelRequest, handleViewReceipt],
   );
 
   /**

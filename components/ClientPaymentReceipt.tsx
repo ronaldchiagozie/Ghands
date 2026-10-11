@@ -30,8 +30,6 @@ type ClientPaymentReceiptProps = {
   data: ClientReceiptData;
   onShare: () => void;
   onDownload: () => void;
-  onViewJob?: () => void;
-  showViewJob?: boolean;
   /**
    * True for the instant the card is being captured to an image.
    *
@@ -78,8 +76,6 @@ export function ClientPaymentReceipt({
   data,
   onShare,
   onDownload,
-  onViewJob,
-  showViewJob = false,
   capturing = false,
 }: ClientPaymentReceiptProps) {
   const status: ClientReceiptStatus = data.status ?? 'completed';
@@ -334,23 +330,17 @@ export function ClientPaymentReceipt({
         </View>
       </View>
 
+      {/**
+        * No "View job" button.
+        *
+        * A receipt is always opened from somewhere - the job, or the payment
+        * that just succeeded - and the header's back arrow already goes
+        * there. The black full-width button under the total was a second,
+        * louder copy of it, and from a finished job it was a loop: tap View
+        * receipt, then tap View job, and arrive back where you started. What
+        * a receipt is for is downloading and sharing, which is what is left.
+        */}
       <View style={{ paddingTop: 14 }}>
-        {showViewJob && onViewJob ? (
-          <TouchableOpacity
-            onPress={onViewJob}
-            style={{
-              backgroundColor: Colors.black,
-              borderRadius: BorderRadius.default,
-              paddingVertical: 14,
-              alignItems: 'center',
-              marginBottom: 10,
-            }}
-            activeOpacity={0.85}
-          >
-            <Text style={{ fontSize: 15, fontFamily: 'Poppins-SemiBold', color: Colors.white }}>View job</Text>
-          </TouchableOpacity>
-        ) : null}
-
         {/**
           * Signed, the way a bank's receipt is. Somebody forwarding this to a
           * landlord is asking them to believe it, and an unsigned slab of text
