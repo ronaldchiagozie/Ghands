@@ -305,6 +305,7 @@ export default function JobsScreen() {
     progress: resumeProgress,
     hoursLeft: resumeHoursLeft,
     otherDrafts,
+    answeredSteps,
     discard: discardResumePoint,
     refresh: refreshResume,
   } = useBookingResume();
@@ -688,7 +689,14 @@ export default function JobsScreen() {
 
                   {/** Every other abandoned draft on the account - same card, scored the same way. */}
                   {otherDrafts.map((row) => {
-                    const itemPoint = pointFromDraft(row as any);
+                    /**
+                      * Scored against this phone's record too, exactly as the
+                      * primary draft is. Without it the same booking reads
+                      * "Add photos" here and "Choose a provider" in the home
+                      * prompt, because only one of the two knew the photos
+                      * had already been added.
+                      */
+                    const itemPoint = pointFromDraft(row as any, answeredSteps[String(row.id)]);
                     return (
                       <ResumeBookingCard
                         key={itemPoint.requestId}

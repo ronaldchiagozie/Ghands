@@ -20,14 +20,31 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const STORAGE_KEY = '@ghands:booking_resume';
 
 /**
- * The draft we have already interrupted somebody about.
+ * Where the one-prompt-per-booking rule used to live.
  *
- * Kept separate from the pointer because the pointer is rewritten at every
- * step, and resetting this with it would mean prompting again each time they
- * moved forward and stopped. Keyed by request id, so a genuinely new booking
- * gets its one prompt and the same one never gets a second.
+ * Kept only so the key is cleared off phones that still carry it; the rule
+ * itself is now per visit and in memory - see promptedThisSession.
  */
 const PROMPTED_KEY = '@ghands:booking_resume_prompted';
+
+/**
+ * The steps this phone has watched somebody answer, per booking.
+ *
+ * Separate from the pointer, which holds one booking and expires in twenty
+ * hours. This is the record of what was actually done, and it exists because
+ * the server's copy cannot be trusted to show it: photos are attached through
+ * the details endpoint under a key the backend has never confirmed, so a
+ * customer who adds three photos can be handed their draft back the next
+ * morning still being asked for photos. Which is the one thing that makes the
+ * resume prompt feel broken rather than helpful - it asks for work already
+ * done, so the customer concludes it lost the lot.
+ *
+ * Local, and therefore a floor and never a ceiling: it can only move a draft's
+ * progress forward, never back, and the server still wins on anything it does
+ * report. A second handset simply has no local record and falls back to the
+ * server's reading, which is the behaviour this had everywhere before.
+ */
+const ANSWERED_STEPS_KEY = '@ghands:booking_steps_answered';
 
 /**
  * The steps of the booking flow, in order. Named after what the customer was
@@ -155,31 +172,87 @@ export function bookingStepFromDraftContent(request: {
   return 'photos';
 }
 
+/** The count of photos already on the record, for the summary's "N photos". */
+function draftPhotoCount(draft: Record<string, unknown>): number {
+  const photos = [draft.images, draft.imageUrls, draft.photos, draft.requestImages].find(
+    (value) => Array.isArray(value) && value.length > 0,
+  );
+  return Array.isArray(photos) ? photos.length : 0;
+}
+
+/**
+ * Every route param the booking screens need to reopen as themselves.
+ *
+ * This used to be `{ requestId }` and nothing else, which is what made
+ * continuing a draft from the Jobs tab or a second handset land on a broken
+ * provider map: the map reads the trade and the address off its params, so
+ * with neither it drew no pins and reported "Please select a service category"
+ * and "Please set your service location" - telling somebody who had already
+ * answered both to go and answer them, on the screen that came after.
+ *
+ * The draft record holds all of it, so there is no reason to arrive without it.
+ */
+function paramsFromDraft(draft: Record<string, unknown>, requestId: string): Record<string, string> {
+  const params: Record<string, string> = { requestId };
+  const put = (key: string, value: unknown) => {
+    if (typeof value === 'string' && value.trim()) params[key] = value.trim();
+    else if (typeof value === 'number' && Number.isFinite(value)) params[key] = String(value);
+  };
+
+  const category = typeof draft.categoryName === 'string' ? draft.categoryName.trim() : '';
+  if (category) {
+    put('categoryName', category);
+    /** Both names are read, by different screens, for the same value. */
+    put('serviceType', category);
+  }
+
+  const location = (draft.location ?? {}) as Record<string, unknown>;
+  put('location', location.formattedAddress ?? location.address ?? '');
+  put('latitude', location.latitude);
+  put('longitude', location.longitude);
+
+  put('selectedDate', draft.scheduledDate);
+  put('selectedTime', draft.scheduledTime);
+
+  const photos = draftPhotoCount(draft);
+  if (photos > 0) put('photoCount', String(photos));
+
+  return params;
+}
+
 /**
  * Turns a raw draft record into the shape every resume-card helper below
  * expects. Shared so useBookingResume's primary draft and a list of the
  * others (Jobs > Drafts) score their step the same way, from the same rule.
+ *
+ * `localFloor` is this phone's own record of what it watched them answer -
+ * see ANSWERED_STEPS_KEY. Passed in rather than read here so this stays
+ * synchronous for the list that renders several drafts at once.
  */
-export function pointFromDraft(draft: {
-  id: number | string;
-  categoryName?: string;
-  updatedAt?: string;
-  createdAt?: string;
-  draftStep?: unknown;
-  jobTitle?: unknown;
-  description?: unknown;
-  scheduledDate?: unknown;
-  images?: unknown;
-}): BookingResumePoint {
+export function pointFromDraft(
+  draft: {
+    id: number | string;
+    categoryName?: string;
+    updatedAt?: string;
+    createdAt?: string;
+    draftStep?: unknown;
+    jobTitle?: unknown;
+    description?: unknown;
+    scheduledDate?: unknown;
+    images?: unknown;
+  },
+  localFloor?: BookingStep | null,
+): BookingResumePoint {
   const requestId = String(draft.id);
   return {
     requestId,
     step: furthestBookingStep(
       bookingStepFromServer(draft.draftStep),
       bookingStepFromDraftContent(draft),
+      localFloor,
     ),
     categoryName: draft.categoryName,
-    params: { requestId },
+    params: paramsFromDraft(draft as Record<string, unknown>, requestId),
     savedAt: Date.parse(draft.updatedAt ?? draft.createdAt ?? '') || Date.now(),
   };
 }
@@ -208,6 +281,8 @@ export async function rememberBookingStep(
   params: Record<string, unknown>,
 ): Promise<void> {
   if (!requestId || !String(requestId).trim()) return;
+
+  void rememberAnsweredStep(String(requestId), step);
 
   const point: BookingResumePoint = {
     requestId: String(requestId),
@@ -261,10 +336,34 @@ export async function readBookingResumePoint(): Promise<BookingResumePoint | nul
  * be a second way to fail at a moment when someone has just said they are done.
  */
 export async function clearBookingResumePoint(): Promise<void> {
+  /**
+   * Including who has been asked. This is called when a booking ends - sent,
+   * or given up on - so nothing is left to be quiet about, and starting a new
+   * one in the same session should be offered back like any other.
+   */
+  resetResumePromptsForNewSession();
   try {
     await AsyncStorage.multiRemove([STORAGE_KEY, PROMPTED_KEY]);
   } catch {
     /* ignore */
+  }
+}
+
+/**
+ * Drops this phone's progress record for a booking that is over.
+ *
+ * Called when a draft is discarded or published. Without it the record sits
+ * there until the twenty-hour sweep, which costs nothing but is one more
+ * stale thing to reason about.
+ */
+export async function forgetAnsweredSteps(requestId: string): Promise<void> {
+  try {
+    const all = await readAnsweredSteps();
+    if (!(requestId in all)) return;
+    delete all[requestId];
+    await AsyncStorage.setItem(ANSWERED_STEPS_KEY, JSON.stringify(all));
+  } catch {
+    /* it expires on its own */
   }
 }
 
@@ -317,37 +416,116 @@ export function resumeHoursLeft(point: BookingResumePoint): number | null {
   return Math.max(1, Math.round(remaining / (60 * 60 * 1000)));
 }
 
+type AnsweredSteps = Record<string, { step: BookingStep; savedAt: number }>;
+
+async function readAnsweredSteps(): Promise<AnsweredSteps> {
+  try {
+    const raw = await AsyncStorage.getItem(ANSWERED_STEPS_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as AnsweredSteps;
+    if (!parsed || typeof parsed !== 'object') return {};
+
+    const fresh: AnsweredSteps = {};
+    for (const [id, entry] of Object.entries(parsed)) {
+      if (!entry || !isBookingStep(entry.step)) continue;
+      if (typeof entry.savedAt !== 'number' || !Number.isFinite(entry.savedAt)) continue;
+      /** The server deletes the draft at the same age, so the record is no use past it. */
+      if (Date.now() - entry.savedAt > RESUME_TTL_MS) continue;
+      fresh[id] = entry;
+    }
+    return fresh;
+  } catch {
+    return {};
+  }
+}
+
+/** Records a step as answered for this booking, keeping the furthest reached. */
+async function rememberAnsweredStep(requestId: string, step: BookingStep): Promise<void> {
+  try {
+    const all = await readAnsweredSteps();
+    const existing = all[requestId]?.step;
+    all[requestId] = { step: furthestBookingStep(existing, step), savedAt: Date.now() };
+    await AsyncStorage.setItem(ANSWERED_STEPS_KEY, JSON.stringify(all));
+  } catch {
+    /* progress tracking is a convenience; never let it break the booking flow */
+  }
+}
+
+/**
+ * How far this phone watched them get on this booking, or null.
+ *
+ * The answer to "the draft says add photos and I added photos". Read as a
+ * floor on the server's reading, never a replacement for it.
+ */
+export async function readAnsweredStep(requestId: string): Promise<BookingStep | null> {
+  const all = await readAnsweredSteps();
+  return all[requestId]?.step ?? null;
+}
+
+/** Every booking this phone has local progress for, for scoring a list in one read. */
+export async function readAnsweredStepMap(): Promise<Record<string, BookingStep>> {
+  const all = await readAnsweredSteps();
+  const out: Record<string, BookingStep> = {};
+  for (const [id, entry] of Object.entries(all)) out[id] = entry.step;
+  return out;
+}
+
+/**
+ * Bookings already offered back during this run of the app.
+ *
+ * In memory on purpose. This used to be an AsyncStorage key holding one
+ * request id, which meant "not now" was an answer about the booking forever:
+ * dismiss it once and the only place the draft existed again was the Jobs tab.
+ * A half-finished booking is worth one mention per time you open the app - the
+ * situation has changed, you are back, and the draft is still waiting - and
+ * worth no mentions at all while you stay in the app and keep saying no.
+ *
+ * Losing this when the process dies is the behaviour, not a limitation.
+ */
+const promptedThisSession = new Set<string>();
+
+/**
+ * Starts a fresh round of prompting.
+ *
+ * Called when the app comes back from the background after long enough that
+ * returning to it is a new visit rather than a glance away - see
+ * RESUME_SESSION_GAP_MS - and implicitly on a cold start, because the set
+ * above is empty then.
+ */
+export function resetResumePromptsForNewSession(): void {
+  promptedThisSession.clear();
+}
+
+/**
+ * How long the app has to have been in the background for coming back to count
+ * as opening it again.
+ *
+ * A minute. Picking a photo, taking a call or checking an address in Maps all
+ * leave and return inside that, and re-interrupting somebody who never really
+ * left is the nagging this is trying not to do.
+ */
+export const RESUME_SESSION_GAP_MS = 60 * 1000;
+
 /**
  * Whether the interrupting prompt is worth showing for this draft.
  *
  * Two conditions, and both matter. An interstitial on launch is the most
  * resented pattern on a phone: it blocks the app to talk about something the
- * person may not have opened it for. It only earns that by being rare and by
- * being about something they would mind losing.
+ * person may not have opened it for. It only earns that by being about
+ * something they would mind losing, and by taking no for an answer while they
+ * are here.
  *
- *  - Once per booking. Dismissing it is an answer, not a snooze, and the home
- *    card is still there for whenever they do want it.
+ *  - Once per visit. Dismissing it settles this visit, not the booking.
  *  - Not for a booking that is barely started. Tapping a category and closing
  *    the app has cost them nothing, so interrupting to offer it back is
  *    interrupting to offer nothing.
  */
 export async function shouldPromptResume(point: BookingResumePoint): Promise<boolean> {
   if (point.step === 'details') return false;
-
-  try {
-    const prompted = await AsyncStorage.getItem(PROMPTED_KEY);
-    return prompted !== point.requestId;
-  } catch {
-    /* if we cannot tell, do not interrupt */
-    return false;
-  }
+  return !promptedThisSession.has(point.requestId);
 }
 
-/** Called when the prompt is shown, so it is not shown for this booking again. */
+/** Called when the prompt is shown, so it is not shown again this visit. */
 export async function markResumePrompted(requestId: string): Promise<void> {
-  try {
-    await AsyncStorage.setItem(PROMPTED_KEY, requestId);
-  } catch {
-    /* worst case is one repeated prompt, which is better than a crash */
-  }
+  promptedThisSession.add(requestId);
 }

@@ -31,7 +31,7 @@ const PUBLISH_ERROR_COPY: Record<string, string> = {
 import { useUserLocation } from '@/hooks/useUserLocation';
 import * as Location from 'expo-location';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 import { showAppAlert } from '@/components/AppAlertHost';
 import { Button } from '@/components/ui/Button';
@@ -81,6 +81,35 @@ const ServiceMapScreen = () => {
   const [providerError, setProviderError] = useState<string | null>(null);
   const [hasTriedLoadProviders, setHasTriedLoadProviders] = useState(false);
   const [bookingPhotoUris, setBookingPhotoUris] = useState<string[]>([]);
+  /**
+   * What the booking itself says, for when the params do not say it.
+   *
+   * Continuing a draft - from the resume prompt, from the Jobs tab, from a
+   * notification - arrives with a requestId and little else. This screen reads
+   * the trade and the address off its params, so it drew no pins and reported
+   * "Please select a service category" and "Please set your service location":
+   * it asked somebody who had answered both questions to go back and answer
+   * them, from the screen that comes after. The draft on the server holds both.
+   */
+  const [draftDetails, setDraftDetails] = useState<{
+    categoryName?: string;
+    location?: string;
+    coords?: { latitude: number; longitude: number };
+    date?: string;
+    time?: string;
+    photoCount?: number;
+  } | null>(null);
+  /**
+   * Whether the hunt for coordinates has finished, however it finished.
+   *
+   * Without this the screen had no way to tell "still looking" from "looked
+   * everywhere and found nothing", so a booking with no usable address sat
+   * under "Getting your location…" for as long as anybody was willing to
+   * watch it. Now the chase ends and says what it needs.
+   */
+  const [locationResolved, setLocationResolved] = useState(false);
+  /** Flipped once the lookup below has answered, however it answered. */
+  const [draftLookupDone, setDraftLookupDone] = useState(false);
   
   // Booking data state - synced with params
   const [bookingData, setBookingData] = useState<{
@@ -154,15 +183,113 @@ const ServiceMapScreen = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.requestId]);
 
+  /**
+   * Fills in what the params left out, from the draft on the server.
+   *
+   * Only asks when something is actually missing, so the ordinary path
+   * through the flow - where every screen hands the next one its params -
+   * costs no extra request. Entirely best effort: a failure here leaves the
+   * screen exactly as it was before, which is the state it used to be stuck in.
+   */
+  /**
+   * Whether the params are thin enough to be worth asking the server about.
+   *
+   * Derived during render rather than tracked in state, because every "is
+   * something missing" check below has to be right on the very first frame.
+   * As a state flag set from inside the effect it was still false while the
+   * first provider load ran, so that load reported "Please select a service
+   * category" and the empty state flashed up before the draft it was waiting
+   * for had even been asked for.
+   */
+  const needsDraftHydration = useMemo(() => {
+    const requestId = parseInt(params.requestId ?? '', 10);
+    if (!Number.isFinite(requestId) || requestId <= 0) return false;
+    const hasCategory = !!(params.categoryName?.trim() || params.serviceType?.trim());
+    const hasPlace = !!(params.location?.trim() || (params.latitude && params.longitude));
+    return !(hasCategory && hasPlace);
+  }, [params.requestId, params.categoryName, params.serviceType, params.location, params.latitude, params.longitude]);
+
+  const isHydratingDraft = needsDraftHydration && !draftLookupDone;
+
+  useEffect(() => {
+    if (!needsDraftHydration) return;
+    const requestId = parseInt(params.requestId ?? '', 10);
+
+    let active = true;
+    (async () => {
+      try {
+        const request = await serviceRequestService.getRequestDetails(requestId);
+        if (!active) return;
+
+        const place = request.location ?? {};
+        const latitude = Number(place.latitude);
+        const longitude = Number(place.longitude);
+        const images = (request as { images?: unknown }).images;
+
+        setDraftDetails({
+          categoryName: request.categoryName?.trim() || undefined,
+          location: (place.formattedAddress || place.address || '').trim() || undefined,
+          coords:
+            Number.isFinite(latitude) && Number.isFinite(longitude)
+              ? { latitude, longitude }
+              : undefined,
+          date: request.scheduledDate || undefined,
+          time: request.scheduledTime || undefined,
+          photoCount: Array.isArray(images) ? images.length : undefined,
+        });
+      } catch {
+        /* the screen behaves as it did before, and the empty states still offer a way out */
+      } finally {
+        if (active) setDraftLookupDone(true);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [needsDraftHydration, params.requestId]);
+
+  /** The trade and the place, from the params first and the draft second. */
+  const effectiveCategoryName =
+    params.categoryName?.trim() || params.serviceType?.trim() || draftDetails?.categoryName || '';
+
+  /** Feeds the draft's address into the header and the summary once it arrives. */
+  useEffect(() => {
+    if (!draftDetails?.location) return;
+    setServiceLocation((current) => current || draftDetails.location || '');
+  }, [draftDetails?.location]);
+
+  useEffect(() => {
+    if (!draftDetails) return;
+    setBookingData((prev) => ({
+      ...prev,
+      serviceType: prev.serviceType || draftDetails.categoryName,
+      date: prev.date || draftDetails.date,
+      time: prev.time || draftDetails.time,
+      location: prev.location || draftDetails.location,
+      photoCount: prev.photoCount || draftDetails.photoCount || 0,
+    }));
+  }, [draftDetails]);
+
   // Update serviceLocation when savedLocation changes
   useEffect(() => {
     if (!savedLocation) return;
+    /**
+     * Unless this booking has an address of its own.
+     *
+     * The account's saved location is where the customer usually is. The
+     * draft's is where this job is. They are often the same and sometimes
+     * not, and this effect would overwrite the second with the first the
+     * moment a resumed booking filled it in - so continuing a draft for a
+     * job at your mother's house searched for providers near your flat.
+     */
+    if (draftDetails?.location) return;
     // Keep the map header/location text in sync with the latest saved location.
     // The previous logic only set it when serviceLocation was empty, which caused stale UI.
     if (savedLocation !== serviceLocation) {
       setServiceLocation(savedLocation);
     }
-  }, [savedLocation, serviceLocation]);
+  }, [savedLocation, serviceLocation, draftDetails?.location]);
 
   /**
    * A fresh `{latitude, longitude}` object every time this effect merely
@@ -195,8 +322,21 @@ const ServiceMapScreen = () => {
         }
       }
 
+      /**
+       * Priority 1b: the address recorded on the booking itself.
+       *
+       * Ahead of the saved-location call below, because this is the address
+       * for *this* job. The account's saved location is where they usually
+       * are, which is not the same thing and is only a sensible guess.
+       */
+      if (draftDetails?.coords) {
+        setCoordsIfChanged(draftDetails.coords);
+        return;
+      }
+
       // Priority 2: If we have location text, try to get from saved location API FIRST
       // This is more reliable than GPS which might be simulator default (San Francisco)
+      // (Priority 1b above has already returned for a booking with its own address.)
       if (serviceLocation) {
         try {
           const userId = await authService.getUserId();
@@ -233,27 +373,44 @@ const ServiceMapScreen = () => {
       }
     };
 
-    getLocationCoordinates();
-  }, [serviceLocation, savedLocation, userLocation, params.latitude, params.longitude, setCoordsIfChanged]);
+    /**
+     * The flag is set whatever happened, including when nothing matched.
+     * "Found nothing" is an answer the screen has to be able to act on, and
+     * treating it as "still looking" is what left the chip spinning.
+     */
+    void getLocationCoordinates().finally(() => setLocationResolved(true));
+  }, [
+    serviceLocation,
+    savedLocation,
+    userLocation,
+    params.latitude,
+    params.longitude,
+    draftDetails?.coords,
+    setCoordsIfChanged,
+  ]);
 
   // Fetch nearby providers when we have category and coordinates
   useEffect(() => {
     const loadProviders = async () => {
-      const categoryName = params.categoryName || params.serviceType;
-      
+      const categoryName = effectiveCategoryName;
+
       // Reset error state
       setHasTriedLoadProviders(false);
       setProviderError(null);
-      
+
+      /**
+       * Nothing to search with yet. Not an error while the draft is still on
+       * its way: reporting one here is what put "Please select a service
+       * category" in front of somebody whose category was about to arrive.
+       */
       if (!categoryName || !serviceLocationCoords) {
-        // Don't show dummy data - show empty state instead
         setProviders([]);
-        if (!categoryName) {
+        if (!categoryName && !isHydratingDraft) {
           setProviderError('Please select a service category');
-        } else if (!serviceLocationCoords) {
+        } else if (!serviceLocationCoords && locationResolved && !isHydratingDraft) {
           setProviderError('Please set your service location');
         }
-        setHasTriedLoadProviders(true);
+        setHasTriedLoadProviders(!isHydratingDraft);
         return;
       }
 
@@ -391,7 +548,7 @@ const ServiceMapScreen = () => {
     };
 
     loadProviders();
-  }, [params.categoryName, params.serviceType, serviceLocationCoords]);
+  }, [effectiveCategoryName, serviceLocationCoords, locationResolved, isHydratingDraft]);
 
   useEffect(() => {
     let isMounted = true;
@@ -462,6 +619,31 @@ const ServiceMapScreen = () => {
     navigateToClientHomeTab(router);
   }, [router]);
 
+  /**
+   * Off to set the address, and back here afterwards.
+   *
+   * These buttons used to push LocationSearchScreen bare. That screen decides
+   * where to go next from its own params, so with none it sent people to the
+   * home tab - and the booking they were in the middle of was left behind
+   * with its address still unset, which is the thing they had just gone to fix.
+   */
+  const openLocationSearch = useCallback(() => {
+    router.push({
+      pathname: '/LocationSearchScreen' as any,
+      params: {
+        requestId: params.requestId,
+        next: 'ServiceMapScreen',
+        preserveData: 'true',
+        categoryName: effectiveCategoryName,
+        serviceType: effectiveCategoryName,
+        selectedDateTime: params.selectedDateTime,
+        selectedDate: params.selectedDate,
+        selectedTime: params.selectedTime,
+        photoCount: params.photoCount,
+      },
+    } as any);
+  }, [router, params.requestId, params.selectedDateTime, params.selectedDate, params.selectedTime, params.photoCount, effectiveCategoryName]);
+
   const handleMapBack = useCallback(() => {
     haptics.light();
     if (router.canGoBack()) {
@@ -473,8 +655,8 @@ const ServiceMapScreen = () => {
         pathname: '/AddPhotosScreen' as any,
         params: {
           requestId: params.requestId,
-          categoryName: params.categoryName,
-          serviceType: params.serviceType,
+          categoryName: effectiveCategoryName,
+          serviceType: effectiveCategoryName,
           selectedDateTime: params.selectedDateTime,
           selectedDate: params.selectedDate,
           selectedTime: params.selectedTime,
@@ -490,7 +672,11 @@ const ServiceMapScreen = () => {
   return (
     <SafeAreaWrapper>
       <View className="flex-1">
-        {!isLoadingProviders && hasTriedLoadProviders && !!serviceLocationCoords && providerError && providers.length === 0 ? (
+        {!isLoadingProviders &&
+        hasTriedLoadProviders &&
+        (!!serviceLocationCoords || locationResolved) &&
+        providerError &&
+        providers.length === 0 ? (
           <View style={{ flex: 1, backgroundColor: Colors.white }}>
             {/* Back Button */}
             <View style={{ paddingHorizontal: Spacing.lg, paddingTop: Spacing.lg }}>
@@ -576,9 +762,7 @@ const ServiceMapScreen = () => {
                 {providerError.includes('location') && !serviceLocationCoords ? (
                   <Button
                     title="Set Location"
-                    onPress={() => {
-                      router.push('/LocationSearchScreen' as any);
-                    }}
+                    onPress={openLocationSearch}
                     variant="primary"
                     size="medium"
                     fullWidth
@@ -588,13 +772,12 @@ const ServiceMapScreen = () => {
                     <Button
                       title={!serviceLocationCoords ? 'Set Location' : 'Try Again'}
                       onPress={() => {
-                        const categoryName = params.categoryName || params.serviceType;
-                        if (categoryName && serviceLocationCoords) {
+                        if (effectiveCategoryName && serviceLocationCoords) {
                           setProviderError(null);
                           setIsLoadingProviders(true);
                           setServiceLocationCoords({ ...serviceLocationCoords });
                         } else if (!serviceLocationCoords) {
-                          router.push('/LocationSearchScreen' as any);
+                          openLocationSearch();
                         }
                       }}
                       variant="primary"
@@ -603,9 +786,7 @@ const ServiceMapScreen = () => {
                     />
                     <Button
                       title="Change Location"
-                      onPress={() => {
-                        router.push('/LocationSearchScreen' as any);
-                      }}
+                      onPress={openLocationSearch}
                       variant="outline"
                       size="medium"
                       fullWidth
@@ -704,9 +885,7 @@ const ServiceMapScreen = () => {
               <View style={{ width: '100%', maxWidth: 300, gap: Spacing.md }}>
                 <Button
                   title="Change Location"
-                  onPress={() => {
-                    router.push('/LocationSearchScreen' as any);
-                  }}
+                  onPress={openLocationSearch}
                   variant="primary"
                   size="medium"
                   fullWidth
@@ -772,7 +951,7 @@ const ServiceMapScreen = () => {
               * nearby providers..." - swapped in and out before the map
               * appeared, which read as the app bouncing between screens.
               */}
-            {isLoadingProviders || !serviceLocationCoords ? (
+            {isLoadingProviders || isHydratingDraft || (!serviceLocationCoords && !locationResolved) ? (
               <View
                 pointerEvents="none"
                 style={{ position: 'absolute', left: 16, right: 16, bottom: 32, alignItems: 'center' }}
@@ -914,7 +1093,7 @@ const ServiceMapScreen = () => {
 
           navigateBookingFlowToConfirmation(router, {
             requestId: params.requestId,
-            serviceType: params.serviceType || params.categoryName,
+            serviceType: effectiveCategoryName,
             selectedDate: params.selectedDate,
             selectedTime: params.selectedTime,
             providerCount:
@@ -922,11 +1101,7 @@ const ServiceMapScreen = () => {
           });
         }}
         onEditService={(bookingData) => {
-          const categoryHint =
-            params.categoryName ||
-            bookingData.serviceType ||
-            params.serviceType ||
-            '';
+          const categoryHint = effectiveCategoryName || bookingData.serviceType || '';
           router.push({
             pathname: '/(tabs)/categories' as any,
             params: {
@@ -934,7 +1109,7 @@ const ServiceMapScreen = () => {
               returnToServiceMap: 'true',
               requestId: params.requestId,
               preserveData: 'true',
-              serviceType: bookingData.serviceType || params.serviceType || '',
+              serviceType: bookingData.serviceType || effectiveCategoryName || '',
               selectedDateTime: bookingData.dateTime || params.selectedDateTime || '',
               selectedDate: bookingData.date || params.selectedDate || '',
               selectedTime: bookingData.time || params.selectedTime || '',
@@ -950,11 +1125,11 @@ const ServiceMapScreen = () => {
             pathname: '/DateTimeScreen' as any,
             params: {
               requestId: params.requestId,
-              categoryName: params.categoryName || bookingData.serviceType,
+              categoryName: effectiveCategoryName || bookingData.serviceType,
               selectedDateTime: bookingData.dateTime || params.selectedDateTime,
               selectedDate: bookingData.date || params.selectedDate,
               selectedTime: bookingData.time || params.selectedTime,
-              serviceType: bookingData.serviceType || params.serviceType,
+              serviceType: bookingData.serviceType || effectiveCategoryName,
               photoCount: bookingData.photoCount?.toString() || params.photoCount,
               location: bookingData.location || serviceLocation,
               preserveData: 'true',
@@ -969,7 +1144,7 @@ const ServiceMapScreen = () => {
               requestId: params.requestId,
               next: 'ServiceMapScreen',
               preserveData: 'true',
-              serviceType: bookingData.serviceType || params.serviceType,
+              serviceType: bookingData.serviceType || effectiveCategoryName,
               selectedDateTime: bookingData.dateTime || params.selectedDateTime,
               selectedDate: bookingData.date || params.selectedDate,
               selectedTime: bookingData.time || params.selectedTime,
@@ -983,11 +1158,11 @@ const ServiceMapScreen = () => {
             pathname: '/AddPhotosScreen' as any,
             params: {
               requestId: params.requestId,
-              categoryName: params.categoryName || bookingData.serviceType,
+              categoryName: effectiveCategoryName || bookingData.serviceType,
               selectedDateTime: bookingData.dateTime || params.selectedDateTime,
               selectedDate: bookingData.date || params.selectedDate,
               selectedTime: bookingData.time || params.selectedTime,
-              serviceType: bookingData.serviceType || params.serviceType,
+              serviceType: bookingData.serviceType || effectiveCategoryName,
               location: bookingData.location || serviceLocation,
               photoCount: bookingData.photoCount?.toString() || params.photoCount,
               preserveData: 'true',
@@ -1001,7 +1176,7 @@ const ServiceMapScreen = () => {
           setShowSummaryModal(false);
         }}
         data={{
-          serviceType: bookingData.serviceType || params.serviceType || params.categoryName || 'Service',
+          serviceType: bookingData.serviceType || effectiveCategoryName || 'Service',
           dateTime: bookingData.dateTime || params.selectedDateTime,
           date: bookingData.date || params.selectedDate,
           time: bookingData.time || params.selectedTime,

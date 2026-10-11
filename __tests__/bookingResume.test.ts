@@ -31,6 +31,10 @@ import {
   readBookingResumePoint,
   rememberBookingStep,
   markResumePrompted,
+  forgetAnsweredSteps,
+  pointFromDraft,
+  readAnsweredStep,
+  resetResumePromptsForNewSession,
   resumeHoursLeft,
   resumeProgress,
   resumeRouteFor,
@@ -227,13 +231,21 @@ describe('booking resume pointer', () => {
       await expect(shouldPromptResume(point)).resolves.toBe(false);
     });
 
-    it('asks once per booking, not once per launch', async () => {
+    it('asks once per visit, and again on the next one', async () => {
       await rememberBookingStep('schedule', '418', { requestId: '418' });
       const point = (await readBookingResumePoint())!;
 
       await expect(shouldPromptResume(point)).resolves.toBe(true);
       await markResumePrompted(point.requestId);
       await expect(shouldPromptResume(point)).resolves.toBe(false);
+
+      /**
+       * Reopening the app is a new visit. Dismissing used to settle the
+       * booking for good, so the draft existed in the Jobs tab and nowhere
+       * else - which read as the app having lost it.
+       */
+      resetResumePromptsForNewSession();
+      await expect(shouldPromptResume(point)).resolves.toBe(true);
     });
 
     /** Answering about one booking must not silence the next one. */
@@ -246,7 +258,7 @@ describe('booking resume pointer', () => {
       await expect(shouldPromptResume(next)).resolves.toBe(true);
     });
 
-    /** Moving forward and stopping again is not a reason to ask twice. */
+    /** Moving forward and stopping again is not a reason to ask twice in one visit. */
     it('stays quiet after they advance a step', async () => {
       await rememberBookingStep('schedule', '418', { requestId: '418' });
       await markResumePrompted('418');
@@ -289,16 +301,20 @@ describe('booking resume pointer', () => {
     });
 
     /**
-     * The answer is stored, not held in memory, so closing the app and
-     * opening it again does not start the asking over.
+     * The answer is held for this visit only, so closing the app and opening
+     * it again offers the booking back - with the pointer still intact, so it
+     * is offered back at the step they actually reached.
      */
-    it('stays closed across a relaunch', async () => {
+    it('asks again on a relaunch', async () => {
       await rememberBookingStep('schedule', '418', { requestId: '418' });
       await markResumePrompted('418');
 
+      resetResumePromptsForNewSession();
+
       const onNextLaunch = (await readBookingResumePoint())!;
-      await expect(shouldPromptResume(onNextLaunch)).resolves.toBe(false);
+      await expect(shouldPromptResume(onNextLaunch)).resolves.toBe(true);
       expect(onNextLaunch.requestId).toBe('418');
+      expect(onNextLaunch.step).toBe('schedule');
     });
 
     it('takes the booking with it only when it is actually discarded', async () => {
@@ -392,5 +408,101 @@ describe('progress read from the draft', () => {
     expect(furthestBookingStep('providers', 'details')).toBe('providers');
     expect(furthestBookingStep(null, undefined)).toBe('details');
     expect(furthestBookingStep('schedule', null, 'photos')).toBe('photos');
+  });
+});
+
+/**
+ * What a draft is turned into before anything tries to reopen it.
+ *
+ * The params are the point of this: continuing a booking from the Jobs tab,
+ * the resume prompt or a notification used to arrive carrying a requestId and
+ * nothing else, and the provider map reads the trade and the address off its
+ * params - so it drew no pins and told a customer who had answered both
+ * questions to go and select a category and set a location.
+ */
+describe('reopening a draft', () => {
+  const fullDraft = {
+    id: 418,
+    categoryName: 'Plumbing',
+    jobTitle: 'Burst pipe under the sink',
+    description: 'Water coming through the cupboard floor.',
+    scheduledDate: '2026-02-14',
+    scheduledTime: '10:00',
+    location: {
+      formattedAddress: '12 Admiralty Way, Lekki',
+      latitude: 6.4361,
+      longitude: 3.4518,
+    },
+    images: ['https://cdn.example/a.jpg', 'https://cdn.example/b.jpg'],
+    updatedAt: '2026-02-13T09:00:00.000Z',
+  };
+
+  it('carries the trade, the address and the coordinates', () => {
+    const point = pointFromDraft(fullDraft as any);
+
+    expect(point.params).toMatchObject({
+      requestId: '418',
+      categoryName: 'Plumbing',
+      /** Two names for the same value; different screens read different ones. */
+      serviceType: 'Plumbing',
+      location: '12 Admiralty Way, Lekki',
+      latitude: '6.4361',
+      longitude: '3.4518',
+      selectedDate: '2026-02-14',
+      selectedTime: '10:00',
+      photoCount: '2',
+    });
+  });
+
+  it('leaves out what the draft does not have, rather than sending blanks', () => {
+    const point = pointFromDraft({ id: 7, jobTitle: 'x', description: 'y' } as any);
+
+    expect(point.params).toEqual({ requestId: '7' });
+  });
+
+  /**
+   * The route has to be the step, with the params, or the whole exercise just
+   * lands somebody on a screen that cannot draw itself.
+   */
+  it('routes to the map it can actually fill', () => {
+    const route = resumeRouteFor(pointFromDraft(fullDraft as any));
+
+    expect(route.pathname).toBe('/ServiceMapScreen');
+    expect(route.params.categoryName).toBe('Plumbing');
+    expect(route.params.latitude).toBe('6.4361');
+  });
+
+  /**
+   * The blocker this is really for: photos are attached through a details
+   * field the backend has never confirmed it stores, so the record can come
+   * back with no images on a booking whose photos were added. The phone's own
+   * record of the screens it watched them answer breaks the tie.
+   */
+  it('trusts this phone over the record about photos', () => {
+    const withoutImages = { ...fullDraft, images: [] as string[] };
+
+    expect(pointFromDraft(withoutImages as any).step).toBe('photos');
+    expect(pointFromDraft(withoutImages as any, 'providers').step).toBe('providers');
+  });
+
+  /** And only ever forward. A stale local record must not undo real progress. */
+  it('never moves a draft backwards', () => {
+    expect(pointFromDraft(fullDraft as any, 'details').step).toBe('providers');
+  });
+
+  it('records the furthest step each booking reached, per booking', async () => {
+    await rememberBookingStep('photos', '418', { requestId: '418' });
+    await rememberBookingStep('providers', '418', { requestId: '418' });
+    /** Going back a screen does not unanswer the one already answered. */
+    await rememberBookingStep('schedule', '418', { requestId: '418' });
+    await rememberBookingStep('schedule', '999', { requestId: '999' });
+
+    expect(await readAnsweredStep('418')).toBe('providers');
+    expect(await readAnsweredStep('999')).toBe('schedule');
+    expect(await readAnsweredStep('123')).toBeNull();
+
+    await forgetAnsweredSteps('418');
+    expect(await readAnsweredStep('418')).toBeNull();
+    expect(await readAnsweredStep('999')).toBe('schedule');
   });
 });

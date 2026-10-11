@@ -1,20 +1,26 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState, type AppStateStatus } from 'react-native';
 
 import { serviceRequestService } from '@/services/api';
 import { isAbandonedDraft } from '@/contract/src/bookingDraft';
 import type { ServiceRequest } from '@/services/api';
 import {
-  bookingStepFromDraftContent,
   clearBookingResumePoint,
+  forgetAnsweredSteps,
+  readAnsweredStep,
+  readAnsweredStepMap,
   readBookingResumePoint,
   markResumePrompted,
+  pointFromDraft,
+  resetResumePromptsForNewSession,
   resumeHoursLeft,
   resumeProgress,
   furthestBookingStep,
-  pointFromDraft,
   resumeStepLabel,
   shouldPromptResume,
+  RESUME_SESSION_GAP_MS,
   type BookingResumePoint,
+  type BookingStep,
 } from '@/utils/bookingResume';
 
 /**
@@ -50,12 +56,21 @@ export function useBookingResume() {
    * alongside it for the rest.
    */
   const [otherDrafts, setOtherDrafts] = useState<ServiceRequest[]>([]);
+  /** This phone's progress per booking, for scoring `otherDrafts` consistently. */
+  const [answeredSteps, setAnsweredSteps] = useState<Record<string, BookingStep>>({});
 
   const loadOtherDrafts = useCallback(async (primaryId: string | null, preFetched?: ServiceRequest[]) => {
     try {
       const remote = preFetched ?? (await serviceRequestService.getDrafts());
       const abandoned = remote.filter((row) => isAbandonedDraft(row));
       setOtherDrafts(abandoned.filter((row) => String(row.id) !== primaryId));
+      /**
+       * One read for the whole list. Whoever renders these scores them with
+       * pointFromDraft, and without this map it would score them off the
+       * server alone - so the same booking would read "add photos" in the
+       * list and "choose a provider" in the prompt.
+       */
+      setAnsweredSteps(await readAnsweredStepMap());
     } catch {
       /* best effort - a failed fetch here just means the list doesn't grow this pass */
     }
@@ -92,7 +107,15 @@ export function useBookingResume() {
       const candidate = remote.find((row) => isAbandonedDraft(row));
 
       if (candidate) {
-        const recovered = pointFromDraft(candidate as any);
+        /**
+         * This phone's own record of what it watched them answer, used as a
+         * floor on the server's reading. Without it a customer who added
+         * photos is handed the draft back still being asked for photos,
+         * because the images are attached through a details field the backend
+         * has never confirmed it stores.
+         */
+        const localFloor = await readAnsweredStep(String(candidate.id));
+        const recovered = pointFromDraft(candidate as any, localFloor);
         setPoint(recovered);
         setDraft(candidate);
         setShouldPrompt(await shouldPromptResume(recovered));
@@ -133,8 +156,13 @@ export function useBookingResume() {
      * answers already given. The server's job is to correct us, not to grant
      * permission, and it does that a moment later.
      */
-    setPoint(stored);
-    setShouldPrompt(await shouldPromptResume(stored));
+    const localFloor = await readAnsweredStep(stored.requestId);
+    const hydrated = localFloor
+      ? { ...stored, step: furthestBookingStep(stored.step, localFloor) }
+      : stored;
+
+    setPoint(hydrated);
+    setShouldPrompt(await shouldPromptResume(hydrated));
     setIsLoading(false);
     /** Reassigned to null below if this one turns out to be finished/gone. */
     let resolvedPrimaryId: string | null = stored.requestId;
@@ -147,16 +175,27 @@ export function useBookingResume() {
         setDraft(request);
 
         /**
-         * And corrects the step. The pointer is written as somebody leaves a
-         * screen, so it lags what they actually did - it told one customer
-         * their photos were still to come on a booking whose photos were
-         * already uploaded. The record cannot lag in that direction.
+         * And corrects the step, and completes the params.
+         *
+         * The step first: the pointer is written as somebody leaves a screen,
+         * so it lags what they actually did, and the record cannot lag in that
+         * direction. The local floor is applied too, for the one thing the
+         * record is unreliable about - whether photos were added.
+         *
+         * The params second, from the draft, underneath whatever the pointer
+         * already holds. A pointer written on the details screen has no
+         * address and no coordinates on it, and the provider map needs both;
+         * arriving without them is what made Continue land on a map with no
+         * pins asking for a category that had already been chosen.
          */
+        const fromServer = pointFromDraft(request as any, localFloor);
         setPoint((current) =>
           current
             ? {
                 ...current,
-                step: furthestBookingStep(current.step, bookingStepFromDraftContent(request)),
+                step: furthestBookingStep(current.step, fromServer.step),
+                categoryName: current.categoryName ?? fromServer.categoryName,
+                params: { ...fromServer.params, ...current.params },
               }
             : current,
         );
@@ -224,6 +263,8 @@ export function useBookingResume() {
      * Best effort on purpose: the local copy is already gone, and a failure
      * here means one row expires on its own rather than being removed early.
      */
+    void forgetAnsweredSteps(targetId);
+
     const numericId = parseInt(targetId, 10);
     if (Number.isFinite(numericId) && numericId > 0) {
       try {
@@ -244,8 +285,46 @@ export function useBookingResume() {
   }, [point, refresh]);
 
   /**
+   * Offers the draft again when they come back to the app.
+   *
+   * The prompt only ever fired on a cold start, because the hook refreshed on
+   * mount and the home screen stays mounted. So the common case - swipe the
+   * app away or leave it in the background, come back, no interruption - was
+   * the one case it never covered, and a customer who had been told nothing
+   * reasonably concluded the half-finished booking was gone.
+   *
+   * Gated on how long they were away (RESUME_SESSION_GAP_MS), because leaving
+   * to the camera roll or to answer a call is not coming back to the app, and
+   * re-prompting on every brief return is the nagging the once-per-visit rule
+   * exists to avoid.
+   */
+  const leftAt = useRef<number | null>(null);
+
+  useEffect(() => {
+    const onChange = (next: AppStateStatus) => {
+      if (next === 'background' || next === 'inactive') {
+        /** First departure wins: inactive then background must not reset the clock. */
+        if (leftAt.current == null) leftAt.current = Date.now();
+        return;
+      }
+      if (next !== 'active') return;
+
+      const away = leftAt.current == null ? 0 : Date.now() - leftAt.current;
+      leftAt.current = null;
+      if (away < RESUME_SESSION_GAP_MS) return;
+
+      resetResumePromptsForNewSession();
+      void refresh();
+    };
+
+    const subscription = AppState.addEventListener('change', onChange);
+    return () => subscription.remove();
+  }, [refresh]);
+
+  /**
    * Closes the prompt without touching the draft. Saying "not now" is an
-   * answer about this moment, not about the booking, so the home card stays.
+   * answer about this visit, not about the booking, so it is offered again
+   * the next time they open the app and the draft stays in Jobs meanwhile.
    */
   const dismissPrompt = useCallback(async () => {
     setShouldPrompt(false);
@@ -258,6 +337,8 @@ export function useBookingResume() {
     draft,
     /** Every other abandoned draft on the account, beyond `point` - for a list, not the interruption prompt. */
     otherDrafts,
+    /** Local progress per booking id, to score `otherDrafts` the way `point` is scored. */
+    answeredSteps,
     /** What they were about to do, for the card's copy. */
     stepLabel: point ? resumeStepLabel(point) : null,
     /** Position in the flow, so the card can show how far in they are. */
