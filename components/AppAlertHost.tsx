@@ -1,7 +1,7 @@
 import { BorderRadius, Colors, MIN_TOUCH_TARGET, Spacing } from '@/lib/designSystem';
 import { useNarrowOverlayMaxWidth } from '@/lib/tabletLayout';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Modal, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { AlertTriangle, CheckCircle2, Info, XCircle } from 'lucide-react-native';
 
 export type AppAlertButtonStyle = 'default' | 'cancel' | 'destructive';
@@ -101,11 +101,18 @@ export default function AppAlertHost() {
     if (dismissingRef.current) return;
     dismissingRef.current = true;
     setRequest(null);
-    // Let the modal finish dismissing before a handler pushes a route or opens
-    // another alert - stacked native modals otherwise fail to present on iOS.
+    /**
+     * Wait for the modal to actually be gone, not just for the next tick.
+     *
+     * A zero-delay timeout runs while this modal is still fading out, and
+     * iOS will not present one modal over another - it fails silently, with
+     * no error and nothing on screen. Anything a handler opens from here
+     * (an image picker, a share sheet, another alert) simply did not
+     * appear. The fade is 300ms on iOS, so the handler waits for it.
+     */
     setTimeout(() => {
       void button.onPress?.();
-    }, 0);
+    }, Platform.OS === 'ios' ? 320 : 0);
   }, []);
 
   const handleBackdrop = useCallback(() => {

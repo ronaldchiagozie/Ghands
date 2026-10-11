@@ -12,11 +12,11 @@ import { AuthError } from '@/utils/errors';
 import { handleAuthErrorRedirect } from '@/utils/authRedirect';
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Image, Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TouchableOpacity, TextInput, View } from "react-native";
+import { ActivityIndicator, Image, Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, TextInput, View } from "react-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { openClientReceipt } from '@/utils/receiptNavigation';
 import { analytics } from '@/services/analytics';
-import { AlertCircle, ArrowRight, Banknote, Calendar, CheckCircle2, FileText, MapPin, Star, Wrench } from 'lucide-react-native';
+import { AlertCircle, ArrowRight, Banknote, Calendar, CheckCircle2, ChevronRight, FileText, MapPin, Star, Wrench } from 'lucide-react-native';
 import { BorderRadius, Colors } from '@/lib/designSystem';
 import { AvatarCircle } from '@/components/AvatarCircle';
 import { pickProviderImageUriFromRecord } from '@/utils/clientProfilePhoto';
@@ -448,6 +448,17 @@ export default function CompletedJobDetail() {
     ];
   }, [request]);
 
+  /** The amount, taken from the row the list already resolved. */
+  const totalCostLabel =
+    bookedDate.find((row) => row.name === 'Total Cost')?.subtitle ?? 'Not available';
+
+  /** When it finished, in the words a person would use. */
+  const completedWhenLabel = useMemo(() => {
+    const when = request?.updatedAt;
+    const formatted = when ? formatTimeAgo(when) : '';
+    return formatted ? `Completed ${formatted}` : 'Completed';
+  }, [request?.updatedAt]);
+
   /**
    * No toast. It said the same thing as the notice permanently on this
    * screen, a few hundred pixels above it - so opening a finished job threw
@@ -522,239 +533,248 @@ export default function CompletedJobDetail() {
                 }
               />
             </View>
-            <View className="mb-6">
+            {/**
+              * Rebuilt against the rules this screen was breaking.
+              *
+              * Every block was a white box with a border AND a shadow, with
+              * further bordered boxes nested inside it, under headings set
+              * at the same size as the screen title - so nothing was
+              * subordinate to anything and the page read as a stack of
+              * competing panels. The conventions for a receipt-shaped screen
+              * are not subtle: one column, the amount near the top rather
+              * than buried at the bottom, sections separated by space and
+              * hairlines instead of nested frames, a border or a shadow but
+              * never both, and one or two elevation levels in the whole app.
+              *
+              * So: the outcome first - what it cost and that it is done -
+              * then who did it, then the detail, each in a flat card with a
+              * single hairline and no shadow at all.
+              */}
+
+            {/** What it came to. The one number anybody opens this for. */}
+            <View
+              style={{
+                backgroundColor: Colors.successLight,
+                borderRadius: 18,
+                paddingHorizontal: 18,
+                paddingVertical: 18,
+                marginBottom: 14,
+              }}
+            >
+              <Text style={styles.eyebrow}>Total paid</Text>
               <Text
-                className="text-xl mb-4"
                 style={{
-                  fontFamily: 'Poppins-SemiBold',
+                  fontSize: 32,
+                  lineHeight: 40,
+                  fontFamily: 'Poppins-Bold',
+                  color: Colors.textPrimary,
+                  letterSpacing: -1,
+                  fontVariant: ['tabular-nums'],
+                  marginTop: 2,
                 }}
               >
-                Service Provider
+                {totalCostLabel}
               </Text>
-              <TouchableOpacity
-                className="flex flex-row items-center justify-between px-5 py-5 bg-white rounded-2xl border"
-                style={{ borderColor: Colors.borderLight }}
-                activeOpacity={0.7}
-                onPress={() => {
-                  if (selectedProvider) {
-                    haptics.selection();
-                    router.push({
-                      pathname: '/ProviderDetailScreen',
-                      params: {
-                        providerName: selectedProvider.name ?? '',
-                        providerId: selectedProvider.id?.toString() || '',
-                      },
-                    } as any);
-                  }
+              <Text
+                style={{
+                  fontSize: 12.5,
+                  fontFamily: 'Poppins-Medium',
+                  color: Colors.successForeground,
+                  marginTop: 4,
                 }}
               >
-                <View className="flex flex-row items-center gap-5">
-                  {/** Their initials when there is no photo, not a grey outline of nobody. */}
-                  <AvatarCircle uri={providerAvatarUri} name={selectedProvider?.name} size={56} />
-                  <View>
-                    {/**
-                      * Their name, or that it has not loaded. Never "Provider
-                      * TBD": this is a finished job, so somebody did the work
-                      * and was paid for it, and a placeholder here says the
-                      * app does not know who - in the same confident type it
-                      * uses for the price.
-                      */}
-                    <Text
-                      className="text-base mb-1"
-                      style={{
-                        fontFamily: 'Poppins-Bold',
-                        color: selectedProvider?.name ? undefined : Colors.textMuted,
-                      }}
-                    >
-                      {selectedProvider?.name || 'Name unavailable'}
-                    </Text>
-                    {!(myReviewRating != null && myReviewRating >= 1) ? (
-                    <View className="flex flex-row gap-2 items-center">
-                      <View className="flex-row">
-                        {Array.from({ length: 5 }).map((_, i) => {
-                          const r = Number((selectedProvider as any)?.rating ?? 0);
-                          const filled = i < Math.round(r);
-                          return (
-                            <Star
-                              key={i}
-                              size={14}
-                              color={filled ? Colors.star : Colors.border}
-                              fill={filled ? Colors.star : 'transparent'}
-                            />
-                          );
-                        })}
-                      </View>
+                {completedWhenLabel}
+              </Text>
+            </View>
+
+            {/** Who did it. */}
+            <TouchableOpacity
+              activeOpacity={0.85}
+              disabled={!selectedProvider}
+              onPress={() => {
+                if (!selectedProvider) return;
+                haptics.selection();
+                router.push({
+                  pathname: '/ProviderDetailScreen',
+                  params: {
+                    providerName: selectedProvider.name ?? '',
+                    providerId: selectedProvider.id?.toString() || '',
+                  },
+                } as any);
+              }}
+              style={styles.flatCard}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <AvatarCircle
+                  uri={providerAvatarUri}
+                  name={selectedProvider?.name}
+                  size={48}
+                  borderColor="transparent"
+                  backgroundColor={Colors.successLight}
+                />
+                <View style={{ flex: 1, minWidth: 0, marginLeft: 12 }}>
+                  <Text
+                    numberOfLines={1}
+                    style={{
+                      fontSize: 15,
+                      fontFamily: 'Poppins-SemiBold',
+                      color: selectedProvider?.name ? Colors.textPrimary : Colors.textMuted,
+                      letterSpacing: -0.2,
+                    }}
+                  >
+                    {selectedProvider?.name || 'Name unavailable'}
+                  </Text>
+                  {myReviewRating != null && myReviewRating >= 1 ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 3 }}>
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star
+                          key={`rated-${i}`}
+                          size={13}
+                          color={i < myReviewRating ? Colors.star : Colors.border}
+                          fill={i < myReviewRating ? Colors.star : 'transparent'}
+                          strokeWidth={0}
+                        />
+                      ))}
                       <Text
-                        className="text-sm"
                         style={{
-                          fontFamily: 'Poppins-Regular',
-                          color: Colors.textMuted,
+                          marginLeft: 6,
+                          fontSize: 12,
+                          fontFamily: 'Poppins-Medium',
+                          color: Colors.textSecondaryDark,
                         }}
                       >
-                        {(selectedProvider as any)?.rating != null || (selectedProvider as any)?.totalReviews != null
-                          ? `${Number((selectedProvider as any)?.rating ?? 0).toFixed(1)} (${Number((selectedProvider as any)?.totalReviews ?? 0)} reviews)`
-                          : 'No ratings yet'}
+                        Your rating
                       </Text>
                     </View>
-                    ) : null}
-                    {myReviewRating != null && myReviewRating >= 1 && (
-                      <View className="flex-row items-center gap-2 mt-2">
-                        <Text
-                          className="text-xs"
-                          style={{ fontFamily: 'Poppins-Medium', color: Colors.iconMuted }}
-                        >
-                          Your rating
-                        </Text>
-                        <View className="flex-row">
-                          {Array.from({ length: 5 }).map((_, i) => (
-                            <Star
-                              key={`y-${i}`}
-                              size={16}
-                              color={i < myReviewRating ? Colors.accent : Colors.border}
-                              fill={i < myReviewRating ? Colors.accent : 'transparent'}
-                            />
-                          ))}
-                        </View>
-                        <Text
-                          className="text-xs"
-                          style={{ fontFamily: 'Poppins-SemiBold', color: Colors.success }}
-                        >
-                          {myReviewRating}/5
-                        </Text>
-                      </View>
-                    )}
-                  </View>
+                  ) : (
+                    <Text
+                      style={{
+                        fontSize: 12.5,
+                        fontFamily: 'Poppins-Regular',
+                        color: Colors.textSecondaryDark,
+                        marginTop: 2,
+                      }}
+                    >
+                      Service provider
+                    </Text>
+                  )}
                 </View>
-              </TouchableOpacity>
-              <View
-                className="mt-3 px-1"
-                style={{
-                  backgroundColor: Colors.surfaceSubtle,
-                  borderRadius: BorderRadius.default,
-                  paddingVertical: 10,
-                  paddingHorizontal: 12,
-                  borderWidth: 1,
-                  borderColor: Colors.border,
-                }}
-              >
-                <Text
-                  className="text-xs"
-                  style={{ fontFamily: 'Poppins-Regular', color: Colors.textMuted, lineHeight: 18 }}
-                >
-                  Chat and voice calls are closed once a job is completed. If you need help with this job, go to{' '}
-                  <Text style={{ fontFamily: 'Poppins-SemiBold', color: Colors.success }}>Help & Support</Text> in the app
-                  to reach our team.
-                </Text>
-                <TouchableOpacity
-                  className="mt-2 self-start"
-                  activeOpacity={0.85}
-                  onPress={() => {
-                    haptics.selection();
-                    router.push('/HelpSupportScreen' as any);
-                  }}
-                >
-                  <Text
-                    className="text-sm"
-                    style={{ fontFamily: 'Poppins-SemiBold', color: Colors.accent }}
-                  >
-                    Open Help & Support
-                  </Text>
-                </TouchableOpacity>
+                {selectedProvider ? <ChevronRight size={18} color={Colors.textTertiary} /> : null}
               </View>
-            </View>
-            <View className="mt-6 mb-6">
+            </TouchableOpacity>
+
+            {/** The job itself: description, then the facts, split by hairlines. */}
+            <View style={styles.flatCard}>
+              <Text style={styles.eyebrow}>The job</Text>
               <Text
-                className="text-xl mb-4"
                 style={{
-                  fontFamily: 'Poppins-SemiBold',
-                }}
-              >
-                Job Description
-              </Text>
-              <Text
-                className="text-sm leading-6"
-                style={{
+                  fontSize: 14,
+                  lineHeight: 21,
                   fontFamily: 'Poppins-Regular',
-                  color: Colors.textMuted,
+                  color: Colors.textPrimary,
+                  marginTop: 6,
                 }}
               >
                 {request.description || request.jobTitle || 'No description provided'}
               </Text>
-            </View>
-            <View className="mt-2 mb-8">
-              <View>
-                {bookedDate.map((items, index) => (
+
+              {bookedDate
+                .filter((row) => row.name !== 'Total Cost')
+                .map((row, index) => (
                   <View
-                    key={index}
-                    className="flex flex-row gap-4 items-center"
+                    key={row.name}
                     style={{
-                      paddingVertical: 14,
-                      borderTopWidth: index === 0 ? 0 : 1,
+                      flexDirection: 'row',
+                      alignItems: 'flex-start',
+                      justifyContent: 'space-between',
+                      paddingTop: 13,
+                      marginTop: 13,
+                      borderTopWidth: 1,
                       borderTopColor: Colors.borderLight,
+                      ...(index === 0 ? {} : {}),
                     }}
                   >
-                    <View
+                    <Text
                       style={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: 12,
-                        backgroundColor: Colors.white,
-                        borderWidth: 1.5,
-                        borderColor: 'rgba(79, 103, 57, 0.45)',
-                        alignItems: 'center',
-                        justifyContent: 'center',
+                        fontSize: 13,
+                        fontFamily: 'Poppins-Regular',
+                        color: Colors.textSecondaryDark,
+                        marginRight: 16,
                       }}
                     >
-                      {items.icon}
-                    </View>
-                    <View className="flex-1">
-                      <Text
-                        className="text-sm mb-1"
-                        style={{
-                          fontFamily: 'Poppins-Medium',
-                          color: Colors.iconMuted,
-                        }}
-                      >
-                        {items.name}
-                      </Text>
-                      <Text
-                        className="text-base text-black"
-                        style={{
-                          fontFamily: 'Poppins-SemiBold',
-                        }}
-                      >
-                        {items.subtitle}
-                      </Text>
-                    </View>
+                      {row.name}
+                    </Text>
+                    <Text
+                      style={{
+                        flex: 1,
+                        textAlign: 'right',
+                        fontSize: 13.5,
+                        fontFamily: 'Poppins-SemiBold',
+                        color: Colors.textPrimary,
+                      }}
+                    >
+                      {row.subtitle}
+                    </Text>
                   </View>
                 ))}
-              </View>
-              <TouchableOpacity
-                className="flex gap-3 flex-row mt-4 py-4 rounded-xl items-center justify-center" style={{ backgroundColor: Colors.accent }}
-                activeOpacity={0.85}
-                onPress={() => {
-                  haptics.selection();
-                  analytics.track('view_receipt', { job_id: 'completed_job' });
-                  openClientReceipt(router, {
-                    requestId: params.requestId ?? String(request?.id ?? ''),
-                    serviceName: request?.jobTitle || request?.categoryName || 'Service',
-                    providerName: selectedProvider?.name ?? '',
-                  });
-                }}
-              >
-                <Text
-                  className="text-white text-base"
-                  style={{
-                    fontFamily: 'Poppins-SemiBold',
-                  }}
-                >
-                  View receipt
-                </Text>
-                <ArrowRight size={18} color="white" />
-              </TouchableOpacity>
             </View>
 
-            
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => {
+                haptics.selection();
+                analytics.track('view_receipt', { job_id: 'completed_job' });
+                openClientReceipt(router, {
+                  requestId: params.requestId ?? String(request?.id ?? ''),
+                  serviceName: request?.jobTitle || request?.categoryName || 'Service',
+                  providerName: selectedProvider?.name ?? '',
+                });
+              }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                backgroundColor: Colors.accent,
+                borderRadius: BorderRadius.default,
+                paddingVertical: 15,
+                marginBottom: 14,
+              }}
+            >
+              <Text style={{ fontSize: 15, fontFamily: 'Poppins-SemiBold', color: Colors.white }}>
+                View receipt
+              </Text>
+              <ArrowRight size={17} color={Colors.white} strokeWidth={2.2} />
+            </TouchableOpacity>
+
+            {/**
+              * Plain text, not a bordered panel. It is a footnote about what
+              * this screen cannot do, and it was wearing the same card as
+              * the job itself.
+              */}
+            <Text
+              style={{
+                fontSize: 12.5,
+                lineHeight: 19,
+                fontFamily: 'Poppins-Regular',
+                color: Colors.textSecondaryDark,
+                marginBottom: 22,
+                paddingHorizontal: 2,
+              }}
+            >
+              Chat and calls close when a job is completed.{' '}
+              <Text
+                onPress={() => {
+                  haptics.light();
+                  router.push('/HelpSupportScreen' as never);
+                }}
+                style={{ fontFamily: 'Poppins-SemiBold', color: Colors.accent }}
+              >
+                Open Help & Support
+              </Text>{' '}
+              if you need us.
+            </Text>
+
             <View className="mb-8">
               <JobProgressTimeline steps={timelineSteps} />
             </View>
@@ -1066,3 +1086,30 @@ export default function CompletedJobDetail() {
     </SafeAreaWrapper>
   );
 }
+
+/**
+ * A flat card: one hairline, no shadow.
+ *
+ * The blocks this replaced carried a border and a shadow together, which
+ * is the combination every card guideline tells you to pick one of - and
+ * with several of them stacked, plus bordered boxes nested inside, the page
+ * had more edges than content.
+ */
+const styles = StyleSheet.create({
+  flatCard: {
+    backgroundColor: Colors.white,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    marginBottom: 14,
+  },
+  eyebrow: {
+    fontSize: 11,
+    fontFamily: 'Poppins-SemiBold',
+    color: Colors.textSecondaryDark,
+    letterSpacing: 0.7,
+    textTransform: 'uppercase',
+  },
+});

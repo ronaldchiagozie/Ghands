@@ -144,26 +144,43 @@ export function ClientPaymentReceipt({
         * date, the reference, and the name at the bottom.
         */}
       {capturing ? null : (
-      <View style={{ alignItems: 'center', marginBottom: 14 }}>
-        <View
-          style={{
-            width: 56,
-            height: 56,
-            borderRadius: 28,
-            backgroundColor: iconBg,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: 10,
-          }}
-        >
-          <Icon size={28} color={iconColor} strokeWidth={2.2} />
-        </View>
+      <View style={{ marginBottom: 14 }}>
+        {/**
+          * No badge.
+          *
+          * A tinted circle with a thin outline tick, above a title, above a
+          * subtitle is the house style of every generated success screen -
+          * three rows of ceremony in front of the thing somebody opened a
+          * receipt to read. A receipt leads with the amount, and the card
+          * below already does at 30pt. The status it was illustrating is
+          * still on that card, as a word, with the rest of the facts.
+          *
+          * It survives for a failed payment, small and inline, because that
+          * is the one case where the status outranks the number.
+          */}
+        {status === 'failed' ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+            <Icon size={16} color={iconColor} strokeWidth={2.4} />
+            <Text
+              style={{
+                marginLeft: 6,
+                fontSize: 12,
+                fontFamily: 'Poppins-SemiBold',
+                color: iconColor,
+                letterSpacing: 0.3,
+                textTransform: 'uppercase',
+              }}
+            >
+              {badgeLabel}
+            </Text>
+          </View>
+        ) : null}
         <Text
           style={{
-            fontSize: 18,
+            fontSize: 22,
             fontFamily: 'Poppins-Bold',
             color: Colors.textPrimary,
-            letterSpacing: -0.3,
+            letterSpacing: -0.5,
             marginBottom: 4,
           }}
         >
@@ -175,9 +192,7 @@ export function ClientPaymentReceipt({
               fontSize: 13,
               fontFamily: 'Poppins-Regular',
               color: Colors.textSecondaryDark,
-              textAlign: 'center',
-              lineHeight: 18,
-              paddingHorizontal: 8,
+              lineHeight: 19,
             }}
           >
             {heroSubtitle}

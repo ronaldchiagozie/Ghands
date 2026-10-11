@@ -9,6 +9,7 @@ import { Camera, Mail, Phone, User } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import {
+  ActionSheetIOS,
   ActivityIndicator,
   Image,
   KeyboardAvoidingView,
@@ -129,9 +130,37 @@ export default function EditProfileScreen() {
     return true;
   };
 
+  /**
+   * Choosing between camera and library, without stacking modals.
+   *
+   * The in-app alert was the problem. It is a React Native <Modal>, and its
+   * fade-out takes a few hundred milliseconds; the handler fired on a
+   * zero-delay timeout, so the image picker tried to present while that
+   * modal was still on screen. iOS refuses to present one modal over
+   * another and does it silently - no error, no picker, nothing. Which is
+   * exactly "I tap Gallery and nothing happens".
+   *
+   * iOS gets its own native action sheet, which is not a React Native modal
+   * and is what this control is supposed to be anyway. Android keeps the
+   * in-app alert, where stacked presentation is not an issue.
+   */
   const handleImagePicker = async () => {
     const hasPermission = await requestPermissions();
     if (!hasPermission) return;
+
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Take a photo', 'Choose from library'],
+          cancelButtonIndex: 0,
+        },
+        (index) => {
+          if (index === 1) void openCamera();
+          if (index === 2) void openGallery();
+        },
+      );
+      return;
+    }
 
     showAppAlert(
       'Select Image',
