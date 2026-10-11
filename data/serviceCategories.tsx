@@ -1,118 +1,20 @@
 import React from 'react';
-import { Image } from 'react-native';
 
-const PlumberIcon = () => (
-  <Image 
-    source={require('../assets/images/plumbericon2.png')} 
-    style={{ width: 40, height: 40 }}
-    resizeMode="contain"
-  />
-);
-
-const ElectricianIcon = () => (
-  <Image 
-    source={require('../assets/images/electricianicon2.png')} 
-    style={{ width: 40, height: 40 }}
-    resizeMode="contain"
-  />
-);
-
-const CarpenterIcon = () => (
-  <Image 
-    source={require('../assets/images/carpentericon3.png')} 
-    style={{ width: 40, height: 40 }}
-    resizeMode="contain"
-  />
-);
-
-const CleaningIcon = () => (
-  <Image 
-    source={require('../assets/images/cleanericon2.png')} 
-    style={{ width: 40, height: 40}}
-    resizeMode="contain"
-  />
-);
-
-const MechanicIcon = () => (
-  <Image 
-    source={require('../assets/images/mechanicicon2.png')} 
-    style={{ width: 40, height: 40 }}
-    resizeMode="contain"
-  />
-);
-
-const PainterIcon = () => (
-  <Image 
-    source={require('../assets/images/paintericon2.png')} 
-    style={{ width: 40, height: 40 }}
-    resizeMode="contain"
-  />
-);
-
-const GardenerIcon = () => (
-  <Image 
-    source={require('../assets/images/gardenericon2.png')} 
-    style={{ width: 40, height: 40 }}
-    resizeMode="contain"
-  />
-);
-
-const TailorIcon = () => (
-  <Image 
-    source={require('../assets/images/tailoricon.png')} 
-    style={{ width: 40, height: 40 }}
-    resizeMode="contain"
-  />
-);
-
+/**
+ * The shape a category takes on the home screen.
+ *
+ * This file used to also hold the categories themselves: eight trades typed
+ * out by hand, each with its own little component wrapping a PNG. The app has
+ * read its categories from the server for a long time and draws their icons
+ * through utils/categoryIcons, so the list was dead - and dead in a way that
+ * would have taken a build with it, because five of the eight images it asked
+ * for no longer exist. Nothing imported the list, only the type, which is why
+ * nobody noticed.
+ *
+ * The type stays here because the home screen names it. The list is gone.
+ */
 export interface ServiceCategory {
   id: string;
   title: string;
   icon: React.ComponentType;
 }
-
-export const serviceCategories: ServiceCategory[] = [
-  {
-    id: 'plumber',
-    title: 'Plumber',
-    icon: PlumberIcon
-  },
-  {
-    id: 'electrician',
-    title: 'Electrician',
-    icon: ElectricianIcon
-  },
-  {
-    id: 'carpenter',
-    title: 'Carpenter',
-    icon: CarpenterIcon
-  },
-  {
-    id: 'cleaning',
-    title: 'Cleaning',
-    icon: CleaningIcon
-  },
-  {
-    id: 'mechanic',
-    title: 'Mechanic',
-    icon: MechanicIcon
-  },
-  {
-    id: 'painter',
-    title: 'Painter',
-    icon: PainterIcon
-  },
-  {
-    id: 'gardener',
-    title: 'Gardener',
-    icon: GardenerIcon
-  },
-  {
-    id: 'tailor',
-    title: 'Tailor',
-    icon: TailorIcon
-  }
-];
-
-
-export const homeScreenCategories = serviceCategories.slice(0, 8);

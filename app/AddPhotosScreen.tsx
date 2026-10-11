@@ -166,7 +166,14 @@ export default function AddPhotosScreen() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: false,
-      quality: 0.8,
+      /**
+       * 0.6, down from 0.8. These are photographs of a leak or a cracked
+       * tile, viewed by a provider at list size and at most full-screen on a
+       * phone - the detail that 0.8 buys over 0.6 is not visible at either,
+       * and at a typical 12-megapixel capture it is a megabyte per photo, on
+       * a connection the customer is paying for by the megabyte.
+       */
+      quality: 0.6,
       allowsMultipleSelection: true,
     });
 
@@ -192,7 +199,14 @@ export default function AddPhotosScreen() {
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: false,
-      quality: 0.8,
+      /**
+       * 0.6, down from 0.8. These are photographs of a leak or a cracked
+       * tile, viewed by a provider at list size and at most full-screen on a
+       * phone - the detail that 0.8 buys over 0.6 is not visible at either,
+       * and at a typical 12-megapixel capture it is a megabyte per photo, on
+       * a connection the customer is paying for by the megabyte.
+       */
+      quality: 0.6,
       allowsMultipleSelection: false,
     });
 
