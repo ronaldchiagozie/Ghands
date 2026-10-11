@@ -320,6 +320,31 @@ export const serviceRequestService = {
     await serviceRequestService.selectProvider(requestId, providerId as number);
   },
 
+  /**
+   * Writes an address onto a request that is missing one.
+   *
+   * Same shape as attachRequestImages, and for the same reason: the details
+   * endpoint is the only way to write a request's content and it requires
+   * the title and description, so the current values are read back rather
+   * than blanked.
+   *
+   * This exists because publishing refuses a booking with no location, and
+   * the screen doing the publishing usually knows the address perfectly well
+   * - it is drawing a map centred on it. Sending the customer away to retype
+   * it is the worst available answer.
+   */
+  setRequestLocation: async (
+    requestId: number,
+    location: Record<string, unknown>,
+  ): Promise<void> => {
+    const current = await serviceRequestService.getRequestDetails(requestId);
+    await apiClient.put<any>(`/api/request-service/requests/${requestId}/details`, {
+      jobTitle: current.jobTitle ?? '',
+      description: current.description ?? '',
+      location,
+    });
+  },
+
   attachRequestImages: async (requestId: number, imageUrls: string[]): Promise<void> => {
     const urls = imageUrls.map((url) => url.trim()).filter(Boolean);
     if (urls.length === 0) return;

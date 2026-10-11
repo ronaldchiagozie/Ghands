@@ -100,14 +100,13 @@ const ServiceMapScreen = () => {
     photoCount?: number;
   } | null>(null);
   /**
-   * Whether the hunt for coordinates has finished, however it finished.
+   * Whether the device location attempt has finished, either way.
    *
-   * Without this the screen had no way to tell "still looking" from "looked
-   * everywhere and found nothing", so a booking with no usable address sat
-   * under "Getting your location…" for as long as anybody was willing to
-   * watch it. Now the chase ends and says what it needs.
+   * This is the slowest of the four places a coordinate can come from - route
+   * params, the draft, the account's saved address, and the GPS - so it is
+   * the one that decides when "still looking" becomes "looked everywhere".
    */
-  const [locationResolved, setLocationResolved] = useState(false);
+  const [gpsSettled, setGpsSettled] = useState(false);
   /** Flipped once the lookup below has answered, however it answered. */
   const [draftLookupDone, setDraftLookupDone] = useState(false);
   
@@ -210,6 +209,19 @@ const ServiceMapScreen = () => {
   }, [params.requestId, params.categoryName, params.serviceType, params.location, params.latitude, params.longitude]);
 
   const isHydratingDraft = needsDraftHydration && !draftLookupDone;
+
+  /**
+   * Every place a coordinate could come from has now been tried.
+   *
+   * This used to be set the first time the coordinate effect ran, which is
+   * before the draft, the account's saved address or the GPS have answered -
+   * so the screen concluded it had no location within a frame of opening,
+   * drew "Please set your service location", and then replaced it with the
+   * map a second later when the real answer arrived. That is the flicker:
+   * fallback, then a different fallback, then the map. Nothing may claim to
+   * have looked everywhere until the slowest source has reported back.
+   */
+  const locationResolved = gpsSettled && !isHydratingDraft;
 
   useEffect(() => {
     if (!needsDraftHydration) return;
@@ -373,12 +385,7 @@ const ServiceMapScreen = () => {
       }
     };
 
-    /**
-     * The flag is set whatever happened, including when nothing matched.
-     * "Found nothing" is an answer the screen has to be able to act on, and
-     * treating it as "still looking" is what left the chip spinning.
-     */
-    void getLocationCoordinates().finally(() => setLocationResolved(true));
+    void getLocationCoordinates();
   }, [
     serviceLocation,
     savedLocation,
@@ -572,6 +579,8 @@ const ServiceMapScreen = () => {
           });
         }
       } catch {
+      } finally {
+        if (isMounted) setGpsSettled(true);
       }
     })();
 
@@ -1064,6 +1073,42 @@ const ServiceMapScreen = () => {
              * selection all intact, so trying again is one tap.
              */
             haptics.error();
+
+            /**
+             * A missing address is the one thing this screen can fix itself.
+             *
+             * It is drawing a map centred on the place, with the address in
+             * its own header - so bouncing the customer to a picker to retype
+             * what the app is currently displaying is the worst available
+             * answer, and it is what they got: confirm the booking, watch the
+             * summary close, land on Find location. Write it on and publish
+             * again; only ask if that fails too.
+             */
+            if (String(error?.code ?? '') === 'MISSING_LOCATION' && serviceLocationCoords) {
+              try {
+                await serviceRequestService.setRequestLocation(requestId, {
+                  formattedAddress: serviceLocation || savedLocation || '',
+                  address: (serviceLocation || savedLocation || '').split(',')[0],
+                  latitude: serviceLocationCoords.latitude,
+                  longitude: serviceLocationCoords.longitude,
+                });
+                await serviceRequestService.publishBooking(requestId, providerId);
+
+                haptics.success();
+                showSuccess('Provider selected. They have 5 minutes to accept.');
+                await clearBookingResumePoint();
+                navigateBookingFlowToConfirmation(router, {
+                  requestId: params.requestId,
+                  serviceType: effectiveCategoryName,
+                  selectedDate: params.selectedDate,
+                  selectedTime: params.selectedTime,
+                  providerCount: String(selectedProviders.length),
+                });
+                return;
+              } catch {
+                /* falls through to the step redirect below */
+              }
+            }
 
             /**
              * The backend names what is missing, so send them to it rather than

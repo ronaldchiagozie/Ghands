@@ -63,7 +63,18 @@ export default function JobDetailsScreen() {
   const [description, setDescription] = useState(prefill.description);
   const [errors, setErrors] = useState<{ jobTitle?: string; description?: string }>({});
   const [isUpdating, setIsUpdating] = useState(false);
-  const [locationData, setLocationData] = useState<any>(null);
+  /** The account's saved service address, resolved to full detail. */
+  type LocationDetails = {
+    placeId?: string;
+    formattedAddress?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    latitude?: number;
+    longitude?: number;
+  };
+  const [locationData, setLocationData] = useState<LocationDetails | null>(null);
   const [handyAvailable, setHandyAvailable] = useState(false);
   const [handyState, setHandyState] = useState<HandyChipState>('idle');
 
@@ -118,7 +129,18 @@ export default function JobDetailsScreen() {
   }, [fadeAnim, slideAnim]);
 
   // Load location details if we have a saved location
-  const loadLocationDetails = useCallback(async () => {
+  /**
+   * Returns what it found, as well as storing it.
+   *
+   * It used to return a boolean. The caller below then re-read `locationData`
+   * from state to build the payload - in the same tick, so it was still the
+   * null it had been before the call, and the booking was saved with no
+   * address at all. Nothing failed at the time; it failed four screens later,
+   * when publishing refused with MISSING_LOCATION and the app bounced the
+   * customer to a location picker to type in an address they had already
+   * given it.
+   */
+  const loadLocationDetails = useCallback(async (): Promise<LocationDetails | null> => {
     try {
       const userId = await authService.getUserId();
       if (userId) {
@@ -135,13 +157,13 @@ export default function JobDetailsScreen() {
             longitude: savedLocation.longitude,
           };
           setLocationData(newLocationData);
-          return true; // Location found
+          return newLocationData;
         }
       }
     } catch {
       // Location not set in API
     }
-    return false; // Location not found
+    return null;
   }, []);
 
   // Load location on mount
@@ -238,11 +260,11 @@ export default function JobDetailsScreen() {
 
       // Check if user has a saved location - backend requires it
       // Try to load location if we don't have it yet
-      if (!locationData) {
-        // Try to get saved location one more time
-        const locationFound = await loadLocationDetails();
-        
-        if (!locationFound) {
+      let resolvedLocation = locationData;
+      if (!resolvedLocation) {
+        resolvedLocation = await loadLocationDetails();
+
+        if (!resolvedLocation) {
           // Still no location - check if we have location from hook (local storage)
           if (location) {
             // We have location text but not full details - API should use saved location
@@ -273,16 +295,16 @@ export default function JobDetailsScreen() {
       // If we don't have locationData, don't send location in payload
       // Backend will use user's saved location automatically
       let locationPayload: any = undefined;
-      if (locationData) {
+      if (resolvedLocation) {
         locationPayload = {
-          placeId: locationData.placeId,
-          address: locationData.address || locationData.formattedAddress?.split(',')[0],
-          formattedAddress: locationData.formattedAddress,
-          latitude: locationData.latitude,
-          longitude: locationData.longitude,
-          city: locationData.city,
-          state: locationData.state,
-          country: locationData.country,
+          placeId: resolvedLocation.placeId,
+          address: resolvedLocation.address || resolvedLocation.formattedAddress?.split(',')[0],
+          formattedAddress: resolvedLocation.formattedAddress,
+          latitude: resolvedLocation.latitude,
+          longitude: resolvedLocation.longitude,
+          city: resolvedLocation.city,
+          state: resolvedLocation.state,
+          country: resolvedLocation.country,
         };
       } else {
         // No location data - backend should use user's saved location
