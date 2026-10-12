@@ -16,6 +16,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Image, Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, TextInput, View } from "react-native";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { openClientReceipt } from '@/utils/receiptNavigation';
+import { buildChatScreenParams } from '@/utils/navigation';
 import { analytics } from '@/services/analytics';
 import { AlertCircle, ArrowRight, Banknote, Calendar, CheckCircle2, ChevronRight, FileText, MapPin, Star, Wrench } from 'lucide-react-native';
 import { BorderRadius, Colors } from '@/lib/designSystem';
@@ -34,6 +35,9 @@ import {
   reviewRatingStorageKey,
 } from '@/utils/reviewSync';
 import Toast from '@/components/Toast';
+
+/** The server allows messages and calls for an hour after completion; see utils/conversationAccess. */
+const CONTACT_WINDOW_MS = 60 * 60 * 1000;
 
 /** Per logged-in user + job, so switching accounts does not hide/show the wrong modal state. */
 const reviewSubmittedStorageKey = (userId: number, requestId: number) =>
@@ -465,6 +469,22 @@ export default function CompletedJobDetail() {
   const totalCostLabel =
     bookedDate.find((row) => row.name === 'Total Cost')?.subtitle ?? 'Not available';
 
+  /**
+   * Whether the provider can still be reached about this job.
+   *
+   * The server keeps messaging and calls open for an hour after a job is
+   * completed - room for a forgotten key or a question about the receipt -
+   * and only then refuses with MESSAGING_CLOSED. This screen was hiding
+   * the buttons the moment the job finished, so that hour existed on the
+   * server and nowhere a customer could use it: the one window the rule
+   * was written to provide, closed by the app instead.
+   */
+  const contactWindowOpen = useMemo(() => {
+    const finishedAt = Date.parse(request?.updatedAt ?? '');
+    if (!Number.isFinite(finishedAt)) return false;
+    return Date.now() - finishedAt < CONTACT_WINDOW_MS;
+  }, [request?.updatedAt]);
+
   /** When it finished, in the words a person would use. */
   const completedWhenLabel = useMemo(() => {
     const when = request?.updatedAt;
@@ -765,28 +785,72 @@ export default function CompletedJobDetail() {
               * this screen cannot do, and it was wearing the same card as
               * the job itself.
               */}
-            <Text
-              style={{
-                fontSize: 12.5,
-                lineHeight: 19,
-                fontFamily: 'Poppins-Regular',
-                color: Colors.textSecondaryDark,
-                marginBottom: 22,
-                paddingHorizontal: 2,
-              }}
-            >
-              Chat and calls close when a job is completed.{' '}
+            {contactWindowOpen && selectedProvider ? (
+              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 22 }}>
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={() => {
+                    haptics.light();
+                    router.push({
+                      pathname: '/ChatScreen',
+                      params: buildChatScreenParams({
+                        requestId: params.requestId ?? String(request?.id ?? ''),
+                        providerName: selectedProvider.name ?? '',
+                        providerId: selectedProvider.id?.toString(),
+                        peerImage: providerAvatarUri,
+                        fromJobHub: true,
+                      }),
+                    } as any);
+                  }}
+                  style={styles.contactButton}
+                >
+                  <Text style={styles.contactLabel}>Message</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={() => {
+                    haptics.light();
+                    router.push({
+                      pathname: '/CallScreen',
+                      params: {
+                        callState: 'outgoing',
+                        callerName: selectedProvider.name ?? '',
+                        callerId: selectedProvider.id?.toString() ?? '',
+                        callerImage: providerAvatarUri ?? '',
+                        requestId: params.requestId ?? String(request?.id ?? ''),
+                        isProvider: 'false',
+                      },
+                    } as any);
+                  }}
+                  style={styles.contactButton}
+                >
+                  <Text style={styles.contactLabel}>Call</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
               <Text
-                onPress={() => {
-                  haptics.light();
-                  router.push('/HelpSupportScreen' as never);
+                style={{
+                  fontSize: 12.5,
+                  lineHeight: 19,
+                  fontFamily: 'Poppins-Regular',
+                  color: Colors.textSecondaryDark,
+                  marginBottom: 22,
+                  paddingHorizontal: 2,
                 }}
-                style={{ fontFamily: 'Poppins-SemiBold', color: Colors.accent }}
               >
-                Open Help & Support
-              </Text>{' '}
-              if you need us.
-            </Text>
+                Chat and calls closed an hour after this job finished.{' '}
+                <Text
+                  onPress={() => {
+                    haptics.light();
+                    router.push('/HelpSupportScreen' as never);
+                  }}
+                  style={{ fontFamily: 'Poppins-SemiBold', color: Colors.accent }}
+                >
+                  Open Help & Support
+                </Text>{' '}
+                if you need us.
+              </Text>
+            )}
 
             <View className="mb-8">
               <JobProgressTimeline steps={timelineSteps} />
@@ -1117,6 +1181,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
     marginBottom: 14,
+  },
+  contactButton: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 13,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.white,
+  },
+  contactLabel: {
+    fontSize: 14,
+    fontFamily: 'Poppins-SemiBold',
+    color: Colors.accent,
   },
   eyebrow: {
     fontSize: 11,
