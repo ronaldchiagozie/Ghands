@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 import { Colors } from '@/lib/designSystem';
 import { applyDefaultStatusBar } from '@/utils/statusBar';
 import {

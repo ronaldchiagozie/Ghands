@@ -3,7 +3,8 @@ import { Button } from '@/components/ui/Button';
 import { Colors, useKeyboardAvoidingOffset } from '@/lib/designSystem';
 import { passwordResetService } from '@/services/api';
 import { getSpecificErrorMessage } from '@/utils/errorMessages';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Keyboard,

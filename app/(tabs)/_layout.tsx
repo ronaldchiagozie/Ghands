@@ -1,6 +1,7 @@
 import { ClipboardList, Compass, Home, Plus, User, type LucideIcon } from 'lucide-react-native';
 import type { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs';
-import { Tabs, useRouter } from 'expo-router';
+import { Tabs } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Animated, Platform, Text, TouchableOpacity, View, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

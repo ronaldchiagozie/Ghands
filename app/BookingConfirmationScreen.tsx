@@ -10,7 +10,8 @@ import { handleAuthErrorRedirect } from '@/utils/authRedirect';
 import { formatTimeAgo } from '@/utils/dateFormatting';
 import { formatSkillLabel } from '@/utils/formatSkillLabel';
 import { navigateToJob, navigateToJobsPendingTab, resetToClientTab, NAV_FALLBACK } from '@/utils/navigation';
-import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 import { ArrowRight, CalendarDays, CheckCircle2, Clock3, FileText, Wrench, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {

@@ -4,7 +4,8 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import Skeleton from '@/components/LoadingSkeleton';
 import AnimatedModal from '@/components/AnimatedModal';
 import { BorderRadius, Colors, Spacing, useKeyboardAvoidingOffset } from '@/lib/designSystem';
-import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 import { ExternalLink, CheckCircle2, XCircle, Wallet } from 'lucide-react-native';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {

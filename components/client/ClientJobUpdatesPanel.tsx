@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 import { Activity, ChevronDown, ChevronUp, Clock, MessageCircle } from 'lucide-react-native';
 import { CallIconOutline } from '@/components/call/CallIcons';
 import React, { useState } from 'react';

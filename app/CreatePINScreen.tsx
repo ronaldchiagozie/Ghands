@@ -3,7 +3,8 @@ import { navigateBack } from '@/utils/navigation';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { WalletPinInput } from '@/components/WalletPinInput';
 import { Colors, useKeyboardAvoidingOffset } from '@/lib/designSystem';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 import { Check, LockKeyhole } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {

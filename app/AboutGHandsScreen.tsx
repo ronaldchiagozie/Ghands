@@ -3,7 +3,7 @@ import { NAV_FALLBACK, navigateBack } from '@/utils/navigation';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Colors } from '@/lib/designSystem';
 import Constants from 'expo-constants';
-import { useRouter } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 
 import React from 'react';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';

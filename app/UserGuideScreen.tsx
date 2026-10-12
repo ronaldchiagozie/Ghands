@@ -5,7 +5,7 @@ import { haptics } from '@/hooks/useHaptics';
 import appLogo from '@/assets/images/icon.png';
 import { BorderRadius, Colors, MIN_TOUCH_TARGET } from '@/lib/designSystem';
 import { CLIENT_HOME_SCROLL_GUTTER } from '@/lib/tabletLayout';
-import { useRouter } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 import { ChevronRight } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import {

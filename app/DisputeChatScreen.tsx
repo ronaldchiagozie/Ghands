@@ -2,7 +2,8 @@ import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import ChatMessageRow from '@/components/chat/ChatMessageRow';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { BorderRadius, Colors, MIN_TOUCH_TARGET, useKeyboardAvoidingOffset } from '@/lib/designSystem';
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 import { Send } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {

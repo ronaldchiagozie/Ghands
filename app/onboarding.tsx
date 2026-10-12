@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 import React, { useRef } from 'react';
 import { StatusBar, View } from 'react-native';
 import OnboardingCarousel from '../components/OnboardingCarousel';

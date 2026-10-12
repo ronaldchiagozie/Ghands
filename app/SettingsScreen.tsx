@@ -3,7 +3,7 @@ import { NAV_FALLBACK, navigateBack } from '@/utils/navigation';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { BorderRadius, Colors, Spacing } from '@/lib/designSystem';
 import { resetOnboardingForTesting } from '@/utils/resetOnboardingForTesting';
-import { useRouter } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 import { ChevronRight, HelpCircle, Key, RotateCcw, Scale, User } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';

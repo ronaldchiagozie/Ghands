@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import MapView, { Marker, Region } from 'react-native-maps';
-import { useRouter } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 import { Search, Star } from 'lucide-react-native';
 import { BorderRadius, Colors, MIN_TOUCH_TARGET } from '@/lib/designSystem';
 import { SURFACE_STYLES } from '@/lib/surfaceStyles';

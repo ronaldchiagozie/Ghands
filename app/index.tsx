@@ -1,4 +1,5 @@
-import { useRouter, usePathname } from 'expo-router';
+import { usePathname } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 import { resolveSignupResume } from '@/utils/signupProgress';
 import { useEffect, useRef } from 'react';
 import useOnboarding from '@/hooks/useOnboarding';

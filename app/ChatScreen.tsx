@@ -6,7 +6,8 @@ import { ChatThreadEmptyState, ChatThreadLoadingState } from '@/components/chat/
 import ChatTypingBubble from '@/components/chat/ChatTypingBubble';
 import { BorderRadius, Colors, Spacing, SHADOWS, MIN_TOUCH_TARGET} from '@/lib/designSystem';
 import { androidElevation, iosOnlyShadow } from '@/lib/surfaceStyles';
-import { useLocalSearchParams, useRouter, useFocusEffect, useNavigation } from 'expo-router';
+import { useLocalSearchParams, useFocusEffect, useNavigation } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 import { openCallFromChat } from '@/utils/callChatNavigation';
 import { ArrowLeft, AlertCircle, FileText, Lock, Send, MoreVertical } from 'lucide-react-native';
 import { CallIconOutline } from '@/components/call/CallIcons';

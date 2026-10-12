@@ -8,7 +8,8 @@ import {
   useKeyboardAvoidingOffset,
   useScrollViewKeyboardAssist,
 } from '@/lib/designSystem';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 import { AlertCircle } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import {

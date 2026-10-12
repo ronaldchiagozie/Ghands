@@ -1,5 +1,5 @@
 import { BorderRadius, Colors, MIN_TOUCH_TARGET, SPACING } from '@/lib/designSystem';
-import { useRouter } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 import { ArrowLeft } from 'lucide-react-native';
 import React from 'react';
 import { Text, TouchableOpacity, View, ViewStyle } from 'react-native';

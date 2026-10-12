@@ -1,5 +1,5 @@
 import ProfileCompletionModal from '@/components/ProfileCompletionModal';
-import { useRouter } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { ScreenBootLoader } from '@/components/ScreenBootLoader';

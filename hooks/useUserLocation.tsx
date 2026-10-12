@@ -9,7 +9,7 @@ import React, {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { locationService, authService } from '@/services/api';
 import { AuthError } from '@/utils/errors';
-import { useRouter } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 
 const USER_LOCATION_STORAGE_KEY = '@app:user_location';
 const USER_LOCATION_PLACE_ID_KEY = '@app:user_location_place_id';

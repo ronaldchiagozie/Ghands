@@ -20,7 +20,8 @@ import { logClientProfilePhoto } from '@/utils/clientProfilePhoto';
 import { NOT_SET_LABEL } from '@/utils/copy';
 import { AuthError } from '@/utils/errors';
 import { shareReferral } from '@/utils/referral';
-import { useFocusEffect, usePathname, useRouter } from 'expo-router';
+import { useFocusEffect, usePathname } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 import {
     Bell,
     ChevronRight,

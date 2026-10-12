@@ -9,7 +9,7 @@ import { providerListCard } from '@/lib/providerSurfaceStyles';
 import { walletService, type Bank } from '@/services/api';
 import { getSpecificErrorMessage } from '@/utils/errorMessages';
 import { NIGERIA_FALLBACK_BANKS } from '@/utils/nigeriaFallbackBanks';
-import { useRouter } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 import { Building2, ChevronDown, Lock, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {

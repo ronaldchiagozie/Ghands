@@ -16,7 +16,8 @@ import {
 import { botMessageRequestsPhotos } from '@/utils/aiChatPhotoPrompt';
 import { handleApiAuthFailure } from '@/utils/authRedirect';
 import { getSpecificErrorMessage } from '@/utils/errorMessages';
-import { usePathname, useRouter } from 'expo-router';
+import { usePathname } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 import { useCallback, useRef, useState } from 'react';
 import { markChatEntrancesSeen, resetChatEntrances } from '@/components/ai/chat/AiChatEnter';
 

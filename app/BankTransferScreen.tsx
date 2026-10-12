@@ -11,7 +11,8 @@ import {
   getPendingDepositReference,
   markDepositReferenceHandled,
 } from '@/utils/walletDepositSession';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 import { Lock } from 'lucide-react-native';
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';

@@ -50,7 +50,8 @@ import {
 } from '@/utils/timelineNegotiationSteps';
 import { navigateBack, navigateBackFromBookingJob, NAV_FALLBACK } from '@/utils/navigation';
 import { isDisplayableAvatarUri, pickProviderImageUriFromRecord } from '@/utils/clientProfilePhoto';
-import { Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 import { AlertCircle, CheckCircle2, ChevronLeft, ChevronRight, ClipboardCheck, ClipboardList, Clock, FileCheck2, FileText, MapPinned, ScanSearch, UserRoundCheck, Wrench, XCircle } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {

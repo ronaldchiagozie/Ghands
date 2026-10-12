@@ -3,7 +3,7 @@ import { BorderRadius, Colors, MIN_TOUCH_TARGET, Spacing, useReducedMotion } fro
 import { useNarrowOverlayMaxWidth } from '@/lib/tabletLayout';
 import { handleAuthErrorRedirect } from '@/utils/authRedirect';
 import { presentError, type ErrorPresentation } from '@/utils/errorPresentation';
-import { useRouter } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 import { Clock, KeyRound, RefreshCw, SearchX, ServerCrash, TriangleAlert, WifiOff } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Modal, Platform, Pressable, Text, View } from 'react-native';

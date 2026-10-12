@@ -1,5 +1,5 @@
 import { getCategoryIcon } from '@/utils/categoryIcons';
-import { useRouter } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 import { navigateToJob } from '@/utils/navigation';
 import React, { useMemo } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';

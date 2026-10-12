@@ -2,7 +2,7 @@ import SafeAreaWrapper from '@/components/SafeAreaWrapper';
 import { haptics } from '@/hooks/useHaptics';
 import { Colors, useKeyboardAvoidingOffset } from '@/lib/designSystem';
 import { authService } from '@/services/api';
-import { useRouter } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 import { resetStackTo } from '@/utils/navigation';
 import { Lock, Mail } from 'lucide-react-native';
 import React, { useState, useCallback, useRef, useEffect } from 'react';

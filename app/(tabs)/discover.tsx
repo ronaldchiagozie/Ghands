@@ -7,7 +7,8 @@ import {
   useTabScreenBottomSpacerHeight,
   useTabScrollContentPaddingTop,
 } from '@/lib/designSystem';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 import { ArrowUpRight, MapPin, Users } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Linking, ScrollView, Text, TouchableOpacity, View } from 'react-native';

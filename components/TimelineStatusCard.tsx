@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronUp, MessageCircleMore } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 import React, { useMemo, useState } from 'react';
 import { Image, Text, TouchableOpacity, View } from 'react-native';
 

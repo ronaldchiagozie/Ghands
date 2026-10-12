@@ -11,7 +11,7 @@ import { supportService } from '@/services/api/support';
 import { getErrorMessage } from '@/utils/errorMessages';
 import { isValidEmail } from '@/utils/inputFormatting';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 import { BookOpen, ChevronDown, Mail, Phone, Search } from 'lucide-react-native';
 import React, { useMemo, useRef, useState } from 'react';
 import {

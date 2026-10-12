@@ -20,7 +20,8 @@ import { canPollForSettlement, findSettlementRow } from '@/utils/walletSettlemen
 import { navigateBack, NAV_FALLBACK } from '@/utils/navigation';
 import { appendPaymentFlowLog } from '@/utils/paymentFlowLog';
 import { applyDefaultStatusBar } from '@/utils/statusBar';
-import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
+import { useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 import { Banknote, CheckCircle, Clock, Lock, RefreshCw, Wallet, X, XCircle } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {

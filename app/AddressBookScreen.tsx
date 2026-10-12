@@ -6,7 +6,8 @@ import { authService, locationService } from '@/services/api';
 import type { SavedLocation } from '@/services/api';
 import { loadAddressBookExtras, removeAddressBookExtra } from '@/utils/addressBookExtras';
 import { MoreVertical } from 'lucide-react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,

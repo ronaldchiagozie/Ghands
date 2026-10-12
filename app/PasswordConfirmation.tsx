@@ -3,7 +3,8 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { Spacing, Colors, useKeyboardAvoidingOffset } from '@/lib/designSystem';
 import { passwordResetService } from '@/services/api';
 import { getSpecificErrorMessage } from '@/utils/errorMessages';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 import { Lock } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {

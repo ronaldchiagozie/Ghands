@@ -7,7 +7,8 @@ import { aiService, type AiConversationSummary } from '@/services/api';
 import { formatTimeAgo } from '@/utils/dateFormatting';
 import { handleApiAuthFailure } from '@/utils/authRedirect';
 import { getSpecificErrorMessage } from '@/utils/errorMessages';
-import { useFocusEffect, usePathname, useRouter } from 'expo-router';
+import { useFocusEffect, usePathname } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 import { ArrowLeft, MessageSquarePlus, Trash2 } from 'lucide-react-native';
 import React, { useCallback, useState } from 'react';
 import {

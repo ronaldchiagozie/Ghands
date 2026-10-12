@@ -1,7 +1,7 @@
 import { Colors } from '@/lib/designSystem';
 import { haptics } from '@/hooks/useHaptics';
 import useOnboarding from '../hooks/useOnboarding';
-import { useRouter } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 import React, { useEffect, useRef } from 'react';
 import { Animated, ImageBackground, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

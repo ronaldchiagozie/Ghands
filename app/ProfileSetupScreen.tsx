@@ -3,7 +3,7 @@ import { BorderRadius, Colors, useKeyboardAvoidingOffset, useScrollViewKeyboardA
 import { API_BASE_URL } from '@/lib/apiConfig';
 import { useUserLocation } from '@/hooks/useUserLocation';
 import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 import { resetStackTo } from '@/utils/navigation';
 import { Camera, MapPin, Plus, User } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';

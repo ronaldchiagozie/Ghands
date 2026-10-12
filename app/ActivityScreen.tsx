@@ -23,7 +23,8 @@ import {
 import { walletService } from '@/services/api';
 import { openClientReceipt } from '@/utils/receiptNavigation';
 import { isCancelledWalletTransaction, extractWalletTransactionFailureReason, mapWalletTransactionStatus, walletTransactionTimestamp } from '@/utils/walletTransactions';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 import { CheckCircle, Clock, Filter, Receipt, XCircle } from 'lucide-react-native';
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { FlatList, Platform, RefreshControl, Text, TextInput, TouchableOpacity, View } from 'react-native';

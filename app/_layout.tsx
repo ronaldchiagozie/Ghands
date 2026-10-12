@@ -53,6 +53,17 @@ declare const ErrorUtils: {
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  /**
+   * The raw router here, not the guarded one.
+   *
+   * Every other screen navigates through useGuardedRouter, which swallows
+   * a second move inside 700ms so a double-tap cannot stack two screens.
+   * This layout's moves are not taps: they are auth redirects, fired when
+   * a session turns out to be over. Debouncing those would mean one of
+   * them could be dropped, and a dropped auth redirect leaves somebody
+   * sitting on a screen they are no longer signed in for. Rare and silent
+   * is the worst combination for that particular bug.
+   */
   const router = useRouter();
   const pathname = usePathname();
   const pathnameRef = useRef(pathname);

@@ -11,7 +11,8 @@ import { providerHomeSectionTitle, providerHomeSurface } from '@/lib/providerSur
 import { openWalletTransactionReceipt } from '@/utils/openWalletTransactionReceipt';
 import { walletService, type BankAccount } from '@/services/api';
 import { getSpecificErrorMessage, presentServerError } from '@/utils/errorMessages';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 import { Building2, ChevronDown, Lock, Plus } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {

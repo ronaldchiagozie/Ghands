@@ -1,7 +1,7 @@
 import AiSparkleIcon from '@/components/icons/AiSparkleIcon';
 import { haptics } from '@/hooks/useHaptics';
 import { useBottomTabBarHeight } from '@/lib/tabletLayout';
-import { useRouter } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 import React, { useCallback } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 

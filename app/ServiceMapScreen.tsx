@@ -30,7 +30,8 @@ const PUBLISH_ERROR_COPY: Record<string, string> = {
 };
 import { useUserLocation } from '@/hooks/useUserLocation';
 import * as Location from 'expo-location';
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useGuardedRouter as useRouter } from '@/hooks/useGuardedRouter';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 import { showAppAlert } from '@/components/AppAlertHost';
