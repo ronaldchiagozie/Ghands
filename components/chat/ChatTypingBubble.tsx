@@ -8,11 +8,14 @@ type ChatTypingBubbleProps = {
   isProviderView: boolean;
   /** The other party's name, for initials when they have no photo. */
   counterpartName?: string;
+  /** Their photo. Threaded from the screen, which resolves it once. */
+  counterpartImage?: string | null;
 };
 
 export default function ChatTypingBubble({
   isProviderView,
   counterpartName,
+  counterpartImage,
 }: ChatTypingBubbleProps) {
   return (
     <View
@@ -34,7 +37,12 @@ export default function ChatTypingBubble({
           borderColor: Colors.border,
         }}
       >
-        <AvatarCircle name={counterpartName} size={28} borderColor="transparent" />
+        <AvatarCircle
+              uri={counterpartImage}
+              name={counterpartName}
+              size={28}
+              borderColor="transparent"
+            />
       </View>
 
       <View

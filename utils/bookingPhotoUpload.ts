@@ -51,13 +51,43 @@ export async function attachBookingPhotos(
   const results = await uploadImageUris(candidates);
   const uploaded = results.filter((uri) => typeof uri === 'string' && uri && !isLocalUri(uri));
 
+  /**
+   * Says which half failed, when one does.
+   *
+   * Both halves of this were silent: a photo that never became an https URL
+   * and a photo that did but was refused by the details endpoint produced
+   * the same `complete: false`, and the screen showed the same sentence for
+   * either. So "my photos do not reach the provider" was unanswerable
+   * without a device in hand - and the two causes need completely different
+   * fixes, one on the phone and one on the server.
+   */
+  if (__DEV__) {
+    console.log('[BookingPhotos] upload', {
+      requestId,
+      picked: candidates.length,
+      reachedServer: uploaded.length,
+      /** The scheme matters: ph:// and assets-library:// cannot be posted as-is. */
+      schemes: candidates.map((uri) => uri.split(':')[0]),
+      failedToUpload: candidates.length - uploaded.length,
+    });
+  }
+
   if (uploaded.length === 0) {
     return { uploaded: [], complete: false };
   }
 
   try {
     await serviceRequestService.attachRequestImages(requestId, uploaded);
-  } catch {
+    if (__DEV__) console.log('[BookingPhotos] attached to request', requestId, uploaded.length);
+  } catch (error: any) {
+    if (__DEV__) {
+      console.log('[BookingPhotos] attach REFUSED', {
+        requestId,
+        status: error?.status,
+        code: error?.code,
+        message: error?.message,
+      });
+    }
     /* the booking still stands; the photos just did not make it */
     return { uploaded, complete: false };
   }

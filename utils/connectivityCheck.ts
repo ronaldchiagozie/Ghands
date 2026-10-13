@@ -15,7 +15,7 @@ const PING_TIMEOUT_MS = 10_000;
  * getting up, and clear it again fifteen seconds later. Correct at the
  * instant it appeared, and useless to look at.
  */
-const WAKE_CONFIRM_TIMEOUT_MS = 30_000;
+const WAKE_CONFIRM_TIMEOUT_MS = 45_000;
 
 type ApiUnreachableListener = () => void;
 const apiUnreachableListeners = new Set<ApiUnreachableListener>();

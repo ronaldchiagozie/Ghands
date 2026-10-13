@@ -29,6 +29,8 @@ type ChatMessageRowProps = {
   onLongPress?: () => void;
   /** The other party's name, for initials when they have no photo. */
   counterpartName?: string;
+  /** Their photo. Threaded from the screen, which resolves it once. */
+  counterpartImage?: string | null;
 };
 
 export default function ChatMessageRow({
@@ -39,6 +41,7 @@ export default function ChatMessageRow({
   onRetry,
   onLongPress,
   counterpartName,
+  counterpartImage,
 }: ChatMessageRowProps) {
   const reducedMotion = useReducedMotion();
   const opacity = useRef(new Animated.Value(animateEnter && !reducedMotion ? 0 : 1)).current;
@@ -115,7 +118,12 @@ export default function ChatMessageRow({
               borderColor: Colors.border,
             }}
           >
-            <AvatarCircle name={counterpartName} size={28} borderColor="transparent" />
+            <AvatarCircle
+              uri={counterpartImage}
+              name={counterpartName}
+              size={28}
+              borderColor="transparent"
+            />
           </View>
         ) : (
           <View style={{ width: 28, marginRight: 8 }} />

@@ -1064,6 +1064,7 @@ export default function ChatScreen() {
       return (
         <ChatMessageRow
           counterpartName={peerName}
+          counterpartImage={peerImage}
           message={item.message}
           isFirstInGroup={item.isFirstInGroup}
           isLastInGroup={item.isLastInGroup}
@@ -1075,7 +1076,7 @@ export default function ChatScreen() {
         />
       );
     },
-    [handleDeleteMessageForMe, retryFailedMessage]
+    [handleDeleteMessageForMe, retryFailedMessage, peerName, peerImage]
   );
 
   // Show error if requestId is invalid
@@ -1306,7 +1307,11 @@ height: MIN_TOUCH_TARGET,
             style={{ flex: 1, backgroundColor: Colors.sageSurface }}
             ListFooterComponent={
               isPeerTyping ? (
-                <ChatTypingBubble isProviderView={isProviderView} counterpartName={peerName} />
+                <ChatTypingBubble
+                  isProviderView={isProviderView}
+                  counterpartName={peerName}
+                  counterpartImage={peerImage}
+                />
               ) : null
             }
             ListEmptyComponent={

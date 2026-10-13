@@ -18,6 +18,24 @@ interface RequestConfig extends RequestInit {
  */
 const DEFAULT_TIMEOUT_MS = 45000;
 
+/**
+ * What the first attempt gets, before anything has had a chance to wake.
+ *
+ * The backend sleeps when idle and a cold start on its tier runs past the
+ * ordinary forty-five seconds, so the request that wakes it was being
+ * abandoned a few seconds before it would have answered - and then retried
+ * against a server still booting, which failed the same way. The first
+ * attempt waits long enough to cover the wake-up.
+ *
+ * Only the first. A server that is genuinely down must not hold somebody for
+ * seventy seconds three times over; once the wake-up budget has been spent
+ * and nothing came back, the retries are short, because by then the question
+ * is no longer "is it waking" but "is it there at all".
+ */
+const COLD_START_TIMEOUT_MS = 75000;
+/** Retries, once the wake-up has already been paid for. */
+const WARM_RETRY_TIMEOUT_MS = 20000;
+
 interface RetryOptions {
   maxRetries?: number;
   retryDelay?: number;
@@ -216,7 +234,14 @@ class ApiClient {
       try {
         const fetchConfig = await this.applyRequestInterceptors({ ...config });
         const { retries: _r, retryDelay: _d, timeoutMs, skipAuth, ...rawFetchOptions } = fetchConfig;
-        const response = await this.fetchWithTimeout(url, rawFetchOptions, timeoutMs ?? DEFAULT_TIMEOUT_MS);
+        /**
+         * A long first attempt and short retries - see COLD_START_TIMEOUT_MS.
+         * An explicit timeoutMs from the caller always wins; it was asked for
+         * on purpose and usually means "this screen cannot wait that long".
+         */
+        const attemptTimeout =
+          timeoutMs ?? (attempt === 0 ? COLD_START_TIMEOUT_MS : WARM_RETRY_TIMEOUT_MS);
+        const response = await this.fetchWithTimeout(url, rawFetchOptions, attemptTimeout);
 
         if (
           response.status === 401 &&
