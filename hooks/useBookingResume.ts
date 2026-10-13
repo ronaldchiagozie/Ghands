@@ -103,7 +103,20 @@ export function useBookingResume() {
        * recovered from the account is asked about exactly as often as one
        * remembered on the phone: once.
        */
-      const remote = await serviceRequestService.getDrafts();
+      /**
+       * Tolerant of a server that will not answer.
+       *
+       * This await was bare, and it runs on every home mount and every
+       * return from the background - so with the backend asleep or
+       * unreachable it threw into nothing and became an uncaught promise
+       * rejection, logged in red on every launch. Nothing broke, which is
+       * the problem: the noise was indistinguishable from a real fault, and
+       * it buried anything that was one.
+       *
+       * No drafts is the right answer when we cannot ask. The pointer on
+       * this phone still works, and the next refresh tries again.
+       */
+      const remote = await serviceRequestService.getDrafts().catch(() => []);
       const candidate = remote.find((row) => isAbandonedDraft(row));
 
       if (candidate) {
