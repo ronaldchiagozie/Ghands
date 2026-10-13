@@ -10,7 +10,7 @@
  * Low ids collide constantly early in a product's life, which is exactly when
  * people are forming an opinion of it.
  */
-import { resolveMessageOwnership } from '@/contract/src/messageOwnership';
+import { resolveMessageOwnership, resolveSenderType } from '@/contract/src/messageOwnership';
 
 describe('resolveMessageOwnership', () => {
   describe('the id collision', () => {
@@ -142,5 +142,61 @@ describe('resolveMessageOwnership', () => {
           .isFromCurrentUser,
       ).toBe(false);
     });
+  });
+});
+
+/**
+ * The rule above was always right. What fed it was not.
+ *
+ * Both apps read a top-level `senderType` the server has never sent - it
+ * arrives nested, as `sender.type` - so the type was empty on every message,
+ * the identity branch could never run, and everything fell through to the
+ * guesses. That is the mispositioning, and it had no test because the
+ * extraction lived inline in two screens instead of beside the rule.
+ */
+describe('reading the sender type off a real message', () => {
+  /** The shape the API actually returns, taken from a live response. */
+  const apiMessage = {
+    id: 13,
+    content: 'Hey',
+    type: 'text',
+    sender: { id: 1, name: 'agozie', type: 'provider' },
+    receiver: { id: 2, name: 'Ronald', type: 'user' },
+  };
+
+  it('finds the type nested under sender', () => {
+    expect(resolveSenderType(apiMessage)).toBe('provider');
+  });
+
+  /**
+   * The top-level `type` on this payload is the message's own kind. Reading
+   * it as the sender's would be a new way to get the same thing wrong.
+   */
+  it('does not mistake the message type for the sender type', () => {
+    expect(resolveSenderType({ type: 'text', sender: { id: 1 } })).toBe('');
+  });
+
+  it('still accepts the flat shapes, in case the server ever sends them', () => {
+    expect(resolveSenderType({ senderType: 'USER' })).toBe('user');
+    expect(resolveSenderType({ sender_type: ' Provider ' })).toBe('provider');
+  });
+
+  it('is empty rather than wrong when nothing says', () => {
+    expect(resolveSenderType({})).toBe('');
+    expect(resolveSenderType(null)).toBe('');
+    expect(resolveSenderType({ sender: { id: 1 } })).toBe('');
+  });
+
+  /** End to end: the live payload, through both apps, lands on opposite sides. */
+  it('puts a provider message on the right for the provider and the left for the client', () => {
+    const senderType = resolveSenderType(apiMessage);
+
+    expect(
+      resolveMessageOwnership({ viewer: 'provider', senderType, senderId: 1, currentUserId: 1 }),
+    ).toMatchObject({ isFromCurrentUser: true, branch: 'identity' });
+
+    expect(
+      resolveMessageOwnership({ viewer: 'client', senderType, senderId: 1, currentUserId: 1 }),
+    ).toMatchObject({ isFromCurrentUser: false, branch: 'identity' });
   });
 });

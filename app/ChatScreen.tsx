@@ -51,7 +51,7 @@ import { formatLastActiveLabel, isPeerRecentlyActive } from '@/utils/chatFormatt
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AvatarCircle } from '@/components/AvatarCircle';
 import { pickProviderImageUriFromRecord } from '@/utils/clientProfilePhoto';
-import { resolveMessageOwnership } from '@/contract/src/messageOwnership';
+import { resolveMessageOwnership, resolveSenderType } from '@/contract/src/messageOwnership';
 import ToolPattern from '@/components/ToolPattern';
 import { isConversationClosedError } from '@/utils/conversationAccess';
 import Toast from '@/components/Toast';
@@ -381,9 +381,8 @@ export default function ChatScreen() {
       currentUserId: number | null,
       peerProviderOverride?: number | null
     ): UIMessage => {
-      const rawSenderType = ((apiMessage as any).senderType || (apiMessage as any).sender_type || '')
-        .toString()
-        .toLowerCase();
+      /** Nested under `sender` on this API - see resolveSenderType. */
+      const rawSenderType = resolveSenderType(apiMessage);
 
       const ex = extractSenderFieldsFromApiMessage(apiMessage as unknown as Record<string, unknown>);
       const senderIdRaw = ex.senderIdRaw;

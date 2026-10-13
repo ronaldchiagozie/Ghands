@@ -72,6 +72,37 @@ function usableId(value: number | null | undefined): value is number {
  * Defaults to "theirs". An incoming message misplaced on the left is a cosmetic
  * error; your own words appearing as though the other person said them is not.
  */
+/**
+ * Pulls the sender's type out of an API message.
+ *
+ * Both apps were reading a top-level `senderType` that the server has never
+ * sent. A message arrives as `{ id, content, sender: { id, name, type } }` -
+ * the type is nested, one level down - so it was empty on every message ever
+ * rendered, and the identity branch below, the one rule that can tell two
+ * accounts apart, could never run. Everything fell through to guesses, which
+ * is why bubbles sat on the wrong side.
+ *
+ * It lives here, beside the rule it feeds, because the extraction and the
+ * decision are one idea and were drifting apart in two separate screens.
+ *
+ * Deliberately never the top-level `type`: on this payload that is the
+ * message's own kind - text, image - and reading it as the sender's type
+ * would be a new way to get the same thing wrong.
+ */
+export function resolveSenderType(raw: unknown): string {
+  if (!raw || typeof raw !== 'object') return '';
+  const record = raw as Record<string, unknown>;
+
+  const nested = record.sender;
+  const fromNested =
+    nested && typeof nested === 'object'
+      ? ((nested as Record<string, unknown>).type ?? (nested as Record<string, unknown>).senderType)
+      : undefined;
+
+  const value = record.senderType ?? record.sender_type ?? fromNested;
+  return typeof value === 'string' ? value.trim().toLowerCase() : '';
+}
+
 export function resolveMessageOwnership(input: MessageOwnershipInput): MessageOwnership {
   const { viewer, senderId, currentUserId, direction, remembered, peerProviderId } = input;
 
