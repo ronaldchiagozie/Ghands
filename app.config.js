@@ -5,7 +5,18 @@ module.exports = {
     slug: 'GHands',
     version: '1.0.3',
     orientation: 'portrait',
-    icon: './assets/images/icon.png',
+    /**
+     * app-icon.png, not icon.png.
+     *
+     * icon.png is 250x260 with transparent rounded corners - a black plate
+     * drawn into the artwork itself. Two things wrong with that as an app
+     * icon. iOS forbids transparency and flattens it, which is where the
+     * white ring around the icon on the home screen came from; and at 250px
+     * it was being upscaled past four times its size for a 180pt slot, so it
+     * was soft as well. app-icon.png is 1024x1024, fully opaque, black to
+     * the edges, with no corner rounding - the OS applies its own mask.
+     */
+    icon: './assets/images/app-icon.png',
     scheme: 'ghands',
     userInterfaceStyle: 'light',
     backgroundColor: '#4F6739',
@@ -17,7 +28,7 @@ module.exports = {
       },
     },
     ios: {
-      icon: './assets/images/icon.png',
+      icon: './assets/images/app-icon.png',
       supportsTablet: true,
       bundleIdentifier: 'com.bendee.GHands',
       config: { googleMapsApiKey },
@@ -35,8 +46,15 @@ module.exports = {
     },
     android: {
       adaptiveIcon: {
-        foregroundImage: './assets/images/icon.png',
-        backgroundColor: '#4F6739',
+        /**
+         * Transparent foreground over a black plate, which is how an
+         * adaptive icon is meant to be built: the launcher crops this to a
+         * circle or a squircle depending on the device, so the artwork is
+         * drawn smaller to survive the trim and the colour is the layer
+         * underneath rather than part of the picture.
+         */
+        foregroundImage: './assets/images/adaptive-icon.png',
+        backgroundColor: '#000000',
       },
       edgeToEdgeEnabled: false,
       predictiveBackGestureEnabled: false,
