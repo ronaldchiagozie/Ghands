@@ -74,6 +74,25 @@ export function subscribeApiUnreachable(listener: ApiUnreachableListener): () =>
   };
 }
 
+/**
+ * The last thing NetInfo said about the device's own connection.
+ *
+ * Kept as a module-level snapshot so code with no hooks - the API client,
+ * which is where error messages are worded - can tell "this phone has no
+ * network" from "this phone is fine and the server is not answering".
+ * Optimistic until told otherwise: assuming offline before NetInfo has
+ * reported would mislabel every error during the first moments of launch.
+ */
+let deviceOnline = true;
+
+export function setDeviceOnline(online: boolean): void {
+  deviceOnline = online;
+}
+
+export function isDeviceOnline(): boolean {
+  return deviceOnline;
+}
+
 export function isApiUnreachable(): boolean {
   return apiUnreachable;
 }

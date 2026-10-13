@@ -1,7 +1,7 @@
 import { AuthError } from '../../utils/errors';
 import { authService as authServiceInstance } from '../authService';
 import { assertValidAuthToken, expireAuthSession } from '../../utils/enforceAuthSession';
-import { reportApiUnreachable, clearApiUnreachable } from '../../utils/connectivityCheck';
+import { isDeviceOnline, reportApiUnreachable, clearApiUnreachable } from '../../utils/connectivityCheck';
 import { API_BASE_URL } from '../../lib/apiConfig';
 
 interface RequestConfig extends RequestInit {
@@ -321,10 +321,26 @@ class ApiClient {
          */
         if (attempt === retries || isHttpError) {
           if (error instanceof AuthError) throw error;
+          /**
+           * "No internet" only when there is actually no internet.
+           *
+           * isNetworkError covers two different situations: a phone with no
+           * connection, and a phone with a perfectly good connection talking
+           * to a server that is refusing, timing out or asleep. Both got the
+           * same sentence - "No internet connection. Check your network and
+           * try again." - so the app would put that in a toast while the
+           * screen behind it correctly said "Your internet is fine, we can't
+           * reach our servers". Two contradictory things at once, and the
+           * one blaming the customer's network was the wrong one.
+           *
+           * NetInfo knows which it is, so ask it.
+           */
           const errorMessage = this.isTimeoutError(error)
-            ? 'The request took too long. Please check your connection and try again.'
+            ? 'GHands is taking too long to respond. Please try again in a moment.'
             : isNetworkErr
-              ? 'No internet connection. Check your network and try again.'
+              ? isDeviceOnline()
+                ? "We can't reach GHands right now. Please try again in a moment."
+                : 'No internet connection. Check your network and try again.'
               : (error instanceof Error ? error.message : 'Request failed');
           const statusCode = (error as any)?.status || (error as any)?.response?.status;
           if (isNetworkErr) {

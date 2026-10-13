@@ -5,6 +5,7 @@ import {
   checkConnectivity,
   clearApiUnreachable,
   deriveOnlineFromNetInfo,
+  setDeviceOnline,
   isApiUnreachable,
   pingBackend,
   subscribeApiUnreachable,
@@ -39,6 +40,12 @@ export function NetworkProvider({ children }: { children: React.ReactNode }) {
 
   const applyNetState = useCallback((state: NetInfoState) => {
     const linkUp = deriveOnlineFromNetInfo(state);
+    /**
+     * Publish the device's own link state for code that has no hooks.
+     * The API client words its errors from this: with the link up, a failed
+     * request is the server not answering, not the customer's network.
+     */
+    setDeviceOnline(linkUp);
     const online = linkUp && !isApiUnreachable();
     setOfflineReason(online ? null : linkUp ? 'server' : 'device');
     if (wasOnlineRef.current && !online) {
