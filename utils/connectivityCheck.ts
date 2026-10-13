@@ -4,6 +4,19 @@ import { notifyNetworkRestored } from '@/utils/networkRestoreEvents';
 
 const PING_TIMEOUT_MS = 10_000;
 
+/**
+ * How long to allow the confirming ping before declaring the server down.
+ *
+ * Longer than the ordinary ping on purpose. The backend sleeps when idle and
+ * a cold start takes far longer than ten seconds - the request that woke it
+ * is usually the one that timed out, and the confirmation then lands while
+ * it is still booting and times out too. So the app would take the whole
+ * screen with "Can't reach GHands" for a server that was in the middle of
+ * getting up, and clear it again fifteen seconds later. Correct at the
+ * instant it appeared, and useless to look at.
+ */
+const WAKE_CONFIRM_TIMEOUT_MS = 30_000;
+
 type ApiUnreachableListener = () => void;
 const apiUnreachableListeners = new Set<ApiUnreachableListener>();
 let apiUnreachable = false;
@@ -45,7 +58,11 @@ export function reportApiUnreachable(): void {
      * or a 500, means we can reach them and the original failure was a one-off
      * worth retrying quietly rather than announcing.
      */
-    const reachable = await pingBackend();
+    /**
+     * Wait for it to wake before giving up on it. One long ping covers the
+     * cold start the first failure almost certainly was.
+     */
+    const reachable = await pingBackend(WAKE_CONFIRM_TIMEOUT_MS);
     if (reachable) return;
 
     if (apiUnreachable) return;
@@ -110,10 +127,10 @@ export function deriveOnlineFromNetInfo(state: NetInfoState | null | undefined):
  * Lightweight reachability check against the API host.
  * Any HTTP response (including 4xx/5xx) means the server is reachable.
  */
-export async function pingBackend(): Promise<boolean> {
+export async function pingBackend(timeoutMs: number = PING_TIMEOUT_MS): Promise<boolean> {
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), PING_TIMEOUT_MS);
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
       const response = await fetch(API_BASE_URL, {
         method: 'GET',
